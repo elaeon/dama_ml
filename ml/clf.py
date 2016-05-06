@@ -2,6 +2,7 @@ import os
 import numpy as np
 import tensorflow as tf
 
+from sklearn import preprocessing
 
 CHECK_POINT_PATH = "/home/sc/data/face_recog/"
 #np.random.seed(133)

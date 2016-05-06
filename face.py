@@ -34,7 +34,7 @@ if __name__  == '__main__':
     parser.add_argument("--build", help="crea el dataset", action="store_true")
     parser.add_argument("--rebuild", help="construye el dataset desde las images origen", action="store_true")
     parser.add_argument("--train", help="inicia el entrenamiento", action="store_true")
-    parser.add_argument("--classif", help="selecciona el clasificador", type=str)
+    parser.add_argument("--clf", help="selecciona el clasificador", type=str)
     args = parser.parse_args()
     image_size = 90
     if args.dataset:
@@ -69,8 +69,8 @@ if __name__  == '__main__':
                 "name": ml.clf.ResidualTensor,
                 "params": {"num_channels": 1, "image_size": image_size}}
         }
-        class_ = classifs[args.classif]["name"]
-        params = classifs[args.classif]["params"]
+        class_ = classifs[args.clf]["name"]
+        params = classifs[args.clf]["params"]
         dataset = ml.ds.DataSetBuilder.load_dataset(dataset_name)
         face_classif = class_(dataset_name, dataset, **params)
         face_classif.batch_size = 10
