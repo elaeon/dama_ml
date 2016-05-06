@@ -1,0 +1,2898 @@
+<?xml version='1.0' encoding='ISO-8859-1'?>
+<?xml-stylesheet type='text/xsl' href='image_metadata_stylesheet.xsl'?>
+<dataset>
+<name>imglab dataset</name>
+<comment>Created by imglab tool.</comment>
+<images>
+  <image file='Pictures/tickets/DSC_0055.jpg'>
+    <box top='212' left='832' width='48' height='80'>
+      <label>0</label>
+    </box>
+    <box top='213' left='887' width='49' height='80'>
+      <label>0</label>
+    </box>
+    <box top='215' left='943' width='49' height='79'>
+      <label>0</label>
+    </box>
+    <box top='210' left='1432' width='50' height='81'>
+      <label>0</label>
+    </box>
+    <box top='298' left='667' width='48' height='82'>
+      <label>0</label>
+    </box>
+    <box top='297' left='723' width='46' height='85'>
+      <label>0</label>
+    </box>
+    <box top='300' left='888' width='47' height='85'>
+      <label>0</label>
+    </box>
+    <box top='305' left='943' width='47' height='78'>
+      <label>0</label>
+    </box>
+    <box top='303' left='998' width='48' height='84'>
+      <label>0</label>
+    </box>
+    <box top='305' left='1271' width='47' height='80'>
+      <label>0</label>
+    </box>
+    <box top='393' left='776' width='50' height='81'>
+      <label>0</label>
+    </box>
+    <box top='484' left='781' width='42' height='82'>
+      <label>0</label>
+    </box>
+    <box top='487' left='886' width='48' height='80'>
+      <label>0</label>
+    </box>
+    <box top='485' left='1215' width='51' height='87'>
+      <label>0</label>
+    </box>
+    <box top='488' left='1271' width='47' height='83'>
+      <label>0</label>
+    </box>
+    <box top='574' left='667' width='46' height='81'>
+      <label>0</label>
+    </box>
+    <box top='575' left='723' width='47' height='83'>
+      <label>0</label>
+    </box>
+    <box top='579' left='1053' width='46' height='84'>
+      <label>0</label>
+    </box>
+    <box top='580' left='1104' width='51' height='82'>
+      <label>0</label>
+    </box>
+    <box top='578' left='1160' width='50' height='86'>
+      <label>0</label>
+    </box>
+    <box top='664' left='721' width='49' height='87'>
+      <label>0</label>
+    </box>
+    <box top='670' left='1272' width='46' height='84'>
+      <label>0</label>
+    </box>
+    <box top='761' left='1273' width='45' height='86'>
+      <label>0</label>
+    </box>
+    <box top='763' left='999' width='46' height='82'>
+      <label>0</label>
+    </box>
+    <box top='758' left='723' width='46' height='84'>
+      <label>0</label>
+    </box>
+    <box top='851' left='781' width='45' height='85'>
+      <label>0</label>
+    </box>
+    <box top='853' left='891' width='45' height='85'>
+      <label>0</label>
+    </box>
+    <box top='851' left='944' width='46' height='88'>
+      <label>0</label>
+    </box>
+    <box top='851' left='1326' width='45' height='82'>
+      <label>0</label>
+    </box>
+    <box top='943' left='780' width='46' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1035' left='781' width='45' height='80'>
+      <label>0</label>
+    </box>
+    <box top='1036' left='888' width='48' height='80'>
+      <label>0</label>
+    </box>
+    <box top='1036' left='945' width='46' height='80'>
+      <label>0</label>
+    </box>
+    <box top='1036' left='1000' width='46' height='80'>
+      <label>0</label>
+    </box>
+    <box top='1127' left='780' width='47' height='82'>
+      <label>0</label>
+    </box>
+    <box top='1124' left='1219' width='45' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1122' left='1271' width='47' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1215' left='725' width='46' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1217' left='780' width='48' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1217' left='837' width='44' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1216' left='889' width='47' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1217' left='943' width='48' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1219' left='996' width='51' height='79'>
+      <label>0</label>
+    </box>
+    <box top='1217' left='1054' width='47' height='79'>
+      <label>0</label>
+    </box>
+    <box top='1216' left='1107' width='48' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1214' left='1218' width='45' height='82'>
+      <label>0</label>
+    </box>
+    <box top='1307' left='1053' width='47' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1304' left='1107' width='50' height='85'>
+      <label>0</label>
+    </box>
+    <box top='1486' left='1108' width='48' height='85'>
+      <label>0</label>
+    </box>
+    <box top='1399' left='725' width='45' height='80'>
+      <label>0</label>
+    </box>
+    <box top='1398' left='776' width='51' height='88'>
+      <label>0</label>
+    </box>
+    <box top='1396' left='833' width='49' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1398' left='890' width='47' height='82'>
+      <label>0</label>
+    </box>
+    <box top='1398' left='943' width='49' height='85'>
+      <label>0</label>
+    </box>
+    <box top='1397' left='997' width='48' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1400' left='1054' width='49' height='80'>
+      <label>0</label>
+    </box>
+    <box top='1399' left='1109' width='45' height='82'>
+      <label>0</label>
+    </box>
+    <box top='1671' left='1110' width='44' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1579' left='1220' width='44' height='82'>
+      <label>0</label>
+    </box>
+    <box top='298' left='1433' width='50' height='83'>
+      <label>$</label>
+    </box>
+    <box top='390' left='1436' width='47' height='86'>
+      <label>$</label>
+    </box>
+    <box top='482' left='1437' width='44' height='90'>
+      <label>$</label>
+    </box>
+    <box top='575' left='1436' width='45' height='88'>
+      <label>$</label>
+    </box>
+    <box top='666' left='1434' width='47' height='90'>
+      <label>$</label>
+    </box>
+    <box top='762' left='1433' width='50' height='86'>
+      <label>$</label>
+    </box>
+    <box top='850' left='1433' width='49' height='87'>
+      <label>$</label>
+    </box>
+    <box top='944' left='1430' width='56' height='80'>
+      <label>$</label>
+    </box>
+    <box top='1031' left='1434' width='45' height='84'>
+      <label>$</label>
+    </box>
+    <box top='1120' left='1436' width='47' height='86'>
+      <label>$</label>
+    </box>
+    <box top='1301' left='1378' width='51' height='90'>
+      <label>$</label>
+    </box>
+    <box top='1483' left='1379' width='49' height='89'>
+      <label>$</label>
+    </box>
+    <box top='1663' left='1378' width='50' height='91'>
+      <label>$</label>
+    </box>
+    <box top='2023' left='1373' width='48' height='81'>
+      <label>$</label>
+    </box>
+    <box top='1850' left='1380' width='45' height='84'>
+      <label>$</label>
+    </box>
+    <box top='2197' left='1372' width='45' height='81'>
+      <label>$</label>
+    </box>
+    <box top='2282' left='1422' width='49' height='85'>
+      <label>$</label>
+    </box>
+    <box top='2373' left='1423' width='49' height='85'>
+      <label>$</label>
+    </box>
+    <box top='2462' left='1426' width='47' height='82'>
+      <label>$</label>
+    </box>
+    <box top='2551' left='1425' width='46' height='85'>
+      <label>$</label>
+    </box>
+    <box top='2640' left='1423' width='47' height='84'>
+      <label>$</label>
+    </box>
+    <box top='2729' left='1425' width='49' height='89'>
+      <label>$</label>
+    </box>
+    <box top='2919' left='1422' width='52' height='83'>
+      <label>$</label>
+    </box>
+    <box top='3007' left='1423' width='47' height='85'>
+      <label>$</label>
+    </box>
+    <box top='198' left='277' width='48' height='80'>
+      <label>0</label>
+    </box>
+    <box top='200' left='1815' width='49' height='82'>
+      <label>0</label>
+    </box>
+    <box top='286' left='2040' width='42' height='78'>
+      <label>0</label>
+    </box>
+    <box top='378' left='2040' width='46' height='82'>
+      <label>0</label>
+    </box>
+    <box top='472' left='2037' width='50' height='82'>
+      <label>0</label>
+    </box>
+    <box top='560' left='2037' width='48' height='90'>
+      <label>0</label>
+    </box>
+    <box top='841' left='1868' width='50' height='85'>
+      <label>0</label>
+    </box>
+    <box top='843' left='1980' width='47' height='82'>
+      <label>0</label>
+    </box>
+    <box top='840' left='2033' width='49' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1022' left='2031' width='47' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1113' left='2031' width='49' height='86'>
+      <label>0</label>
+    </box>
+    <box top='1663' left='1811' width='49' height='84'>
+      <label>0</label>
+    </box>
+    <box top='2191' left='1796' width='46' height='83'>
+      <label>0</label>
+    </box>
+    <box top='2459' left='2012' width='47' height='83'>
+      <label>0</label>
+    </box>
+    <box top='2641' left='1797' width='49' height='82'>
+      <label>0</label>
+    </box>
+    <box top='2641' left='1852' width='46' height='83'>
+      <label>0</label>
+    </box>
+    <box top='2638' left='1959' width='48' height='83'>
+      <label>0</label>
+    </box>
+    <box top='2640' left='2014' width='45' height='80'>
+      <label>0</label>
+    </box>
+    <box top='2729' left='2016' width='46' height='88'>
+      <label>0</label>
+    </box>
+    <box top='3010' left='1855' width='47' height='83'>
+      <label>0</label>
+    </box>
+    <box top='3011' left='1963' width='48' height='83'>
+      <label>0</label>
+    </box>
+    <box top='3198' left='1965' width='47' height='82'>
+      <label>0</label>
+    </box>
+    <box top='3563' left='776' width='47' height='83'>
+      <label>0</label>
+    </box>
+    <box top='3567' left='668' width='47' height='81'>
+      <label>0</label>
+    </box>
+    <box top='2203' left='946' width='46' height='79'>
+      <label>0</label>
+    </box>
+    <box top='2200' left='1052' width='46' height='79'>
+      <label>0</label>
+    </box>
+    <box top='2202' left='1103' width='49' height='77'>
+      <label>0</label>
+    </box>
+    <box top='2378' left='999' width='46' height='77'>
+      <label>0</label>
+    </box>
+    <box top='2377' left='1265' width='46' height='80'>
+      <label>0</label>
+    </box>
+    <box top='2474' left='677' width='44' height='75'>
+      <label>0</label>
+    </box>
+    <box top='2472' left='732' width='42' height='78'>
+      <label>0</label>
+    </box>
+    <box top='2469' left='784' width='45' height='78'>
+      <label>0</label>
+    </box>
+    <box top='2469' left='835' width='47' height='76'>
+      <label>0</label>
+    </box>
+    <box top='2467' left='891' width='46' height='81'>
+      <label>0</label>
+    </box>
+    <box top='2469' left='945' width='44' height='81'>
+      <label>0</label>
+    </box>
+    <box top='2468' left='998' width='44' height='79'>
+      <label>0</label>
+    </box>
+    <box top='2467' left='1051' width='45' height='80'>
+      <label>0</label>
+    </box>
+    <box top='2026' left='1106' width='47' height='79'>
+      <label>0</label>
+    </box>
+    <box top='2113' left='1212' width='44' height='78'>
+      <label>0</label>
+    </box>
+    <box top='2115' left='1052' width='44' height='80'>
+      <label>0</label>
+    </box>
+    <box top='2118' left='1001' width='43' height='75'>
+      <label>0</label>
+    </box>
+    <box top='2116' left='1107' width='45' height='76'>
+      <label>0</label>
+    </box>
+    <box top='2116' left='945' width='46' height='78'>
+      <label>0</label>
+    </box>
+    <box top='2116' left='893' width='43' height='81'>
+      <label>0</label>
+    </box>
+    <box top='2117' left='839' width='45' height='76'>
+      <label>0</label>
+    </box>
+    <box top='2118' left='785' width='45' height='76'>
+      <label>0</label>
+    </box>
+    <box top='2120' left='733' width='44' height='78'>
+      <label>0</label>
+    </box>
+    <box top='1850' left='1109' width='46' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1942' left='1054' width='46' height='77'>
+      <label>0</label>
+    </box>
+    <box top='1940' left='999' width='46' height='82'>
+      <label>0</label>
+    </box>
+    <box top='1941' left='945' width='47' height='82'>
+      <label>0</label>
+    </box>
+    <box top='1941' left='893' width='43' height='77'>
+      <label>0</label>
+    </box>
+    <box top='1943' left='839' width='45' height='77'>
+      <label>0</label>
+    </box>
+    <box top='1944' left='783' width='46' height='76'>
+      <label>0</label>
+    </box>
+    <box top='1944' left='728' width='48' height='76'>
+      <label>0</label>
+    </box>
+    <box top='1765' left='1110' width='43' height='78'>
+      <label>0</label>
+    </box>
+    <box top='1763' left='1216' width='48' height='79'>
+      <label>0</label>
+    </box>
+    <box top='1764' left='1055' width='44' height='76'>
+      <label>0</label>
+    </box>
+    <box top='1762' left='1000' width='45' height='79'>
+      <label>0</label>
+    </box>
+    <box top='1762' left='946' width='46' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1764' left='889' width='50' height='80'>
+      <label>0</label>
+    </box>
+    <box top='1767' left='839' width='44' height='76'>
+      <label>0</label>
+    </box>
+    <box top='1767' left='782' width='48' height='78'>
+      <label>0</label>
+    </box>
+    <box top='1766' left='726' width='50' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1581' left='1108' width='48' height='80'>
+      <label>0</label>
+    </box>
+    <box top='1582' left='1055' width='46' height='80'>
+      <label>0</label>
+    </box>
+    <box top='1580' left='1000' width='48' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1581' left='945' width='47' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1583' left='891' width='46' height='80'>
+      <label>0</label>
+    </box>
+    <box top='1583' left='835' width='48' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1583' left='781' width='45' height='79'>
+      <label>0</label>
+    </box>
+    <box top='1584' left='727' width='46' height='79'>
+      <label>0</label>
+    </box>
+    <box top='295' left='777' width='48' height='89'>
+      <label>3</label>
+    </box>
+    <box top='393' left='1107' width='47' height='88'>
+      <label>3</label>
+    </box>
+    <box top='666' left='888' width='48' height='90'>
+      <label>3</label>
+    </box>
+    <box top='758' left='1054' width='47' height='89'>
+      <label>3</label>
+    </box>
+    <box top='849' left='1216' width='48' height='89'>
+      <label>3</label>
+    </box>
+    <box top='944' left='1327' width='45' height='81'>
+      <label>3</label>
+    </box>
+    <box top='1032' left='1054' width='47' height='87'>
+      <label>3</label>
+    </box>
+    <box top='1123' left='1108' width='47' height='86'>
+      <label>3</label>
+    </box>
+    <box top='1214' left='1272' width='46' height='83'>
+      <label>3</label>
+    </box>
+    <box top='1488' left='888' width='50' height='85'>
+      <label>3</label>
+    </box>
+    <box top='1848' left='890' width='47' height='86'>
+      <label>3</label>
+    </box>
+    <box top='1937' left='1160' width='48' height='82'>
+      <label>3</label>
+    </box>
+    <box top='1939' left='1216' width='45' height='82'>
+      <label>3</label>
+    </box>
+    <box top='2027' left='889' width='50' height='81'>
+      <label>3</label>
+    </box>
+    <box top='2465' left='1210' width='46' height='81'>
+      <label>3</label>
+    </box>
+    <box top='3557' left='1371' width='44' height='84'>
+      <label>3</label>
+    </box>
+    <box top='2461' left='1795' width='50' height='84'>
+      <label>3</label>
+    </box>
+    <box top='2021' left='1803' width='44' height='80'>
+      <label>3</label>
+    </box>
+    <box top='1840' left='1914' width='48' height='86'>
+      <label>3</label>
+    </box>
+    <box top='1301' left='1811' width='48' height='83'>
+      <label>3</label>
+    </box>
+    <box top='751' left='1816' width='49' height='86'>
+      <label>3</label>
+    </box>
+    <box top='380' left='1817' width='52' height='84'>
+      <label>3</label>
+    </box>
+    <box top='289' left='1819' width='46' height='84'>
+      <label>3</label>
+    </box>
+    <box top='384' left='667' width='48' height='88'>
+      <label>7</label>
+    </box>
+    <box top='480' left='667' width='48' height='87'>
+      <label>7</label>
+    </box>
+    <box top='389' left='888' width='49' height='91'>
+      <label>7</label>
+    </box>
+    <box top='576' left='778' width='45' height='84'>
+      <label>7</label>
+    </box>
+    <box top='669' left='1106' width='49' height='84'>
+      <label>7</label>
+    </box>
+    <box top='852' left='667' width='49' height='83'>
+      <label>7</label>
+    </box>
+    <box top='940' left='665' width='51' height='86'>
+      <label>7</label>
+    </box>
+    <box top='1034' left='667' width='45' height='82'>
+      <label>7</label>
+    </box>
+    <box top='1124' left='667' width='50' height='83'>
+      <label>7</label>
+    </box>
+    <box top='1125' left='891' width='47' height='84'>
+      <label>7</label>
+    </box>
+    <box top='942' left='888' width='49' height='86'>
+      <label>7</label>
+    </box>
+    <box top='1121' left='1162' width='48' height='88'>
+      <label>7</label>
+    </box>
+    <box top='1575' left='1325' width='48' height='88'>
+      <label>7</label>
+    </box>
+    <box top='1757' left='1325' width='46' height='85'>
+      <label>7</label>
+    </box>
+    <box top='2375' left='1211' width='45' height='81'>
+      <label>7</label>
+    </box>
+    <box top='3559' left='885' width='47' height='85'>
+      <label>7</label>
+    </box>
+    <box top='3569' left='611' width='49' height='81'>
+      <label>7</label>
+    </box>
+    <box top='2369' left='2013' width='47' height='85'>
+      <label>7</label>
+    </box>
+    <box top='2192' left='1903' width='49' height='82'>
+      <label>7</label>
+    </box>
+    <box top='655' left='1871' width='51' height='87'>
+      <label>7</label>
+    </box>
+    <box top='22' left='1652' width='48' height='82'>
+      <label>7</label>
+    </box>
+    <box top='14' left='1925' width='48' height='84'>
+      <label>3</label>
+    </box>
+    <box top='206' left='1489' width='48' height='85'>
+      <label>8</label>
+    </box>
+    <box top='29' left='1434' width='47' height='80'>
+      <label>8</label>
+    </box>
+    <box top='33' left='1271' width='46' height='78'>
+      <label>0</label>
+    </box>
+    <box top='27' left='1489' width='46' height='80'>
+      <label>0</label>
+    </box>
+    <box top='24' left='1542' width='49' height='81'>
+      <label>0</label>
+    </box>
+    <box top='22' left='1761' width='49' height='76'>
+      <label>0</label>
+    </box>
+    <box top='305' left='1327' width='45' height='81'>
+      <label>8</label>
+    </box>
+    <box top='304' left='1053' width='47' height='83'>
+      <label>8</label>
+    </box>
+    <box top='299' left='833' width='48' height='85'>
+      <label>8</label>
+    </box>
+    <box top='580' left='941' width='49' height='81'>
+      <label>8</label>
+    </box>
+    <box top='578' left='1268' width='53' height='85'>
+      <label>8</label>
+    </box>
+    <box top='668' left='1216' width='49' height='84'>
+      <label>8</label>
+    </box>
+    <box top='945' left='1053' width='47' height='81'>
+      <label>8</label>
+    </box>
+    <box top='1034' left='1217' width='46' height='80'>
+      <label>8</label>
+    </box>
+    <box top='1125' left='1326' width='46' height='79'>
+      <label>8</label>
+    </box>
+    <box top='1213' left='1326' width='48' height='84'>
+      <label>8</label>
+    </box>
+    <box top='1487' left='221' width='52' height='88'>
+      <label>8</label>
+    </box>
+    <box top='1758' left='1270' width='50' height='86'>
+      <label>8</label>
+    </box>
+    <box top='1855' left='232' width='50' height='81'>
+      <label>3</label>
+    </box>
+    <box top='2030' left='239' width='49' height='82'>
+      <label>3</label>
+    </box>
+    <box top='2204' left='299' width='45' height='84'>
+      <label>7</label>
+    </box>
+    <box top='2207' left='241' width='49' height='83'>
+      <label>0</label>
+    </box>
+    <box top='2033' left='128' width='50' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1855' left='123' width='44' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1674' left='112' width='52' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1673' left='282' width='51' height='86'>
+      <label>0</label>
+    </box>
+    <box top='1306' left='335' width='49' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1302' left='105' width='52' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1487' left='111' width='48' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1304' left='274' width='54' height='86'>
+      <label>3</label>
+    </box>
+    <box top='1486' left='278' width='51' height='86'>
+      <label>3</label>
+    </box>
+    <box top='2033' left='349' width='50' height='81'>
+      <label>0</label>
+    </box>
+    <box top='2377' left='836' width='50' height='86'>
+      <label>8</label>
+    </box>
+    <box top='3560' left='1098' width='50' height='79'>
+      <label>8</label>
+    </box>
+    <box top='3557' left='1206' width='50' height='83'>
+      <label>8</label>
+    </box>
+    <box top='3373' left='1532' width='49' height='87'>
+      <label>8</label>
+    </box>
+    <box top='2918' left='1963' width='49' height='87'>
+      <label>8</label>
+    </box>
+    <box top='2548' left='2012' width='51' height='85'>
+      <label>8</label>
+    </box>
+    <box top='2280' left='1846' width='51' height='82'>
+      <label>8</label>
+    </box>
+    <box top='2280' left='1797' width='47' height='83'>
+      <label>8</label>
+    </box>
+    <box top='1479' left='1977' width='46' height='83'>
+      <label>8</label>
+    </box>
+    <box top='1120' left='1866' width='49' height='81'>
+      <label>8</label>
+    </box>
+    <box top='657' left='2036' width='49' height='82'>
+      <label>8</label>
+    </box>
+    <box top='473' left='1983' width='48' height='82'>
+      <label>8</label>
+    </box>
+    <box top='852' left='837' width='31' height='87'>
+      <label>1</label>
+    </box>
+    <box top='941' left='836' width='32' height='88'>
+      <label>1</label>
+    </box>
+    <box top='1035' left='838' width='29' height='83'>
+      <label>1</label>
+    </box>
+    <box top='1123' left='840' width='26' height='85'>
+      <label>1</label>
+    </box>
+    <box top='1125' left='1004' width='26' height='85'>
+      <label>1</label>
+    </box>
+    <box top='1032' left='1108' width='31' height='86'>
+      <label>1</label>
+    </box>
+    <box top='853' left='1168' width='26' height='84'>
+      <label>1</label>
+    </box>
+    <box top='850' left='1275' width='28' height='88'>
+      <label>1</label>
+    </box>
+    <box top='667' left='1166' width='28' height='85'>
+      <label>1</label>
+    </box>
+    <box top='670' left='1056' width='29' height='84'>
+      <label>1</label>
+    </box>
+    <box top='668' left='1000' width='29' height='87'>
+      <label>1</label>
+    </box>
+    <box top='668' left='834' width='31' height='84'>
+      <label>1</label>
+    </box>
+    <box top='576' left='893' width='26' height='85'>
+      <label>1</label>
+    </box>
+    <box top='485' left='837' width='33' height='87'>
+      <label>1</label>
+    </box>
+    <box top='390' left='836' width='28' height='88'>
+      <label>1</label>
+    </box>
+    <box top='395' left='999' width='30' height='83'>
+      <label>1</label>
+    </box>
+    <box top='486' left='1113' width='28' height='87'>
+      <label>1</label>
+    </box>
+    <box top='485' left='1164' width='31' height='86'>
+      <label>1</label>
+    </box>
+    <box top='578' left='1218' width='32' height='84'>
+      <label>1</label>
+    </box>
+    <box top='761' left='780' width='29' height='84'>
+      <label>1</label>
+    </box>
+    <box top='943' left='1003' width='29' height='84'>
+      <label>1</label>
+    </box>
+    <box top='1393' left='1329' width='28' height='86'>
+      <label>1</label>
+    </box>
+    <box top='2111' left='1268' width='28' height='82'>
+      <label>1</label>
+    </box>
+    <box top='2113' left='1322' width='28' height='79'>
+      <label>1</label>
+    </box>
+    <box top='2199' left='892' width='31' height='86'>
+      <label>1</label>
+    </box>
+    <box top='2376' left='948' width='28' height='84'>
+      <label>1</label>
+    </box>
+    <box top='3374' left='1482' width='27' height='83'>
+      <label>1</label>
+    </box>
+    <box top='3560' left='1587' width='30' height='85'>
+      <label>1</label>
+    </box>
+    <box top='3560' left='1751' width='28' height='83'>
+      <label>1</label>
+    </box>
+    <box top='3559' left='1049' width='28' height='79'>
+      <label>1</label>
+    </box>
+    <box top='3575' left='505' width='33' height='85'>
+      <label>1</label>
+    </box>
+    <box top='3324' left='116' width='29' height='84'>
+      <label>1</label>
+    </box>
+    <box top='2915' left='2023' width='29' height='91'>
+      <label>1</label>
+    </box>
+    <box top='2277' left='1959' width='31' height='85'>
+      <label>1</label>
+    </box>
+    <box top='2278' left='2012' width='33' height='84'>
+      <label>1</label>
+    </box>
+    <box top='2196' left='1744' width='31' height='81'>
+      <label>1</label>
+    </box>
+    <box top='2021' left='1752' width='25' height='77'>
+      <label>1</label>
+    </box>
+    <box top='2019' left='1968' width='26' height='78'>
+      <label>1</label>
+    </box>
+    <box top='1840' left='1809' width='31' height='83'>
+      <label>1</label>
+    </box>
+    <box top='1842' left='1756' width='31' height='82'>
+      <label>1</label>
+    </box>
+    <box top='1661' left='1760' width='31' height='85'>
+      <label>1</label>
+    </box>
+    <box top='1024' left='1870' width='31' height='84'>
+      <label>1</label>
+    </box>
+    <box top='843' left='1819' width='31' height='85'>
+      <label>1</label>
+    </box>
+    <box top='655' left='1983' width='30' height='84'>
+      <label>1</label>
+    </box>
+    <box top='658' left='1822' width='32' height='78'>
+      <label>1</label>
+    </box>
+    <box top='658' left='1765' width='32' height='85'>
+      <label>1</label>
+    </box>
+    <box top='565' left='1820' width='31' height='86'>
+      <label>1</label>
+    </box>
+    <box top='287' left='1875' width='30' height='83'>
+      <label>1</label>
+    </box>
+    <box top='19' left='1709' width='30' height='82'>
+      <label>1</label>
+    </box>
+    <box top='29' left='1329' width='28' height='84'>
+      <label>1</label>
+    </box>
+    <box top='214' left='998' width='48' height='82'>
+      <label>2</label>
+    </box>
+    <box top='213' left='1102' width='53' height='83'>
+      <label>2</label>
+    </box>
+    <box top='393' left='1270' width='46' height='86'>
+      <label>2</label>
+    </box>
+    <box top='486' left='942' width='47' height='85'>
+      <label>2</label>
+    </box>
+    <box top='663' left='666' width='49' height='87'>
+      <label>2</label>
+    </box>
+    <box top='754' left='665' width='52' height='88'>
+      <label>2</label>
+    </box>
+    <box top='763' left='940' width='51' height='82'>
+      <label>2</label>
+    </box>
+    <box top='762' left='1162' width='47' height='82'>
+      <label>2</label>
+    </box>
+    <box top='943' left='1107' width='47' height='84'>
+      <label>2</label>
+    </box>
+    <box top='1031' left='1269' width='48' height='86'>
+      <label>2</label>
+    </box>
+    <box top='1671' left='888' width='51' height='87'>
+      <label>2</label>
+    </box>
+    <box top='2377' left='1050' width='48' height='82'>
+      <label>2</label>
+    </box>
+    <box top='2374' left='1102' width='49' height='83'>
+      <label>2</label>
+    </box>
+    <box top='2381' left='675' width='47' height='82'>
+      <label>2</label>
+    </box>
+    <box top='3556' left='1314' width='48' height='86'>
+      <label>2</label>
+    </box>
+    <box top='3563' left='1693' width='46' height='82'>
+      <label>2</label>
+    </box>
+    <box top='3010' left='2020' width='46' height='85'>
+      <label>2</label>
+    </box>
+    <box top='2369' left='1796' width='48' height='85'>
+      <label>2</label>
+    </box>
+    <box top='2370' left='1850' width='47' height='82'>
+      <label>2</label>
+    </box>
+    <box top='1482' left='1755' width='50' height='82'>
+      <label>2</label>
+    </box>
+    <box top='1302' left='1755' width='49' height='83'>
+      <label>2</label>
+    </box>
+    <box top='1299' left='1920' width='47' height='81'>
+      <label>2</label>
+    </box>
+    <box top='1298' left='1972' width='51' height='84'>
+      <label>2</label>
+    </box>
+    <box top='936' left='1814' width='47' height='83'>
+      <label>2</label>
+    </box>
+    <box top='750' left='1980' width='46' height='82'>
+      <label>2</label>
+    </box>
+    <box top='476' left='1819' width='49' height='81'>
+      <label>2</label>
+    </box>
+    <box top='380' left='1873' width='47' height='83'>
+      <label>2</label>
+    </box>
+    <box top='197' left='2034' width='50' height='81'>
+      <label>2</label>
+    </box>
+    <box top='201' left='1868' width='52' height='81'>
+      <label>2</label>
+    </box>
+    <box top='17' left='2033' width='50' height='78'>
+      <label>2</label>
+    </box>
+    <box top='201' left='450' width='27' height='79'>
+      <label>1</label>
+    </box>
+    <box top='197' left='328' width='55' height='85'>
+      <label>3</label>
+    </box>
+    <box top='197' left='498' width='51' height='85'>
+      <label>3</label>
+    </box>
+    <box top='13' left='1870' width='47' height='84'>
+      <label>6</label>
+    </box>
+    <box top='298' left='1159' width='53' height='91'>
+      <label>6</label>
+    </box>
+    <box top='393' left='1163' width='47' height='88'>
+      <label>6</label>
+    </box>
+    <box top='395' left='1053' width='46' height='85'>
+      <label>6</label>
+    </box>
+    <box top='395' left='1218' width='46' height='85'>
+      <label>6</label>
+    </box>
+    <box top='574' left='831' width='50' height='87'>
+      <label>6</label>
+    </box>
+    <box top='577' left='997' width='49' height='86'>
+      <label>6</label>
+    </box>
+    <box top='667' left='780' width='47' height='86'>
+      <label>6</label>
+    </box>
+    <box top='852' left='999' width='46' height='84'>
+      <label>6</label>
+    </box>
+    <box top='943' left='944' width='48' height='86'>
+      <label>6</label>
+    </box>
+    <box top='943' left='1270' width='50' height='84'>
+      <label>6</label>
+    </box>
+    <box top='1124' left='1054' width='48' height='86'>
+      <label>6</label>
+    </box>
+    <box top='1394' left='1272' width='48' height='85'>
+      <label>6</label>
+    </box>
+    <box top='1577' left='1273' width='46' height='84'>
+      <label>6</label>
+    </box>
+    <box top='3561' left='829' width='50' height='84'>
+      <label>6</label>
+    </box>
+    <box top='3558' left='1477' width='49' height='84'>
+      <label>6</label>
+    </box>
+    <box top='3572' left='560' width='47' height='84'>
+      <label>4</label>
+    </box>
+    <box top='3559' left='1154' width='47' height='82'>
+      <label>4</label>
+    </box>
+    <box top='2728' left='1852' width='50' height='90'>
+      <label>4</label>
+    </box>
+    <box top='2727' left='1960' width='51' height='90'>
+      <label>4</label>
+    </box>
+    <box top='2458' left='1849' width='50' height='86'>
+      <label>4</label>
+    </box>
+    <box top='2549' left='1799' width='47' height='86'>
+      <label>4</label>
+    </box>
+    <box top='2282' left='1744' width='45' height='90'>
+      <label>4</label>
+    </box>
+    <box top='1839' left='1969' width='48' height='89'>
+      <label>4</label>
+    </box>
+    <box top='1659' left='1918' width='50' height='88'>
+      <label>4</label>
+    </box>
+    <box top='1118' left='1810' width='52' height='87'>
+      <label>4</label>
+    </box>
+    <box top='1025' left='1813' width='48' height='89'>
+      <label>4</label>
+    </box>
+    <box top='301' left='1108' width='47' height='87'>
+      <label>4</label>
+    </box>
+    <box top='1032' left='1161' width='51' height='89'>
+      <label>4</label>
+    </box>
+    <box top='1213' left='1161' width='53' height='88'>
+      <label>4</label>
+    </box>
+    <box top='1307' left='944' width='49' height='85'>
+      <label>4</label>
+    </box>
+    <box top='1397' left='1163' width='47' height='84'>
+      <label>4</label>
+    </box>
+    <box top='1578' left='1163' width='48' height='85'>
+      <label>4</label>
+    </box>
+    <box top='1762' left='1162' width='48' height='82'>
+      <label>4</label>
+    </box>
+    <box top='1852' left='946' width='47' height='83'>
+      <label>4</label>
+    </box>
+    <box top='2026' left='944' width='48' height='83'>
+      <label>4</label>
+    </box>
+    <box top='2112' left='1159' width='48' height='81'>
+      <label>4</label>
+    </box>
+    <box top='2376' left='781' width='51' height='87'>
+      <label>4</label>
+    </box>
+    <box top='2375' left='892' width='47' height='87'>
+      <label>4</label>
+    </box>
+    <box top='2464' left='1105' width='48' height='84'>
+      <label>4</label>
+    </box>
+    <box top='1667' left='944' width='48' height='89'>
+      <label>5</label>
+    </box>
+    <box top='1487' left='945' width='48' height='86'>
+      <label>5</label>
+    </box>
+    <box top='1304' left='889' width='51' height='88'>
+      <label>5</label>
+    </box>
+    <box top='1123' left='723' width='49' height='87'>
+      <label>5</label>
+    </box>
+    <box top='1033' left='722' width='49' height='83'>
+      <label>5</label>
+    </box>
+    <box top='941' left='724' width='47' height='86'>
+      <label>5</label>
+    </box>
+    <box top='848' left='720' width='53' height='90'>
+      <label>5</label>
+    </box>
+    <box top='762' left='833' width='48' height='84'>
+      <label>5</label>
+    </box>
+    <box top='760' left='888' width='48' height='85'>
+      <label>5</label>
+    </box>
+    <box top='853' left='1053' width='48' height='85'>
+      <label>5</label>
+    </box>
+    <box top='854' left='1107' width='50' height='84'>
+      <label>5</label>
+    </box>
+    <box top='668' left='942' width='50' height='87'>
+      <label>5</label>
+    </box>
+    <box top='490' left='1326' width='46' height='83'>
+      <label>5</label>
+    </box>
+    <box top='488' left='1052' width='48' height='86'>
+      <label>5</label>
+    </box>
+    <box top='486' left='998' width='46' height='85'>
+      <label>5</label>
+    </box>
+    <box top='481' left='721' width='47' height='87'>
+      <label>5</label>
+    </box>
+    <box top='386' left='722' width='48' height='91'>
+      <label>5</label>
+    </box>
+    <box top='13' left='1977' width='52' height='84'>
+      <label>5</label>
+    </box>
+    <box top='199' left='1928' width='47' height='81'>
+      <label>5</label>
+    </box>
+    <box top='473' left='1874' width='47' height='84'>
+      <label>5</label>
+    </box>
+    <box top='935' left='1868' width='49' height='84'>
+      <label>5</label>
+    </box>
+    <box top='932' left='2032' width='50' height='83'>
+      <label>5</label>
+    </box>
+    <box top='1113' left='1975' width='50' height='87'>
+      <label>5</label>
+    </box>
+    <box top='2191' left='1953' width='52' height='83'>
+      <label>5</label>
+    </box>
+    <box top='2549' left='1743' width='48' height='85'>
+      <label>5</label>
+    </box>
+    <box top='2730' left='1798' width='50' height='86'>
+      <label>5</label>
+    </box>
+    <box top='2371' left='1957' width='48' height='85'>
+      <label>5</label>
+    </box>
+    <box top='2550' left='1959' width='48' height='82'>
+      <label>5</label>
+    </box>
+    <box top='2551' left='1851' width='49' height='81'>
+      <label>5</label>
+    </box>
+    <box top='3557' left='937' width='50' height='85'>
+      <label>5</label>
+    </box>
+    <box top='2372' left='1159' width='47' height='86'>
+      <label>5</label>
+    </box>
+    <box top='1938' left='1269' width='45' height='79'>
+      <label>5</label>
+    </box>
+    <box top='1480' left='1813' width='48' height='85'>
+      <label>9</label>
+    </box>
+    <box top='1477' left='1922' width='46' height='87'>
+      <label>9</label>
+    </box>
+    <box top='1025' left='1975' width='50' height='85'>
+      <label>9</label>
+    </box>
+    <box top='752' left='1872' width='48' height='86'>
+      <label>9</label>
+    </box>
+    <box top='747' left='2035' width='50' height='85'>
+      <label>9</label>
+    </box>
+    <box top='286' left='1981' width='51' height='84'>
+      <label>9</label>
+    </box>
+    <box top='198' left='1981' width='48' height='80'>
+      <label>9</label>
+    </box>
+    <box top='215' left='1052' width='48' height='82'>
+      <label>9</label>
+    </box>
+    <box top='302' left='1216' width='49' height='85'>
+      <label>9</label>
+    </box>
+    <box top='393' left='943' width='48' height='85'>
+      <label>9</label>
+    </box>
+    <box top='395' left='1325' width='48' height='85'>
+      <label>9</label>
+    </box>
+    <box top='578' left='1326' width='48' height='86'>
+      <label>9</label>
+    </box>
+    <box top='762' left='1215' width='50' height='84'>
+      <label>9</label>
+    </box>
+    <box top='944' left='1164' width='46' height='84'>
+      <label>9</label>
+    </box>
+    <box top='1035' left='1325' width='48' height='80'>
+      <label>9</label>
+    </box>
+    <box top='1127' left='945' width='47' height='83'>
+      <label>9</label>
+    </box>
+    <box top='762' left='1108' width='48' height='83'>
+      <label>9</label>
+    </box>
+    <box top='1397' left='1217' width='48' height='83'>
+      <label>9</label>
+    </box>
+    <box top='1487' left='1053' width='50' height='86'>
+      <label>9</label>
+    </box>
+    <box top='1672' left='1053' width='49' height='82'>
+      <label>9</label>
+    </box>
+    <box top='1851' left='1054' width='48' height='82'>
+      <label>9</label>
+    </box>
+    <box top='2028' left='1053' width='47' height='81'>
+      <label>9</label>
+    </box>
+    <box top='2464' left='1264' width='47' height='82'>
+      <label>9</label>
+    </box>
+    <box top='3560' left='1423' width='47' height='82'>
+      <label>9</label>
+    </box>
+    <box top='3563' left='1641' width='47' height='83'>
+      <label>9</label>
+    </box>
+    <box top='3564' left='1857' width='47' height='83'>
+      <label>9</label>
+    </box>
+    <box top='2922' left='1856' width='48' height='83'>
+      <label>9</label>
+    </box>
+    <box top='2460' left='1958' width='48' height='83'>
+      <label>9</label>
+    </box>
+    <box top='1661' left='1975' width='47' height='84'>
+      <label>9</label>
+    </box>
+    <box top='565' left='1873' width='48' height='85'>
+      <label>6</label>
+    </box>
+    <box top='933' left='1979' width='47' height='85'>
+      <label>6</label>
+    </box>
+    <box top='2019' left='1906' width='48' height='82'>
+      <label>6</label>
+    </box>
+    <box top='2639' left='1744' width='48' height='86'>
+      <label>6</label>
+    </box>
+    <box top='3197' left='1908' width='51' height='85'>
+      <label>6</label>
+    </box>
+    <box top='1303' left='220' width='49' height='87'>
+      <label>4</label>
+    </box>
+    <box top='1676' left='226' width='50' height='83'>
+      <label>4</label>
+    </box>
+    <box top='1855' left='289' width='48' height='82'>
+      <label>2</label>
+    </box>
+    <box top='2033' left='295' width='48' height='82'>
+      <label>9</label>
+    </box>
+    <box top='1853' left='344' width='49' height='87'>
+      <label>5</label>
+    </box>
+    <box top='2205' left='350' width='50' height='84'>
+      <label>5</label>
+    </box>
+    <box top='2464' left='1157' width='47' height='83'>
+      <label>2</label>
+    </box>
+    <box top='2381' left='731' width='46' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1938' left='1320' width='48' height='81'>
+      <label>4</label>
+    </box>
+    <box top='379' left='1983' width='48' height='84'>
+      <label>0</label>
+    </box>
+    <box top='565' left='1983' width='48' height='86'>
+      <label>5</label>
+    </box>
+    <box top='3321' left='169' width='49' height='86'>
+      <label>0</label>
+    </box>
+    <box top='3318' left='226' width='48' height='85'>
+      <label>0</label>
+    </box>
+    <box top='2210' left='131' width='31' height='81'>
+      <label>1</label>
+    </box>
+    <box top='202' left='388' width='48' height='79'>
+      <label>8</label>
+    </box>
+    <box top='1673' left='338' width='51' height='87'>
+      <label>5</label>
+    </box>
+    <box top='2388' left='127' width='47' height='84'>
+      <label>9</label>
+    </box>
+    <box top='2385' left='180' width='51' height='86'>
+      <label>4</label>
+    </box>
+    <box top='1489' left='335' width='51' height='84'>
+      <label>5</label>
+    </box>
+    <box top='1937' left='1105' width='50' height='85'>
+      <label>0</label>
+    </box>
+  </image>
+  <image file='Pictures/tickets/DSC_0056.jpg'>
+    <box top='153' left='1239' width='28' height='77'>
+      <label>1</label>
+    </box>
+    <box top='133' left='1605' width='31' height='77'>
+      <label>1</label>
+    </box>
+    <box top='403' left='1033' width='29' height='78'>
+      <label>1</label>
+    </box>
+    <box top='404' left='1086' width='29' height='75'>
+      <label>1</label>
+    </box>
+    <box top='404' left='1138' width='29' height='78'>
+      <label>1</label>
+    </box>
+    <box top='403' left='767' width='27' height='77'>
+      <label>1</label>
+    </box>
+    <box top='488' left='768' width='29' height='78'>
+      <label>1</label>
+    </box>
+    <box top='491' left='929' width='28' height='76'>
+      <label>1</label>
+    </box>
+    <box top='572' left='1090' width='29' height='79'>
+      <label>1</label>
+    </box>
+    <box top='573' left='1143' width='30' height='78'>
+      <label>1</label>
+    </box>
+    <box top='658' left='1198' width='31' height='79'>
+      <label>1</label>
+    </box>
+    <box top='655' left='1251' width='30' height='80'>
+      <label>1</label>
+    </box>
+    <box top='746' left='825' width='32' height='82'>
+      <label>1</label>
+    </box>
+    <box top='835' left='1042' width='30' height='80'>
+      <label>1</label>
+    </box>
+    <box top='833' left='1149' width='31' height='79'>
+      <label>1</label>
+    </box>
+    <box top='923' left='829' width='29' height='83'>
+      <label>1</label>
+    </box>
+    <box top='920' left='1205' width='30' height='79'>
+      <label>1</label>
+    </box>
+    <box top='925' left='772' width='49' height='82'>
+      <label>3</label>
+    </box>
+    <box top='925' left='935' width='48' height='81'>
+      <label>3</label>
+    </box>
+    <box top='837' left='771' width='48' height='80'>
+      <label>3</label>
+    </box>
+    <box top='835' left='985' width='50' height='82'>
+      <label>3</label>
+    </box>
+    <box top='68' left='1075' width='46' height='74'>
+      <label>2</label>
+    </box>
+    <box top='68' left='1127' width='47' height='77'>
+      <label>2</label>
+    </box>
+    <box top='70' left='1180' width='48' height='77'>
+      <label>9</label>
+    </box>
+    <box top='71' left='1388' width='47' height='72'>
+      <label>4</label>
+    </box>
+    <box top='69' left='1440' width='49' height='69'>
+      <label>2</label>
+    </box>
+    <box top='154' left='1338' width='49' height='74'>
+      <label>8</label>
+    </box>
+    <box top='152' left='1181' width='49' height='77'>
+      <label>0</label>
+    </box>
+    <box top='60' left='1493' width='48' height='73'>
+      <label>0</label>
+    </box>
+    <box top='151' left='1390' width='50' height='73'>
+      <label>0</label>
+    </box>
+    <box top='146' left='1444' width='48' height='75'>
+      <label>0</label>
+    </box>
+    <box top='323' left='1344' width='48' height='73'>
+      <label>0</label>
+    </box>
+    <box top='321' left='1396' width='50' height='75'>
+      <label>8</label>
+    </box>
+    <box top='404' left='1240' width='49' height='77'>
+      <label>8</label>
+    </box>
+    <box top='317' left='760' width='50' height='78'>
+      <label>0</label>
+    </box>
+    <box top='319' left='815' width='48' height='78'>
+      <label>0</label>
+    </box>
+    <box top='321' left='869' width='46' height='77'>
+      <label>0</label>
+    </box>
+    <box top='323' left='922' width='48' height='76'>
+      <label>2</label>
+    </box>
+    <box top='321' left='1027' width='49' height='77'>
+      <label>2</label>
+    </box>
+    <box top='321' left='974' width='48' height='78'>
+      <label>9</label>
+    </box>
+    <box top='404' left='870' width='48' height='78'>
+      <label>9</label>
+    </box>
+    <box top='490' left='872' width='47' height='78'>
+      <label>9</label>
+    </box>
+    <box top='488' left='1191' width='47' height='78'>
+      <label>9</label>
+    </box>
+    <box top='399' left='706' width='50' height='81'>
+      <label>4</label>
+    </box>
+    <box top='403' left='815' width='49' height='79'>
+      <label>3</label>
+    </box>
+    <box top='490' left='1032' width='48' height='78'>
+      <label>3</label>
+    </box>
+    <box top='488' left='1137' width='49' height='76'>
+      <label>3</label>
+    </box>
+    <box top='487' left='1243' width='50' height='78'>
+      <label>3</label>
+    </box>
+    <box top='396' left='602' width='46' height='78'>
+      <label>0</label>
+    </box>
+    <box top='399' left='657' width='45' height='78'>
+      <label>0</label>
+    </box>
+    <box top='487' left='711' width='46' height='77'>
+      <label>0</label>
+    </box>
+    <box top='406' left='923' width='47' height='77'>
+      <label>0</label>
+    </box>
+    <box top='405' left='976' width='48' height='78'>
+      <label>0</label>
+    </box>
+    <box top='402' left='1188' width='48' height='78'>
+      <label>0</label>
+    </box>
+    <box top='488' left='977' width='50' height='80'>
+      <label>6</label>
+    </box>
+    <box top='482' left='654' width='51' height='82'>
+      <label>5</label>
+    </box>
+    <box top='482' left='602' width='47' height='80'>
+      <label>7</label>
+    </box>
+    <box top='487' left='816' width='48' height='81'>
+      <label>7</label>
+    </box>
+    <box top='568' left='602' width='49' height='81'>
+      <label>7</label>
+    </box>
+    <box top='575' left='1033' width='48' height='78'>
+      <label>7</label>
+    </box>
+    <box top='572' left='1190' width='50' height='78'>
+      <label>7</label>
+    </box>
+    <box top='488' left='1084' width='50' height='78'>
+      <label>2</label>
+    </box>
+    <box top='575' left='979' width='50' height='80'>
+      <label>2</label>
+    </box>
+    <box top='571' left='1244' width='51' height='80'>
+      <label>5</label>
+    </box>
+    <box top='570' left='656' width='51' height='81'>
+      <label>5</label>
+    </box>
+    <box top='575' left='766' width='48' height='77'>
+      <label>3</label>
+    </box>
+    <box top='575' left='925' width='50' height='80'>
+      <label>6</label>
+    </box>
+    <box top='659' left='1088' width='49' height='80'>
+      <label>4</label>
+    </box>
+    <box top='831' left='607' width='48' height='82'>
+      <label>7</label>
+    </box>
+    <box top='833' left='662' width='49' height='81'>
+      <label>5</label>
+    </box>
+    <box top='839' left='932' width='49' height='81'>
+      <label>9</label>
+    </box>
+    <box top='831' left='1201' width='48' height='81'>
+      <label>2</label>
+    </box>
+    <box top='831' left='1254' width='48' height='79'>
+      <label>3</label>
+    </box>
+    <box top='922' left='610' width='47' height='80'>
+      <label>4</label>
+    </box>
+    <box top='919' left='1256' width='46' height='77'>
+      <label>7</label>
+    </box>
+    <box top='923' left='717' width='50' height='81'>
+      <label>2</label>
+    </box>
+    <box top='924' left='1042' width='47' height='80'>
+      <label>9</label>
+    </box>
+    <box top='920' left='1147' width='50' height='80'>
+      <label>6</label>
+    </box>
+    <box top='921' left='1095' width='49' height='82'>
+      <label>2</label>
+    </box>
+    <box top='574' left='713' width='46' height='76'>
+      <label>0</label>
+    </box>
+    <box top='575' left='820' width='47' height='79'>
+      <label>0</label>
+    </box>
+    <box top='574' left='872' width='49' height='80'>
+      <label>0</label>
+    </box>
+    <box top='657' left='660' width='48' height='81'>
+      <label>0</label>
+    </box>
+    <box top='658' left='713' width='47' height='82'>
+      <label>0</label>
+    </box>
+    <box top='660' left='767' width='48' height='81'>
+      <label>0</label>
+    </box>
+    <box top='660' left='819' width='50' height='81'>
+      <label>0</label>
+    </box>
+    <box top='661' left='874' width='49' height='79'>
+      <label>0</label>
+    </box>
+    <box top='662' left='928' width='48' height='80'>
+      <label>0</label>
+    </box>
+    <box top='662' left='983' width='46' height='79'>
+      <label>0</label>
+    </box>
+    <box top='662' left='1035' width='49' height='79'>
+      <label>0</label>
+    </box>
+    <box top='658' left='1143' width='47' height='80'>
+      <label>0</label>
+    </box>
+    <box top='748' left='875' width='50' height='83'>
+      <label>0</label>
+    </box>
+    <box top='751' left='983' width='48' height='77'>
+      <label>0</label>
+    </box>
+    <box top='749' left='1038' width='47' height='79'>
+      <label>0</label>
+    </box>
+    <box top='837' left='716' width='49' height='78'>
+      <label>0</label>
+    </box>
+    <box top='838' left='824' width='48' height='80'>
+      <label>0</label>
+    </box>
+    <box top='837' left='878' width='48' height='81'>
+      <label>0</label>
+    </box>
+    <box top='835' left='1092' width='50' height='79'>
+      <label>0</label>
+    </box>
+    <box top='923' left='663' width='50' height='80'>
+      <label>0</label>
+    </box>
+    <box top='927' left='879' width='51' height='80'>
+      <label>0</label>
+    </box>
+    <box top='926' left='987' width='50' height='79'>
+      <label>0</label>
+    </box>
+    <box top='1012' left='720' width='48' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1009' left='610' width='47' height='82'>
+      <label>7</label>
+    </box>
+    <box top='1015' left='828' width='48' height='80'>
+      <label>7</label>
+    </box>
+    <box top='1093' left='1205' width='49' height='79'>
+      <label>7</label>
+    </box>
+    <box top='1103' left='937' width='48' height='80'>
+      <label>7</label>
+    </box>
+    <box top='1011' left='665' width='48' height='81'>
+      <label>5</label>
+    </box>
+    <box top='1099' left='612' width='50' height='83'>
+      <label>5</label>
+    </box>
+    <box top='1093' left='1154' width='47' height='81'>
+      <label>5</label>
+    </box>
+    <box top='1182' left='1210' width='48' height='78'>
+      <label>5</label>
+    </box>
+    <box top='1013' left='776' width='32' height='82'>
+      <label>1</label>
+    </box>
+    <box top='1103' left='834' width='29' height='80'>
+      <label>1</label>
+    </box>
+    <box top='1098' left='1048' width='30' height='82'>
+      <label>1</label>
+    </box>
+    <box top='1016' left='939' width='29' height='78'>
+      <label>1</label>
+    </box>
+    <box top='1015' left='882' width='48' height='79'>
+      <label>9</label>
+    </box>
+    <box top='1004' left='1258' width='49' height='79'>
+      <label>9</label>
+    </box>
+    <box top='1090' left='1263' width='46' height='82'>
+      <label>9</label>
+    </box>
+    <box top='1103' left='884' width='49' height='81'>
+      <label>9</label>
+    </box>
+    <box top='1100' left='667' width='48' height='82'>
+      <label>9</label>
+    </box>
+    <box top='1011' left='1045' width='47' height='81'>
+      <label>3</label>
+    </box>
+    <box top='1014' left='988' width='50' height='79'>
+      <label>6</label>
+    </box>
+    <box top='1011' left='1100' width='45' height='77'>
+      <label>6</label>
+    </box>
+    <box top='1009' left='1152' width='47' height='77'>
+      <label>6</label>
+    </box>
+    <box top='1098' left='1100' width='50' height='79'>
+      <label>9</label>
+    </box>
+    <box top='1005' left='1206' width='49' height='80'>
+      <label>2</label>
+    </box>
+    <box top='1185' left='1102' width='49' height='82'>
+      <label>3</label>
+    </box>
+    <box top='1183' left='1156' width='48' height='81'>
+      <label>3</label>
+    </box>
+    <box top='1178' left='1265' width='46' height='81'>
+      <label>4</label>
+    </box>
+    <box top='1102' left='723' width='46' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1101' left='776' width='47' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1099' left='992' width='49' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1189' left='669' width='48' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1189' left='723' width='49' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1189' left='778' width='48' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1190' left='832' width='48' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1189' left='886' width='48' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1190' left='939' width='50' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1188' left='993' width='50' height='82'>
+      <label>0</label>
+    </box>
+    <box top='1185' left='1048' width='49' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1273' left='1049' width='50' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1367' left='726' width='48' height='79'>
+      <label>0</label>
+    </box>
+    <box top='1456' left='615' width='50' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1457' left='672' width='49' height='78'>
+      <label>0</label>
+    </box>
+    <box top='1455' left='726' width='50' height='80'>
+      <label>0</label>
+    </box>
+    <box top='1456' left='783' width='46' height='79'>
+      <label>0</label>
+    </box>
+    <box top='1454' left='836' width='50' height='79'>
+      <label>0</label>
+    </box>
+    <box top='1452' left='890' width='50' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1451' left='944' width='49' height='80'>
+      <label>0</label>
+    </box>
+    <box top='1450' left='998' width='50' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1445' left='1107' width='50' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1542' left='616' width='51' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1541' left='673' width='49' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1541' left='728' width='49' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1542' left='783' width='49' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1542' left='837' width='50' height='80'>
+      <label>0</label>
+    </box>
+    <box top='1541' left='893' width='48' height='80'>
+      <label>0</label>
+    </box>
+    <box top='1537' left='946' width='50' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1536' left='1000' width='50' height='82'>
+      <label>0</label>
+    </box>
+    <box top='1277' left='887' width='49' height='82'>
+      <label>4</label>
+    </box>
+    <box top='1357' left='1159' width='48' height='82'>
+      <label>4</label>
+    </box>
+    <box top='1446' left='1053' width='48' height='82'>
+      <label>4</label>
+    </box>
+    <box top='1536' left='1054' width='49' height='80'>
+      <label>4</label>
+    </box>
+    <box top='1367' left='616' width='47' height='81'>
+      <label>7</label>
+    </box>
+    <box top='1368' left='833' width='50' height='78'>
+      <label>7</label>
+    </box>
+    <box top='1356' left='1214' width='48' height='80'>
+      <label>7</label>
+    </box>
+    <box top='1354' left='1272' width='30' height='80'>
+      <label>1</label>
+    </box>
+    <box top='1368' left='783' width='31' height='79'>
+      <label>1</label>
+    </box>
+    <box top='1365' left='947' width='31' height='77'>
+      <label>1</label>
+    </box>
+    <box top='1279' left='995' width='49' height='77'>
+      <label>9</label>
+    </box>
+    <box top='1279' left='833' width='48' height='80'>
+      <label>3</label>
+    </box>
+    <box top='1362' left='1053' width='48' height='79'>
+      <label>3</label>
+    </box>
+    <box top='1532' left='1163' width='52' height='83'>
+      <label>3</label>
+    </box>
+    <box top='1625' left='1058' width='49' height='82'>
+      <label>3</label>
+    </box>
+    <box top='1363' left='998' width='49' height='79'>
+      <label>8</label>
+    </box>
+    <box top='1443' left='1215' width='51' height='81'>
+      <label>8</label>
+    </box>
+    <box top='1629' left='838' width='50' height='83'>
+      <label>8</label>
+    </box>
+    <box top='1532' left='1110' width='47' height='84'>
+      <label>2</label>
+    </box>
+    <box top='1634' left='618' width='49' height='81'>
+      <label>2</label>
+    </box>
+    <box top='1630' left='784' width='49' height='83'>
+      <label>2</label>
+    </box>
+    <box top='1624' left='1001' width='52' height='84'>
+      <label>2</label>
+    </box>
+    <box top='1530' left='1219' width='49' height='84'>
+      <label>9</label>
+    </box>
+    <box top='1444' left='1163' width='49' height='81'>
+      <label>6</label>
+    </box>
+    <box top='1364' left='888' width='51' height='82'>
+      <label>6</label>
+    </box>
+    <box top='1624' left='1113' width='47' height='81'>
+      <label>7</label>
+    </box>
+    <box top='1629' left='895' width='46' height='81'>
+      <label>7</label>
+    </box>
+    <box top='1632' left='732' width='31' height='82'>
+      <label>1</label>
+    </box>
+    <box top='1632' left='675' width='48' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1619' left='1221' width='49' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1627' left='948' width='50' height='82'>
+      <label>0</label>
+    </box>
+    <box top='1620' left='1168' width='48' height='83'>
+      <label>9</label>
+    </box>
+    <box top='1361' left='1105' width='50' height='79'>
+      <label>2</label>
+    </box>
+    <box top='1721' left='620' width='47' height='81'>
+      <label>7</label>
+    </box>
+    <box top='1814' left='621' width='48' height='80'>
+      <label>7</label>
+    </box>
+    <box top='1903' left='622' width='48' height='82'>
+      <label>7</label>
+    </box>
+    <box top='1707' left='1280' width='47' height='79'>
+      <label>7</label>
+    </box>
+    <box top='1977' left='1287' width='49' height='87'>
+      <label>7</label>
+    </box>
+    <box top='1722' left='674' width='51' height='81'>
+      <label>5</label>
+    </box>
+    <box top='1811' left='676' width='48' height='83'>
+      <label>5</label>
+    </box>
+    <box top='1902' left='676' width='51' height='84'>
+      <label>5</label>
+    </box>
+    <box top='1716' left='950' width='50' height='82'>
+      <label>5</label>
+    </box>
+    <box top='1714' left='1005' width='50' height='84'>
+      <label>5</label>
+    </box>
+    <box top='1803' left='1007' width='49' height='84'>
+      <label>5</label>
+    </box>
+    <box top='1804' left='950' width='52' height='84'>
+      <label>5</label>
+    </box>
+    <box top='1796' left='1281' width='51' height='82'>
+      <label>5</label>
+    </box>
+    <box top='2080' left='901' width='51' height='88'>
+      <label>5</label>
+    </box>
+    <box top='1721' left='731' width='49' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1810' left='732' width='49' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1900' left='733' width='49' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1719' left='840' width='49' height='82'>
+      <label>0</label>
+    </box>
+    <box top='1806' left='842' width='49' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1896' left='844' width='48' height='85'>
+      <label>0</label>
+    </box>
+    <box top='1798' left='1173' width='48' height='82'>
+      <label>0</label>
+    </box>
+    <box top='1797' left='1226' width='50' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1889' left='1119' width='50' height='86'>
+      <label>0</label>
+    </box>
+    <box top='1887' left='1174' width='50' height='86'>
+      <label>0</label>
+    </box>
+    <box top='1980' left='1176' width='51' height='86'>
+      <label>0</label>
+    </box>
+    <box top='1992' left='678' width='49' height='88'>
+      <label>0</label>
+    </box>
+    <box top='1992' left='733' width='50' height='88'>
+      <label>0</label>
+    </box>
+    <box top='1991' left='787' width='53' height='88'>
+      <label>0</label>
+    </box>
+    <box top='1988' left='844' width='50' height='89'>
+      <label>0</label>
+    </box>
+    <box top='1986' left='900' width='50' height='89'>
+      <label>0</label>
+    </box>
+    <box top='1986' left='953' width='53' height='88'>
+      <label>0</label>
+    </box>
+    <box top='1985' left='1011' width='50' height='87'>
+      <label>0</label>
+    </box>
+    <box top='1982' left='1066' width='49' height='89'>
+      <label>0</label>
+    </box>
+    <box top='1718' left='789' width='29' height='84'>
+      <label>1</label>
+    </box>
+    <box top='1810' left='790' width='30' height='82'>
+      <label>1</label>
+    </box>
+    <box top='1899' left='792' width='31' height='83'>
+      <label>1</label>
+    </box>
+    <box top='1712' left='1064' width='29' height='81'>
+      <label>1</label>
+    </box>
+    <box top='1711' left='1116' width='32' height='82'>
+      <label>1</label>
+    </box>
+    <box top='1802' left='1065' width='31' height='81'>
+      <label>1</label>
+    </box>
+    <box top='1799' left='1119' width='31' height='83'>
+      <label>1</label>
+    </box>
+    <box top='1718' left='896' width='49' height='82'>
+      <label>2</label>
+    </box>
+    <box top='1805' left='897' width='49' height='83'>
+      <label>2</label>
+    </box>
+    <box top='1894' left='897' width='52' height='85'>
+      <label>2</label>
+    </box>
+    <box top='1894' left='1009' width='49' height='84'>
+      <label>2</label>
+    </box>
+    <box top='1892' left='953' width='49' height='87'>
+      <label>4</label>
+    </box>
+    <box top='1981' left='1122' width='49' height='88'>
+      <label>4</label>
+    </box>
+    <box top='1890' left='1063' width='52' height='87'>
+      <label>6</label>
+    </box>
+    <box top='1979' left='1233' width='47' height='86'>
+      <label>6</label>
+    </box>
+    <box top='1887' left='1229' width='50' height='85'>
+      <label>8</label>
+    </box>
+    <box top='1886' left='1284' width='50' height='84'>
+      <label>9</label>
+    </box>
+    <box top='2078' left='1013' width='50' height='87'>
+      <label>9</label>
+    </box>
+    <box top='2081' left='846' width='51' height='88'>
+      <label>2</label>
+    </box>
+    <box top='2177' left='792' width='53' height='84'>
+      <label>2</label>
+    </box>
+    <box top='2176' left='849' width='51' height='83'>
+      <label>2</label>
+    </box>
+    <box top='2274' left='629' width='51' height='80'>
+      <label>2</label>
+    </box>
+    <box top='2163' left='1291' width='48' height='82'>
+      <label>2</label>
+    </box>
+    <box top='2257' left='1126' width='51' height='80'>
+      <label>2</label>
+    </box>
+    <box top='2346' left='1129' width='48' height='79'>
+      <label>2</label>
+    </box>
+    <box top='2343' left='1183' width='48' height='80'>
+      <label>2</label>
+    </box>
+    <box top='2182' left='626' width='48' height='80'>
+      <label>7</label>
+    </box>
+    <box top='2169' left='1070' width='49' height='82'>
+      <label>7</label>
+    </box>
+    <box top='2180' left='679' width='54' height='84'>
+      <label>5</label>
+    </box>
+    <box top='2263' left='905' width='52' height='82'>
+      <label>5</label>
+    </box>
+    <box top='2260' left='1016' width='51' height='81'>
+      <label>5</label>
+    </box>
+    <box top='2356' left='797' width='52' height='81'>
+      <label>5</label>
+    </box>
+    <box top='2353' left='854' width='49' height='81'>
+      <label>5</label>
+    </box>
+    <box top='2347' left='1017' width='52' height='80'>
+      <label>5</label>
+    </box>
+    <box top='2171' left='1018' width='32' height='82'>
+      <label>1</label>
+    </box>
+    <box top='2257' left='1076' width='30' height='81'>
+      <label>1</label>
+    </box>
+    <box top='2255' left='1184' width='30' height='82'>
+      <label>1</label>
+    </box>
+    <box top='2356' left='746' width='31' height='79'>
+      <label>1</label>
+    </box>
+    <box top='2438' left='913' width='32' height='83'>
+      <label>1</label>
+    </box>
+    <box top='2362' left='632' width='51' height='77'>
+      <label>2</label>
+    </box>
+    <box top='2447' left='635' width='51' height='86'>
+      <label>2</label>
+    </box>
+    <box top='2350' left='909' width='47' height='82'>
+      <label>2</label>
+    </box>
+    <box top='2433' left='1074' width='53' height='85'>
+      <label>2</label>
+    </box>
+    <box top='2268' left='740' width='51' height='82'>
+      <label>6</label>
+    </box>
+    <box top='2267' left='797' width='47' height='81'>
+      <label>6</label>
+    </box>
+    <box top='2444' left='748' width='48' height='85'>
+      <label>6</label>
+    </box>
+    <box top='2442' left='856' width='50' height='83'>
+      <label>8</label>
+    </box>
+    <box top='2435' left='1020' width='49' height='85'>
+      <label>4</label>
+    </box>
+    <box top='2432' left='1131' width='46' height='85'>
+      <label>7</label>
+    </box>
+    <box top='2430' left='1184' width='48' height='85'>
+      <label>7</label>
+    </box>
+    <box top='2523' left='1190' width='29' height='82'>
+      <label>1</label>
+    </box>
+    <box top='2179' left='737' width='50' height='83'>
+      <label>0</label>
+    </box>
+    <box top='2076' left='1068' width='51' height='87'>
+      <label>0</label>
+    </box>
+    <box top='2168' left='1125' width='51' height='81'>
+      <label>0</label>
+    </box>
+    <box top='2252' left='1235' width='52' height='81'>
+      <label>0</label>
+    </box>
+    <box top='2341' left='1237' width='50' height='78'>
+      <label>0</label>
+    </box>
+    <box top='2429' left='1239' width='49' height='85'>
+      <label>0</label>
+    </box>
+    <box top='2518' left='1239' width='50' height='85'>
+      <label>0</label>
+    </box>
+    <box top='2270' left='685' width='50' height='83'>
+      <label>0</label>
+    </box>
+    <box top='2358' left='690' width='48' height='82'>
+      <label>0</label>
+    </box>
+    <box top='2446' left='691' width='50' height='83'>
+      <label>0</label>
+    </box>
+    <box top='2262' left='963' width='48' height='81'>
+      <label>0</label>
+    </box>
+    <box top='2350' left='966' width='46' height='80'>
+      <label>0</label>
+    </box>
+    <box top='2438' left='967' width='47' height='82'>
+      <label>0</label>
+    </box>
+    <box top='2173' left='903' width='52' height='83'>
+      <label>3</label>
+    </box>
+    <box top='2172' left='960' width='50' height='84'>
+      <label>6</label>
+    </box>
+    <box top='2166' left='1181' width='48' height='81'>
+      <label>6</label>
+    </box>
+    <box top='2164' left='1236' width='50' height='83'>
+      <label>9</label>
+    </box>
+    <box top='2346' left='1075' width='48' height='82'>
+      <label>0</label>
+    </box>
+    <box top='2517' left='1294' width='51' height='87'>
+      <label>8</label>
+    </box>
+    <box top='2524' left='1131' width='51' height='83'>
+      <label>3</label>
+    </box>
+    <box top='2535' left='693' width='50' height='89'>
+      <label>0</label>
+    </box>
+    <box top='2535' left='749' width='48' height='86'>
+      <label>0</label>
+    </box>
+    <box top='2533' left='802' width='51' height='88'>
+      <label>0</label>
+    </box>
+    <box top='2532' left='857' width='51' height='85'>
+      <label>0</label>
+    </box>
+    <box top='2530' left='913' width='50' height='83'>
+      <label>0</label>
+    </box>
+    <box top='2528' left='967' width='50' height='85'>
+      <label>0</label>
+    </box>
+    <box top='2527' left='1021' width='51' height='85'>
+      <label>0</label>
+    </box>
+    <box top='2525' left='1076' width='51' height='86'>
+      <label>0</label>
+    </box>
+    <box top='2622' left='861' width='33' height='87'>
+      <label>1</label>
+    </box>
+    <box top='2621' left='914' width='52' height='85'>
+      <label>2</label>
+    </box>
+    <box top='2618' left='1021' width='53' height='87'>
+      <label>5</label>
+    </box>
+    <box top='2616' left='1077' width='52' height='86'>
+      <label>0</label>
+    </box>
+    <box top='284' left='1930' width='49' height='76'>
+      <label>0</label>
+    </box>
+    <box top='300' left='1714' width='51' height='76'>
+      <label>0</label>
+    </box>
+    <box top='365' left='1934' width='50' height='81'>
+      <label>0</label>
+    </box>
+    <box top='453' left='1937' width='51' height='80'>
+      <label>0</label>
+    </box>
+    <box top='545' left='1887' width='51' height='79'>
+      <label>0</label>
+    </box>
+    <box top='294' left='1768' width='51' height='78'>
+      <label>5</label>
+    </box>
+    <box top='290' left='1821' width='49' height='79'>
+      <label>7</label>
+    </box>
+    <box top='288' left='1875' width='51' height='77'>
+      <label>3</label>
+    </box>
+    <box top='377' left='1771' width='52' height='81'>
+      <label>3</label>
+    </box>
+    <box top='468' left='1720' width='53' height='80'>
+      <label>3</label>
+    </box>
+    <box top='540' left='1943' width='49' height='83'>
+      <label>3</label>
+    </box>
+    <box top='457' left='1883' width='52' height='79'>
+      <label>9</label>
+    </box>
+    <box top='550' left='1779' width='51' height='83'>
+      <label>9</label>
+    </box>
+    <box top='383' left='1716' width='53' height='79'>
+      <label>5</label>
+    </box>
+    <box top='371' left='1877' width='55' height='79'>
+      <label>5</label>
+    </box>
+    <box top='465' left='1777' width='49' height='80'>
+      <label>8</label>
+    </box>
+    <box top='554' left='1723' width='53' height='79'>
+      <label>4</label>
+    </box>
+    <box top='728' left='1734' width='50' height='76'>
+      <label>8</label>
+    </box>
+    <box top='724' left='1841' width='51' height='77'>
+      <label>8</label>
+    </box>
+    <box top='810' left='1794' width='33' height='80'>
+      <label>1</label>
+    </box>
+    <box top='811' left='1738' width='50' height='79'>
+      <label>3</label>
+    </box>
+    <box top='899' left='1742' width='49' height='78'>
+      <label>3</label>
+    </box>
+    <box top='985' left='1744' width='53' height='77'>
+      <label>3</label>
+    </box>
+    <box top='1070' left='1751' width='34' height='80'>
+      <label>1</label>
+    </box>
+    <box top='984' left='1801' width='49' height='77'>
+      <label>2</label>
+    </box>
+    <box top='897' left='1795' width='51' height='79'>
+      <label>9</label>
+    </box>
+    <box top='1069' left='1805' width='49' height='80'>
+      <label>8</label>
+    </box>
+    <box top='892' left='1901' width='55' height='80'>
+      <label>5</label>
+    </box>
+    <box top='719' left='1897' width='48' height='78'>
+      <label>0</label>
+    </box>
+    <box top='805' left='1900' width='49' height='81'>
+      <label>0</label>
+    </box>
+    <box top='802' left='1954' width='50' height='81'>
+      <label>0</label>
+    </box>
+    <box top='891' left='1960' width='48' height='79'>
+      <label>0</label>
+    </box>
+    <box top='979' left='1909' width='50' height='78'>
+      <label>0</label>
+    </box>
+    <box top='977' left='1963' width='51' height='80'>
+      <label>0</label>
+    </box>
+    <box top='1064' left='1912' width='52' height='82'>
+      <label>0</label>
+    </box>
+    <box top='1063' left='1968' width='50' height='82'>
+      <label>0</label>
+    </box>
+    <box top='1250' left='1702' width='34' height='84'>
+      <label>1</label>
+    </box>
+    <box top='1245' left='1867' width='34' height='82'>
+      <label>1</label>
+    </box>
+    <box top='1242' left='1920' width='51' height='82'>
+      <label>2</label>
+    </box>
+    <box top='1337' left='1755' width='54' height='81'>
+      <label>2</label>
+    </box>
+    <box top='1604' left='1765' width='53' height='82'>
+      <label>2</label>
+    </box>
+    <box top='1695' left='1769' width='52' height='81'>
+      <label>2</label>
+    </box>
+    <box top='1336' left='1815' width='47' height='78'>
+      <label>4</label>
+    </box>
+    <box top='1248' left='1755' width='51' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1330' left='1979' width='50' height='78'>
+      <label>0</label>
+    </box>
+    <box top='1415' left='1980' width='52' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1506' left='1983' width='52' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1687' left='1992' width='52' height='81'>
+      <label>0</label>
+    </box>
+    <box top='1776' left='1996' width='51' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1866' left='1999' width='52' height='85'>
+      <label>0</label>
+    </box>
+    <box top='1421' left='1817' width='49' height='85'>
+      <label>6</label>
+    </box>
+    <box top='1513' left='1819' width='49' height='81'>
+      <label>6</label>
+    </box>
+    <box top='1515' left='1764' width='50' height='81'>
+      <label>3</label>
+    </box>
+    <box top='1601' left='1823' width='49' height='84'>
+      <label>3</label>
+    </box>
+    <box top='1873' left='1776' width='52' height='86'>
+      <label>3</label>
+    </box>
+    <box top='1691' left='1826' width='49' height='85'>
+      <label>9</label>
+    </box>
+    <box top='1870' left='1833' width='49' height='88'>
+      <label>9</label>
+    </box>
+    <box top='1782' left='1773' width='52' height='85'>
+      <label>2</label>
+    </box>
+    <box top='1781' left='1828' width='51' height='83'>
+      <label>5</label>
+    </box>
+    <box top='1869' left='1944' width='51' height='85'>
+      <label>9</label>
+    </box>
+    <box top='1690' left='1937' width='50' height='81'>
+      <label>9</label>
+    </box>
+    <box top='1332' left='1923' width='50' height='81'>
+      <label>9</label>
+    </box>
+    <box top='1508' left='1929' width='51' height='83'>
+      <label>9</label>
+    </box>
+    <box top='1597' left='1988' width='50' height='84'>
+      <label>9</label>
+    </box>
+    <box top='1419' left='1925' width='52' height='84'>
+      <label>5</label>
+    </box>
+    <box top='1600' left='1931' width='48' height='81'>
+      <label>7</label>
+    </box>
+    <box top='1777' left='1940' width='51' height='82'>
+      <label>8</label>
+    </box>
+    <box top='2059' left='1731' width='34' height='84'>
+      <label>1</label>
+    </box>
+    <box top='2236' left='1844' width='29' height='82'>
+      <label>1</label>
+    </box>
+    <box top='2233' left='2011' width='27' height='81'>
+      <label>1</label>
+    </box>
+    <box top='2150' left='1843' width='49' height='80'>
+      <label>2</label>
+    </box>
+    <box top='2233' left='1950' width='50' height='83'>
+      <label>2</label>
+    </box>
+    <box top='2322' left='1948' width='47' height='81'>
+      <label>2</label>
+    </box>
+    <box top='2322' left='2004' width='45' height='79'>
+      <label>2</label>
+    </box>
+    <box top='2412' left='1836' width='52' height='86'>
+      <label>2</label>
+    </box>
+    <box top='2147' left='1788' width='47' height='86'>
+      <label>4</label>
+    </box>
+    <box top='2413' left='1782' width='49' height='85'>
+      <label>4</label>
+    </box>
+    <box top='2053' left='1893' width='54' height='87'>
+      <label>4</label>
+    </box>
+    <box top='2409' left='1947' width='46' height='86'>
+      <label>7</label>
+    </box>
+    <box top='2408' left='2001' width='48' height='85'>
+      <label>7</label>
+    </box>
+    <box top='2057' left='1786' width='50' height='85'>
+      <label>0</label>
+    </box>
+    <box top='2144' left='1954' width='47' height='80'>
+      <label>0</label>
+    </box>
+    <box top='2141' left='2008' width='50' height='84'>
+      <label>0</label>
+    </box>
+    <box top='2239' left='1785' width='48' height='82'>
+      <label>5</label>
+    </box>
+    <box top='2326' left='1781' width='50' height='81'>
+      <label>5</label>
+    </box>
+    <box top='2325' left='1838' width='49' height='80'>
+      <label>0</label>
+    </box>
+    <box top='2054' left='1951' width='52' height='83'>
+      <label>9</label>
+    </box>
+    <box top='2597' left='1787' width='51' height='84'>
+      <label>9</label>
+    </box>
+    <box top='2593' left='1898' width='52' height='87'>
+      <label>8</label>
+    </box>
+    <box top='2592' left='1952' width='54' height='86'>
+      <label>8</label>
+    </box>
+    <box top='2685' left='1962' width='32' height='88'>
+      <label>1</label>
+    </box>
+    <box top='2683' left='2016' width='34' height='89'>
+      <label>1</label>
+    </box>
+    <box top='2688' left='1737' width='53' height='89'>
+      <label>6</label>
+    </box>
+    <box top='2687' left='1794' width='47' height='90'>
+      <label>7</label>
+    </box>
+    <box top='2786' left='1743' width='48' height='86'>
+      <label>7</label>
+    </box>
+    <box top='2688' left='1847' width='54' height='88'>
+      <label>5</label>
+    </box>
+    <box top='2876' left='1803' width='55' height='90'>
+      <label>2</label>
+    </box>
+    <box top='2875' left='1861' width='52' height='90'>
+      <label>4</label>
+    </box>
+    <box top='2783' left='1799' width='51' height='90'>
+      <label>0</label>
+    </box>
+    <box top='2781' left='1854' width='52' height='89'>
+      <label>0</label>
+    </box>
+    <box top='2780' left='1963' width='53' height='87'>
+      <label>0</label>
+    </box>
+    <box top='2780' left='2020' width='51' height='85'>
+      <label>0</label>
+    </box>
+    <box top='2871' left='2026' width='53' height='89'>
+      <label>0</label>
+    </box>
+    <box top='2875' left='1969' width='53' height='88'>
+      <label>9</label>
+    </box>
+    <box top='3071' left='1868' width='55' height='89'>
+      <label>5</label>
+    </box>
+    <box top='3067' left='2038' width='55' height='90'>
+      <label>5</label>
+    </box>
+    <box top='3066' left='1981' width='55' height='92'>
+      <label>4</label>
+    </box>
+    <box top='3162' left='2043' width='54' height='90'>
+      <label>4</label>
+    </box>
+    <box top='3165' left='1986' width='56' height='88'>
+      <label>8</label>
+    </box>
+    <box top='3167' left='1877' width='36' height='89'>
+      <label>1</label>
+    </box>
+    <box top='3260' left='2050' width='36' height='86'>
+      <label>1</label>
+    </box>
+    <box top='3258' left='1991' width='54' height='92'>
+      <label>0</label>
+    </box>
+    <box top='3262' left='1879' width='53' height='92'>
+      <label>0</label>
+    </box>
+    <box top='3456' left='1998' width='54' height='88'>
+      <label>0</label>
+    </box>
+    <box top='3458' left='1948' width='32' height='87'>
+      <label>1</label>
+    </box>
+    <box top='3660' left='1555' width='51' height='85'>
+      <label>2</label>
+    </box>
+    <box top='3660' left='1498' width='53' height='86'>
+      <label>2</label>
+    </box>
+    <box top='3841' left='1899' width='50' height='84'>
+      <label>8</label>
+    </box>
+    <box top='3848' left='1673' width='51' height='85'>
+      <label>8</label>
+    </box>
+    <box top='3851' left='1618' width='51' height='83'>
+      <label>2</label>
+    </box>
+    <box top='3852' left='1504' width='52' height='85'>
+      <label>2</label>
+    </box>
+    <box top='3853' left='1448' width='51' height='84'>
+      <label>2</label>
+    </box>
+    <box top='3846' left='1735' width='28' height='85'>
+      <label>1</label>
+    </box>
+    <box top='3855' left='1338' width='31' height='84'>
+      <label>1</label>
+    </box>
+    <box top='3853' left='1392' width='50' height='86'>
+      <label>9</label>
+    </box>
+    <box top='3842' left='1784' width='54' height='88'>
+      <label>5</label>
+    </box>
+    <box top='3873' left='888' width='31' height='87'>
+      <label>1</label>
+    </box>
+    <box top='3871' left='939' width='51' height='88'>
+      <label>7</label>
+    </box>
+    <box top='3864' left='1051' width='50' height='87'>
+      <label>7</label>
+    </box>
+    <box top='3880' left='770' width='51' height='90'>
+      <label>7</label>
+    </box>
+    <box top='3877' left='826' width='54' height='90'>
+      <label>2</label>
+    </box>
+    <box top='3859' left='1112' width='49' height='91'>
+      <label>4</label>
+    </box>
+    <box top='3855' left='1221' width='52' height='92'>
+      <label>4</label>
+    </box>
+    <box top='3858' left='1166' width='52' height='90'>
+      <label>5</label>
+    </box>
+    <box top='3891' left='659' width='52' height='89'>
+      <label>2</label>
+    </box>
+    <box top='3908' left='486' width='53' height='92'>
+      <label>9</label>
+    </box>
+    <box top='3902' left='547' width='49' height='90'>
+      <label>4</label>
+    </box>
+    <box top='3896' left='603' width='50' height='93'>
+      <label>0</label>
+    </box>
+    <box top='402' left='1346' width='51' height='76'>
+      <label>$</label>
+    </box>
+    <box top='484' left='1349' width='48' height='78'>
+      <label>$</label>
+    </box>
+    <box top='565' left='1352' width='51' height='80'>
+      <label>$</label>
+    </box>
+    <box top='741' left='1304' width='50' height='81'>
+      <label>$</label>
+    </box>
+    <box top='824' left='1359' width='52' height='81'>
+      <label>$</label>
+    </box>
+    <box top='913' left='1362' width='51' height='82'>
+      <label>$</label>
+    </box>
+    <box top='998' left='1364' width='52' height='82'>
+      <label>$</label>
+    </box>
+    <box top='1088' left='1367' width='52' height='81'>
+      <label>$</label>
+    </box>
+    <box top='1264' left='1318' width='53' height='83'>
+      <label>$</label>
+    </box>
+    <box top='1351' left='1376' width='51' height='78'>
+      <label>$</label>
+    </box>
+    <box top='1436' left='1379' width='50' height='81'>
+      <label>$</label>
+    </box>
+    <box top='1523' left='1383' width='49' height='83'>
+      <label>$</label>
+    </box>
+    <box top='1612' left='1386' width='50' height='84'>
+      <label>$</label>
+    </box>
+    <box top='1703' left='1389' width='49' height='81'>
+      <label>$</label>
+    </box>
+    <box top='1792' left='1391' width='50' height='84'>
+      <label>$</label>
+    </box>
+    <box top='1708' left='1169' width='51' height='84'>
+      <label>2</label>
+    </box>
+    <box top='1708' left='1224' width='49' height='81'>
+      <label>2</label>
+    </box>
+    <box top='1882' left='1393' width='51' height='89'>
+      <label>$</label>
+    </box>
+    <box top='2069' left='1345' width='50' height='86'>
+      <label>$</label>
+    </box>
+    <box top='2158' left='1401' width='50' height='84'>
+      <label>$</label>
+    </box>
+    <box top='2248' left='1400' width='51' height='83'>
+      <label>$</label>
+    </box>
+    <box top='2337' left='1400' width='50' height='81'>
+      <label>$</label>
+    </box>
+    <box top='2425' left='1401' width='50' height='83'>
+      <label>$</label>
+    </box>
+    <box top='2609' left='1349' width='53' height='84'>
+      <label>$</label>
+    </box>
+    <box top='2703' left='1408' width='52' height='81'>
+      <label>$</label>
+    </box>
+    <box top='2794' left='1410' width='53' height='84'>
+      <label>$</label>
+    </box>
+    <box top='2889' left='1414' width='54' height='84'>
+      <label>$</label>
+    </box>
+    <box top='3082' left='1420' width='54' height='85'>
+      <label>$</label>
+    </box>
+    <box top='3177' left='1426' width='51' height='86'>
+      <label>$</label>
+    </box>
+    <box top='3272' left='1428' width='52' height='89'>
+      <label>$</label>
+    </box>
+    <box top='2441' left='801' width='49' height='87'>
+      <label>0</label>
+    </box>
+    <box top='1369' left='670' width='50' height='80'>
+      <label>5</label>
+    </box>
+    <box top='289' left='220' width='47' height='78'>
+      <label>0</label>
+    </box>
+    <box top='289' left='274' width='50' height='83'>
+      <label>3</label>
+    </box>
+    <box top='298' left='438' width='49' height='82'>
+      <label>3</label>
+    </box>
+    <box top='299' left='390' width='28' height='78'>
+      <label>1</label>
+    </box>
+    <box top='292' left='329' width='49' height='82'>
+      <label>8</label>
+    </box>
+    <box top='733' left='163' width='50' height='81'>
+      <label>8</label>
+    </box>
+    <box top='734' left='218' width='51' height='81'>
+      <label>8</label>
+    </box>
+    <box top='735' left='275' width='48' height='80'>
+      <label>0</label>
+    </box>
+    <box top='729' left='48' width='53' height='84'>
+      <label>0</label>
+    </box>
+    <box top='1277' left='279' width='52' height='83'>
+      <label>0</label>
+    </box>
+    <box top='1276' left='52' width='53' height='82'>
+      <label>0</label>
+    </box>
+    <box top='1279' left='167' width='50' height='80'>
+      <label>2</label>
+    </box>
+    <box top='1279' left='222' width='52' height='81'>
+      <label>9</label>
+    </box>
+    <box top='2104' left='57' width='54' height='85'>
+      <label>0</label>
+    </box>
+    <box top='2098' left='230' width='50' height='87'>
+      <label>0</label>
+    </box>
+    <box top='2099' left='172' width='53' height='88'>
+      <label>4</label>
+    </box>
+    <box top='2097' left='285' width='54' height='87'>
+      <label>5</label>
+    </box>
+    <box top='2650' left='190' width='50' height='88'>
+      <label>7</label>
+    </box>
+    <box top='2648' left='247' width='50' height='89'>
+      <label>9</label>
+    </box>
+    <box top='2656' left='77' width='52' height='86'>
+      <label>0</label>
+    </box>
+    <box top='2646' left='303' width='50' height='88'>
+      <label>0</label>
+    </box>
+    <box top='3629' left='131' width='54' height='95'>
+      <label>0</label>
+    </box>
+    <box top='3625' left='191' width='52' height='96'>
+      <label>0</label>
+    </box>
+    <box top='3635' left='77' width='34' height='92'>
+      <label>1</label>
+    </box>
+    <box top='58' left='1547' width='47' height='71'>
+      <label>0</label>
+    </box>
+    <box top='131' left='1657' width='47' height='73'>
+      <label>0</label>
+    </box>
+    <box top='136' left='1550' width='45' height='77'>
+      <label>7</label>
+    </box>
+    <box top='110' left='1921' width='51' height='78'>
+      <label>2</label>
+    </box>
+    <box top='118' left='1815' width='49' height='75'>
+      <label>3</label>
+    </box>
+    <box top='113' left='1867' width='51' height='79'>
+      <label>5</label>
+    </box>
+    <box top='120' left='1760' width='51' height='80'>
+      <label>6</label>
+    </box>
+    <box top='2264' left='850' width='51' height='82'>
+      <label>0</label>
+    </box>
+  </image>
+</images>
+</dataset>
