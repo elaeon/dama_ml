@@ -4,7 +4,7 @@
 <name>imglab dataset</name>
 <comment>Created by imglab tool.</comment>
 <images>
-  <image file='Pictures/tickets/DSC_0055.jpg'>
+  <image file='../Pictures/tickets/DSC_0055.jpg'>
     <box top='212' left='832' width='48' height='80'>
       <label>0</label>
     </box>
@@ -1365,7 +1365,7 @@
       <label>0</label>
     </box>
   </image>
-  <image file='Pictures/tickets/DSC_0056.jpg'>
+  <image file='../Pictures/tickets/DSC_0056.jpg'>
     <box top='153' left='1239' width='28' height='77'>
       <label>1</label>
     </box>
