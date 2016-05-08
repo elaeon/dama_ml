@@ -9,10 +9,11 @@ import dlib
 import argparse
 import ml
 
-root_data = "/home/sc/ml_data/"
+root_data = "/home/alejandro/ml_data/"
 
 def numbers_images_set(url):
     import xmltodict
+    from tqdm import tqdm
 
     ds_builder = ml.ds.DataSetBuilder("", 90)
     labels_images = {}
@@ -23,6 +24,7 @@ def numbers_images_set(url):
             for numbers in doc["dataset"]["images"]["image"]:
                 image_file = numbers["@file"]
                 filepath = image_file
+                filepath = filepath[2:] if filepath.startswith("../") else filepath
                 print(filepath)
                 image = color.rgb2gray(io.imread(root+filepath))
                 for box in numbers["box"]:
@@ -35,7 +37,9 @@ def numbers_images_set(url):
                     labels_images.setdefault(box["label"], [])
                     labels_images[box["label"]].append(thumb_bg)
 
-    for label, images in labels_images.items():
+    pbar = tqdm(labels_images.items())
+    for label, images in pbar:
+        pbar.set_description("Processing {}".format(label))
         ds_builder.save_images(url, label, images)
 
 
@@ -58,8 +62,6 @@ def train():
     print("")  # Print blank line to create gap from previous output
     print("Test accuracy: {}".format(
         dlib.test_simple_object_detector(testing_xml_path, path+"detector.svm")))
-    #print("Training accuracy: {}".format(
-    #    dlib.test_simple_object_detector(training_xml_path, "detector.svm")))
 
 
 def test():
@@ -95,18 +97,23 @@ def test():
         dlib.hit_enter_to_continue()
 
 
-def traductor(face_classif):
+def traductor(face_classif, url=None):
     path = os.path.join(root_data, "checkpoints/")
     detector = dlib.simple_object_detector(path+"detector.svm")
-    pictures = ["Pictures/tickets/DSC_0055.jpg", "Pictures/tickets/DSC_0056.jpg",
-        "Pictures/tickets/DSC_0058.jpg", "Pictures/tickets/DSC_0059.jpg",
-        "Pictures/tickets/DSC_0060.jpg", "Pictures/tickets/DSC_0061.jpg",
-        "Pictures/tickets/DSC_0062.jpg"]
+    root = "examples/"
+    if url is None:
+        pictures = ["Pictures/tickets/DSC_0055.jpg", "Pictures/tickets/DSC_0056.jpg",
+            "Pictures/tickets/DSC_0058.jpg", "Pictures/tickets/DSC_0059.jpg",
+            "Pictures/tickets/DSC_0060.jpg", "Pictures/tickets/DSC_0061.jpg",
+            "Pictures/tickets/DSC_0062.jpg"]
+        pictures = [os.path.join(root, f) for f in pictures]
+    else:
+        pictures = [url]
     win = dlib.image_window()
     root = "examples/"
     for f in pictures[0:1]:
         print("Processing file: {}".format(f))
-        img = io.imread(os.path.join(root, f))
+        img = io.imread(f)
         dets = detector(img)
         image = color.rgb2gray(img)
         print("Numbers detected: {}".format(len(dets)))
@@ -133,10 +140,10 @@ if __name__ == '__main__':
     parser.add_argument("--build", help="crea el dataset", action="store_true")
     parser.add_argument("--train", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--clf", help="selecciona el clasificador", type=str)
-    parser.add_argument("--build_number_set", help="crea el detector de numeros", action="store_true")
+    parser.add_argument("--build_numbers_set", help="crea el detector de numeros", action="store_true")
     parser.add_argument("--train-hog", action="store_true")
     parser.add_argument("--test-hog", action="store_true")
-    parser.add_argument("--traductor", action="store_true")
+    parser.add_argument("--traductor", type=str)
     args = parser.parse_args()
     
     image_size = 90
@@ -152,13 +159,14 @@ if __name__ == '__main__':
             train_folder_path=root_data+"Pictures/tickets/train/")
         ds_builder.original_to_images_set(root_data+"Pictures/tickets/numbers/")
         ds_builder.build_dataset(root_data+"Pictures/tickets/train/")
-    elif args.build_number_set:
+    elif args.build_numbers_set:
         numbers_images_set(root_data+"Pictures/tickets/numbers/")
     elif args.train_hog:
         train()
         #Test accuracy: precision: 0.973604, recall: 0.996881, average precision: 0.994134
         #Test accuracy: precision: 0.974619, recall: 0.997921, average precision: 0.995007
         #Test accuracy: precision: 0.975585, recall: 0.996881, average precision: 0.994052
+        #Test accuracy: precision: 0.984424, recall: 0.985447, average precision: 0.982171
     elif args.test_hog:
         test()
     else:        
@@ -196,4 +204,7 @@ if __name__ == '__main__':
             face_classif.fit()
             face_classif.train(num_steps=10)
         elif args.traductor:
-            traductor(face_classif)
+            if args.traductor == "d":
+                traductor(face_classif)
+            else:
+                traductor(face_classif, url=args.traductor)
