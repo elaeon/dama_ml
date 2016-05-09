@@ -8,6 +8,7 @@ from skimage import img_as_ubyte
 import os
 import numpy as np
 import cPickle as pickle
+import random
 
 FACE_FOLDER_PATH = "/home/sc/Pictures/face/"
 FACE_ORIGINAL_PATH = "/home/sc/Pictures/face_o/"
@@ -60,7 +61,11 @@ class ProcessImage(object):
         self.image = self.image[top:bottom, left:right]
 
     def merge_offset(self, image_size):
-        import random
+        if isinstance(image_size, int):
+            bg_color = 1
+        elif isinstance(image_size, tuple):
+            image_size, bg_color = image_size
+
         bg = np.ones((image_size, image_size))
         offset = (int(round(abs(bg.shape[0] - self.image.shape[0]) / 2)), 
                 int(round(abs(bg.shape[1] - self.image.shape[1]) / 2)))
@@ -69,12 +74,22 @@ class ProcessImage(object):
         h_range1 = slice(max(0, pos_h), max(min(pos_h + self.image.shape[1], bg.shape[1]), 0))
         v_range2 = slice(max(0, -pos_v), min(-pos_v + bg.shape[0], self.image.shape[0]))
         h_range2 = slice(max(0, -pos_h), min(-pos_h + bg.shape[1], self.image.shape[1]))
-        bg2 = bg - 1 + np.average(self.image) + random.uniform(-np.var(self.image), np.var(self.image))
-        #print(np.std(image))
-        #print(np.var(image))
+        if bg_color is None:
+            #print(np.std(image))
+            #print(np.var(image))
+            bg2 = bg - 1 + np.average(self.image) + random.uniform(-np.var(self.image), np.var(self.image))
+        elif bg_color == 1:
+            bg2 = bg
+        else:
+            bg2 = bg - 1
+        
         bg2[v_range1, h_range1] = bg[v_range1, h_range1] - 1
         bg2[v_range1, h_range1] = bg2[v_range1, h_range1] + self.image[v_range2, h_range2]
         self.image = bg2
+
+    def threshold(self):
+        block_size = 41
+        self.image = filters.threshold_adaptive(self.image, block_size, offset=0)
 
     def pipeline(self, filters):
         if filters is not None:
@@ -186,23 +201,6 @@ class DataSetBuilder(object):
             print('Validation set DS[{}], labels[{}]'.format(save['valid_dataset'].shape, len(save['valid_labels'])))
             print('Test set DS[{}], labels[{}]'.format(save['test_dataset'].shape, len(save['test_labels'])))
             return save
-
-    def merge_offset(self, image):
-        import random
-        bg = np.ones((self.image_size, self.image_size))
-        offset = (int(round(abs(bg.shape[0] - image.shape[0]) / 2)), 
-                int(round(abs(bg.shape[1] - image.shape[1]) / 2)))
-        pos_v, pos_h = offset
-        v_range1 = slice(max(0, pos_v), max(min(pos_v + image.shape[0], bg.shape[0]), 0))
-        h_range1 = slice(max(0, pos_h), max(min(pos_h + image.shape[1], bg.shape[1]), 0))
-        v_range2 = slice(max(0, -pos_v), min(-pos_v + bg.shape[0], image.shape[0]))
-        h_range2 = slice(max(0, -pos_h), min(-pos_h + bg.shape[1], image.shape[1]))
-        bg2 = bg - 1 + np.average(image) + random.uniform(-np.var(image), np.var(image))
-        #print(np.std(image))
-        #print(np.var(image))
-        bg2[v_range1, h_range1] = bg[v_range1, h_range1] - 1
-        bg2[v_range1, h_range1] = bg2[v_range1, h_range1] + image[v_range2, h_range2]
-        return bg2
 
     @classmethod
     def save_images(self, url, number_id, images):

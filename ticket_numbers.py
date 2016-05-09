@@ -1,5 +1,6 @@
 from skimage import io
 from skimage import color
+from skimage import filters as sk_filters
 from skimage import img_as_ubyte
 
 import os
@@ -28,12 +29,14 @@ def numbers_images_set(url):
                 filepath = filepath[2:] if filepath.startswith("../") else filepath
                 print(filepath)
                 image = color.rgb2gray(io.imread(root+filepath))
+                image = sk_filters.threshold_adaptive(image, 41, offset=0)
                 for box in numbers["box"]:
                     rectangle = (int(box["@top"]), 
                         int(box["@top"])+int(box["@height"]), 
                         int(box["@left"]), 
                         int(box["@left"])+int(box["@width"]))
-                    filters = [("cut", rectangle), ("resize", (90, 'asym')), ("merge_offset", 90)]
+                    filters = [("cut", rectangle), 
+                        ("resize", (90, 'asym')), ("merge_offset", (90, 1))]
                     thumb_bg = ml.ds.ProcessImage(image, filters).image
                     labels_images.setdefault(box["label"], [])
                     labels_images[box["label"]].append(thumb_bg)
@@ -116,15 +119,17 @@ def traductor(face_classif, url=None):
         print("Processing file: {}".format(f))
         img = io.imread(f)
         dets = detector(img)
-        image = color.rgb2gray(img)
+        img = color.rgb2gray(img)
+        img = sk_filters.threshold_adaptive(img, 41, offset=0)
         print("Numbers detected: {}".format(len(dets)))
         for d in dets:
             rectangle = (d.top(),
                     d.top() + d.height(), 
                     d.left()-5, 
                     d.left() + d.width())
-            filters = [("cut", rectangle), ("resize", (90, 'asym')), ("merge_offset", 90)]
-            thumb_bg = ml.ds.ProcessImage(image, filters).image
+            filters = [("cut", rectangle), 
+                ("resize", (90, 'asym')), ("merge_offset", (90, 1))]
+            thumb_bg = ml.ds.ProcessImage(img, filters).image
             win.set_image(img_as_ubyte(thumb_bg))
             print(list(face_classif.predict([thumb_bg])))
             dlib.hit_enter_to_continue()
@@ -157,12 +162,12 @@ if __name__ == '__main__':
     if args.build:
         ds_builder = ml.ds.DataSetBuilder(dataset_name, 90, 
             dataset_path=settings["root_data"]+settings["dataset"], 
-            test_folder_path=settings["root_data"]+settings["Pictures"]+"tickets/test/", 
-            train_folder_path=settings["root_data"]+settings["Pictures"]+"tickets/train/")
-        ds_builder.original_to_images_set(root_data+settings["Pictures"]+"tickets/numbers/")
-        ds_builder.build_dataset(settings["root_data"]+settings["Pictures"]+"tickets/train/")
+            test_folder_path=settings["root_data"]+settings["pictures"]+"tickets/test/", 
+            train_folder_path=settings["root_data"]+settings["pictures"]+"tickets/train/")
+        ds_builder.original_to_images_set(settings["root_data"]+settings["pictures"]+"tickets/numbers/")
+        ds_builder.build_dataset(settings["root_data"]+settings["pictures"]+"tickets/train/")
     elif args.build_numbers_set:
-        numbers_images_set(settings["root_data"]+settings["Pictures"]+"tickets/numbers/")
+        numbers_images_set(settings["root_data"]+settings["pictures"]+"tickets/numbers/")
     elif args.train_hog:
         train()
         #Test accuracy: precision: 0.973604, recall: 0.996881, average precision: 0.994134
@@ -199,8 +204,8 @@ if __name__ == '__main__':
         if args.test:
             ds_builder = ml.ds.DataSetBuilder(dataset_name, 90, 
                 dataset_path=settings["root_data"]+settings["dataset"], 
-                test_folder_path=settings["root_data"]+settings["Pictures"]+"/tickets/test/", 
-                train_folder_path=settings["root_data"]+settings["Pictures"]+"/tickets/train/")
+                test_folder_path=settings["root_data"]+settings["pictures"]+"/tickets/test/", 
+                train_folder_path=settings["root_data"]+settings["pictures"]+"/tickets/train/")
             ds_builder.detector_test(face_classif)
             print("------ Dataset")
             face_classif.detector_test_dataset()
