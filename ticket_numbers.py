@@ -9,7 +9,8 @@ import dlib
 import argparse
 import ml
 
-root_data = "/home/alejandro/ml_data/"
+from utils.config import get_settings
+settings = get_settings()
 
 def numbers_images_set(url):
     import xmltodict
@@ -17,7 +18,7 @@ def numbers_images_set(url):
 
     ds_builder = ml.ds.DataSetBuilder("", 90)
     labels_images = {}
-    root = "examples/"
+    root = settings["examples"]
     for filename in ['tickets.xml', 'tickets_test.xml']:
         with open(os.path.join(root, "xml/"+filename)) as fd:
             doc = xmltodict.parse(fd.read())   
@@ -53,8 +54,8 @@ def train():
     #options.epsilon = 0.0005
     #options.detection_window_size #60 pixels wide by 107 tall
 
-    root = "examples/xml/"
-    path = os.path.join(root_data, "checkpoints/")
+    root = settings["examples"] + "xml/"
+    path = os.path.join(settings["root_data"], "checkpoints/")
     training_xml_path = os.path.join(root, "tickets.xml")
     testing_xml_path = os.path.join(root, "tickets_test.xml")
     dlib.train_simple_object_detector(training_xml_path, path+"detector.svm", options)
@@ -68,7 +69,7 @@ def test():
     # Now let's use the detector as you would in a normal application.  First we
     # will load it from disk.
     #detector = dlib.fhog_object_detector("detector.svm")
-    path = os.path.join(root_data, "checkpoints/")
+    path = os.path.join(settings["root_data"], "checkpoints/")
     detector = dlib.simple_object_detector(path+"detector.svm")
 
     # We can look at the HOG filter we learned.  It should look like a face.  Neat!
@@ -98,7 +99,7 @@ def test():
 
 
 def traductor(face_classif, url=None):
-    path = os.path.join(root_data, "checkpoints/")
+    path = os.path.join(settings["root_data"], "checkpoints/")
     detector = dlib.simple_object_detector(path+"detector.svm")
     root = "examples/"
     if url is None:
@@ -152,15 +153,16 @@ if __name__ == '__main__':
     else:
         dataset_name = "test"
 
-    checkpoints_path = os.path.join(root_data, "checkpoints/")
+    checkpoints_path = os.path.join(settings["root_data"], "checkpoints/")
     if args.build:
         ds_builder = ml.ds.DataSetBuilder(dataset_name, 90, 
-            dataset_path=root_data+"dataset/", test_folder_path=root_data+"Pictures/tickets/test/", 
-            train_folder_path=root_data+"Pictures/tickets/train/")
-        ds_builder.original_to_images_set(root_data+"Pictures/tickets/numbers/")
-        ds_builder.build_dataset(root_data+"Pictures/tickets/train/")
+            dataset_path=settings["root_data"]+settings["dataset"], 
+            test_folder_path=settings["root_data"]+settings["Pictures"]+"tickets/test/", 
+            train_folder_path=settings["root_data"]+settings["Pictures"]+"tickets/train/")
+        ds_builder.original_to_images_set(root_data+settings["Pictures"]+"tickets/numbers/")
+        ds_builder.build_dataset(settings["root_data"]+settings["Pictures"]+"tickets/train/")
     elif args.build_numbers_set:
-        numbers_images_set(root_data+"Pictures/tickets/numbers/")
+        numbers_images_set(settings["root_data"]+settings["Pictures"]+"tickets/numbers/")
     elif args.train_hog:
         train()
         #Test accuracy: precision: 0.973604, recall: 0.996881, average precision: 0.994134
@@ -189,14 +191,16 @@ if __name__ == '__main__':
         }
         class_ = classifs[args.clf]["name"]
         params = classifs[args.clf]["params"]
-        dataset = ml.ds.DataSetBuilder.load_dataset(dataset_name, dataset_path=root_data+"dataset/")
+        dataset = ml.ds.DataSetBuilder.load_dataset(dataset_name, 
+            dataset_path=settings["root_data"]+settings["dataset"])
         face_classif = class_(dataset_name, dataset, **params)
         face_classif.batch_size = 10
         print("#########", face_classif.__class__.__name__)
         if args.test:
             ds_builder = ml.ds.DataSetBuilder(dataset_name, 90, 
-                dataset_path=root_data+"dataset/", test_folder_path=root_data+"Pictures/tickets/test/", 
-                train_folder_path=root_data+"Pictures/tickets/train/")
+                dataset_path=settings["root_data"]+settings["dataset"], 
+                test_folder_path=settings["root_data"]+settings["Pictures"]+"/tickets/test/", 
+                train_folder_path=settings["root_data"]+settings["Pictures"]+"/tickets/train/")
             ds_builder.detector_test(face_classif)
             print("------ Dataset")
             face_classif.detector_test_dataset()
