@@ -113,8 +113,7 @@ def traductor(face_classif, url=None):
         pictures = [os.path.join(root, f) for f in pictures]
     else:
         pictures = [url]
-    win = dlib.image_window()
-    root = "examples/"
+    #win = dlib.image_window()
     for f in pictures[0:1]:
         print("Processing file: {}".format(f))
         img = io.imread(f)
@@ -122,17 +121,18 @@ def traductor(face_classif, url=None):
         img = color.rgb2gray(img)
         img = sk_filters.threshold_adaptive(img, 41, offset=0)
         print("Numbers detected: {}".format(len(dets)))
-        for d in dets:
-            rectangle = (d.top(),
-                    d.top() + d.height(), 
-                    d.left()-5, 
-                    d.left() + d.width())
-            filters = [("cut", rectangle), 
-                ("resize", (90, 'asym')), ("merge_offset", (90, 1))]
-            thumb_bg = ml.ds.ProcessImage(img, filters).image
-            win.set_image(img_as_ubyte(thumb_bg))
-            print(list(face_classif.predict([thumb_bg])))
-            dlib.hit_enter_to_continue()
+        for d in sorted(dets, key=lambda d: (d.top(), d.left()))[:30]:
+            print(d.top(), d.left())
+        #    rectangle = (d.top(),
+        #            d.top() + d.height(), 
+        #            d.left()-5, 
+        #            d.left() + d.width())
+        #    filters = [("cut", rectangle), 
+        #        ("resize", (90, 'asym')), ("merge_offset", (90, 1))]
+        #    thumb_bg = ml.ds.ProcessImage(img, filters).image
+        #    win.set_image(img_as_ubyte(thumb_bg))
+        #    print(list(face_classif.predict([thumb_bg])))
+        #    dlib.hit_enter_to_continue()
                 
 
 #test DSC_0055, DSC_0056
