@@ -123,21 +123,38 @@ def transcriptor(face_classif, url=None):
         img = sk_filters.threshold_adaptive(img, 41, offset=0)
         print("Numbers detected: {}".format(len(dets)))
         data = [(e.left(), e.top(), e.right(), e.bottom()) for e in dets]
-        for block, values in order_2d(data, index=(1, 0), block_size=60).items()[:4]:
+        for block, coords in order_2d(data, index=(1, 0), block_size=60).items()[:4]:
             win.clear_overlay()
             print("####BLOCK:", block)
-            for v in values:
+            #win.set_image(img_o)
+            numbers = []
+            for v in coords:
                 r = rectangle(*v)
-                print(r.top(), r.left())
                 m_rectangle = (r.top(), r.top() + r.height(), 
                     r.left() - 5, r.left() + r.width())
                 filters = [("cut", m_rectangle), 
                     ("resize", (90, 'asym')), ("merge_offset", (90, 1))]
                 thumb_bg = ml.ds.ProcessImage(img, filters).image
-                #win.set_image(img_as_ubyte(thumb_bg))                
-                win.set_image(img_o)
-                win.add_overlay(r)
-        #    print(list(face_classif.predict([thumb_bg])))
+                #win.set_image(img_as_ubyte(thumb_bg))
+                #win.add_overlay(r)
+                #print(list(face_classif.predict([thumb_bg])))
+                numbers.append(thumb_bg)
+                #dlib.hit_enter_to_continue()
+            numbers_predicted = list(face_classif.predict(numbers))
+            num_pred_coords = zip(numbers_predicted, coords)
+            num_pred_coords = num_pred_coords + [num_pred_coords[-2]]
+            #print(numbers_predicted)
+            results = []
+            tmp_l = []
+            for v1, v2 in zip(num_pred_coords, num_pred_coords[1:]):
+                if (abs(v1[1][0] - v2[1][0]) > 150):
+                    tmp_l.append(v1[0])
+                    results.append(tmp_l)
+                    tmp_l = []
+                else:
+                    tmp_l.append(v1[0])
+            results.append(tmp_l)
+            print(results)
             dlib.hit_enter_to_continue()
 
 def order_2d(list_2d, index=(0, 1), block_size=60):
@@ -171,10 +188,6 @@ def build_blocks(list_2d, block_size, index):
         blocks.setdefault(block, [])
         blocks[block].append(elem)
         initial = elem
-    #for elem in list_2d:
-    #    b = int(round(g(elem) / block_size))
-    #    blocks.setdefault(b, [])
-    #    blocks[b].append(elem)
     return blocks
 
 #test DSC_0055, DSC_0056
