@@ -101,7 +101,8 @@ def test():
         dlib.hit_enter_to_continue()
 
 
-def traductor(face_classif, url=None):
+def transcriptor(face_classif, url=None):
+    from dlib import rectangle
     path = os.path.join(settings["root_data"], "checkpoints/")
     detector = dlib.simple_object_detector(path+"detector.svm")
     root = "examples/"
@@ -113,27 +114,68 @@ def traductor(face_classif, url=None):
         pictures = [os.path.join(root, f) for f in pictures]
     else:
         pictures = [url]
-    #win = dlib.image_window()
+    win = dlib.image_window()
     for f in pictures[0:1]:
         print("Processing file: {}".format(f))
-        img = io.imread(f)
-        dets = detector(img)
-        img = color.rgb2gray(img)
+        img_o = io.imread(f)
+        dets = detector(img_o)
+        img = color.rgb2gray(img_o)
         img = sk_filters.threshold_adaptive(img, 41, offset=0)
         print("Numbers detected: {}".format(len(dets)))
-        for d in sorted(dets, key=lambda d: (d.top(), d.left()))[:30]:
-            print(d.top(), d.left())
-        #    rectangle = (d.top(),
-        #            d.top() + d.height(), 
-        #            d.left()-5, 
-        #            d.left() + d.width())
-        #    filters = [("cut", rectangle), 
-        #        ("resize", (90, 'asym')), ("merge_offset", (90, 1))]
-        #    thumb_bg = ml.ds.ProcessImage(img, filters).image
-        #    win.set_image(img_as_ubyte(thumb_bg))
+        data = [(e.left(), e.top(), e.right(), e.bottom()) for e in dets]
+        for block, values in order_2d(data, index=(1, 0), block_size=60).items()[:4]:
+            win.clear_overlay()
+            print("####BLOCK:", block)
+            for v in values:
+                r = rectangle(*v)
+                print(r.top(), r.left())
+                m_rectangle = (r.top(), r.top() + r.height(), 
+                    r.left() - 5, r.left() + r.width())
+                filters = [("cut", m_rectangle), 
+                    ("resize", (90, 'asym')), ("merge_offset", (90, 1))]
+                thumb_bg = ml.ds.ProcessImage(img, filters).image
+                #win.set_image(img_as_ubyte(thumb_bg))                
+                win.set_image(img_o)
+                win.add_overlay(r)
         #    print(list(face_classif.predict([thumb_bg])))
-        #    dlib.hit_enter_to_continue()
-                
+            dlib.hit_enter_to_continue()
+
+def order_2d(list_2d, index=(0, 1), block_size=60):
+    """
+    list_ = [(10, 50), (13, 100), (14, 40), (15, 90), (21, 30), (40, 10), (60, 20)]
+    {block0: elems, block1: elems, ...}
+    """
+    from operator import itemgetter
+    blocks = build_blocks(list_2d, block_size, index)
+    for row, items in blocks.items():
+        if len(items) > 1:
+            items.sort(key=itemgetter(index[1]))
+    return blocks
+
+def build_blocks(list_2d, block_size, index):
+    """ build a dict of rows where each row is created if elem in 0 is grater 
+        than block_size. Each row contains coords of numbers in the plane.
+        list_ = [(10, 50), (13, 100), (14, 40), (15, 90), (21, 30), (40, 10), (60, 20)]
+    """
+    from operator import itemgetter
+    g = itemgetter(index)
+    data = sorted(list_2d, key=itemgetter(index[0]))
+    initial = data.pop(0)
+    blocks = {0: [initial]}
+    block = 0
+    while len(data) > 0:
+        elem = data.pop(0)
+        in_block = abs(initial[index[0]] - elem[index[0]]) <= block_size
+        if not in_block:
+            block += 1
+        blocks.setdefault(block, [])
+        blocks[block].append(elem)
+        initial = elem
+    #for elem in list_2d:
+    #    b = int(round(g(elem) / block_size))
+    #    blocks.setdefault(b, [])
+    #    blocks[b].append(elem)
+    return blocks
 
 #test DSC_0055, DSC_0056
 #training DSC_0053, DSC_0054, DSC_0057, DSC_0059, DSC_0062, DSC_0058
@@ -149,7 +191,7 @@ if __name__ == '__main__':
     parser.add_argument("--build_numbers_set", help="crea el detector de numeros", action="store_true")
     parser.add_argument("--train-hog", action="store_true")
     parser.add_argument("--test-hog", action="store_true")
-    parser.add_argument("--traductor", type=str)
+    parser.add_argument("--transcriptor", type=str)
     args = parser.parse_args()
     
     image_size = 90
@@ -212,8 +254,8 @@ if __name__ == '__main__':
         elif args.train:
             face_classif.fit()
             face_classif.train(num_steps=10)
-        elif args.traductor:
-            if args.traductor == "d":
-                traductor(face_classif)
+        elif args.transcriptor:
+            if args.transcriptor == "d":
+                transcriptor(face_classif)
             else:
-                traductor(face_classif, url=args.traductor)
+                transcriptor(face_classif, url=args.transcriptor)
