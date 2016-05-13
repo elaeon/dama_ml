@@ -114,7 +114,7 @@ def transcriptor(face_classif, url=None):
         pictures = [os.path.join(root, f) for f in pictures]
     else:
         pictures = [url]
-    win = dlib.image_window()
+    #win = dlib.image_window()
     for f in pictures[0:1]:
         print("Processing file: {}".format(f))
         img_o = io.imread(f)
@@ -123,14 +123,14 @@ def transcriptor(face_classif, url=None):
         img = sk_filters.threshold_adaptive(img, 41, offset=0)
         print("Numbers detected: {}".format(len(dets)))
         data = [(e.left(), e.top(), e.right(), e.bottom()) for e in dets]
-        for block, coords in order_2d(data, index=(1, 0), block_size=60).items()[:4]:
-            win.clear_overlay()
-            print("####BLOCK:", block)
+        for block, coords in order_2d(data, index=(1, 0), block_size=40).items()[:10]:
+            #win.clear_overlay()
+            #print("####BLOCK:", block)
             #win.set_image(img_o)
             numbers = []
             for v in coords:
                 r = rectangle(*v)
-                m_rectangle = (r.top(), r.top() + r.height(), 
+                m_rectangle = (r.top(), r.top() + r.height()-2, 
                     r.left() - 5, r.left() + r.width())
                 filters = [("cut", m_rectangle), 
                     ("resize", (90, 'asym')), ("merge_offset", (90, 1))]
@@ -143,7 +143,6 @@ def transcriptor(face_classif, url=None):
             numbers_predicted = list(face_classif.predict(numbers))
             num_pred_coords = zip(numbers_predicted, coords)
             num_pred_coords = num_pred_coords + [num_pred_coords[-2]]
-            #print(numbers_predicted)
             results = []
             tmp_l = []
             for v1, v2 in zip(num_pred_coords, num_pred_coords[1:]):
@@ -154,8 +153,54 @@ def transcriptor(face_classif, url=None):
                 else:
                     tmp_l.append(v1[0])
             results.append(tmp_l)
-            print(results)
-            dlib.hit_enter_to_continue()
+            #print(results)
+            #dlib.hit_enter_to_continue()
+            yield results
+
+def transcriptor_test(face_classif, url=None):
+    predictions = transcriptor(face_classif, url=url)
+    def flat_results():
+        flat_p = [["".join(prediction) for prediction in row] for row in predictions]
+        return flat_p
+
+    with open(settings["examples"]+"txt/transcriptor.txt") as f:
+        file_ = f.read().split("\n")
+        results = [[col.strip(" ") for col in line.split(",")] for line in file_]
+
+    def count(result, prediction):
+        total = 0
+        total_comp = 0
+        for v1, v2 in zip(result, prediction):
+            total += len(v1)
+            total_comp += [x == y for x, y in zip(v1, v2)].count(True)
+        return total, total_comp
+
+    flat_p = flat_results()
+    total = 0
+    total_comp = 0
+    total_false = 0
+    for result, prediction in zip(results, flat_p):
+        if len(result) == len(prediction):
+            v1, v2 = count(result, prediction)
+        else:
+            base_set = set(result)
+            pred_set = set(prediction)
+            diff = pred_set.difference(base_set)
+            clean_prediction = []
+            for elem in diff:
+                if len(elem) != 1:
+                    clean_prediction.append(elem)
+                else:
+                    total_false += 1
+            v1, v2 = count(result, clean_prediction)
+        if v1 != v2:
+            print(result, prediction, "X")
+        total += v1
+        total_comp += v2
+            
+    print(total, total_comp, total_false)
+    print("Accuracy {}%".format(total_comp*100./total))
+    print("Precision {}%".format((total-total_false)*100/total))
 
 def order_2d(list_2d, index=(0, 1), block_size=60):
     """
@@ -205,6 +250,7 @@ if __name__ == '__main__':
     parser.add_argument("--train-hog", action="store_true")
     parser.add_argument("--test-hog", action="store_true")
     parser.add_argument("--transcriptor", type=str)
+    parser.add_argument("--transcriptor-test", type=str)
     args = parser.parse_args()
     
     image_size = 90
@@ -272,3 +318,5 @@ if __name__ == '__main__':
                 transcriptor(face_classif)
             else:
                 transcriptor(face_classif, url=args.transcriptor)
+        elif args.transcriptor_test:
+            transcriptor_test(face_classif)
