@@ -123,7 +123,7 @@ def transcriptor(face_classif, url=None):
         img = sk_filters.threshold_adaptive(img, 41, offset=0)
         print("Numbers detected: {}".format(len(dets)))
         data = [(e.left(), e.top(), e.right(), e.bottom()) for e in dets]
-        for block, coords in order_2d(data, index=(1, 0), block_size=40).items()[:10]:
+        for block, coords in order_2d(data, index=(1, 0), block_size=40).items()[:12]:
             #win.clear_overlay()
             #print("####BLOCK:", block)
             #win.set_image(img_o)

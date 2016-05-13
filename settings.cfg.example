@@ -1,0 +1,5 @@
+[ml]
+root_data = /home/sc/ml_data/
+examples = examples/
+pictures = Pictures/
+dataset = dataset/
