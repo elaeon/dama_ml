@@ -53,7 +53,7 @@ class BasicFaceClassif(object):
         self.load_dataset(dataset)
 
     def detector_test_dataset(self):
-        predictions = self.predict_set(self.test_dataset)
+        predictions = self.predict(self.test_dataset)
         self.accuracy(list(predictions), np.asarray([self.convert_label(label) for label in self.test_labels]))
 
     def reformat(self, dataset, labels):
@@ -118,13 +118,13 @@ class SVCFace(BasicFaceClassif):
         self.save_model()
         return score
 
-    def predict_set(self, imgs):
-        return self.predict(imgs)
+    def predict(self, imgs):
+        return self._predict(imgs)
 
     def transform_img(self, img):
         return img.reshape((-1, self.image_size*self.image_size)).astype(np.float32)
 
-    def predict(self, imgs):
+    def _predict(self, imgs):
         if self.model is None:
             self.load_model()
         for img in imgs:
@@ -237,12 +237,12 @@ class TensorFace(BasicTensor):
     def position_index(self, label):
         return np.argmax(label)#[0]
 
-    def predict_set(self, imgs):
+    def predict(self, imgs):
         self.batch_size = 1
         self.fit(dropout=False)
-        return self.predict(imgs)
+        return self._predict(imgs)
 
-    def predict(self, imgs):
+    def _predict(self, imgs):
         with tf.Session(graph=self.graph) as session:
             saver = tf.train.Saver()
             ckpt = tf.train.get_checkpoint_state(self.check_point + self.model_name + "/")
@@ -300,10 +300,10 @@ class TfLTensor(TensorFace):
         self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
         self.model.load('{}{}.ckpt'.format(self.check_point + self.model_name + "/", self.model_name))
 
-    def predict_set(self, imgs):
-        return self.predict(imgs)
-
     def predict(self, imgs):
+        return self._predict(imgs)
+
+    def _predict(self, imgs):
         if self.model is None:
             self.load_model()
         for img in imgs:

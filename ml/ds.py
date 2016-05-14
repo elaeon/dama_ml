@@ -228,7 +228,7 @@ class DataSetBuilder(object):
             images_data.append(io.imread(path))
             labels.append(number_id)
         
-        predictions = face_classif.predict_set(images_data)
+        predictions = face_classif.predict(images_data)
         face_classif.accuracy(list(predictions), np.asarray(labels))
 
     def build_dataset(self, from_directory):
