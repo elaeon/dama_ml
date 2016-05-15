@@ -36,7 +36,10 @@ class ProcessImage(object):
         else:
             dim = (image_size, image_size)
         if dim < self.image.shape or self.image.shape <= dim:
-            self.image = transform.resize(self.image, dim)
+            try:
+                self.image = transform.resize(self.image, dim)
+            except ZeroDivisionError:
+                pass
         
     def rgb2gray(self):
         self.image = img_as_ubyte(color.rgb2gray(self.image))
@@ -87,8 +90,7 @@ class ProcessImage(object):
         bg2[v_range1, h_range1] = bg2[v_range1, h_range1] + self.image[v_range2, h_range2]
         self.image = bg2
 
-    def threshold(self):
-        block_size = 41
+    def threshold(self, block_size=41):
         self.image = filters.threshold_adaptive(self.image, block_size, offset=0)
 
     def pipeline(self, filters):

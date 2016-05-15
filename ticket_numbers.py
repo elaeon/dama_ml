@@ -13,6 +13,11 @@ import ml
 from utils.config import get_settings
 settings = get_settings()
 
+PICTURES = ["Pictures/tickets/DSC_0055.jpg", "Pictures/tickets/DSC_0056.jpg",
+        "Pictures/tickets/DSC_0058.jpg", "Pictures/tickets/DSC_0059.jpg",
+        "Pictures/tickets/DSC_0060.jpg", "Pictures/tickets/DSC_0061.jpg",
+        "Pictures/tickets/DSC_0062.jpg"]
+
 def numbers_images_set(url):
     import xmltodict
     from tqdm import tqdm
@@ -80,14 +85,10 @@ def test():
     # Now let's run the detector over the images in the faces folder and display the
     # results.
     print("Showing detections on the images in the faces folder...")
-    root = "examples/"
+    root = settings["examples"]
     win = dlib.image_window()
-    pictures = ["Pictures/tickets/DSC_0055.jpg", "Pictures/tickets/DSC_0056.jpg",
-        "Pictures/tickets/DSC_0058.jpg", "Pictures/tickets/DSC_0059.jpg",
-        "Pictures/tickets/DSC_0060.jpg", "Pictures/tickets/DSC_0061.jpg",
-        "Pictures/tickets/DSC_0062.jpg"]
     #glob.glob(os.path.join(faces_folder, "*.jpg")):
-    for f in pictures[0:1]:
+    for f in PICTURES[0:1]:
         print(f)
         print("Processing file: {}".format(f))
         #img = img_as_ubyte(color.rgb2gray(io.imread(f)))
@@ -103,15 +104,13 @@ def test():
 
 def transcriptor(face_classif, url=None):
     from dlib import rectangle
-    path = os.path.join(settings["root_data"], "checkpoints/")
+    from utils.order import order_2d
+
+    path = os.path.join(settings["root_data"], settings["checkpoints"])
     detector = dlib.simple_object_detector(path+"detector.svm")
-    root = "examples/"
+    root = settings["examples"]
     if url is None:
-        pictures = ["Pictures/tickets/DSC_0055.jpg", "Pictures/tickets/DSC_0056.jpg",
-            "Pictures/tickets/DSC_0058.jpg", "Pictures/tickets/DSC_0059.jpg",
-            "Pictures/tickets/DSC_0060.jpg", "Pictures/tickets/DSC_0061.jpg",
-            "Pictures/tickets/DSC_0062.jpg"]
-        pictures = [os.path.join(root, f) for f in pictures]
+        pictures = [os.path.join(root, f) for f in PICTURES]
     else:
         pictures = [url]
     #win = dlib.image_window()
@@ -202,38 +201,36 @@ def transcriptor_test(face_classif, url=None):
     print("Accuracy {}%".format(total_comp*100./total))
     print("Precision {}%".format((total-total_false)*100/total))
 
-def order_2d(list_2d, index=(0, 1), block_size=60):
-    """
-    list_ = [(10, 50), (13, 100), (14, 40), (15, 90), (21, 30), (40, 10), (60, 20)]
-    {block0: elems, block1: elems, ...}
-    """
-    from operator import itemgetter
-    blocks = build_blocks(list_2d, block_size, index)
-    for row, items in blocks.items():
-        if len(items) > 1:
-            items.sort(key=itemgetter(index[1]))
-    return blocks
-
-def build_blocks(list_2d, block_size, index):
-    """ build a dict of rows where each row is created if elem in 0 is grater 
-        than block_size. Each row contains coords of numbers in the plane.
-        list_ = [(10, 50), (13, 100), (14, 40), (15, 90), (21, 30), (40, 10), (60, 20)]
-    """
-    from operator import itemgetter
-    g = itemgetter(index)
-    data = sorted(list_2d, key=itemgetter(index[0]))
-    initial = data.pop(0)
-    blocks = {0: [initial]}
-    block = 0
-    while len(data) > 0:
-        elem = data.pop(0)
-        in_block = abs(initial[index[0]] - elem[index[0]]) <= block_size
-        if not in_block:
-            block += 1
-        blocks.setdefault(block, [])
-        blocks[block].append(elem)
-        initial = elem
-    return blocks
+def build_dirty_image_set(url, face_classif):
+    from tqdm import tqdm
+    root = settings["examples"]
+    numbers = []
+    for f in PICTURES:#[PICTURES[4], PICTURES[6]]:
+        url_l = os.path.join(root, f)
+        path = os.path.join(settings["root_data"], settings["checkpoints"])
+        detector = dlib.simple_object_detector(path+"detector.svm")
+        img_o = io.imread(url_l)
+        dets = detector(img_o)
+        img = color.rgb2gray(img_o)
+        img = sk_filters.threshold_adaptive(img, 41, offset=0)
+        print("Numbers detected: {}".format(len(dets)))        
+        for r in dets:
+            m_rectangle = (r.top(), r.top() + r.height()-2, 
+                r.left() - 5, r.left() + r.width())
+            filters = [("cut", m_rectangle), 
+                ("resize", (90, 'asym')), ("merge_offset", (90, 1))]
+            thumb_bg = ml.ds.ProcessImage(img, filters).image
+            numbers.append(thumb_bg)
+    numbers_predicted = list(face_classif.predict(numbers))
+    labels_numbers = zip(numbers_predicted, numbers)
+    numbers_g = {}
+    for label, number in labels_numbers:
+        numbers_g.setdefault(label, [])
+        numbers_g[label].append(number)
+    pbar = tqdm(numbers_g.items())
+    for label, images in pbar:
+        pbar.set_description("Processing {}".format(label))
+        ml.ds.DataSetBuilder.save_images(url, label, images)
 
 #test DSC_0055, DSC_0056
 #training DSC_0053, DSC_0054, DSC_0057, DSC_0059, DSC_0062, DSC_0058
@@ -251,6 +248,7 @@ if __name__ == '__main__':
     parser.add_argument("--test-hog", action="store_true")
     parser.add_argument("--transcriptor", type=str)
     parser.add_argument("--transcriptor-test", type=str)
+    parser.add_argument("--build-dirty", help="", action="store_true")
     args = parser.parse_args()
     
     image_size = 90
@@ -320,3 +318,7 @@ if __name__ == '__main__':
                 transcriptor(face_classif, url=args.transcriptor)
         elif args.transcriptor_test:
             transcriptor_test(face_classif)
+        elif args.build_dirty:
+            build_dirty_image_set(
+                settings["root_data"]+settings["pictures"]+"tickets/dirty_numbers/", 
+                face_classif)
