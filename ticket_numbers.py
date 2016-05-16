@@ -18,6 +18,11 @@ PICTURES = ["Pictures/tickets/DSC_0055.jpg", "Pictures/tickets/DSC_0056.jpg",
         "Pictures/tickets/DSC_0060.jpg", "Pictures/tickets/DSC_0061.jpg",
         "Pictures/tickets/DSC_0062.jpg"]
 
+    
+g_filters = ml.ds.Filters("global", [("rgb2gray", None), ("threshold", 91)])
+l_filters = ml.ds.Filters("local", 
+        [("cut", None), ("resize", (90, 'asym')), ("merge_offset", (90, 1))])
+
 def numbers_images_set(url):
     import xmltodict
     from tqdm import tqdm
@@ -32,17 +37,16 @@ def numbers_images_set(url):
                 image_file = numbers["@file"]
                 filepath = image_file
                 filepath = filepath[2:] if filepath.startswith("../") else filepath
+                image = io.imread(root+filepath)
+                image = ml.ds.ProcessImage(image, g_filters.get_filters()).image
                 print(filepath)
-                image = color.rgb2gray(io.imread(root+filepath))
-                image = sk_filters.threshold_adaptive(image, 41, offset=0)
                 for box in numbers["box"]:
                     rectangle = (int(box["@top"]), 
                         int(box["@top"])+int(box["@height"]), 
                         int(box["@left"]), 
                         int(box["@left"])+int(box["@width"]))
-                    filters = [("cut", rectangle), 
-                        ("resize", (90, 'asym')), ("merge_offset", (90, 1))]
-                    thumb_bg = ml.ds.ProcessImage(image, filters).image
+                    l_filters.add_value("cut", rectangle)
+                    thumb_bg = ml.ds.ProcessImage(image, l_filters.get_filters()).image
                     labels_images.setdefault(box["label"], [])
                     labels_images[box["label"]].append(thumb_bg)
 
@@ -118,8 +122,7 @@ def transcriptor(face_classif, url=None):
         print("Processing file: {}".format(f))
         img_o = io.imread(f)
         dets = detector(img_o)
-        img = color.rgb2gray(img_o)
-        img = sk_filters.threshold_adaptive(img, 41, offset=0)
+        img = ml.ds.ProcessImage(img_o, g_filters.get_filters()).image
         print("Numbers detected: {}".format(len(dets)))
         data = [(e.left(), e.top(), e.right(), e.bottom()) for e in dets]
         for block, coords in order_2d(data, index=(1, 0), block_size=40).items()[:12]:
@@ -131,9 +134,8 @@ def transcriptor(face_classif, url=None):
                 r = rectangle(*v)
                 m_rectangle = (r.top(), r.top() + r.height()-2, 
                     r.left() - 5, r.left() + r.width())
-                filters = [("cut", m_rectangle), 
-                    ("resize", (90, 'asym')), ("merge_offset", (90, 1))]
-                thumb_bg = ml.ds.ProcessImage(img, filters).image
+                l_filters.add_value("cut", m_rectangle)
+                thumb_bg = ml.ds.ProcessImage(img, l_filters.get_filters()).image
                 #win.set_image(img_as_ubyte(thumb_bg))
                 win.add_overlay(r)
                 #print(list(face_classif.predict([thumb_bg])))
@@ -232,15 +234,13 @@ def build_dirty_image_set(url, face_classif):
         detector = dlib.simple_object_detector(path+"detector.svm")
         img_o = io.imread(url_l)
         dets = detector(img_o)
-        img = color.rgb2gray(img_o)
-        img = sk_filters.threshold_adaptive(img, 41, offset=0)
+        img = ml.ds.ProcessImage(image, g_filters.get_filters()).image
         print("Numbers detected: {}".format(len(dets)))        
         for r in dets:
             m_rectangle = (r.top(), r.top() + r.height()-2, 
                 r.left() - 5, r.left() + r.width())
-            filters = [("cut", m_rectangle), 
-                ("resize", (90, 'asym')), ("merge_offset", (90, 1))]
-            thumb_bg = ml.ds.ProcessImage(img, filters).image
+            l_filters.add_value("cut", m_rectangle)
+            thumb_bg = ml.ds.ProcessImage(img, l_filters.get_filters()).image
             numbers.append(thumb_bg)
     numbers_predicted = list(face_classif.predict(numbers))
     labels_numbers = zip(numbers_predicted, numbers)

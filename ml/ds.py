@@ -15,6 +15,22 @@ FACE_ORIGINAL_PATH = "/home/sc/Pictures/face_o/"
 FACE_TEST_FOLDER_PATH = "/home/sc/Pictures/test/"
 DATASET_PATH = "/home/sc/data/dataset/"
 
+class Filters(object):
+    def __init__(self, name, filters):
+        from collections import OrderedDict
+        self.filters = OrderedDict(filters)
+        self.placeholders = [k for k, v in self.filters.items() if v is None]
+        self.name = name
+
+    def get_placeholders(self):
+        return self.placeholders
+
+    def add_value(self, filter_name, value):
+        self.filters[filter_name] = value
+
+    def get_filters(self):
+        return self.filters.items()
+
 class ProcessImage(object):
     def __init__(self, image, filters):
         self.image = image
@@ -174,11 +190,12 @@ class DataSetBuilder(object):
         y_train = y_train[valid_size_index:]
         return X_train, X_validation, X_test, y_train, y_validation, y_test
 
-    def save_dataset(self, valid_size=.1, train_size=.7):
+    def save_dataset(self, valid_size=.1, train_size=.7, filters=None):
         train_dataset, valid_dataset, test_dataset, train_labels, valid_labels, test_labels = self.cross_validators(self.dataset, self.labels, train_size=train_size, valid_size=valid_size)
         try:
             f = open(self.dataset_path+self.name, 'wb')
             save = {
+                'filters': filters,
                 'train_dataset': train_dataset,
                 'train_labels': train_labels,
                 'valid_dataset': valid_dataset,
@@ -199,9 +216,13 @@ class DataSetBuilder(object):
     def load_dataset(self, name, dataset_path=DATASET_PATH):
         with open(dataset_path+name, 'rb') as f:
             save = pickle.load(f)
-            print('Training set DS[{}], labels[{}]'.format(save['train_dataset'].shape, len(save['train_labels'])))
-            print('Validation set DS[{}], labels[{}]'.format(save['valid_dataset'].shape, len(save['valid_labels'])))
-            print('Test set DS[{}], labels[{}]'.format(save['test_dataset'].shape, len(save['test_labels'])))
+            print('Filters: {}'.format(save['filters']))
+            print('Training set DS[{}], labels[{}]'.format(
+                save['train_dataset'].shape, len(save['train_labels'])))
+            print('Validation set DS[{}], labels[{}]'.format(
+                save['valid_dataset'].shape, len(save['valid_labels'])))
+            print('Test set DS[{}], labels[{}]'.format(
+                save['test_dataset'].shape, len(save['test_labels'])))
             return save
 
     @classmethod
