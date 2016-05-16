@@ -113,7 +113,7 @@ def transcriptor(face_classif, url=None):
         pictures = [os.path.join(root, f) for f in PICTURES]
     else:
         pictures = [url]
-    #win = dlib.image_window()
+    win = dlib.image_window()
     for f in pictures[0:1]:
         print("Processing file: {}".format(f))
         img_o = io.imread(f)
@@ -123,9 +123,9 @@ def transcriptor(face_classif, url=None):
         print("Numbers detected: {}".format(len(dets)))
         data = [(e.left(), e.top(), e.right(), e.bottom()) for e in dets]
         for block, coords in order_2d(data, index=(1, 0), block_size=40).items()[:12]:
-            #win.clear_overlay()
+            win.clear_overlay()
             #print("####BLOCK:", block)
-            #win.set_image(img_o)
+            win.set_image(img_o)
             numbers = []
             for v in coords:
                 r = rectangle(*v)
@@ -135,7 +135,7 @@ def transcriptor(face_classif, url=None):
                     ("resize", (90, 'asym')), ("merge_offset", (90, 1))]
                 thumb_bg = ml.ds.ProcessImage(img, filters).image
                 #win.set_image(img_as_ubyte(thumb_bg))
-                #win.add_overlay(r)
+                win.add_overlay(r)
                 #print(list(face_classif.predict([thumb_bg])))
                 numbers.append(thumb_bg)
                 #dlib.hit_enter_to_continue()
@@ -145,7 +145,11 @@ def transcriptor(face_classif, url=None):
             results = []
             tmp_l = []
             for v1, v2 in zip(num_pred_coords, num_pred_coords[1:]):
-                if (abs(v1[1][0] - v2[1][0]) > 150):
+                if v1[0] == "$":
+                    results.append(tmp_l)
+                    results.append([v1[0]])
+                    tmp_l = []
+                elif (abs(v1[1][0] - v2[1][0]) > 150):
                     tmp_l.append(v1[0])
                     results.append(tmp_l)
                     tmp_l = []
@@ -153,13 +157,13 @@ def transcriptor(face_classif, url=None):
                     tmp_l.append(v1[0])
             results.append(tmp_l)
             #print(results)
-            #dlib.hit_enter_to_continue()
+            dlib.hit_enter_to_continue()
             yield results
 
 def transcriptor_test(face_classif, url=None):
     predictions = transcriptor(face_classif, url=url)
     def flat_results():
-        flat_p = [["".join(prediction) for prediction in row] for row in predictions]
+        flat_p = [["".join(prediction) for prediction in row  if len(prediction) > 0] for row in predictions]
         return flat_p
 
     with open(settings["examples"]+"txt/transcriptor.txt") as f:
@@ -168,37 +172,54 @@ def transcriptor_test(face_classif, url=None):
 
     def count(result, prediction):
         total = 0
-        total_comp = 0
+        total_positive = 0
         for v1, v2 in zip(result, prediction):
-            total += len(v1)
-            total_comp += [x == y for x, y in zip(v1, v2)].count(True)
-        return total, total_comp
+            mask = [x == y for x, y in zip(v1, v2)]
+            total += len(mask)
+            total_positive += mask.count(True)
+        return total, total_positive
 
+    def mark_error(result, prediction):
+        results = []
+        for r_chain, p_chain in zip(result, prediction):
+            #print(r_chain, p_chain)
+            str_l = []
+            for chr1, chr2 in zip(r_chain, p_chain):
+                if chr1 != chr2:
+                    str_l.append("|")
+                    str_l.append(chr2)
+                    str_l.append("|")
+                else:
+                    str_l.append(chr2)
+            results.append("".join(str_l))
+        return results
+                    
     flat_p = flat_results()
     total = 0
-    total_comp = 0
+    total_positive = 0
     total_false = 0
     for result, prediction in zip(results, flat_p):
+        d_false = 0
         if len(result) == len(prediction):
             v1, v2 = count(result, prediction)
+            error_p = mark_error(result, prediction)
         else:
-            base_set = set(result)
-            pred_set = set(prediction)
-            diff = pred_set.difference(base_set)
             clean_prediction = []
-            for elem in diff:
-                if len(elem) != 1:
+            for elem in prediction:
+                if len(elem) > 1 or elem == "$":
                     clean_prediction.append(elem)
-                else:
+                elif len(elem) == 1 and elem != "$":
                     total_false += 1
+                    d_false += 1
             v1, v2 = count(result, clean_prediction)
-        if v1 != v2:
-            print(result, prediction, "X")
+            error_p = mark_error(result, clean_prediction)
+        if v1 != v2 or len(result) != len(prediction):
+            print(result, error_p, d_false, prediction)
         total += v1
-        total_comp += v2
+        total_positive += v2
             
-    print(total, total_comp, total_false)
-    print("Accuracy {}%".format(total_comp*100./total))
+    print(total, total_positive, total_false)
+    print("Accuracy {}%".format(total_positive*100./total))
     print("Precision {}%".format((total-total_false)*100/total))
 
 def build_dirty_image_set(url, face_classif):
@@ -310,7 +331,7 @@ if __name__ == '__main__':
             face_classif.detector_test_dataset()
         elif args.train:
             face_classif.fit()
-            face_classif.train(num_steps=10)
+            face_classif.train(num_steps=20)
         elif args.transcriptor:
             if args.transcriptor == "d":
                 transcriptor(face_classif)
