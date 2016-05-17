@@ -118,7 +118,7 @@ class ProcessImage(object):
                     getattr(self, filter_)()
 
 class DataSetBuilder(object):
-    def __init__(self, name, image_size, channels=None, dataset_path=DATASET_PATH, 
+    def __init__(self, name, image_size=None, channels=None, dataset_path=DATASET_PATH, 
                 test_folder_path=FACE_TEST_FOLDER_PATH, 
                 train_folder_path=FACE_FOLDER_PATH,
                 filters=None):
@@ -194,8 +194,14 @@ class DataSetBuilder(object):
         train_dataset, valid_dataset, test_dataset, train_labels, valid_labels, test_labels = self.cross_validators(self.dataset, self.labels, train_size=train_size, valid_size=valid_size)
         try:
             f = open(self.dataset_path+self.name, 'wb')
+            if self.filters is not None and "local" in self.filters:
+                l_filters = self.filters["local"].get_filters()
+            if self.filters is not None and "global" in self.filters:
+                g_filters =self. filters["global"].get_filters()
             save = {
-                'filters': filters,
+                'local_filters': l_filters,
+                'global_filters': g_filters,
+                'array_length': self.image_size,
                 'train_dataset': train_dataset,
                 'train_labels': train_labels,
                 'valid_dataset': valid_dataset,
@@ -216,7 +222,9 @@ class DataSetBuilder(object):
     def load_dataset(self, name, dataset_path=DATASET_PATH):
         with open(dataset_path+name, 'rb') as f:
             save = pickle.load(f)
-            print('Filters: {}'.format(save['filters']))
+            print('Array length {}'.format(save['array_length']))
+            print('Global filters: {}'.format(save['global_filters']))
+            print('Local filters: {}'.format(save['local_filters']))
             print('Training set DS[{}], labels[{}]'.format(
                 save['train_dataset'].shape, len(save['train_labels'])))
             print('Validation set DS[{}], labels[{}]'.format(
@@ -258,9 +266,12 @@ class DataSetBuilder(object):
         self.images_to_dataset(from_directory)
         self.save_dataset()
 
-    def original_to_images_set(self, url):
+    def original_to_images_set(self, url, filter_data=True):
         images_data, labels = self.labels_images(url)
-        images = (ProcessImage(img, self.filters).image for img in images_data)
+        if filter_data:
+            images = (ProcessImage(img, self.filters["global"].get_filters()).image for img in images_data)
+        else:
+            images = (ProcessImage(img, []).image for img in images_data)
         image_train, image_test = self.build_train_test(zip(labels, images))
 
         for number_id, images in image_train.items():

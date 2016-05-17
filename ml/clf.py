@@ -96,6 +96,7 @@ class BasicFaceClassif(object):
         self.valid_labels = dataset['valid_labels']
         self.test_dataset = dataset['test_dataset']
         self.test_labels = dataset['test_labels']
+        self.image_size = dataset['array_length']
         self.reformat_all()
 
 class SVCFace(BasicFaceClassif):

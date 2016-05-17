@@ -18,16 +18,17 @@ PICTURES = ["Pictures/tickets/DSC_0055.jpg", "Pictures/tickets/DSC_0056.jpg",
         "Pictures/tickets/DSC_0060.jpg", "Pictures/tickets/DSC_0061.jpg",
         "Pictures/tickets/DSC_0062.jpg"]
 
-    
+
+IMAGE_SIZE = 90
 g_filters = ml.ds.Filters("global", [("rgb2gray", None), ("threshold", 91)])
 l_filters = ml.ds.Filters("local", 
-        [("cut", None), ("resize", (90, 'asym')), ("merge_offset", (90, 1))])
+        [("cut", None), ("resize", (IMAGE_SIZE, 'asym')), ("merge_offset", (IMAGE_SIZE, 1))])
 
 def numbers_images_set(url):
     import xmltodict
     from tqdm import tqdm
 
-    ds_builder = ml.ds.DataSetBuilder("", 90)
+    ds_builder = ml.ds.DataSetBuilder("", IMAGE_SIZE)
     labels_images = {}
     root = settings["examples"]
     for filename in ['tickets.xml', 'tickets_test.xml']:
@@ -106,7 +107,7 @@ def test():
         dlib.hit_enter_to_continue()
 
 
-def transcriptor(face_classif, url=None):
+def transcriptor(face_classif, g_filters, l_filters, url=None):
     from dlib import rectangle
     from utils.order import order_2d
 
@@ -117,7 +118,7 @@ def transcriptor(face_classif, url=None):
         pictures = [os.path.join(root, f) for f in PICTURES]
     else:
         pictures = [url]
-    win = dlib.image_window()
+    #win = dlib.image_window()
     for f in pictures[0:1]:
         print("Processing file: {}".format(f))
         img_o = io.imread(f)
@@ -126,9 +127,9 @@ def transcriptor(face_classif, url=None):
         print("Numbers detected: {}".format(len(dets)))
         data = [(e.left(), e.top(), e.right(), e.bottom()) for e in dets]
         for block, coords in order_2d(data, index=(1, 0), block_size=40).items()[:12]:
-            win.clear_overlay()
+            #win.clear_overlay()
             #print("####BLOCK:", block)
-            win.set_image(img_o)
+            #win.set_image(img_o)
             numbers = []
             for v in coords:
                 r = rectangle(*v)
@@ -137,7 +138,7 @@ def transcriptor(face_classif, url=None):
                 l_filters.add_value("cut", m_rectangle)
                 thumb_bg = ml.ds.ProcessImage(img, l_filters.get_filters()).image
                 #win.set_image(img_as_ubyte(thumb_bg))
-                win.add_overlay(r)
+                #win.add_overlay(r)
                 #print(list(face_classif.predict([thumb_bg])))
                 numbers.append(thumb_bg)
                 #dlib.hit_enter_to_continue()
@@ -159,13 +160,14 @@ def transcriptor(face_classif, url=None):
                     tmp_l.append(v1[0])
             results.append(tmp_l)
             #print(results)
-            dlib.hit_enter_to_continue()
+            #dlib.hit_enter_to_continue()
             yield results
 
-def transcriptor_test(face_classif, url=None):
-    predictions = transcriptor(face_classif, url=url)
+def transcriptor_test(face_classif, g_filters, l_filters, url=None):
+    predictions = transcriptor(face_classif, g_filters, l_filters, url=url)
     def flat_results():
-        flat_p = [["".join(prediction) for prediction in row  if len(prediction) > 0] for row in predictions]
+        flat_p = [["".join(prediction) for prediction in row  if len(prediction) > 0] 
+            for row in predictions]
         return flat_p
 
     with open(settings["examples"]+"txt/transcriptor.txt") as f:
@@ -184,7 +186,6 @@ def transcriptor_test(face_classif, url=None):
     def mark_error(result, prediction):
         results = []
         for r_chain, p_chain in zip(result, prediction):
-            #print(r_chain, p_chain)
             str_l = []
             for chr1, chr2 in zip(r_chain, p_chain):
                 if chr1 != chr2:
@@ -228,13 +229,13 @@ def build_dirty_image_set(url, face_classif):
     from tqdm import tqdm
     root = settings["examples"]
     numbers = []
-    for f in PICTURES:#[PICTURES[4], PICTURES[6]]:
+    for f in PICTURES:
         url_l = os.path.join(root, f)
         path = os.path.join(settings["root_data"], settings["checkpoints"])
         detector = dlib.simple_object_detector(path+"detector.svm")
         img_o = io.imread(url_l)
         dets = detector(img_o)
-        img = ml.ds.ProcessImage(image, g_filters.get_filters()).image
+        img = ml.ds.ProcessImage(img_o, g_filters.get_filters()).image
         print("Numbers detected: {}".format(len(dets)))        
         for r in dets:
             m_rectangle = (r.top(), r.top() + r.height()-2, 
@@ -272,7 +273,6 @@ if __name__ == '__main__':
     parser.add_argument("--build-dirty", help="", action="store_true")
     args = parser.parse_args()
     
-    image_size = 90
     if args.dataset:
         dataset_name = args.dataset
     else:
@@ -280,11 +280,14 @@ if __name__ == '__main__':
 
     checkpoints_path = os.path.join(settings["root_data"], "checkpoints/")
     if args.build:
-        ds_builder = ml.ds.DataSetBuilder(dataset_name, 90, 
+        ds_builder = ml.ds.DataSetBuilder(dataset_name, image_size=IMAGE_SIZE, 
             dataset_path=settings["root_data"]+settings["dataset"], 
             test_folder_path=settings["root_data"]+settings["pictures"]+"tickets/test/", 
-            train_folder_path=settings["root_data"]+settings["pictures"]+"tickets/train/")
-        ds_builder.original_to_images_set(settings["root_data"]+settings["pictures"]+"tickets/numbers/")
+            train_folder_path=settings["root_data"]+settings["pictures"]+"tickets/train/",
+            filters={"local": l_filters, "global": g_filters})
+        ds_builder.original_to_images_set(
+            settings["root_data"]+settings["pictures"]+"tickets/numbers/",
+            filter_data=False)
         ds_builder.build_dataset(settings["root_data"]+settings["pictures"]+"tickets/train/")
     elif args.build_numbers_set:
         numbers_images_set(settings["root_data"]+settings["pictures"]+"tickets/numbers/")
@@ -296,33 +299,33 @@ if __name__ == '__main__':
         #Test accuracy: precision: 0.984424, recall: 0.985447, average precision: 0.982171
     elif args.test_hog:
         test()
-    else:        
+    else:
+        dataset = ml.ds.DataSetBuilder.load_dataset(dataset_name, 
+            dataset_path=settings["root_data"]+settings["dataset"])
         classifs = {
             "svc": {
                 "name": ml.clf.SVCFace,
-                "params": {"image_size": image_size, "check_point_path": checkpoints_path}},
+                "params": {"check_point_path": checkpoints_path}},
             "tensor": {
                 "name": ml.clf.TensorFace,
-                "params": {"image_size": image_size, "check_point_path": checkpoints_path}},
+                "params": {"check_point_path": checkpoints_path}},
             "tensor2": {
                 "name": ml.clf.TfLTensor,
-                "params": {"image_size": image_size, "check_point_path": checkpoints_path}},
+                "params": {"check_point_path": checkpoints_path}},
             "cnn": {
                 "name": ml.clf.ConvTensor,
-                "params": {"num_channels": 1, "image_size": image_size}},
+                "params": {"num_channels": 1}},
             "residual": {
                 "name": ml.clf.ResidualTensor,
-                "params": {"num_channels": 1, "image_size": image_size}}
+                "params": {"num_channels": 1}}
         }
         class_ = classifs[args.clf]["name"]
         params = classifs[args.clf]["params"]
-        dataset = ml.ds.DataSetBuilder.load_dataset(dataset_name, 
-            dataset_path=settings["root_data"]+settings["dataset"])
         face_classif = class_(dataset_name, dataset, **params)
         face_classif.batch_size = 10
         print("#########", face_classif.__class__.__name__)
         if args.test:
-            ds_builder = ml.ds.DataSetBuilder(dataset_name, 90, 
+            ds_builder = ml.ds.DataSetBuilder(dataset_name, 
                 dataset_path=settings["root_data"]+settings["dataset"], 
                 test_folder_path=settings["root_data"]+settings["pictures"]+"/tickets/test/", 
                 train_folder_path=settings["root_data"]+settings["pictures"]+"/tickets/train/")
@@ -334,11 +337,15 @@ if __name__ == '__main__':
             face_classif.train(num_steps=20)
         elif args.transcriptor:
             if args.transcriptor == "d":
-                transcriptor(face_classif)
+                g_filters = ml.ds.Filters("global", dataset["global_filters"])
+                l_filters = ml.ds.Filters("local", dataset["local_filters"])
+                transcriptor(face_classif, g_filters, l_filters)
             else:
-                transcriptor(face_classif, url=args.transcriptor)
+                transcriptor(face_classif, g_filters, l_filters, url=args.transcriptor)
         elif args.transcriptor_test:
-            transcriptor_test(face_classif)
+            g_filters = ml.ds.Filters("global", dataset["global_filters"])
+            l_filters = ml.ds.Filters("local", dataset["local_filters"])
+            transcriptor_test(face_classif, g_filters, l_filters)
         elif args.build_dirty:
             build_dirty_image_set(
                 settings["root_data"]+settings["pictures"]+"tickets/dirty_numbers/", 
