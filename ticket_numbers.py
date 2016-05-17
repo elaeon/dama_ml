@@ -16,7 +16,9 @@ settings = get_settings()
 PICTURES = ["Pictures/tickets/DSC_0055.jpg", "Pictures/tickets/DSC_0056.jpg",
         "Pictures/tickets/DSC_0058.jpg", "Pictures/tickets/DSC_0059.jpg",
         "Pictures/tickets/DSC_0060.jpg", "Pictures/tickets/DSC_0061.jpg",
-        "Pictures/tickets/DSC_0062.jpg"]
+        "Pictures/tickets/DSC_0062.jpg", "Pictures/tickets/DSC_0053.jpg",
+        "Pictures/tickets/DSC_0054.jpg", "Pictures/tickets/DSC_0057.jpg",
+        "Pictures/tickets/DSC_0063.jpg"]
 
 
 IMAGE_SIZE = 90
@@ -118,7 +120,7 @@ def transcriptor(face_classif, g_filters, l_filters, url=None):
         pictures = [os.path.join(root, f) for f in PICTURES]
     else:
         pictures = [url]
-    #win = dlib.image_window()
+    win = dlib.image_window()
     for f in pictures[0:1]:
         print("Processing file: {}".format(f))
         img_o = io.imread(f)
@@ -126,10 +128,10 @@ def transcriptor(face_classif, g_filters, l_filters, url=None):
         img = ml.ds.ProcessImage(img_o, g_filters.get_filters()).image
         print("Numbers detected: {}".format(len(dets)))
         data = [(e.left(), e.top(), e.right(), e.bottom()) for e in dets]
-        for block, coords in order_2d(data, index=(1, 0), block_size=40).items()[:12]:
-            #win.clear_overlay()
+        for block, coords in order_2d(data, index=(1, 0), block_size=40).items():
+            win.clear_overlay()
             #print("####BLOCK:", block)
-            #win.set_image(img_o)
+            win.set_image(img_o)
             numbers = []
             for v in coords:
                 r = rectangle(*v)
@@ -138,7 +140,7 @@ def transcriptor(face_classif, g_filters, l_filters, url=None):
                 l_filters.add_value("cut", m_rectangle)
                 thumb_bg = ml.ds.ProcessImage(img, l_filters.get_filters()).image
                 #win.set_image(img_as_ubyte(thumb_bg))
-                #win.add_overlay(r)
+                win.add_overlay(r)
                 #print(list(face_classif.predict([thumb_bg])))
                 numbers.append(thumb_bg)
                 #dlib.hit_enter_to_continue()
@@ -160,7 +162,7 @@ def transcriptor(face_classif, g_filters, l_filters, url=None):
                     tmp_l.append(v1[0])
             results.append(tmp_l)
             #print(results)
-            #dlib.hit_enter_to_continue()
+            dlib.hit_enter_to_continue()
             yield results
 
 def transcriptor_test(face_classif, g_filters, l_filters, url=None):
@@ -286,17 +288,15 @@ if __name__ == '__main__':
             train_folder_path=settings["root_data"]+settings["pictures"]+"tickets/train/",
             filters={"local": l_filters, "global": g_filters})
         ds_builder.original_to_images_set(
-            settings["root_data"]+settings["pictures"]+"tickets/numbers/",
+            settings["root_data"]+settings["pictures"]+"tickets/dirty_numbers/",
             filter_data=False)
         ds_builder.build_dataset(settings["root_data"]+settings["pictures"]+"tickets/train/")
     elif args.build_numbers_set:
         numbers_images_set(settings["root_data"]+settings["pictures"]+"tickets/numbers/")
     elif args.train_hog:
         train()
-        #Test accuracy: precision: 0.973604, recall: 0.996881, average precision: 0.994134
-        #Test accuracy: precision: 0.974619, recall: 0.997921, average precision: 0.995007
-        #Test accuracy: precision: 0.975585, recall: 0.996881, average precision: 0.994052
         #Test accuracy: precision: 0.984424, recall: 0.985447, average precision: 0.982171
+        #Test accuracy: precision: 0.981405, recall: 0.987526, average precision: 0.984276
     elif args.test_hog:
         test()
     else:
@@ -334,7 +334,7 @@ if __name__ == '__main__':
             face_classif.detector_test_dataset()
         elif args.train:
             face_classif.fit()
-            face_classif.train(num_steps=20)
+            face_classif.train(num_steps=25)
         elif args.transcriptor:
             if args.transcriptor == "d":
                 g_filters = ml.ds.Filters("global", dataset["global_filters"])

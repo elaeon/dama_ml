@@ -683,9 +683,6 @@
     <box top='1673' left='282' width='51' height='86'>
       <label>0</label>
     </box>
-    <box top='1306' left='335' width='49' height='81'>
-      <label>0</label>
-    </box>
     <box top='1302' left='105' width='52' height='84'>
       <label>0</label>
     </box>
@@ -1362,6 +1359,9 @@
       <label>5</label>
     </box>
     <box top='1937' left='1105' width='50' height='85'>
+      <label>0</label>
+    </box>
+    <box top='1306' left='333' width='50' height='84'>
       <label>0</label>
     </box>
   </image>
