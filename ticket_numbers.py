@@ -25,6 +25,7 @@ IMAGE_SIZE = 90
 g_filters = ml.ds.Filters("global", [("rgb2gray", None), ("threshold", 91)])
 l_filters = ml.ds.Filters("local", 
         [("cut", None), ("resize", (IMAGE_SIZE, 'asym')), ("merge_offset", (IMAGE_SIZE, 1))])
+DETECTOR_NAME = settings["detector_name"]
 
 def numbers_images_set(url):
     import xmltodict
@@ -59,7 +60,7 @@ def numbers_images_set(url):
         ds_builder.save_images(url, label, images)
 
 
-def train():
+def train(xml_filename):
     options = dlib.simple_object_detector_training_options()
 
     options.add_left_right_image_flips = False
@@ -71,13 +72,13 @@ def train():
 
     root = settings["examples"] + "xml/"
     path = os.path.join(settings["root_data"], "checkpoints/")
-    training_xml_path = os.path.join(root, "tickets.xml")
+    training_xml_path = os.path.join(root, xml_filename)
     testing_xml_path = os.path.join(root, "tickets_test.xml")
-    dlib.train_simple_object_detector(training_xml_path, path+"detector.svm", options)
+    dlib.train_simple_object_detector(training_xml_path, path+DETECTOR_NAME+".svm", options)
 
     print("")  # Print blank line to create gap from previous output
     print("Test accuracy: {}".format(
-        dlib.test_simple_object_detector(testing_xml_path, path+"detector.svm")))
+        dlib.test_simple_object_detector(testing_xml_path, path+DETECTOR_NAME+".svm")))
 
 
 def test():
@@ -85,7 +86,7 @@ def test():
     # will load it from disk.
     #detector = dlib.fhog_object_detector("detector.svm")
     path = os.path.join(settings["root_data"], "checkpoints/")
-    detector = dlib.simple_object_detector(path+"detector.svm")
+    detector = dlib.simple_object_detector(path+DETECTOR_NAME+".svm")
 
     # We can look at the HOG filter we learned.  It should look like a face.  Neat!
 
@@ -114,24 +115,24 @@ def transcriptor(face_classif, g_filters, l_filters, url=None):
     from utils.order import order_2d
 
     path = os.path.join(settings["root_data"], settings["checkpoints"])
-    detector = dlib.simple_object_detector(path+"detector.svm")
+    detector = dlib.simple_object_detector(path+DETECTOR_NAME+".svm")
     root = settings["examples"]
     if url is None:
-        pictures = [os.path.join(root, f) for f in PICTURES]
+        pictures = [os.path.join(root, f) for f in PICTURES[0:1]]
     else:
         pictures = [url]
-    win = dlib.image_window()
-    for f in pictures[0:1]:
+    #win = dlib.image_window()
+    for f in pictures:
         print("Processing file: {}".format(f))
         img_o = io.imread(f)
         dets = detector(img_o)
         img = ml.ds.ProcessImage(img_o, g_filters.get_filters()).image
         print("Numbers detected: {}".format(len(dets)))
         data = [(e.left(), e.top(), e.right(), e.bottom()) for e in dets]
-        for block, coords in order_2d(data, index=(1, 0), block_size=40).items():
-            win.clear_overlay()
+        for block, coords in order_2d(data, index=(1, 0), block_size=20).items():
+            #win.clear_overlay()
             #print("####BLOCK:", block)
-            win.set_image(img_o)
+            #win.set_image(img_o)
             numbers = []
             for v in coords:
                 r = rectangle(*v)
@@ -140,13 +141,14 @@ def transcriptor(face_classif, g_filters, l_filters, url=None):
                 l_filters.add_value("cut", m_rectangle)
                 thumb_bg = ml.ds.ProcessImage(img, l_filters.get_filters()).image
                 #win.set_image(img_as_ubyte(thumb_bg))
-                win.add_overlay(r)
+                #win.add_overlay(r)
                 #print(list(face_classif.predict([thumb_bg])))
                 numbers.append(thumb_bg)
                 #dlib.hit_enter_to_continue()
             numbers_predicted = list(face_classif.predict(numbers))
             num_pred_coords = zip(numbers_predicted, coords)
-            num_pred_coords = num_pred_coords + [num_pred_coords[-2]]
+            if len(num_pred_coords) >= 2:
+                num_pred_coords = num_pred_coords + [num_pred_coords[-2]]
             results = []
             tmp_l = []
             for v1, v2 in zip(num_pred_coords, num_pred_coords[1:]):
@@ -162,7 +164,7 @@ def transcriptor(face_classif, g_filters, l_filters, url=None):
                     tmp_l.append(v1[0])
             results.append(tmp_l)
             #print(results)
-            dlib.hit_enter_to_continue()
+            #dlib.hit_enter_to_continue()
             yield results
 
 def transcriptor_test(face_classif, g_filters, l_filters, url=None):
@@ -234,7 +236,7 @@ def build_dirty_image_set(url, face_classif):
     for f in PICTURES:
         url_l = os.path.join(root, f)
         path = os.path.join(settings["root_data"], settings["checkpoints"])
-        detector = dlib.simple_object_detector(path+"detector.svm")
+        detector = dlib.simple_object_detector(path+DETECTOR_NAME+".svm")
         img_o = io.imread(url_l)
         dets = detector(img_o)
         img = ml.ds.ProcessImage(img_o, g_filters.get_filters()).image
@@ -256,6 +258,38 @@ def build_dirty_image_set(url, face_classif):
         pbar.set_description("Processing {}".format(label))
         ml.ds.DataSetBuilder.save_images(url, label, images)
 
+def transcriptor_product_price_writer(filename, g_filters, l_filters, url=None):
+    predictions = transcriptor(face_classif, g_filters, l_filters, url=url)
+    def flat_results():
+        flat_p = [["".join(prediction) for prediction in row  if len(prediction) > 0] 
+            for row in predictions]
+        return flat_p
+
+    product_price = []
+    product = None
+    wait = True
+    for row in flat_results():
+        try:
+            index = row.index("$")
+            price = int(row[index+1]) / 100.
+            if product is not None and wait:
+                wait = False
+            elif product is None and index > 0:
+                product = row[index-1]
+                wait = False
+        except ValueError:
+            for elem in row:
+                if elem.rfind('00000') > 0:
+                    #print(elem)
+                    wait = True
+                    product = elem
+
+        if wait is False and product is not None:
+            product_price.append((product, price))
+            product = None
+
+    print(product_price)
+
 #test DSC_0055, DSC_0056
 #training DSC_0053, DSC_0054, DSC_0057, DSC_0059, DSC_0062, DSC_0058
 if __name__ == '__main__':
@@ -268,7 +302,7 @@ if __name__ == '__main__':
     parser.add_argument("--train", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--clf", help="selecciona el clasificador", type=str)
     parser.add_argument("--build_numbers_set", help="crea el detector de numeros", action="store_true")
-    parser.add_argument("--train-hog", action="store_true")
+    parser.add_argument("--train-hog", help="--train-hog [xml_filename]", type=str)
     parser.add_argument("--test-hog", action="store_true")
     parser.add_argument("--transcriptor", type=str)
     parser.add_argument("--transcriptor-test", type=str)
@@ -294,9 +328,10 @@ if __name__ == '__main__':
     elif args.build_numbers_set:
         numbers_images_set(settings["root_data"]+settings["pictures"]+"tickets/numbers/")
     elif args.train_hog:
-        train()
+        train(args.train_hog)
         #Test accuracy: precision: 0.984424, recall: 0.985447, average precision: 0.982171
         #Test accuracy: precision: 0.981405, recall: 0.987526, average precision: 0.984276
+        #Test accuracy: precision: 0.982438, recall: 0.988565, average precision: 0.985214
     elif args.test_hog:
         test()
     else:
@@ -336,12 +371,12 @@ if __name__ == '__main__':
             face_classif.fit()
             face_classif.train(num_steps=25)
         elif args.transcriptor:
+            g_filters = ml.ds.Filters("global", dataset["global_filters"])
+            l_filters = ml.ds.Filters("local", dataset["local_filters"])
             if args.transcriptor == "d":
-                g_filters = ml.ds.Filters("global", dataset["global_filters"])
-                l_filters = ml.ds.Filters("local", dataset["local_filters"])
-                transcriptor(face_classif, g_filters, l_filters)
+                transcriptor_product_price_writer(face_classif, g_filters, l_filters)
             else:
-                transcriptor(face_classif, g_filters, l_filters, url=args.transcriptor)
+                transcriptor_product_price_writer(face_classif, g_filters, l_filters, url=args.transcriptor)
         elif args.transcriptor_test:
             g_filters = ml.ds.Filters("global", dataset["global_filters"])
             l_filters = ml.ds.Filters("local", dataset["local_filters"])
