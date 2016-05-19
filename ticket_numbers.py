@@ -127,7 +127,7 @@ def transcriptor(face_classif, g_filters, l_filters, url=None):
         img_o = io.imread(f)
         dets = detector(img_o)
         img = ml.ds.ProcessImage(img_o, g_filters.get_filters()).image
-        print("Numbers detected: {}".format(len(dets)))
+        #print("Numbers detected: {}".format(len(dets)))
         data = [(e.left(), e.top(), e.right(), e.bottom()) for e in dets]
         for block, coords in order_2d(data, index=(1, 0), block_size=20).items():
             #win.clear_overlay()
@@ -258,7 +258,8 @@ def build_dirty_image_set(url, face_classif):
         pbar.set_description("Processing {}".format(label))
         ml.ds.DataSetBuilder.save_images(url, label, images)
 
-def transcriptor_product_price_writer(filename, g_filters, l_filters, url=None):
+def transcriptor_product_price_writer(face_classif, g_filters, l_filters, url=None):
+    import heapq
     predictions = transcriptor(face_classif, g_filters, l_filters, url=url)
     def flat_results():
         flat_p = [["".join(prediction) for prediction in row  if len(prediction) > 0] 
@@ -267,28 +268,37 @@ def transcriptor_product_price_writer(filename, g_filters, l_filters, url=None):
 
     product_price = []
     product = None
-    wait = True
+    prices = []
     for row in flat_results():
+        #print(row)
         try:
             index = row.index("$")
             price = int(row[index+1]) / 100.
-            if product is not None and wait:
-                wait = False
-            elif product is None and index > 0:
-                product = row[index-1]
-                wait = False
+            prices.append(price)
+            if index > 0 and len(row[index-1]) > 10:
+                product_price.append((row[index-1], price))
+                product = None
+            elif product is not None:
+                product_price.append((product, price))
+                product = None
         except ValueError:
             for elem in row:
-                if elem.rfind('00000') > 0:
-                    #print(elem)
-                    wait = True
+                if elem.rfind('000') > 0:
                     product = elem
+        except IndexError:
+            print("Error Index", row)
+    return product_price, sum([price for _, price in product_price]), heapq.nlargest(2, prices)
 
-        if wait is False and product is not None:
-            product_price.append((product, price))
-            product = None
-
-    print(product_price)
+def calc_avg_price_tickets(filename, g_filters, l_filters):
+    base_path = settings["base_dir"]+settings["examples"]+settings["pictures"]
+    prices = 0
+    counter = 0
+    for path in glob.glob(os.path.join(base_path, "tickets/*.jpg")):
+        _, _, v = transcriptor_product_price_writer(filename, g_filters, l_filters, url=path)
+        prices += v[1]
+        print("COST:", v[1])
+        counter += 1
+    print("TOTAL:", prices / counter)
 
 #test DSC_0055, DSC_0056
 #training DSC_0053, DSC_0054, DSC_0057, DSC_0059, DSC_0062, DSC_0058
@@ -375,6 +385,8 @@ if __name__ == '__main__':
             l_filters = ml.ds.Filters("local", dataset["local_filters"])
             if args.transcriptor == "d":
                 transcriptor_product_price_writer(face_classif, g_filters, l_filters)
+            if args.transcriptor == "avg":
+                calc_avg_price_tickets(face_classif, g_filters, l_filters)
             else:
                 transcriptor_product_price_writer(face_classif, g_filters, l_filters, url=args.transcriptor)
         elif args.transcriptor_test:

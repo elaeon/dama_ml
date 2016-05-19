@@ -6,7 +6,8 @@ def get_settings(filename="settings.cfg"):
             "pictures": "Pictures/", 
             "dataset": "dataset/",
             "checkpoints": "checkpoints/",
-            "detector_name": "detector"}
+            "detector_name": "detector",
+            "base_dir": None}
     config = ConfigParser.ConfigParser()
     config.read('settings.cfg')
     for flag, v in flags.items():
