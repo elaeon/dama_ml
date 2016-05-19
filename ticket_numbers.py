@@ -64,7 +64,7 @@ def train(xml_filename):
     options = dlib.simple_object_detector_training_options()
 
     options.add_left_right_image_flips = False
-    options.C = 1
+    options.C = .5
     options.num_threads = 4
     options.be_verbose = True
     #options.epsilon = 0.0005
@@ -294,9 +294,9 @@ def calc_avg_price_tickets(filename, g_filters, l_filters):
     prices = 0
     counter = 0
     for path in glob.glob(os.path.join(base_path, "tickets/*.jpg")):
-        _, _, v = transcriptor_product_price_writer(filename, g_filters, l_filters, url=path)
+        _, sum_, v = transcriptor_product_price_writer(filename, g_filters, l_filters, url=path)
         prices += v[1]
-        print("COST:", v[1])
+        print("COST:", v, sum_)
         counter += 1
     print("TOTAL:", prices / counter)
 
@@ -339,9 +339,7 @@ if __name__ == '__main__':
         numbers_images_set(settings["root_data"]+settings["pictures"]+"tickets/numbers/")
     elif args.train_hog:
         train(args.train_hog)
-        #Test accuracy: precision: 0.984424, recall: 0.985447, average precision: 0.982171
-        #Test accuracy: precision: 0.981405, recall: 0.987526, average precision: 0.984276
-        #Test accuracy: precision: 0.982438, recall: 0.988565, average precision: 0.985214
+        #Test accuracy: precision: 0.982456, recall: 0.989605, average precision: 0.986585
     elif args.test_hog:
         test()
     else:
@@ -388,7 +386,11 @@ if __name__ == '__main__':
             if args.transcriptor == "avg":
                 calc_avg_price_tickets(face_classif, g_filters, l_filters)
             else:
-                transcriptor_product_price_writer(face_classif, g_filters, l_filters, url=args.transcriptor)
+                l, s, v = transcriptor_product_price_writer(
+                    face_classif, g_filters, l_filters, url=args.transcriptor)
+                print(l)
+                print(s)
+                print(v)
         elif args.transcriptor_test:
             g_filters = ml.ds.Filters("global", dataset["global_filters"])
             l_filters = ml.ds.Filters("local", dataset["local_filters"])
