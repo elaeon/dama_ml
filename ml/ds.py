@@ -219,9 +219,15 @@ class DataSetBuilder(object):
             len(test_labels), len(valid_labels), len(train_labels)))
 
     @classmethod
-    def load_dataset(self, name, dataset_path=DATASET_PATH):
+    def load_dataset(self, name, dataset_path=DATASET_PATH, validation_dataset=True):
         with open(dataset_path+name, 'rb') as f:
             save = pickle.load(f)
+            if validation_dataset is False:
+                save['train_dataset'] = np.concatenate((save['train_dataset'], save['valid_dataset']), axis=0)
+                save['train_labels'] = save['train_labels'] + save['valid_labels']
+                save['valid_dataset'] = np.empty(0)
+                save['valid_labels'] = []
+
             print('Array length {}'.format(save['array_length']))
             print('Global filters: {}'.format(save['global_filters']))
             print('Local filters: {}'.format(save['local_filters']))
@@ -243,12 +249,16 @@ class DataSetBuilder(object):
         for i, image in enumerate(images):
             io.imsave("{}face-{}-{}.png".format(n_url, number_id, i), image)
 
-    def labels_images(self, url):
+    def labels_images(self, urls):
         images_data = []
         labels = []
-        for number_id, path in self.images_from_directories(url):
-            images_data.append(io.imread(path))
-            labels.append(number_id)
+        if not isinstance(urls, list):
+            urls = [urls]
+
+        for url in urls:
+            for number_id, path in self.images_from_directories(url):
+                images_data.append(io.imread(path))
+                labels.append(number_id)
 
         return images_data, labels
 
@@ -273,7 +283,6 @@ class DataSetBuilder(object):
         else:
             images = (ProcessImage(img, []).image for img in images_data)
         image_train, image_test = self.build_train_test(zip(labels, images))
-
         for number_id, images in image_train.items():
             self.save_images(self.train_folder_path, number_id, images)
 

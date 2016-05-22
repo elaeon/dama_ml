@@ -105,10 +105,13 @@ class SVCFace(BasicFaceClassif):
         self.check_point_path = check_point_path
 
     def fit(self):
-        #from sklearn.linear_model import LogisticRegression
         from sklearn import svm
-        #reg = LogisticRegression(penalty='l2')
+        #clf = svm.OneClassSVM(nu=0.0001, kernel="linear")
+        #self.model_o = clf.fit(self.train_dataset)
+        #y_pred_train = clf.predict(self.train_dataset)
+        #indices = np.where(y_pred_train==1)
         reg = svm.LinearSVC(C=1.0, max_iter=1000)
+        #reg = reg.fit(self.train_dataset[indices], self.train_labels[indices])
         reg = reg.fit(self.train_dataset, self.train_labels)
         self.model = reg
 
@@ -134,7 +137,7 @@ class SVCFace(BasicFaceClassif):
 
     def save_model(self):
         from sklearn.externals import joblib
-        joblib.dump(self.model, '{}.pkl'.format(self.check_point_path+self.model_name)) 
+        joblib.dump(self.model, '{}.pkl'.format(self.check_point_path+self.model_name))
 
     def load_model(self):
         from sklearn.externals import joblib

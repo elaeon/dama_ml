@@ -332,7 +332,8 @@ if __name__ == '__main__':
             train_folder_path=settings["root_data"]+settings["pictures"]+"tickets/train/",
             filters={"local": l_filters, "global": g_filters})
         ds_builder.original_to_images_set(
-            settings["root_data"]+settings["pictures"]+"tickets/dirty_numbers/",
+            [settings["root_data"]+settings["pictures"]+"tickets/dirty_numbers/",
+            settings["root_data"]+settings["pictures"]+"tickets/numbers/"],
             filter_data=False)
         ds_builder.build_dataset(settings["root_data"]+settings["pictures"]+"tickets/train/")
     elif args.build_numbers_set:
@@ -344,7 +345,7 @@ if __name__ == '__main__':
         test()
     else:
         dataset = ml.ds.DataSetBuilder.load_dataset(dataset_name, 
-            dataset_path=settings["root_data"]+settings["dataset"])
+            dataset_path=settings["root_data"]+settings["dataset"], validation_dataset=False)
         classifs = {
             "svc": {
                 "name": ml.clf.SVCFace,
@@ -372,8 +373,9 @@ if __name__ == '__main__':
                 dataset_path=settings["root_data"]+settings["dataset"], 
                 test_folder_path=settings["root_data"]+settings["pictures"]+"/tickets/test/", 
                 train_folder_path=settings["root_data"]+settings["pictures"]+"/tickets/train/")
+            print("------ TEST FROM IMAGES")
             ds_builder.detector_test(face_classif)
-            print("------ Dataset")
+            print("------ TEST FROM TEST-DATASET")
             face_classif.detector_test_dataset()
         elif args.train:
             face_classif.fit()
