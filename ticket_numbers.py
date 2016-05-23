@@ -18,7 +18,8 @@ PICTURES = ["Pictures/tickets/DSC_0055.jpg", "Pictures/tickets/DSC_0056.jpg",
         "Pictures/tickets/DSC_0060.jpg", "Pictures/tickets/DSC_0061.jpg",
         "Pictures/tickets/DSC_0062.jpg", "Pictures/tickets/DSC_0053.jpg",
         "Pictures/tickets/DSC_0054.jpg", "Pictures/tickets/DSC_0057.jpg",
-        "Pictures/tickets/DSC_0063.jpg"]
+        "Pictures/tickets/DSC_0063.jpg", "Pictures/tickets/DSC_0064.jpg",
+        "Pictures/tickets/DSC_0065.jpg"]
 
 
 IMAGE_SIZE = 90
@@ -399,5 +400,5 @@ if __name__ == '__main__':
             transcriptor_test(face_classif, g_filters, l_filters)
         elif args.build_dirty:
             build_dirty_image_set(
-                settings["root_data"]+settings["pictures"]+"tickets/dirty_numbers/", 
+                settings["root_data"]+settings["pictures"]+"tickets/dirty_numbers2/", 
                 face_classif)

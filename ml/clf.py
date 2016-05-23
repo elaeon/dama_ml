@@ -110,7 +110,7 @@ class SVCFace(BasicFaceClassif):
         #self.model_o = clf.fit(self.train_dataset)
         #y_pred_train = clf.predict(self.train_dataset)
         #indices = np.where(y_pred_train==1)
-        reg = svm.LinearSVC(C=1.0, max_iter=1000)
+        reg = svm.LinearSVC(C=1, max_iter=1000)
         #reg = reg.fit(self.train_dataset[indices], self.train_labels[indices])
         reg = reg.fit(self.train_dataset, self.train_labels)
         self.model = reg
