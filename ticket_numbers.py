@@ -329,18 +329,32 @@ if __name__ == '__main__':
     if args.build:
         ds_builder = ml.ds.DataSetBuilder(dataset_name, image_size=IMAGE_SIZE, 
             dataset_path=settings["root_data"]+settings["dataset"], 
-            test_folder_path=settings["root_data"]+settings["pictures"]+"tickets/test/", 
             train_folder_path=settings["root_data"]+settings["pictures"]+"tickets/train/",
             filters={"local": l_filters, "global": g_filters})
         ds_builder.original_to_images_set(
             [settings["root_data"]+settings["pictures"]+"tickets/dirty_numbers/",
             settings["root_data"]+settings["pictures"]+"tickets/numbers/"],
-            filter_data=False)
-        ds_builder.build_dataset(settings["root_data"]+settings["pictures"]+"tickets/train/")
+            filter_data=False,
+            test_data=False)
+        ds_builder.build_dataset()
     elif args.build_numbers_set:
         numbers_images_set(settings["root_data"]+settings["pictures"]+"tickets/numbers/")
     elif args.train_hog:
-        train(args.train_hog)
+        g_filters = ml.ds.Filters("global", [("rgb2gray", None), ("threshold", 91)])
+        root = settings["examples"]
+        for path in [os.path.join(root, f) for f in PICTURES]:
+            name = path.split("/").pop()
+            #name = ".".join(name.split(".")[:-1]) + ".png"
+            image = io.imread(path)
+            image = ml.ds.ProcessImage(image, g_filters.get_filters()).image
+            image = image + 0
+            #m_rectangle = (50, 50 + 50, 20 - 5, 20 + 50)
+            #l_filters.add_value("cut", m_rectangle)
+            #image = ml.ds.ProcessImage(image, l_filters.get_filters()).image
+            io.imsave(settings["examples"]+"Pictures/tickets_processed/"+name, image)
+            print("Saved ", path, name)
+            break
+        #train(args.train_hog)
         #Test accuracy: precision: 0.982456, recall: 0.989605, average precision: 0.986585
     elif args.test_hog:
         test()
@@ -372,7 +386,6 @@ if __name__ == '__main__':
         if args.test:
             ds_builder = ml.ds.DataSetBuilder(dataset_name, 
                 dataset_path=settings["root_data"]+settings["dataset"], 
-                test_folder_path=settings["root_data"]+settings["pictures"]+"/tickets/test/", 
                 train_folder_path=settings["root_data"]+settings["pictures"]+"/tickets/train/")
             print("------ TEST FROM IMAGES")
             ds_builder.detector_test(face_classif)

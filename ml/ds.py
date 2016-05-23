@@ -263,26 +263,34 @@ class DataSetBuilder(object):
         return images_data, labels
 
     def detector_test(self, face_classif):
-        images_data = []
-        labels = []
-        for number_id, path in self.images_from_directories(self.test_folder_path):
-            images_data.append(io.imread(path))
-            labels.append(number_id)
-        
-        predictions = face_classif.predict(images_data)
-        face_classif.accuracy(list(predictions), np.asarray(labels))
+        try:
+            images_data = []
+            labels = []
+            for number_id, path in self.images_from_directories(self.test_folder_path):
+                images_data.append(io.imread(path))
+                labels.append(number_id)
+            
+            predictions = face_classif.predict(images_data)
+            face_classif.accuracy(list(predictions), np.asarray(labels))
+        except OSError:
+            pass
 
-    def build_dataset(self, from_directory):
-        self.images_to_dataset(from_directory)
+    def build_dataset(self):
+        self.images_to_dataset(self.train_folder_path)
         self.save_dataset()
+        self.clean_directory(self.train_folder_path)
 
-    def original_to_images_set(self, url, filter_data=True):
+    def clean_directory(self, path):
+        import shutil
+        shutil.rmtree(path)
+
+    def original_to_images_set(self, url, filter_data=True, test_data=True):
         images_data, labels = self.labels_images(url)
         if filter_data:
             images = (ProcessImage(img, self.filters["global"].get_filters()).image for img in images_data)
         else:
             images = (ProcessImage(img, []).image for img in images_data)
-        image_train, image_test = self.build_train_test(zip(labels, images))
+        image_train, image_test = self.build_train_test(zip(labels, images), sample=test_data)
         for number_id, images in image_train.items():
             self.save_images(self.train_folder_path, number_id, images)
 
