@@ -4,7 +4,7 @@
 <name>imglab dataset</name>
 <comment>Created by imglab tool.</comment>
 <images>
-  <image file='../Pictures/tickets/DSC_0053.jpg'>
+  <image file='../Pictures/tickets_processed/DSC_0053.jpg'>
     <box top='162' left='710' width='49' height='78'>
       <label>9</label>
     </box>
@@ -1542,7 +1542,7 @@
       <label>$</label>
     </box>
   </image>
-  <image file='../Pictures/tickets/DSC_0054.jpg'>
+  <image file='../Pictures/tickets_processed/DSC_0054.jpg'>
     <box top='570' left='1406' width='49' height='86'>
       <label>$</label>
     </box>
@@ -2786,7 +2786,7 @@
       <label>$</label>
     </box>
   </image>
-  <image file='../Pictures/tickets/DSC_0057.jpg'>
+  <image file='../Pictures/tickets_processed/DSC_0057.jpg'>
     <box top='1371' left='925' width='49' height='82'>
       <label>3</label>
     </box>
@@ -4258,7 +4258,7 @@
       <label>$</label>
     </box>
   </image>
-  <image file='../Pictures/tickets/DSC_0059.jpg'>
+  <image file='../Pictures/tickets_processed/DSC_0059.jpg'>
     <box top='171' left='289' width='50' height='94'>
       <label>3</label>
     </box>
@@ -5610,7 +5610,7 @@
       <label>9</label>
     </box>
   </image>
-  <image file='../Pictures/tickets/DSC_0058.jpg'>
+  <image file='../Pictures/tickets_processed/DSC_0058.jpg'>
     <box top='296' left='656' width='52' height='84'>
       <label>9</label>
     </box>
@@ -6764,7 +6764,7 @@
       <label>0</label>
     </box>
   </image>
-  <image file='../Pictures/tickets/DSC_0062.jpg'>
+  <image file='../Pictures/tickets_processed/DSC_0062.jpg'>
     <box top='222' left='1093' width='46' height='86'>
       <label>2</label>
     </box>
@@ -8101,7 +8101,7 @@
       <label>$</label>
     </box>
   </image>
-  <image file='../Pictures/tickets/DSC_0063.jpg'>
+  <image file='../Pictures/tickets_processed/DSC_0063.jpg'>
     <box top='10' left='1059' width='50' height='78'>
       <label>8</label>
     </box>

@@ -15,6 +15,16 @@ FACE_ORIGINAL_PATH = "/home/sc/Pictures/face_o/"
 FACE_TEST_FOLDER_PATH = "/home/sc/Pictures/test/"
 DATASET_PATH = "/home/sc/data/dataset/"
 
+
+def save_metadata(path, data):
+    with open(path, 'wb') as f:
+        pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
+
+def load_metadata(path):
+    with open(path, 'rb') as f:
+        data = pickle.load(f)
+    return data
+
 class Filters(object):
     def __init__(self, name, filters):
         from collections import OrderedDict
@@ -78,6 +88,9 @@ class ProcessImage(object):
     def cut(self, rectangle):
         top, bottom, left, right = rectangle
         self.image = self.image[top:bottom, left:right]
+
+    def as_ubyte(self):
+        self.image = img_as_ubyte(self.image)
 
     def merge_offset(self, image_size):
         if isinstance(image_size, int):
