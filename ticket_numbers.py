@@ -56,62 +56,98 @@ def numbers_images_set(url, g_filters):
         ds_builder.save_images(url, label, images)
 
 
-def train(xml_filename):
-    options = dlib.simple_object_detector_training_options()
+class HOG(object):
+    def __init__(self):
+        self.options = dlib.simple_object_detector_training_options()
 
-    options.add_left_right_image_flips = False
-    options.C = .5
-    options.num_threads = 4
-    options.be_verbose = True
-    #options.epsilon = 0.0005
-    #options.detection_window_size #60 pixels wide by 107 tall
+        self.options.add_left_right_image_flips = False
+        self.options.C = .5
+        self.options.num_threads = 4
+        self.options.be_verbose = True
+        #self.options.epsilon = 0.0005
+        #self.options.detection_window_size #60 pixels wide by 107 tall
 
-    root = settings["examples"] + "xml/"
-    path = os.path.join(settings["root_data"], "checkpoints/")
-    training_xml_path = os.path.join(root, xml_filename)
-    testing_xml_path = os.path.join(root, "tickets_test.xml")
-    dlib.train_simple_object_detector(training_xml_path, path+DETECTOR_NAME+".svm", options)
+    def train(xml_filename):
+        root = settings["examples"] + "xml/"
+        path = os.path.join(settings["root_data"], "checkpoints/")
+        training_xml_path = os.path.join(root, xml_filename)
+        testing_xml_path = os.path.join(root, "tickets_test.xml")
+        DETECTOR_NAME = xml_filename.replace(".xml", "")
+        dlib.train_simple_object_detector(training_xml_path, path+DETECTOR_NAME+".svm", self.options)
 
-    print("")  # Print blank line to create gap from previous output
-    print("Test accuracy: {}".format(
-        dlib.test_simple_object_detector(testing_xml_path, path+DETECTOR_NAME+".svm")))
-
-
-def test(d_filters):
-    # Now let's use the detector as you would in a normal application.  First we
-    # will load it from disk.
-    #detector = dlib.fhog_object_detector("detector.svm")
-    path = os.path.join(settings["root_data"], "checkpoints/")
-    detector = dlib.simple_object_detector(path+DETECTOR_NAME+".svm")
-
-    # We can look at the HOG filter we learned.  It should look like a face.  Neat!
-
-    # Now let's run the detector over the images in the faces folder and display the
-    # results.
-    print("Showing detections on the images in the faces folder...")
-    root = settings["examples"] + settings["pictures"] + "tickets/"
-    win = dlib.image_window()
-    #glob.glob(os.path.join(faces_folder, "*.jpg")):
-    for path in [os.path.join(root, f) for f in PICTURES[0:1]]:
-        print(path)
-        print("Processing file: {}".format(path))
-        img = io.imread(path)
-        img = ml.ds.ProcessImage(img, d_filters.get_filters()).image
-        dets = detector(img)
-        print("Numbers detected: {}".format(len(dets)))
-
-        win.clear_overlay()
-        win.set_image(img)
-        win.add_overlay(dets)
-        dlib.hit_enter_to_continue()
+        print("")
+        print("Test accuracy: {}".format(
+            dlib.test_simple_object_detector(testing_xml_path, path+DETECTOR_NAME+".svm")))
 
 
-def transcriptor(face_classif, g_filters, l_filters, d_filters, url=None):
+    def test(self, detector_path):
+        # Now let's use the detector as you would in a normal application.  First we
+        # will load it from disk.
+        #detector = dlib.fhog_object_detector("detector.svm")
+        #path = os.path.join(settings["root_data"], "checkpoints/")
+        #detector = dlib.simple_object_detector(path+DETECTOR_NAME+".svm")
+
+        # We can look at the HOG filter we learned.  It should look like a face.  Neat!
+
+        # Now let's run the detector over the images in the faces folder and display the
+        # results.
+        #print("Showing detections on the images in the faces folder...")
+        #root = settings["examples"] + settings["pictures"] + "tickets/"
+        #win = dlib.image_window()
+        #glob.glob(os.path.join(faces_folder, "*.jpg")):
+        #for path in [os.path.join(root, f) for f in PICTURES[0:1]]:
+        #    print(path)
+        #    print("Processing file: {}".format(path))
+        #    img = io.imread(path)
+        #    img = ml.ds.ProcessImage(img, d_filters.get_filters()).image
+        #    dets = detector(img)
+        #    print("Numbers detected: {}".format(len(dets)))
+
+        #    win.clear_overlay()
+        #    win.set_image(img)
+        #    win.add_overlay(dets)
+        #    dlib.hit_enter_to_continue()
+        
+        root = settings["examples"] + "xml/"
+        path = os.path.join(settings["root_data"], "checkpoints/")
+        testing_xml_path = os.path.join(root, "tickets_test.xml")
+        return dlib.test_simple_object_detector(testing_xml_path, detector_path)
+
+    def images_from_directories(self, folder_base):
+        images = []
+        for directory in os.listdir(folder_base):
+            files = os.path.join(folder_base, directory)
+            if os.path.isdir(files):
+                number_id = directory
+                for image_file in os.listdir(files):
+                    images.append((number_id, os.path.join(files, image_file)))
+        return images
+
+    def test_set(self):
+        files = {}
+        for k, v in self.images_from_directories(os.path.join(settings["root_data"], "checkpoints/Hog/")):
+            files.setdefault(k, {})
+            if v.endswith(".svm"):
+                files[k]["svm"] = v
+            else:
+                files[k]["meta"] = v
+
+        results_test = []
+        for name, type_ in files.items():
+            meta = ml.ds.load_metadata(type_["meta"])
+            build_tickets_processed(ml.ds.Filters("detector", meta["d_filters"]))
+            results_test.append((name, self.test(type_["svm"])))
+            delete_tickets_processed()
+
+        for name, result in results_test:
+            print(result.average_precision, result.precision, result.recall, name)
+
+def transcriptor(face_classif, g_filters, l_filters, d_filters, detector_path, url=None):
     from dlib import rectangle
     from utils.order import order_2d
 
     path = os.path.join(settings["root_data"], settings["checkpoints"])
-    detector = dlib.simple_object_detector(path+DETECTOR_NAME+".svm")
+    detector = dlib.simple_object_detector(detector_path)
     root = settings["examples"] + settings["pictures"] + "tickets/"
     if url is None:
         pictures = [os.path.join(root, f) for f in PICTURES[0:1]]
@@ -167,8 +203,8 @@ def transcriptor(face_classif, g_filters, l_filters, d_filters, url=None):
             #dlib.hit_enter_to_continue()
             yield results
 
-def transcriptor_test(face_classif, g_filters, l_filters, d_filters, url=None):
-    predictions = transcriptor(face_classif, g_filters, l_filters, d_filters, url=url)
+def transcriptor_test(face_classif, g_filters, l_filters, d_filters, detector_path, url=None):
+    predictions = transcriptor(face_classif, g_filters, l_filters, d_filters, detector_path, url=url)
     def flat_results():
         flat_p = [["".join(prediction) for prediction in row if len(prediction) > 0] 
             for row in predictions]
@@ -309,7 +345,7 @@ def build_tickets_processed(d_filters):
         image = ml.ds.ProcessImage(image, d_filters.get_filters()).image
         d_path = os.path.join(tickets_processed_url, name)
         io.imsave(d_path, image)
-        print("Saved ", path, d_path)
+        #print("Saved ", path, d_path)
 
 def delete_tickets_processed():
     import shutil
@@ -337,16 +373,21 @@ if __name__ == '__main__':
     parser.add_argument("--transcriptor", type=str)
     parser.add_argument("--transcriptor-test", type=str)
     parser.add_argument("--build-dirty", help="", action="store_true")
+    parser.add_argument("--build-tickets", action="store_true")
     args = parser.parse_args()
-    
+
     if args.dataset:
         dataset_name = args.dataset
     else:
-        dataset_name = "test"
+        dataset_name = None
 
     checkpoints_path = os.path.join(settings["root_data"], "checkpoints/")
-    detector_path_f = checkpoints_path + DETECTOR_NAME + "_fil.pkl"
-    if args.build:
+    detector_path_f = checkpoints_path + "Hog/" + DETECTOR_NAME + "/" + DETECTOR_NAME + "_meta.pkl"
+    detector_path = checkpoints_path + "Hog/" + DETECTOR_NAME + "/" + DETECTOR_NAME + ".svm"
+    if args.build_tickets:
+        d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"])
+        build_tickets_processed(d_filters)
+    elif args.build:
         ds_builder = ml.ds.DataSetBuilder(dataset_name, image_size=IMAGE_SIZE, 
             dataset_path=settings["root_data"]+settings["dataset"], 
             train_folder_path=settings["root_data"]+settings["pictures"]+"tickets/train/",
@@ -367,11 +408,14 @@ if __name__ == '__main__':
         d_filters = ml.ds.Filters("global", [])
         build_tickets_processed(d_filters)
         ml.ds.save_metadata(detector_path_f, {"d_filters": d_filters.get_filters()})
+        ml.ds.save_metadata(detector_path_f, {"filename_training": args.train_hog})
         train(args.train_hog)
         delete_tickets_processed()
         print("Cleaned")
     elif args.test_hog:
-        test(ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"]))
+        hog = HOG()
+        hog.test_set()
+        #test(ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"]))
     else:
         dataset = ml.ds.DataSetBuilder.load_dataset(dataset_name, 
             dataset_path=settings["root_data"]+settings["dataset"], validation_dataset=False)
@@ -407,7 +451,7 @@ if __name__ == '__main__':
             face_classif.detector_test_dataset()
         elif args.train:
             face_classif.fit()
-            face_classif.train(num_steps=25)
+            face_classif.train(num_steps=10)
         elif args.transcriptor:
             d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"])
             g_filters = ml.ds.Filters("global", dataset["global_filters"])
@@ -425,7 +469,7 @@ if __name__ == '__main__':
             print("Detector Filters:", d_filters.get_filters())
             g_filters = ml.ds.Filters("global", dataset["global_filters"])
             l_filters = ml.ds.Filters("local", dataset["local_filters"])
-            transcriptor_test(face_classif, g_filters, l_filters, d_filters)
+            transcriptor_test(face_classif, g_filters, l_filters, d_filters, detector_path)
         elif args.build_dirty:
             d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"])
             build_dirty_image_set(

@@ -103,6 +103,7 @@ class SVCFace(BasicFaceClassif):
     def __init__(self, model_name, dataset, image_size=90, check_point_path=CHECK_POINT_PATH):
         super(SVCFace, self).__init__(model_name, dataset, image_size=image_size)
         self.check_point_path = check_point_path
+        self.check_point = check_point_path + self.__class__.__name__ + "/"
 
     def fit(self):
         from sklearn import svm
@@ -137,11 +138,17 @@ class SVCFace(BasicFaceClassif):
 
     def save_model(self):
         from sklearn.externals import joblib
-        joblib.dump(self.model, '{}.pkl'.format(self.check_point_path+self.model_name))
+        if not os.path.exists(self.check_point):
+            os.makedirs(self.check_point)
+        if not os.path.exists(self.check_point + self.model_name + "/"):
+            os.makedirs(self.check_point + self.model_name + "/")
+        joblib.dump(self.model, '{}.pkl'.format(
+            self.check_point+self.model_name+"/"+self.model_name))
 
     def load_model(self):
         from sklearn.externals import joblib
-        self.model = joblib.load('{}.pkl'.format(self.check_point_path+self.model_name))
+        self.model = joblib.load('{}.pkl'.format(
+            self.check_point+self.model_name+"/"+self.model_name))
 
 
 class BasicTensor(BasicFaceClassif):
