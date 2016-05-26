@@ -105,7 +105,7 @@ class SVCFace(BasicFaceClassif):
         self.check_point_path = check_point_path
         self.check_point = check_point_path + self.__class__.__name__ + "/"
 
-    def fit(self):
+    def prepare_model(self):
         from sklearn import svm
         #clf = svm.OneClassSVM(nu=0.0001, kernel="linear")
         #self.model_o = clf.fit(self.train_dataset)
@@ -117,9 +117,10 @@ class SVCFace(BasicFaceClassif):
         self.model = reg
 
     def train(self, num_steps=0):
+        self.prepare_model()
         predictions = self.model.predict(self.test_dataset)
         score = self.accuracy(predictions, self.test_labels)
-        print('Test accuracy: %.1f%%' % (score*100))
+        print('Test accuracy: %.3f%%' % (score*100))
         self.save_model()
         return score
 
@@ -167,7 +168,7 @@ class BasicTensor(BasicFaceClassif):
     def transform_img(self, img):
         return img.reshape((-1, self.image_size * self.image_size)).astype(np.float32)
 
-    def fit(self, dropout=True):
+    def prepare_model(self, dropout=True):
         self.graph = tf.Graph()
         with self.graph.as_default():
             # Input data. For the training data, we use a placeholder that will be fed
@@ -205,6 +206,7 @@ class BasicTensor(BasicFaceClassif):
             self.test_prediction = tf.nn.softmax(tf.matmul(self.tf_test_dataset, weights) + biases)
 
     def train(self, num_steps=3001):
+        self.prepare_model()
         with tf.Session(graph=self.graph) as session:
             saver = tf.train.Saver()
             tf.initialize_all_variables().run()
@@ -269,7 +271,7 @@ class TensorFace(BasicTensor):
                 yield self.convert_label(classification)
 
 class TfLTensor(TensorFace):
-    def fit(self, dropout=False):
+    def prepare_model(self, dropout=False):
         import tflearn
         input_layer = tflearn.input_data(shape=[None, self.image_size*self.image_size])
         dense1 = tflearn.fully_connected(input_layer, 124, activation='tanh',
@@ -288,14 +290,16 @@ class TfLTensor(TensorFace):
 
     def train(self, num_steps=1000):
         import tflearn
-        self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
-        self.model.fit(self.train_dataset, 
-            self.train_labels, 
-            n_epoch=num_steps, 
-            validation_set=(self.test_dataset, self.test_labels),
-            show_metric=True, 
-            run_id="dense_model")
-        self.save_model()
+        with tf.Graph().as_default():
+            self.prepare_model()
+            self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
+            self.model.fit(self.train_dataset, 
+                self.train_labels, 
+                n_epoch=num_steps, 
+                validation_set=(self.test_dataset, self.test_labels),
+                show_metric=True, 
+                run_id="dense_model")
+            self.save_model()
     
     def save_model(self):
         if not os.path.exists(self.check_point):
@@ -307,7 +311,7 @@ class TfLTensor(TensorFace):
 
     def load_model(self):
         import tflearn
-        self.fit()
+        self.prepare_model()
         self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
         self.model.load('{}{}.ckpt'.format(self.check_point + self.model_name + "/", self.model_name))
 
@@ -315,11 +319,12 @@ class TfLTensor(TensorFace):
         return self._predict(imgs)
 
     def _predict(self, imgs):
-        if self.model is None:
-            self.load_model()
-        for img in imgs:
-            img = self.transform_img(img)
-            yield self.convert_label(self.model.predict(img))
+        with tf.Graph().as_default():
+            if self.model is None:
+                self.load_model()
+            for img in imgs:
+                img = self.transform_img(img)
+                yield self.convert_label(self.model.predict(img))
 
 class ConvTensor(TfLTensor):
     def __init__(self, *args, **kwargs):
@@ -333,7 +338,7 @@ class ConvTensor(TfLTensor):
     def transform_img(self, img):
         return img.reshape((-1, self.image_size, self.image_size, self.num_channels)).astype(np.float32)
 
-    def fit(self, dropout=False):
+    def prepare_model(self, dropout=False):
         import tflearn
         network = tflearn.input_data(
             shape=[None, self.image_size, self.image_size, self.num_channels], name='input')
@@ -355,21 +360,25 @@ class ConvTensor(TfLTensor):
 
     def train(self, num_steps=1000):
         import tflearn
-        self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
-        self.model.fit(self.train_dataset, 
-            self.train_labels, 
-            n_epoch=num_steps, 
-            validation_set=(self.test_dataset, self.test_labels),
-            show_metric=True, 
-            snapshot_step=100,
-            run_id="conv_model")
-        self.save_model()
+        with tf.Graph().as_default():
+            self.prepare_model()
+            self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
+            self.model.fit(self.train_dataset, 
+                self.train_labels, 
+                n_epoch=num_steps, 
+                validation_set=(self.test_dataset, self.test_labels),
+                show_metric=True, 
+                snapshot_step=100,
+                run_id="conv_model")
+            self.save_model()
 
 class ResidualTensor(TfLTensor):
     def __init__(self, *args, **kwargs):
         self.num_channels = kwargs.get("num_channels", 1)
         self.patch_size = 3
         self.depth = 32
+        if "num_channels" in kwargs:
+            del kwargs["num_channels"]
         super(ResidualTensor, self).__init__(*args, **kwargs)
 
     def transform_img(self, img):
@@ -393,7 +402,7 @@ class ResidualTensor(TfLTensor):
         print('RF-Validation set', self.valid_dataset.shape, self.valid_labels.shape)
         print('RF-Test set', self.test_dataset.shape, self.test_labels.shape)
 
-    def fit(self, dropout=False):
+    def prepare_model(self, dropout=False):
         import tflearn
 
         net = tflearn.input_data(shape=[None, self.image_size, self.image_size, self.num_channels])
@@ -419,20 +428,22 @@ class ResidualTensor(TfLTensor):
 
     def train(self, num_steps=1000):
         import tflearn
-        self.model = tflearn.DNN(self.net, 
-            checkpoint_path='model_resnet_mnist', 
-            tensorboard_verbose=3,
-            max_checkpoints=10)
+        with tf.Graph().as_default():
+            self.prepare_model()
+            self.model = tflearn.DNN(self.net, 
+                checkpoint_path='model_resnet_mnist', 
+                tensorboard_verbose=3,
+                max_checkpoints=10)
 
-        self.model.fit(self.train_dataset, 
-            self.train_labels, 
-            n_epoch=num_steps, 
-            validation_set=(self.test_dataset, self.test_labels),
-            show_metric=True, 
-            snapshot_step=100,
-            batch_size=self.batch_size,
-            run_id="resnet_mnist")
-        self.save_model()
+            self.model.fit(self.train_dataset, 
+                self.train_labels, 
+                n_epoch=num_steps, 
+                validation_set=(self.test_dataset, self.test_labels),
+                show_metric=True, 
+                snapshot_step=100,
+                batch_size=self.batch_size,
+                run_id="resnet_mnist")
+            self.save_model()
 
 
 class Tensor2LFace(TensorFace):

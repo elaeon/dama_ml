@@ -374,6 +374,7 @@ if __name__ == '__main__':
     parser.add_argument("--transcriptor-test", type=str)
     parser.add_argument("--build-dirty", help="", action="store_true")
     parser.add_argument("--build-tickets", action="store_true")
+    parser.add_argument("--test-clf", action="store_true")
     args = parser.parse_args()
 
     if args.dataset:
@@ -417,62 +418,63 @@ if __name__ == '__main__':
         hog.test_set()
         #test(ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"]))
     else:
-        dataset = ml.ds.DataSetBuilder.load_dataset(dataset_name, 
-            dataset_path=settings["root_data"]+settings["dataset"], validation_dataset=False)
         classifs = {
             "svc": {
                 "name": ml.clf.SVCFace,
                 "params": {"check_point_path": checkpoints_path}},
-            "tensor": {
-                "name": ml.clf.TensorFace,
-                "params": {"check_point_path": checkpoints_path}},
+            #"tensor": {
+            #    "name": ml.clf.TensorFace,
+            #    "params": {"check_point_path": checkpoints_path}},
             "tensor2": {
                 "name": ml.clf.TfLTensor,
                 "params": {"check_point_path": checkpoints_path}},
             "cnn": {
                 "name": ml.clf.ConvTensor,
-                "params": {"num_channels": 1}},
-            "residual": {
-                "name": ml.clf.ResidualTensor,
-                "params": {"num_channels": 1}}
+                "params": {"num_channels": 1, "check_point_path": checkpoints_path}},
+            #"residual": {
+            #    "name": ml.clf.ResidualTensor,
+            #    "params": {"num_channels": 1}}
         }
-        class_ = classifs[args.clf]["name"]
-        params = classifs[args.clf]["params"]
-        face_classif = class_(dataset_name, dataset, **params)
-        face_classif.batch_size = 10
-        print("#########", face_classif.__class__.__name__)
-        if args.test:
-            ds_builder = ml.ds.DataSetBuilder(dataset_name, 
-                dataset_path=settings["root_data"]+settings["dataset"], 
-                train_folder_path=settings["root_data"]+settings["pictures"]+"/tickets/train/")
-            print("------ TEST FROM IMAGES")
-            ds_builder.detector_test(face_classif)
-            print("------ TEST FROM TEST-DATASET")
-            face_classif.detector_test_dataset()
-        elif args.train:
-            face_classif.fit()
-            face_classif.train(num_steps=10)
-        elif args.transcriptor:
-            d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"])
-            g_filters = ml.ds.Filters("global", dataset["global_filters"])
-            l_filters = ml.ds.Filters("local", dataset["local_filters"])
-            if args.transcriptor == "avg":
-                calc_avg_price_tickets(face_classif, g_filters, l_filters, d_filters)
-            else:
-                l, s, v = transcriptor_product_price_writer(
-                    face_classif, g_filters, l_filters, url=args.transcriptor)
-                print(l)
-                print(s)
-                print(v)
-        elif args.transcriptor_test:
-            d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"])
-            print("Detector Filters:", d_filters.get_filters())
-            g_filters = ml.ds.Filters("global", dataset["global_filters"])
-            l_filters = ml.ds.Filters("local", dataset["local_filters"])
-            transcriptor_test(face_classif, g_filters, l_filters, d_filters, detector_path)
-        elif args.build_dirty:
-            d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"])
-            build_dirty_image_set(
-                settings["root_data"]+settings["pictures"]+"tickets/dirty_numbers2/", 
-                face_classif,
-                d_filters)
+        if args.test_clf:
+            dt = ml.ds.DataSetTest()
+            dt.dataset_test(classifs, dataset_name, settings["root_data"]+settings["dataset"])
+        else:
+            class_ = classifs[args.clf]["name"]
+            dataset = ml.ds.DataSetBuilder.load_dataset(dataset_name, 
+                dataset_path=settings["root_data"]+settings["dataset"], validation_dataset=False)
+            params = classifs[args.clf]["params"]
+            face_classif = class_(dataset_name, dataset, **params)
+            face_classif.batch_size = 10
+            print("#########", face_classif.__class__.__name__)
+            if args.test:
+                ds_builder = ml.ds.DataSetBuilder(dataset_name, 
+                    dataset_path=settings["root_data"]+settings["dataset"], 
+                    train_folder_path=settings["root_data"]+settings["pictures"]+"/tickets/train/")
+                print("------ TEST FROM TEST-DATASET")
+                face_classif.detector_test_dataset()
+            elif args.train:
+                face_classif.train(num_steps=1)
+            elif args.transcriptor:
+                d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"])
+                g_filters = ml.ds.Filters("global", dataset["global_filters"])
+                l_filters = ml.ds.Filters("local", dataset["local_filters"])
+                if args.transcriptor == "avg":
+                    calc_avg_price_tickets(face_classif, g_filters, l_filters, d_filters)
+                else:
+                    l, s, v = transcriptor_product_price_writer(
+                        face_classif, g_filters, l_filters, url=args.transcriptor)
+                    print(l)
+                    print(s)
+                    print(v)
+            elif args.transcriptor_test:
+                d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"])
+                print("Detector Filters:", d_filters.get_filters())
+                g_filters = ml.ds.Filters("global", dataset["global_filters"])
+                l_filters = ml.ds.Filters("local", dataset["local_filters"])
+                transcriptor_test(face_classif, g_filters, l_filters, d_filters, detector_path)
+            elif args.build_dirty:
+                d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"])
+                build_dirty_image_set(
+                    settings["root_data"]+settings["pictures"]+"tickets/dirty_numbers2/", 
+                    face_classif,
+                    d_filters)

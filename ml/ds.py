@@ -275,19 +275,6 @@ class DataSetBuilder(object):
 
         return images_data, labels
 
-    def detector_test(self, face_classif):
-        try:
-            images_data = []
-            labels = []
-            for number_id, path in self.images_from_directories(self.test_folder_path):
-                images_data.append(io.imread(path))
-                labels.append(number_id)
-            
-            predictions = face_classif.predict(images_data)
-            face_classif.accuracy(list(predictions), np.asarray(labels))
-        except OSError:
-            pass
-
     def build_dataset(self):
         self.images_to_dataset(self.train_folder_path)
         self.save_dataset()
@@ -343,3 +330,18 @@ class DataSetBuilder(object):
             return images_good, sample_data
         else:
             return images, {}
+
+class DataSetTest(object):
+
+    def dataset_test(self, classifs, dataset_name, dataset_dir_path):
+        print(dataset_name)
+        for classif_name in classifs:
+            classif = classifs[classif_name]["name"]
+            classif.batch_size = 10
+        #for dataset_name in os.listdir(check_point_path):
+            dataset = DataSetBuilder.load_dataset(dataset_name, 
+                dataset_path=dataset_dir_path)
+            params = classifs[classif_name]["params"]
+            clf = classif(dataset_name, dataset, **params)
+            print(classif_name)
+            clf.detector_test_dataset()
