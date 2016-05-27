@@ -232,7 +232,7 @@ class DataSetBuilder(object):
             len(test_labels), len(valid_labels), len(train_labels)))
 
     @classmethod
-    def load_dataset(self, name, dataset_path=DATASET_PATH, validation_dataset=True):
+    def load_dataset(self, name, dataset_path=DATASET_PATH, validation_dataset=True, pprint=True):
         with open(dataset_path+name, 'rb') as f:
             save = pickle.load(f)
             if validation_dataset is False:
@@ -241,15 +241,16 @@ class DataSetBuilder(object):
                 save['valid_dataset'] = np.empty(0)
                 save['valid_labels'] = []
 
-            print('Array length {}'.format(save['array_length']))
-            print('Global filters: {}'.format(save['global_filters']))
-            print('Local filters: {}'.format(save['local_filters']))
-            print('Training set DS[{}], labels[{}]'.format(
-                save['train_dataset'].shape, len(save['train_labels'])))
-            print('Validation set DS[{}], labels[{}]'.format(
-                save['valid_dataset'].shape, len(save['valid_labels'])))
-            print('Test set DS[{}], labels[{}]'.format(
-                save['test_dataset'].shape, len(save['test_labels'])))
+            if pprint:
+                print('Array length {}'.format(save['array_length']))
+                print('Global filters: {}'.format(save['global_filters']))
+                print('Local filters: {}'.format(save['local_filters']))
+                print('Training set DS[{}], labels[{}]'.format(
+                    save['train_dataset'].shape, len(save['train_labels'])))
+                print('Validation set DS[{}], labels[{}]'.format(
+                    save['valid_dataset'].shape, len(save['valid_labels'])))
+                print('Test set DS[{}], labels[{}]'.format(
+                    save['test_dataset'].shape, len(save['test_labels'])))
             return save
 
     @classmethod
@@ -331,17 +332,3 @@ class DataSetBuilder(object):
         else:
             return images, {}
 
-class DataSetTest(object):
-
-    def dataset_test(self, classifs, dataset_name, dataset_dir_path):
-        print(dataset_name)
-        for classif_name in classifs:
-            classif = classifs[classif_name]["name"]
-            classif.batch_size = 10
-        #for dataset_name in os.listdir(check_point_path):
-            dataset = DataSetBuilder.load_dataset(dataset_name, 
-                dataset_path=dataset_dir_path)
-            params = classifs[classif_name]["params"]
-            clf = classif(dataset_name, dataset, **params)
-            print(classif_name)
-            clf.detector_test_dataset()

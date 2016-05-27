@@ -45,16 +45,19 @@ class Measure(object):
         print("#############")
 
 class BasicFaceClassif(object):
-    def __init__(self, model_name, dataset, image_size=90):
+    def __init__(self, model_name, dataset, image_size=90, pprint=True):
         self.image_size = image_size
         self.model_name = model_name
         self.model = None
+        self.pprint = pprint
         self.le = preprocessing.LabelEncoder()
         self.load_dataset(dataset)
 
     def detector_test_dataset(self):
         predictions = self.predict(self.test_dataset)
-        self.accuracy(list(predictions), np.asarray([self.convert_label(label) for label in self.test_labels]))
+        measure = Measure(list(predictions), np.asarray([self.convert_label(label) 
+            for label in self.test_labels]))
+        print(self.__class__.__name__, measure.precision(), measure.recall(), measure.f1())
 
     def reformat(self, dataset, labels):
         dataset = dataset.reshape((-1, self.image_size * self.image_size)).astype(np.float32)
@@ -80,13 +83,15 @@ class BasicFaceClassif(object):
             self.valid_dataset, self.le.transform(self.valid_labels))
         self.test_dataset, self.test_labels = self.reformat(
             self.test_dataset, self.le.transform(self.test_labels))
-        print('RF-Training set', self.train_dataset.shape, self.train_labels.shape)
-        print('RF-Validation set', self.valid_dataset.shape, self.valid_labels.shape)
-        print('RF-Test set', self.test_dataset.shape, self.test_labels.shape)
+        if self.pprint:
+            print('RF-Training set', self.train_dataset.shape, self.train_labels.shape)
+            print('RF-Validation set', self.valid_dataset.shape, self.valid_labels.shape)
+            print('RF-Test set', self.test_dataset.shape, self.test_labels.shape)
 
     def accuracy(self, predictions, labels):
         measure = Measure(predictions, labels)
-        measure.print_all()
+        if self.pprint:
+            measure.print_all()
         return measure.accuracy()
 
     def load_dataset(self, dataset):
@@ -100,8 +105,8 @@ class BasicFaceClassif(object):
         self.reformat_all()
 
 class SVCFace(BasicFaceClassif):
-    def __init__(self, model_name, dataset, image_size=90, check_point_path=CHECK_POINT_PATH):
-        super(SVCFace, self).__init__(model_name, dataset, image_size=image_size)
+    def __init__(self, model_name, dataset, image_size=90, check_point_path=CHECK_POINT_PATH, pprint=True):
+        super(SVCFace, self).__init__(model_name, dataset, image_size=image_size, pprint=pprint)
         self.check_point_path = check_point_path
         self.check_point = check_point_path + self.__class__.__name__ + "/"
 
@@ -120,7 +125,6 @@ class SVCFace(BasicFaceClassif):
         self.prepare_model()
         predictions = self.model.predict(self.test_dataset)
         score = self.accuracy(predictions, self.test_labels)
-        print('Test accuracy: %.3f%%' % (score*100))
         self.save_model()
         return score
 
@@ -154,8 +158,8 @@ class SVCFace(BasicFaceClassif):
 
 class BasicTensor(BasicFaceClassif):
     def __init__(self, model_name, dataset, batch_size=None, 
-                image_size=90, check_point_path=CHECK_POINT_PATH):
-        super(BasicTensor, self).__init__(model_name, dataset, image_size=image_size)
+                image_size=90, check_point_path=CHECK_POINT_PATH, pprint=True):
+        super(BasicTensor, self).__init__(model_name, dataset, image_size=image_size, pprint=pprint)
         self.batch_size = batch_size
         self.check_point = check_point_path + self.__class__.__name__ + "/"
 
@@ -298,6 +302,7 @@ class TfLTensor(TensorFace):
                 n_epoch=num_steps, 
                 validation_set=(self.test_dataset, self.test_labels),
                 show_metric=True, 
+                batch_size=self.batch_size,
                 run_id="dense_model")
             self.save_model()
     
@@ -597,3 +602,16 @@ class ConvTensorFace(TensorFace):
             #print('Test accuracy: %.1f' % score)
             self.save_model(saver, session, step)
             return score
+
+
+class ClassifTest(object):
+
+    def dataset_test(self, classifs, dataset_name, dataset):
+        print("DATASET", dataset_name)
+        for classif_name in classifs:
+            classif = classifs[classif_name]["name"]
+            #classif.batch_size = 10
+        #for dataset_name in os.listdir(check_point_path):
+            params = classifs[classif_name]["params"]
+            clf = classif(dataset_name, dataset, **params)
+            clf.detector_test_dataset()

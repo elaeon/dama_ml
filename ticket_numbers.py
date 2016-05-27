@@ -375,6 +375,7 @@ if __name__ == '__main__':
     parser.add_argument("--build-dirty", help="", action="store_true")
     parser.add_argument("--build-tickets", action="store_true")
     parser.add_argument("--test-clf", action="store_true")
+    parser.add_argument("--epoch", type=int, default=1)
     args = parser.parse_args()
 
     if args.dataset:
@@ -421,30 +422,32 @@ if __name__ == '__main__':
         classifs = {
             "svc": {
                 "name": ml.clf.SVCFace,
-                "params": {"check_point_path": checkpoints_path}},
+                "params": {"check_point_path": checkpoints_path, "pprint": False}},
             #"tensor": {
             #    "name": ml.clf.TensorFace,
             #    "params": {"check_point_path": checkpoints_path}},
             "tensor2": {
                 "name": ml.clf.TfLTensor,
-                "params": {"check_point_path": checkpoints_path}},
+                "params": {"check_point_path": checkpoints_path, "pprint": False}},
             "cnn": {
                 "name": ml.clf.ConvTensor,
-                "params": {"num_channels": 1, "check_point_path": checkpoints_path}},
+                "params": {"num_channels": 1, "check_point_path": checkpoints_path, "pprint": False}},
             #"residual": {
             #    "name": ml.clf.ResidualTensor,
             #    "params": {"num_channels": 1}}
         }
         if args.test_clf:
-            dt = ml.ds.DataSetTest()
-            dt.dataset_test(classifs, dataset_name, settings["root_data"]+settings["dataset"])
+            dt = ml.clf.ClassifTest()
+            dataset = ml.ds.DataSetBuilder.load_dataset(dataset_name, 
+                dataset_path=settings["root_data"]+settings["dataset"], pprint=False)
+            dt.dataset_test(classifs, dataset_name, dataset)
         else:
             class_ = classifs[args.clf]["name"]
             dataset = ml.ds.DataSetBuilder.load_dataset(dataset_name, 
                 dataset_path=settings["root_data"]+settings["dataset"], validation_dataset=False)
             params = classifs[args.clf]["params"]
             face_classif = class_(dataset_name, dataset, **params)
-            face_classif.batch_size = 10
+            face_classif.batch_size = 100
             print("#########", face_classif.__class__.__name__)
             if args.test:
                 ds_builder = ml.ds.DataSetBuilder(dataset_name, 
@@ -453,7 +456,7 @@ if __name__ == '__main__':
                 print("------ TEST FROM TEST-DATASET")
                 face_classif.detector_test_dataset()
             elif args.train:
-                face_classif.train(num_steps=1)
+                face_classif.train(num_steps=args.epoch)
             elif args.transcriptor:
                 d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"])
                 g_filters = ml.ds.Filters("global", dataset["global_filters"])
