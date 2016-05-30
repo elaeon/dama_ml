@@ -30,3 +30,10 @@ def build_blocks(list_2d, block_size, index):
         blocks[block].append(elem)
         initial = elem
     return blocks
+
+def order_table_print(headers, table, order_column):
+    from tabulate import tabulate
+    headers_lower = [h.lower() for h in headers[1:]]
+    order_index = headers_lower.index(order_column)
+    table = sorted(table, key=lambda x: x[order_index], reverse=True)
+    print(tabulate(table, headers))

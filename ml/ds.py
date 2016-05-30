@@ -236,7 +236,8 @@ class DataSetBuilder(object):
         with open(dataset_path+name, 'rb') as f:
             save = pickle.load(f)
             if validation_dataset is False:
-                save['train_dataset'] = np.concatenate((save['train_dataset'], save['valid_dataset']), axis=0)
+                save['train_dataset'] = np.concatenate((
+                    save['train_dataset'], save['valid_dataset']), axis=0)
                 save['train_labels'] = save['train_labels'] + save['valid_labels']
                 save['valid_dataset'] = np.empty(0)
                 save['valid_labels'] = []

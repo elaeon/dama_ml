@@ -57,7 +57,7 @@ class BasicFaceClassif(object):
         predictions = self.predict(self.test_dataset)
         measure = Measure(list(predictions), np.asarray([self.convert_label(label) 
             for label in self.test_labels]))
-        print(self.__class__.__name__, measure.precision(), measure.recall(), measure.f1())
+        return self.__class__.__name__, measure
 
     def reformat(self, dataset, labels):
         dataset = dataset.reshape((-1, self.image_size * self.image_size)).astype(np.float32)
@@ -606,12 +606,15 @@ class ConvTensorFace(TensorFace):
 
 class ClassifTest(object):
 
-    def dataset_test(self, classifs, dataset_name, dataset):
+    def dataset_test(self, classifs, dataset_name, dataset, order_column):
+        from utils.order import order_table_print
+        headers = ["CLF", "Precision", "Recall", "F1"]
+        table = []
         print("DATASET", dataset_name)
         for classif_name in classifs:
             classif = classifs[classif_name]["name"]
-            #classif.batch_size = 10
-        #for dataset_name in os.listdir(check_point_path):
             params = classifs[classif_name]["params"]
             clf = classif(dataset_name, dataset, **params)
-            clf.detector_test_dataset()
+            name_clf, measure = clf.detector_test_dataset()
+            table.append((name_clf, measure.precision(), measure.recall(), measure.f1()))
+        order_table_print(headers, table, order_column)

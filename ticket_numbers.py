@@ -124,6 +124,8 @@ class HOG(object):
         return images
 
     def test_set(self):
+        from tabulate import tabulate
+        headers = ["Detector", "Precision", "Recall", "F1"]
         files = {}
         for k, v in self.images_from_directories(os.path.join(settings["root_data"], "checkpoints/Hog/")):
             files.setdefault(k, {})
@@ -132,15 +134,19 @@ class HOG(object):
             else:
                 files[k]["meta"] = v
 
-        results_test = []
+        table = []
         for name, type_ in files.items():
-            meta = ml.ds.load_metadata(type_["meta"])
+            try:
+                meta = ml.ds.load_metadata(type_["meta"])
+            except KeyError:
+                print("The file '{}' has not metadata".format(name))
+                continue
             build_tickets_processed(ml.ds.Filters("detector", meta["d_filters"]))
-            results_test.append((name, self.test(type_["svm"])))
+            measure = self.test(type_["svm"])
+            table.append((name, measure.precision, measure.recall, measure.average_precision))
             delete_tickets_processed()
 
-        for name, result in results_test:
-            print(result.average_precision, result.precision, result.recall, name)
+        print(tabulate(table, headers))
 
 def transcriptor(face_classif, g_filters, l_filters, d_filters, detector_path, url=None):
     from dlib import rectangle
@@ -374,7 +380,7 @@ if __name__ == '__main__':
     parser.add_argument("--transcriptor-test", type=str)
     parser.add_argument("--build-dirty", help="", action="store_true")
     parser.add_argument("--build-tickets", action="store_true")
-    parser.add_argument("--test-clf", action="store_true")
+    parser.add_argument("--test-clf", type=str, default="f1")
     parser.add_argument("--epoch", type=int, default=1)
     args = parser.parse_args()
 
@@ -429,9 +435,9 @@ if __name__ == '__main__':
             "tensor2": {
                 "name": ml.clf.TfLTensor,
                 "params": {"check_point_path": checkpoints_path, "pprint": False}},
-            "cnn": {
-                "name": ml.clf.ConvTensor,
-                "params": {"num_channels": 1, "check_point_path": checkpoints_path, "pprint": False}},
+            #"cnn": {
+            #    "name": ml.clf.ConvTensor,
+            #    "params": {"num_channels": 1, "check_point_path": checkpoints_path, "pprint": False}},
             #"residual": {
             #    "name": ml.clf.ResidualTensor,
             #    "params": {"num_channels": 1}}
@@ -440,7 +446,7 @@ if __name__ == '__main__':
             dt = ml.clf.ClassifTest()
             dataset = ml.ds.DataSetBuilder.load_dataset(dataset_name, 
                 dataset_path=settings["root_data"]+settings["dataset"], pprint=False)
-            dt.dataset_test(classifs, dataset_name, dataset)
+            dt.dataset_test(classifs, dataset_name, dataset, args.test_clf)
         else:
             class_ = classifs[args.clf]["name"]
             dataset = ml.ds.DataSetBuilder.load_dataset(dataset_name, 
