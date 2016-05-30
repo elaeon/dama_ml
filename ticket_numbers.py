@@ -9,6 +9,7 @@ import argparse
 import ml
 
 from utils.config import get_settings
+from utils.files import build_tickets_processed, delete_tickets_processed
 settings = get_settings()
 
 PICTURES = ["DSC_0055.jpg", "DSC_0056.jpg",
@@ -55,98 +56,6 @@ def numbers_images_set(url, g_filters):
         pbar.set_description("Processing {}".format(label))
         ds_builder.save_images(url, label, images)
 
-
-class HOG(object):
-    def __init__(self):
-        self.options = dlib.simple_object_detector_training_options()
-
-        self.options.add_left_right_image_flips = False
-        self.options.C = .5
-        self.options.num_threads = 4
-        self.options.be_verbose = True
-        #self.options.epsilon = 0.0005
-        #self.options.detection_window_size #60 pixels wide by 107 tall
-
-    def train(xml_filename):
-        root = settings["examples"] + "xml/"
-        path = os.path.join(settings["root_data"], "checkpoints/")
-        training_xml_path = os.path.join(root, xml_filename)
-        testing_xml_path = os.path.join(root, "tickets_test.xml")
-        DETECTOR_NAME = xml_filename.replace(".xml", "")
-        dlib.train_simple_object_detector(training_xml_path, path+DETECTOR_NAME+".svm", self.options)
-
-        print("")
-        print("Test accuracy: {}".format(
-            dlib.test_simple_object_detector(testing_xml_path, path+DETECTOR_NAME+".svm")))
-
-
-    def test(self, detector_path):
-        # Now let's use the detector as you would in a normal application.  First we
-        # will load it from disk.
-        #detector = dlib.fhog_object_detector("detector.svm")
-        #path = os.path.join(settings["root_data"], "checkpoints/")
-        #detector = dlib.simple_object_detector(path+DETECTOR_NAME+".svm")
-
-        # We can look at the HOG filter we learned.  It should look like a face.  Neat!
-
-        # Now let's run the detector over the images in the faces folder and display the
-        # results.
-        #print("Showing detections on the images in the faces folder...")
-        #root = settings["examples"] + settings["pictures"] + "tickets/"
-        #win = dlib.image_window()
-        #glob.glob(os.path.join(faces_folder, "*.jpg")):
-        #for path in [os.path.join(root, f) for f in PICTURES[0:1]]:
-        #    print(path)
-        #    print("Processing file: {}".format(path))
-        #    img = io.imread(path)
-        #    img = ml.ds.ProcessImage(img, d_filters.get_filters()).image
-        #    dets = detector(img)
-        #    print("Numbers detected: {}".format(len(dets)))
-
-        #    win.clear_overlay()
-        #    win.set_image(img)
-        #    win.add_overlay(dets)
-        #    dlib.hit_enter_to_continue()
-        
-        root = settings["examples"] + "xml/"
-        path = os.path.join(settings["root_data"], "checkpoints/")
-        testing_xml_path = os.path.join(root, "tickets_test.xml")
-        return dlib.test_simple_object_detector(testing_xml_path, detector_path)
-
-    def images_from_directories(self, folder_base):
-        images = []
-        for directory in os.listdir(folder_base):
-            files = os.path.join(folder_base, directory)
-            if os.path.isdir(files):
-                number_id = directory
-                for image_file in os.listdir(files):
-                    images.append((number_id, os.path.join(files, image_file)))
-        return images
-
-    def test_set(self):
-        from tabulate import tabulate
-        headers = ["Detector", "Precision", "Recall", "F1"]
-        files = {}
-        for k, v in self.images_from_directories(os.path.join(settings["root_data"], "checkpoints/Hog/")):
-            files.setdefault(k, {})
-            if v.endswith(".svm"):
-                files[k]["svm"] = v
-            else:
-                files[k]["meta"] = v
-
-        table = []
-        for name, type_ in files.items():
-            try:
-                meta = ml.ds.load_metadata(type_["meta"])
-            except KeyError:
-                print("The file '{}' has not metadata".format(name))
-                continue
-            build_tickets_processed(ml.ds.Filters("detector", meta["d_filters"]))
-            measure = self.test(type_["svm"])
-            table.append((name, measure.precision, measure.recall, measure.average_precision))
-            delete_tickets_processed()
-
-        print(tabulate(table, headers))
 
 def transcriptor(face_classif, g_filters, l_filters, d_filters, detector_path, url=None):
     from dlib import rectangle
@@ -329,6 +238,7 @@ def transcriptor_product_price_writer(face_classif, g_filters, l_filters, d_filt
             print("Error Index", row)
     return product_price, sum([price for _, price in product_price]), heapq.nlargest(2, prices)
 
+
 def calc_avg_price_tickets(filename, g_filters, l_filters, d_filters):
     base_path = settings["base_dir"] + settings["examples"] + settings["pictures"]
     prices = 0
@@ -340,23 +250,6 @@ def calc_avg_price_tickets(filename, g_filters, l_filters, d_filters):
         counter += 1
     print("TOTAL:", prices / counter)
 
-def build_tickets_processed(d_filters):
-    root = settings["examples"] + settings["pictures"]
-    tickets_processed_url = os.path.join(root, "tickets_processed/")
-    if not os.path.exists(tickets_processed_url):
-        os.makedirs(tickets_processed_url)
-    for path in [os.path.join(root + "tickets/", f) for f in PICTURES]:
-        name = path.split("/").pop()
-        image = io.imread(path)
-        image = ml.ds.ProcessImage(image, d_filters.get_filters()).image
-        d_path = os.path.join(tickets_processed_url, name)
-        io.imsave(d_path, image)
-        #print("Saved ", path, d_path)
-
-def delete_tickets_processed():
-    import shutil
-    folder = settings["examples"] + settings["pictures"] + "tickets_processed/"
-    shutil.rmtree(folder)
 
 #test DSC_0055, DSC_0056
 #training DSC_0053, DSC_0054, DSC_0057, DSC_0059, DSC_0062, DSC_0058
@@ -375,7 +268,7 @@ if __name__ == '__main__':
     parser.add_argument("--clf", help="selecciona el clasificador", type=str)
     parser.add_argument("--build_numbers_set", help="crea el detector de numeros", action="store_true")
     parser.add_argument("--train-hog", help="--train-hog [xml_filename]", type=str)
-    parser.add_argument("--test-hog", action="store_true")
+    parser.add_argument("--test-hog", type=str, default="f1")
     parser.add_argument("--transcriptor", type=str)
     parser.add_argument("--transcriptor-test", type=str)
     parser.add_argument("--build-dirty", help="", action="store_true")
@@ -394,7 +287,7 @@ if __name__ == '__main__':
     detector_path = checkpoints_path + "Hog/" + DETECTOR_NAME + "/" + DETECTOR_NAME + ".svm"
     if args.build_tickets:
         d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"])
-        build_tickets_processed(d_filters)
+        build_tickets_processed(d_filters, settings, PICTURES)
     elif args.build:
         ds_builder = ml.ds.DataSetBuilder(dataset_name, image_size=IMAGE_SIZE, 
             dataset_path=settings["root_data"]+settings["dataset"], 
@@ -407,23 +300,24 @@ if __name__ == '__main__':
             test_data=False)
         ds_builder.build_dataset()
     elif args.build_numbers_set:
-        build_tickets_processed(g_filters)
+        build_tickets_processed(g_filters, settings, PICTURES)
         numbers_images_set(settings["root_data"]+settings["pictures"]+"tickets/numbers/", g_filters)
-        delete_tickets_processed()
+        delete_tickets_processed(settings)
     elif args.train_hog:
         #d_filters = ml.ds.Filters("detector", 
         #        [("rgb2gray", None), ("threshold", 91), ("as_ubyte", None)])
         d_filters = ml.ds.Filters("global", [])
-        build_tickets_processed(d_filters)
-        ml.ds.save_metadata(detector_path_f, {"d_filters": d_filters.get_filters()})
-        ml.ds.save_metadata(detector_path_f, {"filename_training": args.train_hog})
+        build_tickets_processed(d_filters, settings, PICTURES)
+        ml.ds.save_metadata(detector_path_f, 
+            {"d_filters": d_filters.get_filters(), 
+            "filename_training": args.train_hog})
         train(args.train_hog)
-        delete_tickets_processed()
+        delete_tickets_processed(settings)
         print("Cleaned")
     elif args.test_hog:
+        from ml.detector import HOG
         hog = HOG()
-        hog.test_set()
-        #test(ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"]))
+        hog.test_set(args.test_hog, PICTURES)
     else:
         classifs = {
             "svc": {
