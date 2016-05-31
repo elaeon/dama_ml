@@ -283,10 +283,11 @@ if __name__ == '__main__':
         dataset_name = None
 
     checkpoints_path = os.path.join(settings["root_data"], "checkpoints/")
-    detector_path_f = checkpoints_path + "Hog/" + DETECTOR_NAME + "/" + DETECTOR_NAME + "_meta.pkl"
-    detector_path = checkpoints_path + "Hog/" + DETECTOR_NAME + "/" + DETECTOR_NAME + ".svm"
+    detector_path = checkpoints_path + "Hog/" + DETECTOR_NAME + "/"
+    detector_path_meta = detector_path + DETECTOR_NAME + "_meta.pkl"
+    detector_path_svm = detector_path + DETECTOR_NAME + ".svm"
     if args.build_tickets:
-        d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"])
+        d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_meta)["d_filters"])
         build_tickets_processed(d_filters, settings, PICTURES)
     elif args.build:
         ds_builder = ml.ds.DataSetBuilder(dataset_name, image_size=IMAGE_SIZE, 
@@ -304,14 +305,17 @@ if __name__ == '__main__':
         numbers_images_set(settings["root_data"]+settings["pictures"]+"tickets/numbers/", g_filters)
         delete_tickets_processed(settings)
     elif args.train_hog:
-        #d_filters = ml.ds.Filters("detector", 
-        #        [("rgb2gray", None), ("threshold", 91), ("as_ubyte", None)])
-        d_filters = ml.ds.Filters("global", [])
+        from ml.detector import HOG
+        hog = HOG()
+        d_filters = ml.ds.Filters("detector", 
+                [("contrast", None)])
+                #[("rgb2gray", None), ("threshold", 91), ("as_ubyte", None)])
+        #d_filters = ml.ds.Filters("global", [])
         build_tickets_processed(d_filters, settings, PICTURES)
-        ml.ds.save_metadata(detector_path_f, 
+        ml.ds.save_metadata(detector_path, detector_path_meta,
             {"d_filters": d_filters.get_filters(), 
             "filename_training": args.train_hog})
-        train(args.train_hog)
+        hog.train(args.train_hog, detector_path_svm)
         delete_tickets_processed(settings)
         print("Cleaned")
     elif args.test_hog:
@@ -358,7 +362,7 @@ if __name__ == '__main__':
             elif args.train:
                 face_classif.train(num_steps=args.epoch)
             elif args.transcriptor:
-                d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"])
+                d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_meta)["d_filters"])
                 g_filters = ml.ds.Filters("global", dataset["global_filters"])
                 l_filters = ml.ds.Filters("local", dataset["local_filters"])
                 if args.transcriptor == "avg":
@@ -370,13 +374,13 @@ if __name__ == '__main__':
                     print(s)
                     print(v)
             elif args.transcriptor_test:
-                d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"])
+                d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_meta)["d_filters"])
                 print("Detector Filters:", d_filters.get_filters())
                 g_filters = ml.ds.Filters("global", dataset["global_filters"])
                 l_filters = ml.ds.Filters("local", dataset["local_filters"])
-                transcriptor_test(face_classif, g_filters, l_filters, d_filters, detector_path)
+                transcriptor_test(face_classif, g_filters, l_filters, d_filters, detector_path_svm)
             elif args.build_dirty:
-                d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_f)["d_filters"])
+                d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_meta)["d_filters"])
                 build_dirty_image_set(
                     settings["root_data"]+settings["pictures"]+"tickets/dirty_numbers2/", 
                     face_classif,

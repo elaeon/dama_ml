@@ -17,13 +17,12 @@ class HOG(object):
         #self.options.epsilon = 0.0005
         #self.options.detection_window_size #60 pixels wide by 107 tall
 
-    def train(xml_filename):
+    def train(self, xml_filename, detector_path_svm):
         root = settings["examples"] + "xml/"
         path = os.path.join(settings["root_data"], "checkpoints/")
         training_xml_path = os.path.join(root, xml_filename)
         testing_xml_path = os.path.join(root, "tickets_test.xml")
-        DETECTOR_NAME = xml_filename.replace(".xml", "")
-        dlib.train_simple_object_detector(training_xml_path, path+DETECTOR_NAME+".svm", self.options)
+        dlib.train_simple_object_detector(training_xml_path, detector_path_svm, self.options)
 
         print("")
         print("Test accuracy: {}".format(

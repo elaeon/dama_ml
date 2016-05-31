@@ -4,6 +4,7 @@ from skimage import filters
 from skimage import transform
 from sklearn import preprocessing
 from skimage import img_as_ubyte
+from skimage import exposure
 
 import os
 import numpy as np
@@ -16,8 +17,10 @@ FACE_TEST_FOLDER_PATH = "/home/sc/Pictures/test/"
 DATASET_PATH = "/home/sc/data/dataset/"
 
 
-def save_metadata(path, data):
-    with open(path, 'wb') as f:
+def save_metadata(path, file_path, data):
+    if not os.path.exists(path):
+        os.makedirs(path)
+    with open(file_path, 'wb') as f:
         pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
 
 def load_metadata(path):
@@ -67,6 +70,11 @@ class ProcessImage(object):
             except ZeroDivisionError:
                 pass
         
+    def contrast(self):
+        #contrast stretching
+        p2, p98 = np.percentile(self.image, (2, 98))
+        self.image = exposure.rescale_intensity(self.image, in_range=(p2, p98))
+
     def rgb2gray(self):
         self.image = img_as_ubyte(color.rgb2gray(self.image))
 
