@@ -268,13 +268,13 @@ if __name__ == '__main__':
     parser.add_argument("--clf", help="selecciona el clasificador", type=str)
     parser.add_argument("--build_numbers_set", help="crea el detector de numeros", action="store_true")
     parser.add_argument("--train-hog", help="--train-hog [xml_filename]", type=str)
-    parser.add_argument("--test-hog", type=str, default="f1")
+    parser.add_argument("--test-hog", type=str)
     parser.add_argument("--transcriptor", type=str)
     parser.add_argument("--transcriptor-test", type=str)
     parser.add_argument("--build-dirty", help="", action="store_true")
     parser.add_argument("--build-tickets", action="store_true")
-    parser.add_argument("--test-clf", type=str, default="f1")
-    parser.add_argument("--epoch", type=int, default=1)
+    parser.add_argument("--test-clf", type=str)
+    parser.add_argument("--epoch", type=int)
     args = parser.parse_args()
 
     if args.dataset:
@@ -308,7 +308,7 @@ if __name__ == '__main__':
         from ml.detector import HOG
         hog = HOG()
         d_filters = ml.ds.Filters("detector", 
-                [("contrast", None)])
+                [("rgb2gray", None), ("blur", .4), ("as_ubyte", None)])
                 #[("rgb2gray", None), ("threshold", 91), ("as_ubyte", None)])
         #d_filters = ml.ds.Filters("global", [])
         build_tickets_processed(d_filters, settings, PICTURES)
@@ -359,6 +359,8 @@ if __name__ == '__main__':
                     train_folder_path=settings["root_data"]+settings["pictures"]+"/tickets/train/")
                 print("------ TEST FROM TEST-DATASET")
                 face_classif.detector_test_dataset()
+                dt = ml.clf.ClassifTest()
+                dt.classif_test(face_classif, "f1")
             elif args.train:
                 face_classif.train(num_steps=args.epoch)
             elif args.transcriptor:
@@ -385,3 +387,7 @@ if __name__ == '__main__':
                     settings["root_data"]+settings["pictures"]+"tickets/dirty_numbers2/", 
                     face_classif,
                     d_filters)
+
+#for directory in os.listdir("/home/sc/git/ML/examples/Pictures/tickets/"):
+#     im = io.imread(os.path.join("/home/sc/git/ML/examples/Pictures/tickets/", directory))
+#     print(exposure.is_low_contrast(im))

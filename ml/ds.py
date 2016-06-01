@@ -256,8 +256,9 @@ class DataSetBuilder(object):
                 print('Local filters: {}'.format(save['local_filters']))
                 print('Training set DS[{}], labels[{}]'.format(
                     save['train_dataset'].shape, len(save['train_labels'])))
-                print('Validation set DS[{}], labels[{}]'.format(
-                    save['valid_dataset'].shape, len(save['valid_labels'])))
+                if validation_dataset is True:
+                    print('Validation set DS[{}], labels[{}]'.format(
+                        save['valid_dataset'].shape, len(save['valid_labels'])))
                 print('Test set DS[{}], labels[{}]'.format(
                     save['test_dataset'].shape, len(save['test_labels'])))
             return save

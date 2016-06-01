@@ -60,8 +60,11 @@ class BasicFaceClassif(object):
         return self.__class__.__name__, measure
 
     def reformat(self, dataset, labels):
-        dataset = dataset.reshape((-1, self.image_size * self.image_size)).astype(np.float32)
+        dataset = self.transform_img(dataset)
         return dataset, labels
+
+    def transform_img(self, img):
+        return img.reshape((-1, self.image_size * self.image_size)).astype(np.float32)
 
     def labels_encode(self, labels):
         self.le.fit(labels)
@@ -71,7 +74,7 @@ class BasicFaceClassif(object):
         return label
 
     def convert_label(self, label):
-        #[0, 0, 1.0] -> 155
+        #[0, 0, 1.0] -> Number
         return self.le.inverse_transform(self.position_index(label))
 
     def reformat_all(self):
@@ -79,13 +82,17 @@ class BasicFaceClassif(object):
         self.labels_encode(all_ds)
         self.train_dataset, self.train_labels = self.reformat(
             self.train_dataset, self.le.transform(self.train_labels))
-        self.valid_dataset, self.valid_labels = self.reformat(
-            self.valid_dataset, self.le.transform(self.valid_labels))
         self.test_dataset, self.test_labels = self.reformat(
             self.test_dataset, self.le.transform(self.test_labels))
+
+        if len(self.valid_labels) > 0:
+            self.valid_dataset, self.valid_labels = self.reformat(
+                self.valid_dataset, self.le.transform(self.valid_labels))
+
         if self.pprint:
             print('RF-Training set', self.train_dataset.shape, self.train_labels.shape)
-            print('RF-Validation set', self.valid_dataset.shape, self.valid_labels.shape)
+            if self.valid_dataset.shape[0] > 0:
+                print('RF-Validation set', self.valid_dataset.shape, self.valid_labels.shape)
             print('RF-Test set', self.test_dataset.shape, self.test_labels.shape)
 
     def accuracy(self, predictions, labels):
@@ -132,14 +139,27 @@ class SVCFace(BasicFaceClassif):
         return self._predict(imgs)
 
     def transform_img(self, img):
-        return img.reshape((-1, self.image_size*self.image_size)).astype(np.float32)
+        index = 1 if len(img.shape) > 1 else 0
+        size = img.shape[index]
+        for dim in img.shape[index+1:]:
+            size = size * dim
+        return img.reshape((-1, size)).astype(np.float32)
+
+    def narray_build(self, length, dim):
+        shape = (length, dim, dim)
+        return np.ndarray(shape=shape, dtype=np.float32)
 
     def _predict(self, imgs):
         if self.model is None:
             self.load_model()
-        for img in imgs:
-            img = self.transform_img(img)
-            yield self.convert_label(self.model.predict(img)[0])
+
+        if isinstance(imgs, list):
+            array_imgs = self.transform_img(np.asarray(imgs))
+        else:
+            array_imgs = self.transform_img(imgs)
+
+        for prediction in self.model.predict(array_imgs):
+            yield self.convert_label(prediction)
 
     def save_model(self):
         from sklearn.externals import joblib
@@ -300,7 +320,7 @@ class TfLTensor(TensorFace):
             self.model.fit(self.train_dataset, 
                 self.train_labels, 
                 n_epoch=num_steps, 
-                validation_set=(self.test_dataset, self.test_labels),
+                validation_set=(self.valid_dataset, self.valid_labels),
                 show_metric=True, 
                 batch_size=self.batch_size,
                 run_id="dense_model")
@@ -371,7 +391,7 @@ class ConvTensor(TfLTensor):
             self.model.fit(self.train_dataset, 
                 self.train_labels, 
                 n_epoch=num_steps, 
-                validation_set=(self.test_dataset, self.test_labels),
+                validation_set=(self.valid_dataset, self.valid_labels),
                 show_metric=True, 
                 snapshot_step=100,
                 run_id="conv_model")
@@ -443,7 +463,7 @@ class ResidualTensor(TfLTensor):
             self.model.fit(self.train_dataset, 
                 self.train_labels, 
                 n_epoch=num_steps, 
-                validation_set=(self.test_dataset, self.test_labels),
+                validation_set=(self.valid_dataset, self.valid_labels),
                 show_metric=True, 
                 snapshot_step=100,
                 batch_size=self.batch_size,
@@ -605,10 +625,11 @@ class ConvTensorFace(TensorFace):
 
 
 class ClassifTest(object):
+    def __init__(self):
+        self.headers = ["CLF", "Precision", "Recall", "F1"]
 
     def dataset_test(self, classifs, dataset_name, dataset, order_column):
         from utils.order import order_table_print
-        headers = ["CLF", "Precision", "Recall", "F1"]
         table = []
         print("DATASET", dataset_name)
         for classif_name in classifs:
@@ -617,4 +638,11 @@ class ClassifTest(object):
             clf = classif(dataset_name, dataset, **params)
             name_clf, measure = clf.detector_test_dataset()
             table.append((name_clf, measure.precision(), measure.recall(), measure.f1()))
-        order_table_print(headers, table, order_column)
+        order_table_print(self.headers, table, order_column)
+
+    def classif_test(self, clf, order_column):
+        from utils.order import order_table_print
+        table = []
+        name_clf, measure = clf.detector_test_dataset()
+        table = [(name_clf, measure.precision(), measure.recall(), measure.f1())]
+        order_table_print(self.headers, table, order_column)

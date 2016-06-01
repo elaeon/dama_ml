@@ -26,7 +26,7 @@ class HOG(object):
 
         print("")
         print("Test accuracy: {}".format(
-            dlib.test_simple_object_detector(testing_xml_path, path+DETECTOR_NAME+".svm")))
+            dlib.test_simple_object_detector(testing_xml_path, detector_path_svm)))
 
 
     def test(self, detector_path):
