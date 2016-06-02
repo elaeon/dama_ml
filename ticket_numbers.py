@@ -57,7 +57,7 @@ def numbers_images_set(url, g_filters):
         ds_builder.save_images(url, label, images)
 
 
-def transcriptor(face_classif, g_filters, l_filters, d_filters, detector_path, url=None):
+def transcriptor(classif, g_filters, l_filters, d_filters, detector_path, url=None):
     from dlib import rectangle
     from utils.order import order_2d
 
@@ -89,10 +89,10 @@ def transcriptor(face_classif, g_filters, l_filters, d_filters, detector_path, u
                 thumb_bg = ml.ds.ProcessImage(img, l_filters.get_filters()).image
                 #win.set_image(img_as_ubyte(thumb_bg))
                 #win.add_overlay(r)
-                #print(list(face_classif.predict([thumb_bg])))
+                #print(list(classif.predict([thumb_bg])))
                 numbers.append(thumb_bg)
                 #dlib.hit_enter_to_continue()
-            numbers_predicted = list(face_classif.predict(numbers))
+            numbers_predicted = list(classif.predict(numbers))
             num_pred_coords = zip(numbers_predicted, coords)
             if len(num_pred_coords) >= 2:
                 num_pred_coords = num_pred_coords + [num_pred_coords[-2]]
@@ -118,8 +118,8 @@ def transcriptor(face_classif, g_filters, l_filters, d_filters, detector_path, u
             #dlib.hit_enter_to_continue()
             yield results
 
-def transcriptor_test(face_classif, g_filters, l_filters, d_filters, detector_path, url=None):
-    predictions = transcriptor(face_classif, g_filters, l_filters, d_filters, detector_path, url=url)
+def transcriptor_test(classif, g_filters, l_filters, d_filters, detector_path, url=None):
+    predictions = transcriptor(classif, g_filters, l_filters, d_filters, detector_path, url=url)
     def flat_results():
         flat_p = [["".join(prediction) for prediction in row if len(prediction) > 0] 
             for row in predictions]
@@ -180,7 +180,7 @@ def transcriptor_test(face_classif, g_filters, l_filters, d_filters, detector_pa
     print("Accuracy {}%".format(total_positive*100./total))
     print("Precision {}%".format((total-total_false)*100/total))
 
-def build_dirty_image_set(url, face_classif, d_filters):
+def build_dirty_image_set(url, classif, d_filters):
     from tqdm import tqdm
     root = settings["examples"] + settings["pictures"] + "tickets/"
     numbers = []
@@ -196,7 +196,7 @@ def build_dirty_image_set(url, face_classif, d_filters):
             l_filters.add_value("cut", m_rectangle)
             thumb_bg = ml.ds.ProcessImage(img, l_filters.get_filters()).image
             numbers.append(thumb_bg)
-    numbers_predicted = list(face_classif.predict(numbers))
+    numbers_predicted = list(classif.predict(numbers))
     labels_numbers = zip(numbers_predicted, numbers)
     numbers_g = {}
     for label, number in labels_numbers:
@@ -207,9 +207,9 @@ def build_dirty_image_set(url, face_classif, d_filters):
         pbar.set_description("Processing {}".format(label))
         ml.ds.DataSetBuilder.save_images(url, label, images)
 
-def transcriptor_product_price_writer(face_classif, g_filters, l_filters, d_filters, url=None):
+def transcriptor_product_price_writer(classif, g_filters, l_filters, d_filters, detector_path, url=None):
     import heapq
-    predictions = transcriptor(face_classif, g_filters, l_filters, d_filters, url=url)
+    predictions = transcriptor(classif, g_filters, l_filters, d_filters, detector_path, url=url)
     def flat_results():
         flat_p = [["".join(prediction) for prediction in row  if len(prediction) > 0] 
             for row in predictions]
@@ -239,12 +239,13 @@ def transcriptor_product_price_writer(face_classif, g_filters, l_filters, d_filt
     return product_price, sum([price for _, price in product_price]), heapq.nlargest(2, prices)
 
 
-def calc_avg_price_tickets(filename, g_filters, l_filters, d_filters):
+def calc_avg_price_tickets(filename, g_filters, l_filters, d_filters, detector_path):
     base_path = settings["base_dir"] + settings["examples"] + settings["pictures"]
     prices = 0
     counter = 0
     for path in glob.glob(os.path.join(base_path, "tickets/*.jpg")):
-        _, sum_, v = transcriptor_product_price_writer(filename, g_filters, l_filters, d_filters, url=path)
+        _, sum_, v = transcriptor_product_price_writer(
+            filename, g_filters, l_filters, d_filters, detector_path, url=path)
         prices += v[1]
         print("COST:", v, sum_)
         counter += 1
@@ -275,6 +276,7 @@ if __name__ == '__main__':
     parser.add_argument("--build-tickets", action="store_true")
     parser.add_argument("--test-clf", type=str)
     parser.add_argument("--epoch", type=int)
+    parser.add_argument("--draw", action="store_true")
     args = parser.parse_args()
 
     if args.dataset:
@@ -308,7 +310,7 @@ if __name__ == '__main__':
         from ml.detector import HOG
         hog = HOG()
         d_filters = ml.ds.Filters("detector", 
-                [("rgb2gray", None), ("blur", .4), ("as_ubyte", None)])
+                [("rgb2gray", None), ("blur", .4), ("contrast", None), ("as_ubyte", None)])
                 #[("rgb2gray", None), ("threshold", 91), ("as_ubyte", None)])
         #d_filters = ml.ds.Filters("global", [])
         build_tickets_processed(d_filters, settings, PICTURES)
@@ -322,6 +324,13 @@ if __name__ == '__main__':
         from ml.detector import HOG
         hog = HOG()
         hog.test_set(args.test_hog, PICTURES)
+    elif args.draw:
+        from ml.detector import HOG
+        d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_meta)["d_filters"])
+        pictures = glob.glob(os.path.join(
+            settings["base_dir"]+settings["examples"]+settings["pictures"]+"tickets", "*.jpg"))
+        hog = HOG()
+        hog.draw_detections(detector_path_svm, d_filters, sorted(pictures)[0:1])
     else:
         classifs = {
             "svc": {
@@ -350,28 +359,29 @@ if __name__ == '__main__':
             dataset = ml.ds.DataSetBuilder.load_dataset(dataset_name, 
                 dataset_path=settings["root_data"]+settings["dataset"], validation_dataset=False)
             params = classifs[args.clf]["params"]
-            face_classif = class_(dataset_name, dataset, **params)
-            face_classif.batch_size = 100
-            print("#########", face_classif.__class__.__name__)
+            classif = class_(dataset_name, dataset, **params)
+            classif.batch_size = 100
+            print("#########", classif.__class__.__name__)
             if args.test:
                 ds_builder = ml.ds.DataSetBuilder(dataset_name, 
                     dataset_path=settings["root_data"]+settings["dataset"], 
                     train_folder_path=settings["root_data"]+settings["pictures"]+"/tickets/train/")
                 print("------ TEST FROM TEST-DATASET")
-                face_classif.detector_test_dataset()
+                classif.detector_test_dataset()
                 dt = ml.clf.ClassifTest()
-                dt.classif_test(face_classif, "f1")
+                dt.classif_test(classif, "f1")
             elif args.train:
-                face_classif.train(num_steps=args.epoch)
+                classif.train(num_steps=args.epoch)
             elif args.transcriptor:
                 d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_meta)["d_filters"])
+                print("Detector Filters:", d_filters.get_filters())
                 g_filters = ml.ds.Filters("global", dataset["global_filters"])
                 l_filters = ml.ds.Filters("local", dataset["local_filters"])
                 if args.transcriptor == "avg":
-                    calc_avg_price_tickets(face_classif, g_filters, l_filters, d_filters)
+                    calc_avg_price_tickets(classif, g_filters, l_filters, d_filters, detector_path_svm)
                 else:
                     l, s, v = transcriptor_product_price_writer(
-                        face_classif, g_filters, l_filters, url=args.transcriptor)
+                        classif, g_filters, l_filters, d_filters, detector_path_svm, url=args.transcriptor)
                     print(l)
                     print(s)
                     print(v)
@@ -380,12 +390,12 @@ if __name__ == '__main__':
                 print("Detector Filters:", d_filters.get_filters())
                 g_filters = ml.ds.Filters("global", dataset["global_filters"])
                 l_filters = ml.ds.Filters("local", dataset["local_filters"])
-                transcriptor_test(face_classif, g_filters, l_filters, d_filters, detector_path_svm)
+                transcriptor_test(classif, g_filters, l_filters, d_filters, detector_path_svm)
             elif args.build_dirty:
                 d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_meta)["d_filters"])
                 build_dirty_image_set(
                     settings["root_data"]+settings["pictures"]+"tickets/dirty_numbers2/", 
-                    face_classif,
+                    classif,
                     d_filters)
 
 #for directory in os.listdir("/home/sc/git/ML/examples/Pictures/tickets/"):

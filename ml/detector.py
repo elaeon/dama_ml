@@ -30,37 +30,28 @@ class HOG(object):
 
 
     def test(self, detector_path):
-        # Now let's use the detector as you would in a normal application.  First we
-        # will load it from disk.
-        #detector = dlib.fhog_object_detector("detector.svm")
-        #path = os.path.join(settings["root_data"], "checkpoints/")
-        #detector = dlib.simple_object_detector(path+DETECTOR_NAME+".svm")
-
-        # We can look at the HOG filter we learned.  It should look like a face.  Neat!
-
-        # Now let's run the detector over the images in the faces folder and display the
-        # results.
-        #print("Showing detections on the images in the faces folder...")
-        #root = settings["examples"] + settings["pictures"] + "tickets/"
-        #win = dlib.image_window()
-        #glob.glob(os.path.join(faces_folder, "*.jpg")):
-        #for path in [os.path.join(root, f) for f in PICTURES[0:1]]:
-        #    print(path)
-        #    print("Processing file: {}".format(path))
-        #    img = io.imread(path)
-        #    img = ml.ds.ProcessImage(img, d_filters.get_filters()).image
-        #    dets = detector(img)
-        #    print("Numbers detected: {}".format(len(dets)))
-
-        #    win.clear_overlay()
-        #    win.set_image(img)
-        #    win.add_overlay(dets)
-        #    dlib.hit_enter_to_continue()
-        
         root = settings["examples"] + "xml/"
         path = os.path.join(settings["root_data"], "checkpoints/")
         testing_xml_path = os.path.join(root, "tickets_test.xml")
         return dlib.test_simple_object_detector(testing_xml_path, detector_path)
+
+    def draw_detections(self, detector_path_svm, d_filters, pictures):
+        from skimage import io
+        #detector = dlib.fhog_object_detector(detector_path_svm)
+        detector = dlib.simple_object_detector(detector_path_svm)
+        win = dlib.image_window()
+        for path in pictures:
+            print(path)
+            print("Processing file: {}".format(path))
+            img = io.imread(path)
+            img = ml.ds.ProcessImage(img, d_filters.get_filters()).image
+            dets = detector(img)
+            print("Numbers detected: {}".format(len(dets)))
+
+            win.clear_overlay()
+            win.set_image(img)
+            win.add_overlay(dets)
+            dlib.hit_enter_to_continue()
 
     def images_from_directories(self, folder_base):
         images = []
