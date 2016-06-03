@@ -37,15 +37,15 @@ class HOG(object):
 
     def draw_detections(self, detector_path_svm, d_filters, pictures):
         from skimage import io
-        #detector = dlib.fhog_object_detector(detector_path_svm)
-        detector = dlib.simple_object_detector(detector_path_svm)
+        detector = dlib.fhog_object_detector(detector_path_svm)
+        #detector = dlib.simple_object_detector(detector_path_svm)
         win = dlib.image_window()
         for path in pictures:
             print(path)
             print("Processing file: {}".format(path))
             img = io.imread(path)
             img = ml.ds.ProcessImage(img, d_filters.get_filters()).image
-            dets = detector(img)
+            dets = detector(img, 0)
             print("Numbers detected: {}".format(len(dets)))
 
             win.clear_overlay()

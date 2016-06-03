@@ -75,6 +75,10 @@ class ProcessImage(object):
         p2, p98 = np.percentile(self.image, (2, 98))
         self.image = exposure.rescale_intensity(self.image, in_range=(p2, p98))
 
+    def upsample(self):
+        self.image = transform.pyramid_expand(
+            self.image, upscale=2, sigma=None, order=1, mode='reflect', cval=0)
+
     def rgb2gray(self):
         self.image = img_as_ubyte(color.rgb2gray(self.image))
 

@@ -310,7 +310,8 @@ if __name__ == '__main__':
         from ml.detector import HOG
         hog = HOG()
         d_filters = ml.ds.Filters("detector", 
-                [("rgb2gray", None), ("blur", .4), ("contrast", None), ("as_ubyte", None)])
+                [("rgb2gray", None), ("blur", .25), 
+                    ("contrast", None), ("as_ubyte", None)])
                 #[("rgb2gray", None), ("threshold", 91), ("as_ubyte", None)])
         #d_filters = ml.ds.Filters("global", [])
         build_tickets_processed(d_filters, settings, PICTURES)
@@ -327,6 +328,7 @@ if __name__ == '__main__':
     elif args.draw:
         from ml.detector import HOG
         d_filters = ml.ds.Filters("detector", ml.ds.load_metadata(detector_path_meta)["d_filters"])
+        print("Detector Filters:", d_filters.get_filters())
         pictures = glob.glob(os.path.join(
             settings["base_dir"]+settings["examples"]+settings["pictures"]+"tickets", "*.jpg"))
         hog = HOG()
