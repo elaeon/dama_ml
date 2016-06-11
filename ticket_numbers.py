@@ -234,8 +234,9 @@ def build_dirty_image_set(url, face_classif):
     from tqdm import tqdm
     root = settings["examples"]
     numbers = []
-    for f in PICTURES:
-        url_l = os.path.join(root, f)
+    #for f in PICTURES:
+    for url_l in glob.glob(os.path.join(root, "Pictures/tickets/*.jpg")):
+        #url_l = os.path.join(root, f)
         path = os.path.join(settings["root_data"], settings["checkpoints"])
         detector = dlib.simple_object_detector(path+DETECTOR_NAME+".svm")
         img_o = io.imread(url_l)
