@@ -45,20 +45,26 @@ class Measure(object):
         print("#############")
 
 class BasicFaceClassif(object):
-    def __init__(self, model_name, dataset, image_size=90):
+    def __init__(self, model_name, dataset, image_size=90, pprint=True):
         self.image_size = image_size
         self.model_name = model_name
         self.model = None
+        self.pprint = pprint
         self.le = preprocessing.LabelEncoder()
         self.load_dataset(dataset)
 
     def detector_test_dataset(self):
         predictions = self.predict(self.test_dataset)
-        self.accuracy(list(predictions), np.asarray([self.convert_label(label) for label in self.test_labels]))
+        measure = Measure(list(predictions), np.asarray([self.convert_label(label) 
+            for label in self.test_labels]))
+        return self.__class__.__name__, measure
 
     def reformat(self, dataset, labels):
-        dataset = dataset.reshape((-1, self.image_size * self.image_size)).astype(np.float32)
+        dataset = self.transform_img(dataset)
         return dataset, labels
+
+    def transform_img(self, img):
+        return img.reshape((-1, self.image_size * self.image_size)).astype(np.float32)
 
     def labels_encode(self, labels):
         self.le.fit(labels)
@@ -68,7 +74,7 @@ class BasicFaceClassif(object):
         return label
 
     def convert_label(self, label):
-        #[0, 0, 1.0] -> 155
+        #[0, 0, 1.0] -> Number
         return self.le.inverse_transform(self.position_index(label))
 
     def reformat_all(self):
@@ -76,17 +82,23 @@ class BasicFaceClassif(object):
         self.labels_encode(all_ds)
         self.train_dataset, self.train_labels = self.reformat(
             self.train_dataset, self.le.transform(self.train_labels))
-        self.valid_dataset, self.valid_labels = self.reformat(
-            self.valid_dataset, self.le.transform(self.valid_labels))
         self.test_dataset, self.test_labels = self.reformat(
             self.test_dataset, self.le.transform(self.test_labels))
-        print('RF-Training set', self.train_dataset.shape, self.train_labels.shape)
-        print('RF-Validation set', self.valid_dataset.shape, self.valid_labels.shape)
-        print('RF-Test set', self.test_dataset.shape, self.test_labels.shape)
+
+        if len(self.valid_labels) > 0:
+            self.valid_dataset, self.valid_labels = self.reformat(
+                self.valid_dataset, self.le.transform(self.valid_labels))
+
+        if self.pprint:
+            print('RF-Training set', self.train_dataset.shape, self.train_labels.shape)
+            if self.valid_dataset.shape[0] > 0:
+                print('RF-Validation set', self.valid_dataset.shape, self.valid_labels.shape)
+            print('RF-Test set', self.test_dataset.shape, self.test_labels.shape)
 
     def accuracy(self, predictions, labels):
         measure = Measure(predictions, labels)
-        measure.print_all()
+        if self.pprint:
+            measure.print_all()
         return measure.accuracy()
 
     def load_dataset(self, dataset):
@@ -100,11 +112,12 @@ class BasicFaceClassif(object):
         self.reformat_all()
 
 class SVCFace(BasicFaceClassif):
-    def __init__(self, model_name, dataset, image_size=90, check_point_path=CHECK_POINT_PATH):
-        super(SVCFace, self).__init__(model_name, dataset, image_size=image_size)
+    def __init__(self, model_name, dataset, image_size=90, check_point_path=CHECK_POINT_PATH, pprint=True):
+        super(SVCFace, self).__init__(model_name, dataset, image_size=image_size, pprint=pprint)
         self.check_point_path = check_point_path
+        self.check_point = check_point_path + self.__class__.__name__ + "/"
 
-    def fit(self):
+    def prepare_model(self):
         from sklearn import svm
         #clf = svm.OneClassSVM(nu=0.0001, kernel="linear")
         #self.model_o = clf.fit(self.train_dataset)
@@ -116,9 +129,9 @@ class SVCFace(BasicFaceClassif):
         self.model = reg
 
     def train(self, num_steps=0):
+        self.prepare_model()
         predictions = self.model.predict(self.test_dataset)
         score = self.accuracy(predictions, self.test_labels)
-        print('Test accuracy: %.1f%%' % (score*100))
         self.save_model()
         return score
 
@@ -126,28 +139,47 @@ class SVCFace(BasicFaceClassif):
         return self._predict(imgs)
 
     def transform_img(self, img):
-        return img.reshape((-1, self.image_size*self.image_size)).astype(np.float32)
+        index = 1 if len(img.shape) > 1 else 0
+        size = img.shape[index]
+        for dim in img.shape[index+1:]:
+            size = size * dim
+        return img.reshape((-1, size)).astype(np.float32)
+
+    def narray_build(self, length, dim):
+        shape = (length, dim, dim)
+        return np.ndarray(shape=shape, dtype=np.float32)
 
     def _predict(self, imgs):
         if self.model is None:
             self.load_model()
-        for img in imgs:
-            img = self.transform_img(img)
-            yield self.convert_label(self.model.predict(img)[0])
+
+        if isinstance(imgs, list):
+            array_imgs = self.transform_img(np.asarray(imgs))
+        else:
+            array_imgs = self.transform_img(imgs)
+
+        for prediction in self.model.predict(array_imgs):
+            yield self.convert_label(prediction)
 
     def save_model(self):
         from sklearn.externals import joblib
-        joblib.dump(self.model, '{}.pkl'.format(self.check_point_path+self.model_name))
+        if not os.path.exists(self.check_point):
+            os.makedirs(self.check_point)
+        if not os.path.exists(self.check_point + self.model_name + "/"):
+            os.makedirs(self.check_point + self.model_name + "/")
+        joblib.dump(self.model, '{}.pkl'.format(
+            self.check_point+self.model_name+"/"+self.model_name))
 
     def load_model(self):
         from sklearn.externals import joblib
-        self.model = joblib.load('{}.pkl'.format(self.check_point_path+self.model_name))
+        self.model = joblib.load('{}.pkl'.format(
+            self.check_point+self.model_name+"/"+self.model_name))
 
 
 class BasicTensor(BasicFaceClassif):
     def __init__(self, model_name, dataset, batch_size=None, 
-                image_size=90, check_point_path=CHECK_POINT_PATH):
-        super(BasicTensor, self).__init__(model_name, dataset, image_size=image_size)
+                image_size=90, check_point_path=CHECK_POINT_PATH, pprint=True):
+        super(BasicTensor, self).__init__(model_name, dataset, image_size=image_size, pprint=pprint)
         self.batch_size = batch_size
         self.check_point = check_point_path + self.__class__.__name__ + "/"
 
@@ -160,7 +192,7 @@ class BasicTensor(BasicFaceClassif):
     def transform_img(self, img):
         return img.reshape((-1, self.image_size * self.image_size)).astype(np.float32)
 
-    def fit(self, dropout=True):
+    def prepare_model(self, dropout=True):
         self.graph = tf.Graph()
         with self.graph.as_default():
             # Input data. For the training data, we use a placeholder that will be fed
@@ -198,6 +230,7 @@ class BasicTensor(BasicFaceClassif):
             self.test_prediction = tf.nn.softmax(tf.matmul(self.tf_test_dataset, weights) + biases)
 
     def train(self, num_steps=3001):
+        self.prepare_model()
         with tf.Session(graph=self.graph) as session:
             saver = tf.train.Saver()
             tf.initialize_all_variables().run()
@@ -262,7 +295,7 @@ class TensorFace(BasicTensor):
                 yield self.convert_label(classification)
 
 class TfLTensor(TensorFace):
-    def fit(self, dropout=False):
+    def prepare_model(self, dropout=False):
         import tflearn
         input_layer = tflearn.input_data(shape=[None, self.image_size*self.image_size])
         dense1 = tflearn.fully_connected(input_layer, 124, activation='tanh',
@@ -281,14 +314,17 @@ class TfLTensor(TensorFace):
 
     def train(self, num_steps=1000):
         import tflearn
-        self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
-        self.model.fit(self.train_dataset, 
-            self.train_labels, 
-            n_epoch=num_steps, 
-            validation_set=(self.test_dataset, self.test_labels),
-            show_metric=True, 
-            run_id="dense_model")
-        self.save_model()
+        with tf.Graph().as_default():
+            self.prepare_model()
+            self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
+            self.model.fit(self.train_dataset, 
+                self.train_labels, 
+                n_epoch=num_steps, 
+                validation_set=(self.valid_dataset, self.valid_labels),
+                show_metric=True, 
+                batch_size=self.batch_size,
+                run_id="dense_model")
+            self.save_model()
     
     def save_model(self):
         if not os.path.exists(self.check_point):
@@ -300,7 +336,7 @@ class TfLTensor(TensorFace):
 
     def load_model(self):
         import tflearn
-        self.fit()
+        self.prepare_model()
         self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
         self.model.load('{}{}.ckpt'.format(self.check_point + self.model_name + "/", self.model_name))
 
@@ -308,11 +344,12 @@ class TfLTensor(TensorFace):
         return self._predict(imgs)
 
     def _predict(self, imgs):
-        if self.model is None:
-            self.load_model()
-        for img in imgs:
-            img = self.transform_img(img)
-            yield self.convert_label(self.model.predict(img))
+        with tf.Graph().as_default():
+            if self.model is None:
+                self.load_model()
+            for img in imgs:
+                img = self.transform_img(img)
+                yield self.convert_label(self.model.predict(img))
 
 class ConvTensor(TfLTensor):
     def __init__(self, *args, **kwargs):
@@ -326,7 +363,7 @@ class ConvTensor(TfLTensor):
     def transform_img(self, img):
         return img.reshape((-1, self.image_size, self.image_size, self.num_channels)).astype(np.float32)
 
-    def fit(self, dropout=False):
+    def prepare_model(self, dropout=False):
         import tflearn
         network = tflearn.input_data(
             shape=[None, self.image_size, self.image_size, self.num_channels], name='input')
@@ -348,21 +385,25 @@ class ConvTensor(TfLTensor):
 
     def train(self, num_steps=1000):
         import tflearn
-        self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
-        self.model.fit(self.train_dataset, 
-            self.train_labels, 
-            n_epoch=num_steps, 
-            validation_set=(self.test_dataset, self.test_labels),
-            show_metric=True, 
-            snapshot_step=100,
-            run_id="conv_model")
-        self.save_model()
+        with tf.Graph().as_default():
+            self.prepare_model()
+            self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
+            self.model.fit(self.train_dataset, 
+                self.train_labels, 
+                n_epoch=num_steps, 
+                validation_set=(self.valid_dataset, self.valid_labels),
+                show_metric=True, 
+                snapshot_step=100,
+                run_id="conv_model")
+            self.save_model()
 
 class ResidualTensor(TfLTensor):
     def __init__(self, *args, **kwargs):
         self.num_channels = kwargs.get("num_channels", 1)
         self.patch_size = 3
         self.depth = 32
+        if "num_channels" in kwargs:
+            del kwargs["num_channels"]
         super(ResidualTensor, self).__init__(*args, **kwargs)
 
     def transform_img(self, img):
@@ -386,7 +427,7 @@ class ResidualTensor(TfLTensor):
         print('RF-Validation set', self.valid_dataset.shape, self.valid_labels.shape)
         print('RF-Test set', self.test_dataset.shape, self.test_labels.shape)
 
-    def fit(self, dropout=False):
+    def prepare_model(self, dropout=False):
         import tflearn
 
         net = tflearn.input_data(shape=[None, self.image_size, self.image_size, self.num_channels])
@@ -412,20 +453,22 @@ class ResidualTensor(TfLTensor):
 
     def train(self, num_steps=1000):
         import tflearn
-        self.model = tflearn.DNN(self.net, 
-            checkpoint_path='model_resnet_mnist', 
-            tensorboard_verbose=3,
-            max_checkpoints=10)
+        with tf.Graph().as_default():
+            self.prepare_model()
+            self.model = tflearn.DNN(self.net, 
+                checkpoint_path='model_resnet_mnist', 
+                tensorboard_verbose=3,
+                max_checkpoints=10)
 
-        self.model.fit(self.train_dataset, 
-            self.train_labels, 
-            n_epoch=num_steps, 
-            validation_set=(self.test_dataset, self.test_labels),
-            show_metric=True, 
-            snapshot_step=100,
-            batch_size=self.batch_size,
-            run_id="resnet_mnist")
-        self.save_model()
+            self.model.fit(self.train_dataset, 
+                self.train_labels, 
+                n_epoch=num_steps, 
+                validation_set=(self.valid_dataset, self.valid_labels),
+                show_metric=True, 
+                snapshot_step=100,
+                batch_size=self.batch_size,
+                run_id="resnet_mnist")
+            self.save_model()
 
 
 class Tensor2LFace(TensorFace):
@@ -579,3 +622,27 @@ class ConvTensorFace(TensorFace):
             #print('Test accuracy: %.1f' % score)
             self.save_model(saver, session, step)
             return score
+
+
+class ClassifTest(object):
+    def __init__(self):
+        self.headers = ["CLF", "Precision", "Recall", "F1"]
+
+    def dataset_test(self, classifs, dataset_name, dataset, order_column):
+        from utils.order import order_table_print
+        table = []
+        print("DATASET", dataset_name)
+        for classif_name in classifs:
+            classif = classifs[classif_name]["name"]
+            params = classifs[classif_name]["params"]
+            clf = classif(dataset_name, dataset, **params)
+            name_clf, measure = clf.detector_test_dataset()
+            table.append((name_clf, measure.precision(), measure.recall(), measure.f1()))
+        order_table_print(self.headers, table, order_column)
+
+    def classif_test(self, clf, order_column):
+        from utils.order import order_table_print
+        table = []
+        name_clf, measure = clf.detector_test_dataset()
+        table = [(name_clf, measure.precision(), measure.recall(), measure.f1())]
+        order_table_print(self.headers, table, order_column)

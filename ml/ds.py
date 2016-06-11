@@ -4,6 +4,7 @@ from skimage import filters
 from skimage import transform
 from sklearn import preprocessing
 from skimage import img_as_ubyte
+from skimage import exposure
 
 import os
 import numpy as np
@@ -14,6 +15,18 @@ FACE_FOLDER_PATH = "/home/sc/Pictures/face/"
 FACE_ORIGINAL_PATH = "/home/sc/Pictures/face_o/"
 FACE_TEST_FOLDER_PATH = "/home/sc/Pictures/test/"
 DATASET_PATH = "/home/sc/data/dataset/"
+
+
+def save_metadata(path, file_path, data):
+    if not os.path.exists(path):
+        os.makedirs(path)
+    with open(file_path, 'wb') as f:
+        pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
+
+def load_metadata(path):
+    with open(path, 'rb') as f:
+        data = pickle.load(f)
+    return data
 
 class Filters(object):
     def __init__(self, name, filters):
@@ -57,6 +70,15 @@ class ProcessImage(object):
             except ZeroDivisionError:
                 pass
         
+    def contrast(self):
+        #contrast stretching
+        p2, p98 = np.percentile(self.image, (2, 98))
+        self.image = exposure.rescale_intensity(self.image, in_range=(p2, p98))
+
+    def upsample(self):
+        self.image = transform.pyramid_expand(
+            self.image, upscale=2, sigma=None, order=1, mode='reflect', cval=0)
+
     def rgb2gray(self):
         self.image = img_as_ubyte(color.rgb2gray(self.image))
 
@@ -78,6 +100,9 @@ class ProcessImage(object):
     def cut(self, rectangle):
         top, bottom, left, right = rectangle
         self.image = self.image[top:bottom, left:right]
+
+    def as_ubyte(self):
+        self.image = img_as_ubyte(self.image)
 
     def merge_offset(self, image_size):
         if isinstance(image_size, int):
@@ -219,24 +244,27 @@ class DataSetBuilder(object):
             len(test_labels), len(valid_labels), len(train_labels)))
 
     @classmethod
-    def load_dataset(self, name, dataset_path=DATASET_PATH, validation_dataset=True):
+    def load_dataset(self, name, dataset_path=DATASET_PATH, validation_dataset=True, pprint=True):
         with open(dataset_path+name, 'rb') as f:
             save = pickle.load(f)
             if validation_dataset is False:
-                save['train_dataset'] = np.concatenate((save['train_dataset'], save['valid_dataset']), axis=0)
+                save['train_dataset'] = np.concatenate((
+                    save['train_dataset'], save['valid_dataset']), axis=0)
                 save['train_labels'] = save['train_labels'] + save['valid_labels']
                 save['valid_dataset'] = np.empty(0)
                 save['valid_labels'] = []
 
-            print('Array length {}'.format(save['array_length']))
-            print('Global filters: {}'.format(save['global_filters']))
-            print('Local filters: {}'.format(save['local_filters']))
-            print('Training set DS[{}], labels[{}]'.format(
-                save['train_dataset'].shape, len(save['train_labels'])))
-            print('Validation set DS[{}], labels[{}]'.format(
-                save['valid_dataset'].shape, len(save['valid_labels'])))
-            print('Test set DS[{}], labels[{}]'.format(
-                save['test_dataset'].shape, len(save['test_labels'])))
+            if pprint:
+                print('Array length {}'.format(save['array_length']))
+                print('Global filters: {}'.format(save['global_filters']))
+                print('Local filters: {}'.format(save['local_filters']))
+                print('Training set DS[{}], labels[{}]'.format(
+                    save['train_dataset'].shape, len(save['train_labels'])))
+                if validation_dataset is True:
+                    print('Validation set DS[{}], labels[{}]'.format(
+                        save['valid_dataset'].shape, len(save['valid_labels'])))
+                print('Test set DS[{}], labels[{}]'.format(
+                    save['test_dataset'].shape, len(save['test_labels'])))
             return save
 
     @classmethod
@@ -262,27 +290,22 @@ class DataSetBuilder(object):
 
         return images_data, labels
 
-    def detector_test(self, face_classif):
-        images_data = []
-        labels = []
-        for number_id, path in self.images_from_directories(self.test_folder_path):
-            images_data.append(io.imread(path))
-            labels.append(number_id)
-        
-        predictions = face_classif.predict(images_data)
-        face_classif.accuracy(list(predictions), np.asarray(labels))
-
-    def build_dataset(self, from_directory):
-        self.images_to_dataset(from_directory)
+    def build_dataset(self):
+        self.images_to_dataset(self.train_folder_path)
         self.save_dataset()
+        self.clean_directory(self.train_folder_path)
 
-    def original_to_images_set(self, url, filter_data=True):
+    def clean_directory(self, path):
+        import shutil
+        shutil.rmtree(path)
+
+    def original_to_images_set(self, url, filter_data=True, test_data=True):
         images_data, labels = self.labels_images(url)
         if filter_data:
             images = (ProcessImage(img, self.filters["global"].get_filters()).image for img in images_data)
         else:
             images = (ProcessImage(img, []).image for img in images_data)
-        image_train, image_test = self.build_train_test(zip(labels, images))
+        image_train, image_test = self.build_train_test(zip(labels, images), sample=test_data)
         for number_id, images in image_train.items():
             self.save_images(self.train_folder_path, number_id, images)
 
@@ -322,3 +345,4 @@ class DataSetBuilder(object):
             return images_good, sample_data
         else:
             return images, {}
+

@@ -7,7 +7,8 @@ def get_settings(filename="settings.cfg"):
             "dataset": "dataset/",
             "checkpoints": "checkpoints/",
             "detector_name": "detector",
-            "base_dir": None}
+            "base_dir": None,
+            "image_size": 90}
     config = ConfigParser.ConfigParser()
     config.read('settings.cfg')
     for flag, v in flags.items():
