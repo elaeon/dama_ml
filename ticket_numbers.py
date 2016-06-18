@@ -184,22 +184,11 @@ def build_dirty_image_set(url, classif, d_filters):
     from tqdm import tqdm
     root = settings["examples"] + settings["pictures"] + "tickets/"
     numbers = []
-<<<<<<< HEAD
-    #for f in PICTURES:
-    for url_l in glob.glob(os.path.join(root, "Pictures/tickets/*.jpg")):
-        #url_l = os.path.join(root, f)
-        path = os.path.join(settings["root_data"], settings["checkpoints"])
-        detector = dlib.simple_object_detector(path+DETECTOR_NAME+".svm")
-        img_o = io.imread(url_l)
-        dets = detector(img_o)
-        img = ml.ds.ProcessImage(img_o, g_filters.get_filters()).image
-=======
     for path in [os.path.join(root, f) for f in PICTURES]:
         checkpoint_path = os.path.join(settings["root_data"], settings["checkpoints"])
         detector = dlib.simple_object_detector(checkpoint_path+DETECTOR_NAME+".svm")
         img = io.imread(path)
         dets = detector(ml.ds.ProcessImage(img, d_filters.get_filters()).image)        
->>>>>>> 17d021ea711d64fac663a4adebe144bda9dfdd46
         print("Numbers detected: {}".format(len(dets)))        
         for r in dets:
             m_rectangle = (r.top(), r.top() + r.height()-2, 
@@ -251,16 +240,26 @@ def transcriptor_product_price_writer(classif, g_filters, l_filters, d_filters, 
 
 
 def calc_avg_price_tickets(filename, g_filters, l_filters, d_filters, detector_path):
+    from tabulate import tabulate
     base_path = settings["base_dir"] + settings["examples"] + settings["pictures"]
     prices = 0
-    counter = 0
-    for path in glob.glob(os.path.join(base_path, "tickets/*.jpg")):
+    prices2 = 0
+    table = []
+    with open(settings["base_dir"] + settings["examples"] + "txt/tickets_totals.txt") as f:
+        tickets_totals = f.read()
+        tickets_totals = tickets_totals.split("\n")
+
+    for value_total, path in zip(tickets_totals, sorted(glob.glob(os.path.join(base_path, "tickets/*.jpg")))):
         _, sum_, v = transcriptor_product_price_writer(
             filename, g_filters, l_filters, d_filters, detector_path, url=path)
         prices += v[1]
-        print("COST:", v, sum_)
-        counter += 1
-    print("TOTAL:", prices / counter)
+        prices2 += float(value_total)
+        check = "O" if float(value_total) == v[1] else "X"
+        table.append([check, value_total, v[1], sum_, v[0], path])
+    
+    print(tabulate(table, ["", "total", "total_clf", "sum_clf", "max", "path"]))
+    print("TOTAL:", prices / len(table))
+    print("REAL:", prices2 / len(table))
 
 
 #test DSC_0055, DSC_0056
@@ -321,9 +320,9 @@ if __name__ == '__main__':
         from ml.detector import HOG
         hog = HOG()
         d_filters = ml.ds.Filters("detector", 
-                [("rgb2gray", None), ("blur", .25), 
-                    ("contrast", None), ("as_ubyte", None)])
-                #[("rgb2gray", None), ("threshold", 91), ("as_ubyte", None)])
+                #[("rgb2gray", None), ("blur", .25), 
+                #    ("contrast", None), ("as_ubyte", None)])
+                [("rgb2gray", None), ("threshold", 31), ("as_ubyte", None)])
         #d_filters = ml.ds.Filters("global", [])
         build_tickets_processed(d_filters, settings, PICTURES)
         ml.ds.save_metadata(detector_path, detector_path_meta,
@@ -348,13 +347,15 @@ if __name__ == '__main__':
         classifs = {
             "svc": {
                 "name": ml.clf.SVCFace,
-                "params": {"check_point_path": checkpoints_path, "pprint": False}},
+                "params": {"check_point_path": checkpoints_path, "pprint": False},
+                "dataset": {"validation": False}},
             #"tensor": {
             #    "name": ml.clf.TensorFace,
             #    "params": {"check_point_path": checkpoints_path}},
             "tensor2": {
                 "name": ml.clf.TfLTensor,
-                "params": {"check_point_path": checkpoints_path, "pprint": False}},
+                "params": {"check_point_path": checkpoints_path, "pprint": False},
+                "dataset": {"validation": False}},
             #"cnn": {
             #    "name": ml.clf.ConvTensor,
             #    "params": {"num_channels": 1, "check_point_path": checkpoints_path, "pprint": False}},
@@ -370,7 +371,8 @@ if __name__ == '__main__':
         else:
             class_ = classifs[args.clf]["name"]
             dataset = ml.ds.DataSetBuilder.load_dataset(dataset_name, 
-                dataset_path=settings["root_data"]+settings["dataset"], validation_dataset=False)
+                dataset_path=settings["root_data"]+settings["dataset"], 
+                validation_dataset=classifs[args.clf]["dataset"]["validation"])
             params = classifs[args.clf]["params"]
             classif = class_(dataset_name, dataset, **params)
             classif.batch_size = 100
