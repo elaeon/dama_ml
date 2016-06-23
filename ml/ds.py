@@ -214,6 +214,11 @@ class DataSetBuilder(object):
         self.desfragment()
         return Counter(self.labels)
 
+    def only_labels(self, labels):
+        s_labels = set(labels)
+        dataset, n_labels = zip(*filter(lambda x: x[1] in s_labels, zip(self.dataset, self.labels)))
+        return np.asarray(dataset), np.asarray(n_labels)
+
     def info(self):
         self.desfragment()
         print('Full dataset tensor:', self.dataset.shape)
