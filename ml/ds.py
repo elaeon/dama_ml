@@ -158,6 +158,12 @@ class DataSetBuilder(object):
         self.dataset_path = dataset_path
         self.name = name
         self.filters = filters
+        self.train_dataset = None
+        self.train_labels = None
+        self.valid_dataset = None
+        self.valid_labels = None
+        self.test_dataset = None
+        self.test_labels = None
 
     def add_img(self, img):
         self.images.append(img)
@@ -185,18 +191,50 @@ class DataSetBuilder(object):
             self.dataset = np.ndarray(
                 shape=(max_num_images, self.image_size, self.image_size, self.channels), dtype=np.float32)
             dim = (self.image_size, self.image_size, self.channels)
-        self.labels = []
+        labels = []
         for image_index, (number_id, image_file) in enumerate(images):
             image_data = io.imread(image_file)
             if image_data.shape != dim:
                 raise Exception('Unexpected image shape: %s' % str(image_data.shape))
             image_data = image_data.astype(float)
             self.dataset[image_index] = preprocessing.scale(image_data)#image_data
-            self.labels.append(number_id)
-        print 'Full dataset tensor:', self.dataset.shape
-        print 'Mean:', np.mean(self.dataset)
-        print 'Standard deviation:', np.std(self.dataset)
-        print 'Labels:', len(self.labels)
+            labels.append(number_id)
+        self.labels = np.asarray(labels)
+
+    def desfragment(self):
+        if self.dataset is None:
+            self.dataset = np.concatenate((
+                self.train_dataset, self.valid_dataset, self.test_dataset), axis=0)
+        if self.labels is None:
+            self.labels = np.concatenate((
+                self.train_labels, self.valid_labels, self.test_labels), axis=0)
+
+    def labels_info(self):
+        from collections import Counter
+        self.desfragment()
+        return Counter(self.labels)
+
+    def info(self):
+        self.desfragment()
+        print('Full dataset tensor:', self.dataset.shape)
+        print('Mean:', np.mean(self.dataset))
+        print('Standard deviation:', np.std(self.dataset))
+        print('Labels:', self.labels.shape)
+        print('Array length {}'.format(self.image_size))
+
+        if self.filters is not None:
+            print('Global filters: {}'.format(self.get_filters("global")))
+            print('Local filters: {}'.format(self.get_filters("local")))
+
+        print('Training set DS[{}], labels[{}]'.format(
+            self.train_dataset.shape, self.train_labels.shape))
+
+        if self.valid_dataset is not None:
+            print('Validation set DS[{}], labels[{}]'.format(
+                self.valid_dataset.shape, self.valid_labels.shape))
+
+        print('Test set DS[{}], labels[{}]'.format(
+            self.test_dataset.shape, self.test_labels.shape))
 
     def randomize(self, dataset, labels):
         permutation = np.random.permutation(labels.shape[0])
@@ -204,10 +242,10 @@ class DataSetBuilder(object):
         shuffled_labels = labels[permutation]
         return shuffled_dataset, shuffled_labels
 
-    def cross_validators(self, dataset, labels, train_size=0.7, valid_size=0.1):
+    def cross_validators(self, train_size=0.7, valid_size=0.1):
         from sklearn import cross_validation
         X_train, X_test, y_train, y_test = cross_validation.train_test_split(
-            dataset, labels, train_size=train_size, random_state=0)
+            self.dataset, self.labels, train_size=train_size, random_state=0)
 
         valid_size_index = int(round(X_train.shape[0] * valid_size))
         X_validation = X_train[:valid_size_index]
@@ -216,42 +254,60 @@ class DataSetBuilder(object):
         y_train = y_train[valid_size_index:]
         return X_train, X_validation, X_test, y_train, y_validation, y_test
 
-    def save_dataset(self, valid_size=.1, train_size=.7, filters=None):
-        train_dataset, valid_dataset, test_dataset, train_labels, valid_labels, test_labels = self.cross_validators(self.dataset, self.labels, train_size=train_size, valid_size=valid_size)
-        try:
-            f = open(self.dataset_path+self.name, 'wb')
-            if self.filters is not None and "local" in self.filters:
-                l_filters = self.filters["local"].get_filters()
-            else:
-                l_filters = None
+    def get_filters(self, name):
+        if self.filters is not None and name in self.filters:
+            v_filters = self.filters[name].get_filters()
+        else:
+            v_filters = None
+        return v_filters
 
-            if self.filters is not None and "global" in self.filters:
-                g_filters = self.filters["global"].get_filters()
-            else:
-                g_filters = None
+    def to_raw(self):
+        l_filters = self.get_filters("local")
+        g_filters = self.get_filters("global")
 
-            save = {
+        return {
                 'local_filters': l_filters,
                 'global_filters': g_filters,
                 'array_length': self.image_size,
-                'train_dataset': train_dataset,
-                'train_labels': train_labels,
-                'valid_dataset': valid_dataset,
-                'valid_labels': valid_labels,
-                'test_dataset': test_dataset,
-                'test_labels': test_labels,
-                }
-            pickle.dump(save, f, pickle.HIGHEST_PROTOCOL)
-            f.close()
+                'train_dataset': self.train_dataset,
+                'train_labels': self.train_labels,
+                'valid_dataset': self.valid_dataset,
+                'valid_labels': self.valid_labels,
+                'test_dataset': self.test_dataset,
+                'test_labels': self.test_labels}
+
+    def from_raw(self, raw_data):
+        self.filters = {}
+        if raw_data["global_filters"] is not None:
+            self.filters["global"] = Filters("global", raw_data["global_filters"])
+        if raw_data["local_filters"] is not None:
+            self.filters["local"] = Filters("local", raw_data["local_filters"])
+        self.image_size = raw_data["array_length"]
+        self.train_dataset = raw_data['train_dataset']
+        self.train_labels = raw_data['train_labels']
+        self.valid_dataset = raw_data['valid_dataset']
+        self.valid_labels = raw_data['valid_labels']
+        self.test_dataset = raw_data['test_dataset']
+        self.test_labels = raw_data['test_labels']
+
+    def save_dataset(self, valid_size=.1, train_size=.7):
+        train_dataset, valid_dataset, test_dataset, train_labels, valid_labels, test_labels = self.cross_validators(train_size=train_size, valid_size=valid_size)
+        try:
+            with open(self.dataset_path+self.name, 'wb') as f:
+                self.train_dataset = train_dataset
+                self.train_labels = train_labels
+                self.valid_dataset = valid_dataset
+                self.valid_labels = valid_labels
+                self.test_dataset = test_dataset
+                self.test_labels = test_labels
+                pickle.dump(self.to_raw(), f, pickle.HIGHEST_PROTOCOL)
+            self.info()
         except Exception as e:
             print('Unable to save data to: ', self.dataset_path+self.name, e)
             raise
 
-        print("Test set: {}, Valid set: {}, Training set: {}".format(
-            len(test_labels), len(valid_labels), len(train_labels)))
-
     @classmethod
-    def load_dataset(self, name, dataset_path=DATASET_PATH, validation_dataset=True, pprint=True):
+    def load_dataset_raw(self, name, dataset_path=DATASET_PATH, validation_dataset=True):
         with open(dataset_path+name, 'rb') as f:
             save = pickle.load(f)
             if validation_dataset is False:
@@ -260,20 +316,18 @@ class DataSetBuilder(object):
                 save['train_labels'] = save['train_labels'] + save['valid_labels']
                 save['valid_dataset'] = np.empty(0)
                 save['valid_labels'] = []
-
-            if pprint:
-                print('Array length {}'.format(save['array_length']))
-                print('Global filters: {}'.format(save['global_filters']))
-                print('Local filters: {}'.format(save['local_filters']))
-                print('Training set DS[{}], labels[{}]'.format(
-                    save['train_dataset'].shape, len(save['train_labels'])))
-                if validation_dataset is True:
-                    print('Validation set DS[{}], labels[{}]'.format(
-                        save['valid_dataset'].shape, len(save['valid_labels'])))
-                print('Test set DS[{}], labels[{}]'.format(
-                    save['test_dataset'].shape, len(save['test_labels'])))
             return save
 
+    @classmethod
+    def load_dataset(self, name, dataset_path=DATASET_PATH, validation_dataset=True, pprint=True):
+        data = self.load_dataset_raw(name, dataset_path=dataset_path, 
+                validation_dataset=validation_dataset)
+        dataset = DataSetBuilder(name, dataset_path=dataset_path)
+        dataset.from_raw(data)
+        if pprint:
+            dataset.info()
+        return dataset        
+        
     @classmethod
     def save_images(self, url, number_id, images):
         if not os.path.exists(url):
@@ -308,10 +362,7 @@ class DataSetBuilder(object):
 
     def original_to_images_set(self, url, test_folder_data=False):
         images_data, labels = self.labels_images(url)
-        if self.filters is not None and "global" in self.filters:
-            images = (ProcessImage(img, self.filters["global"].get_filters()).image for img in images_data)
-        else:
-            images = (ProcessImage(img, []).image for img in images_data)
+        images = (ProcessImage(img, self.get_filters("global")).image for img in images_data)
         image_train, image_test = self.build_train_test(zip(labels, images), sample=test_folder_data)
         for number_id, images in image_train.items():
             self.save_images(self.train_folder_path, number_id, images)
