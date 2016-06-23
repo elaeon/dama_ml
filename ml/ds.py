@@ -28,6 +28,18 @@ def load_metadata(path):
         data = pickle.load(f)
     return data
 
+def proximity_label(base_label, labels, dataset_name, dataset_path):
+    from sklearn import svm
+    dataset = DataSetBuilder.load_dataset(dataset_name, dataset_path=dataset_path)
+    dataset_ref, _ = dataset.only_labels(['1'])
+    clf = svm.OneClassSVM(nu=0.1, kernel="rbf", gamma=0.1)
+    clf.fit(dataset_ref.reshape(-1, 90))
+    for label in labels:
+        dataset_other, _ = dataset.only_labels([label])
+        y_pred_train = clf.predict(dataset_other.reshape(-1, 90))
+        n_error_train = y_pred_train[y_pred_train == -1].size
+        yield label, (1 - (n_error_train / float(dataset_other.reshape(-1, 90).shape[0]))) * 100
+
 class Filters(object):
     def __init__(self, name, filters):
         from collections import OrderedDict

@@ -6,7 +6,7 @@ from sklearn import preprocessing
 
 CHECK_POINT_PATH = "/home/sc/data/face_recog/"
 #np.random.seed(133)
-
+    
 class Measure(object):
     def __init__(self, predictions, labels):
         if len(labels.shape) > 1:
