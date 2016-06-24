@@ -28,19 +28,17 @@ def load_metadata(path):
         data = pickle.load(f)
     return data
 
-def proximity_label(label_ref, labels, dataset):
+def proximity_label(label_ref, labels, dataset, image_size=90):
     from sklearn import svm
     dataset_ref, _ = dataset.only_labels([label_ref])
     clf = svm.OneClassSVM(nu=0.1, kernel="rbf", gamma=0.1)
-    clf.fit(dataset_ref.reshape(-1, 90))
+    clf.fit(dataset_ref.reshape(-1, image_size))
     for label in labels:
-        if label == label_ref:
-            yield label, 0
-        else:
-            dataset_other, _ = dataset.only_labels([label])
-            y_pred_train = clf.predict(dataset_other.reshape(-1, 90))
-            n_error_train = y_pred_train[y_pred_train == -1].size 
-            yield label, (1 - (n_error_train / float(dataset_other.reshape(-1, 90).shape[0])))
+        dataset_other, _ = dataset.only_labels([label])
+        dataset_other = dataset_other.reshape(-1, image_size)
+        y_pred_train = clf.predict(dataset_other)
+        n_error_train = y_pred_train[y_pred_train == -1].size 
+        yield label, (1 - (n_error_train / float(dataset_other.shape[0])))
 
 class Filters(object):
     def __init__(self, name, filters):
@@ -205,15 +203,14 @@ class DataSetBuilder(object):
             self.dataset = np.ndarray(
                 shape=(max_num_images, self.image_size, self.image_size, self.channels), dtype=np.float32)
             dim = (self.image_size, self.image_size, self.channels)
-        labels = []
+        self.labels = np.ndarray(shape=(max_num_images,), dtype='|S1')
         for image_index, (number_id, image_file) in enumerate(images):
             image_data = io.imread(image_file)
             if image_data.shape != dim:
                 raise Exception('Unexpected image shape: %s' % str(image_data.shape))
             image_data = image_data.astype(float)
             self.dataset[image_index] = preprocessing.scale(image_data)#image_data
-            labels.append(number_id)
-        self.labels = np.asarray(labels)
+            self.labels[image_index] = number_id
 
     def desfragment(self):
         if self.dataset is None:
