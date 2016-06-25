@@ -32,13 +32,28 @@ def proximity_label(label_ref, labels, dataset, image_size=90):
     from sklearn import svm
     dataset_ref, _ = dataset.only_labels([label_ref])
     clf = svm.OneClassSVM(nu=0.1, kernel="rbf", gamma=0.1)
-    clf.fit(dataset_ref.reshape(-1, image_size))
+    clf.fit(dataset_ref.reshape(dataset_ref.shape[0], -1))
     for label in labels:
         dataset_other, _ = dataset.only_labels([label])
-        dataset_other = dataset_other.reshape(-1, image_size)
+        dataset_other = dataset_other.reshape(dataset_other.shape[0], -1)
         y_pred_train = clf.predict(dataset_other)
-        n_error_train = y_pred_train[y_pred_train == -1].size 
-        yield label, (1 - (n_error_train / float(dataset_other.shape[0])))
+        n_error_train = y_pred_train[y_pred_train == -1].size
+        #if label == label_ref:
+        #    t = dataset_ref.reshape(dataset_ref.shape[0], -1)
+        #    for i in range(t.shape[0]):
+        #        print(all(dataset_other[i] == t[i]))
+        yield label, (1 - (n_error_train / float(y_pred_train.size)))
+
+def proximity_dataset(label_ref, labels, dataset, image_size=90):
+    from sklearn import svm
+    dataset_ref, _ = dataset.only_labels([label_ref])
+    clf = svm.OneClassSVM(nu=0.1, kernel="rbf", gamma=0.1)
+    clf.fit(dataset_ref.reshape(dataset_ref.shape[0], -1))
+    for label in labels:
+        dataset_other, _ = dataset.only_labels([label])
+        dataset_other = dataset_other.reshape(dataset_other.shape[0], -1)
+        y_pred_train = clf.predict(dataset_other)
+        return y_pred_train[y_pred_train == 1]
 
 class Filters(object):
     def __init__(self, name, filters):
