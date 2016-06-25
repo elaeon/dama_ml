@@ -382,7 +382,7 @@ if __name__ == '__main__':
                     dataset_path=settings["root_data"]+settings["dataset"], 
                     train_folder_path=settings["root_data"]+settings["pictures"]+"/tickets/train/")
                 print("------ TEST FROM TEST-DATASET")
-                classif.detector_test_dataset()
+                #classif.detector_test_dataset()
                 dt = ml.clf.ClassifTest()
                 dt.classif_test(classif, "f1")
             elif args.train:

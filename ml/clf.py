@@ -45,9 +45,9 @@ class Measure(object):
         print("#############")
 
 class BasicFaceClassif(object):
-    def __init__(self, model_name, dataset, image_size=90, pprint=True):
-        self.image_size = image_size
-        self.model_name = model_name
+    def __init__(self, dataset, pprint=True):
+        self.image_size = dataset.image_size
+        self.model_name = dataset.name
         self.model = None
         self.pprint = pprint
         self.le = preprocessing.LabelEncoder()
@@ -102,29 +102,23 @@ class BasicFaceClassif(object):
         return measure.accuracy()
 
     def load_dataset(self, dataset):
-        self.train_dataset = dataset['train_dataset']
-        self.train_labels = dataset['train_labels']
-        self.valid_dataset = dataset['valid_dataset']
-        self.valid_labels = dataset['valid_labels']
-        self.test_dataset = dataset['test_dataset']
-        self.test_labels = dataset['test_labels']
-        self.image_size = dataset['array_length']
+        self.train_dataset = dataset.train_dataset
+        self.train_labels = dataset.train_labels
+        self.valid_dataset = dataset.valid_dataset
+        self.valid_labels = dataset.valid_labels
+        self.test_dataset = dataset.test_dataset
+        self.test_labels = dataset.test_labels
         self.reformat_all()
 
 class SVCFace(BasicFaceClassif):
-    def __init__(self, model_name, dataset, image_size=90, check_point_path=CHECK_POINT_PATH, pprint=True):
-        super(SVCFace, self).__init__(model_name, dataset, image_size=image_size, pprint=pprint)
+    def __init__(self, dataset, check_point_path=CHECK_POINT_PATH, pprint=True):
+        super(SVCFace, self).__init__(dataset, pprint=pprint)
         self.check_point_path = check_point_path
         self.check_point = check_point_path + self.__class__.__name__ + "/"
 
     def prepare_model(self):
         from sklearn import svm
-        #clf = svm.OneClassSVM(nu=0.0001, kernel="linear")
-        #self.model_o = clf.fit(self.train_dataset)
-        #y_pred_train = clf.predict(self.train_dataset)
-        #indices = np.where(y_pred_train==1)
         reg = svm.LinearSVC(C=1, max_iter=1000)
-        #reg = reg.fit(self.train_dataset[indices], self.train_labels[indices])
         reg = reg.fit(self.train_dataset, self.train_labels)
         self.model = reg
 
@@ -139,11 +133,7 @@ class SVCFace(BasicFaceClassif):
         return self._predict(imgs)
 
     def transform_img(self, img):
-        index = 1 if len(img.shape) > 1 else 0
-        size = img.shape[index]
-        for dim in img.shape[index+1:]:
-            size = size * dim
-        return img.reshape((-1, size)).astype(np.float32)
+        return img.reshape(img.shape[0], -1).astype(np.float32)
 
     def narray_build(self, length, dim):
         shape = (length, dim, dim)

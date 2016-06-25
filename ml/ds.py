@@ -31,17 +31,12 @@ def load_metadata(path):
 def proximity_label(label_ref, labels, dataset, image_size=90):
     from sklearn import svm
     dataset_ref, _ = dataset.only_labels([label_ref])
-    clf = svm.OneClassSVM(nu=0.1, kernel="rbf", gamma=0.1)
+    clf = svm.OneClassSVM(nu=.2, kernel="rbf", gamma=0.5)
     clf.fit(dataset_ref.reshape(dataset_ref.shape[0], -1))
     for label in labels:
         dataset_other, _ = dataset.only_labels([label])
-        dataset_other = dataset_other.reshape(dataset_other.shape[0], -1)
-        y_pred_train = clf.predict(dataset_other)
+        y_pred_train = clf.predict(dataset_other.reshape(dataset_other.shape[0], -1))
         n_error_train = y_pred_train[y_pred_train == -1].size
-        #if label == label_ref:
-        #    t = dataset_ref.reshape(dataset_ref.shape[0], -1)
-        #    for i in range(t.shape[0]):
-        #        print(all(dataset_other[i] == t[i]))
         yield label, (1 - (n_error_train / float(y_pred_train.size)))
 
 def proximity_dataset(label_ref, labels, dataset, image_size=90):
@@ -50,10 +45,9 @@ def proximity_dataset(label_ref, labels, dataset, image_size=90):
     clf = svm.OneClassSVM(nu=0.1, kernel="rbf", gamma=0.1)
     clf.fit(dataset_ref.reshape(dataset_ref.shape[0], -1))
     for label in labels:
-        dataset_other, _ = dataset.only_labels([label])
-        dataset_other = dataset_other.reshape(dataset_other.shape[0], -1)
-        y_pred_train = clf.predict(dataset_other)
-        return y_pred_train[y_pred_train == 1]
+        dataset_other_, _ = dataset.only_labels([label])
+        y_pred_train = clf.predict(dataset_other_.reshape(dataset_other_.shape[0], -1))
+        return filter(lambda x: x[1] == -1, zip(dataset_other_, y_pred_train))
 
 class Filters(object):
     def __init__(self, name, filters):
@@ -195,7 +189,7 @@ class DataSetBuilder(object):
     def add_img(self, img):
         self.images.append(img)
         #self.dataset.append(img)
-
+        
     def images_from_directories(self, folder_base):
         images = []
         for directory in os.listdir(folder_base):
@@ -435,3 +429,23 @@ class DataSetBuilder(object):
         else:
             return images, {}
 
+    def is_binary(self):
+        return len(self.labels_info()) == 2
+
+class DataSetBuilderFile(DataSetBuilder):
+    def from_csv(self, path, label_column):
+        self.dataset, self.labels = self.csv2dataset(path, label_column)
+        for row in range(self.dataset.shape[0]):
+            self.dataset[row] = preprocessing.scale(self.dataset[row])
+
+    @classmethod
+    def csv2dataset(self, path, label_column):
+        import pandas as pd
+        df = pd.read_csv(path)
+        dataset = df.drop([label_column], axis=1).as_matrix()
+        labels = df[label_column].as_matrix()
+        return dataset, labels
+
+    def build_dataset(self, path, label_column):
+        self.from_csv(path, label_column)
+        self.save_dataset()
