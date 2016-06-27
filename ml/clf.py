@@ -177,11 +177,9 @@ class SVCFace(Binary):
             self.load_model()
 
         if isinstance(imgs, list):
-            array_imgs = self.transform_img(np.asarray(imgs))
-        else:
-            array_imgs = self.transform_img(imgs)
+            imgs = np.asarray(imgs)
 
-        for prediction in self.model.predict(array_imgs):
+        for prediction in self.model.predict(self.transform_img(imgs)):
             yield self.convert_label(prediction)
 
     def prepare_model(self):
@@ -192,11 +190,10 @@ class SVCFace(Binary):
 
 
 class BasicTensor(BasicFaceClassif):
-    def __init__(self, dataset, batch_size=None, 
+    def __init__(self, dataset,
             check_point_path=CHECK_POINT_PATH, num_features=None, pprint=True):
         super(BasicTensor, self).__init__(dataset, 
             check_point_path=check_point_path, pprint=pprint)
-        self.batch_size = batch_size
         if num_features is None:
             self.num_features = self.image_size * self.image_size
         else:
@@ -211,14 +208,14 @@ class BasicTensor(BasicFaceClassif):
     #def transform_img(self, img):
     #    return img.reshape((-1, self.image_size * self.image_size)).astype(np.float32)
 
-    def prepare_model(self, dropout=True):
+    def prepare_model(self, batch_size, dropout=True):
         self.graph = tf.Graph()
         with self.graph.as_default():
             # Input data. For the training data, we use a placeholder that will be fed
             # at run time with a training minibatch.
             self.tf_train_dataset = tf.placeholder(tf.float32,
-                                            shape=(self.batch_size, self.num_features))
-            self.tf_train_labels = tf.placeholder(tf.float32, shape=(self.batch_size, self.num_labels))
+                                            shape=(batch_size, self.num_features))
+            self.tf_train_labels = tf.placeholder(tf.float32, shape=(batch_size, self.num_labels))
             self.tf_valid_dataset = tf.constant(self.valid_dataset)
             self.tf_test_dataset = tf.constant(self.test_dataset)
 
@@ -248,8 +245,8 @@ class BasicTensor(BasicFaceClassif):
                 tf.matmul(self.tf_valid_dataset, weights) + biases)
             self.test_prediction = tf.nn.softmax(tf.matmul(self.tf_test_dataset, weights) + biases)
 
-    def train(self, num_steps=3001):
-        self.prepare_model()
+    def train(self, batch_size=10, num_steps=3001):
+        self.prepare_model(batch_size)
         with tf.Session(graph=self.graph) as session:
             saver = tf.train.Saver()
             tf.initialize_all_variables().run()
@@ -257,10 +254,10 @@ class BasicTensor(BasicFaceClassif):
             for step in xrange(num_steps):
                 # Pick an offset within the training data, which has been randomized.
                 # Note: we could use better randomization across epochs.
-                offset = (step * self.batch_size) % (self.train_labels.shape[0] - self.batch_size)
+                offset = (step * batch_size) % (self.train_labels.shape[0] - batch_size)
                 # Generate a minibatch.
-                batch_data = self.train_dataset[offset:(offset + self.batch_size), :]
-                batch_labels = self.train_labels[offset:(offset + self.batch_size), :]
+                batch_data = self.train_dataset[offset:(offset + batch_size), :]
+                batch_labels = self.train_labels[offset:(offset + batch_size), :]
                 # Prepare a dictionary telling the session where to feed the minibatch.
                 # The key of the dictionary is the placeholder node of the graph to be fed,
                 # and the value is the numpy array to feed to it.
@@ -289,7 +286,7 @@ class BasicTensor(BasicFaceClassif):
 class TensorFace(BasicTensor):
 
     def position_index(self, label):
-        return np.argmax(label)#[0]
+        return np.argmax(label)
 
     def predict(self, imgs):
         self.batch_size = 1
@@ -329,7 +326,7 @@ class TfLTensor(TensorFace):
         self.net = tflearn.regression(softmax, optimizer=sgd, metric=acc,
                                  loss='categorical_crossentropy')
 
-    def train(self, num_steps=1000):
+    def train(self, batch_size=10, num_steps=1000):
         import tflearn
         with tf.Graph().as_default():
             self.prepare_model()
@@ -339,7 +336,7 @@ class TfLTensor(TensorFace):
                 n_epoch=num_steps, 
                 validation_set=(self.valid_dataset, self.valid_labels),
                 show_metric=True, 
-                batch_size=self.batch_size,
+                batch_size=batch_size,
                 run_id="dense_model")
             self.save_model()
     
@@ -364,9 +361,12 @@ class TfLTensor(TensorFace):
         with tf.Graph().as_default():
             if self.model is None:
                 self.load_model()
-            for img in imgs:
-                img = self.transform_img(img)
-                yield self.convert_label(self.model.predict(img))
+
+            if isinstance(imgs, list):
+                imgs = np.asarray(imgs)
+
+            for prediction in self.model.predict(self.transform_img(imgs)):
+                yield self.convert_label(prediction)
 
 class ConvTensor(TfLTensor):
     def __init__(self, *args, **kwargs):
@@ -645,14 +645,14 @@ class ClassifTest(object):
     def __init__(self):
         self.headers = ["CLF", "Precision", "Recall", "F1"]
 
-    def dataset_test(self, classifs, dataset_name, dataset, order_column):
+    def dataset_test(self, classifs, dataset, order_column):
         from utils.order import order_table_print
         table = []
-        print("DATASET", dataset_name)
+        print("DATASET", dataset.name)
         for classif_name in classifs:
             classif = classifs[classif_name]["name"]
             params = classifs[classif_name]["params"]
-            clf = classif(dataset_name, dataset, **params)
+            clf = classif(dataset, **params)
             name_clf, measure = clf.detector_test_dataset()
             table.append((name_clf, measure.precision(), measure.recall(), measure.f1()))
         order_table_print(self.headers, table, order_column)

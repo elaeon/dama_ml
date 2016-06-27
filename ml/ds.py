@@ -28,7 +28,7 @@ def load_metadata(path):
         data = pickle.load(f)
     return data
 
-def proximity_label(label_ref, labels, dataset, image_size=90):
+def proximity_label(label_ref, labels, dataset):
     from sklearn import svm
     dataset_ref, _ = dataset.only_labels([label_ref])
     clf = svm.OneClassSVM(nu=.2, kernel="rbf", gamma=0.5)
@@ -39,7 +39,7 @@ def proximity_label(label_ref, labels, dataset, image_size=90):
         n_error_train = y_pred_train[y_pred_train == -1].size
         yield label, (1 - (n_error_train / float(y_pred_train.size)))
 
-def proximity_dataset(label_ref, labels, dataset, image_size=90):
+def proximity_dataset(label_ref, labels, dataset):
     from sklearn import svm
     dataset_ref, _ = dataset.only_labels([label_ref])
     clf = svm.OneClassSVM(nu=0.1, kernel="rbf", gamma=0.1)
@@ -243,7 +243,7 @@ class DataSetBuilder(object):
         print('Mean:', np.mean(self.dataset))
         print('Standard deviation:', np.std(self.dataset))
         print('Labels:', self.labels.shape)
-        print('Array length {}'.format(self.image_size))
+        print('Num features {}'.format(self.image_size))
 
         if self.filters is not None:
             print('Global filters: {}'.format(self.get_filters("global")))
