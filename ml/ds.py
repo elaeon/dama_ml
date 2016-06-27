@@ -231,7 +231,6 @@ class DataSetBuilder(object):
 
     def labels_info(self):
         from collections import Counter
-        self.desfragment()
         return Counter(self.labels)
 
     def only_labels(self, labels):
@@ -240,7 +239,6 @@ class DataSetBuilder(object):
         return np.asarray(dataset), np.asarray(n_labels)
 
     def info(self):
-        self.desfragment()
         print('Full dataset tensor:', self.dataset.shape)
         print('Mean:', np.mean(self.dataset))
         print('Standard deviation:', np.std(self.dataset))
@@ -313,7 +311,8 @@ class DataSetBuilder(object):
         self.valid_dataset = raw_data['valid_dataset']
         self.valid_labels = raw_data['valid_labels']
         self.test_dataset = raw_data['test_dataset']
-        self.test_labels = raw_data['test_labels']
+        self.test_labels = raw_data['test_labels']        
+        self.desfragment()
 
     def save_dataset(self, valid_size=.1, train_size=.7):
         train_dataset, valid_dataset, test_dataset, train_labels, valid_labels, test_labels = self.cross_validators(train_size=train_size, valid_size=valid_size)

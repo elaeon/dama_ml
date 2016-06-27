@@ -45,13 +45,15 @@ class Measure(object):
         print("#############")
 
 class BasicFaceClassif(object):
-    def __init__(self, dataset, pprint=True):
+    def __init__(self, dataset, check_point_path=CHECK_POINT_PATH, pprint=True):
         self.image_size = dataset.image_size
         self.model_name = dataset.name
         self.model = None
         self.pprint = pprint
         self.le = preprocessing.LabelEncoder()
         self.load_dataset(dataset)
+        self.check_point_path = check_point_path
+        self.check_point = check_point_path + self.__class__.__name__ + "/"
 
     def detector_test_dataset(self):
         predictions = self.predict(self.test_dataset)
@@ -64,7 +66,7 @@ class BasicFaceClassif(object):
         return dataset, labels
 
     def transform_img(self, img):
-        return img.reshape((-1, self.image_size * self.image_size)).astype(np.float32)
+        return img.reshape(img.shape[0], -1).astype(np.float32)
 
     def labels_encode(self, labels):
         self.le.fit(labels)
@@ -74,7 +76,6 @@ class BasicFaceClassif(object):
         return label
 
     def convert_label(self, label):
-        #[0, 0, 1.0] -> Number
         return self.le.inverse_transform(self.position_index(label))
 
     def reformat_all(self):
@@ -110,16 +111,21 @@ class BasicFaceClassif(object):
         self.test_labels = dataset.test_labels
         self.reformat_all()
 
-class SVCFace(BasicFaceClassif):
-    def __init__(self, dataset, check_point_path=CHECK_POINT_PATH, pprint=True):
-        super(SVCFace, self).__init__(dataset, pprint=pprint)
-        self.check_point_path = check_point_path
-        self.check_point = check_point_path + self.__class__.__name__ + "/"
+class Binary(BasicFaceClassif):
+    def __init__(self, *args, **kwargs):
+        super(Binary, self).__init__(*args, **kwargs)
+        self.label_ref = 1
+        self.label_other = 0
 
     def prepare_model(self):
         from sklearn import svm
-        reg = svm.LinearSVC(C=1, max_iter=1000)
-        reg = reg.fit(self.train_dataset, self.train_labels)
+        from ml import ds
+        dataset = ds.DataSetBuilder("")
+        dataset.dataset = self.train_dataset
+        dataset.labels = self.train_labels
+        dataset_ref, _ = dataset.only_labels([self.label_ref])
+        reg = svm.OneClassSVM(nu=.2, kernel="rbf", gamma=0.5)
+        reg.fit(dataset_ref)
         self.model = reg
 
     def train(self, num_steps=0):
@@ -132,12 +138,9 @@ class SVCFace(BasicFaceClassif):
     def predict(self, imgs):
         return self._predict(imgs)
 
-    def transform_img(self, img):
-        return img.reshape(img.shape[0], -1).astype(np.float32)
-
-    def narray_build(self, length, dim):
-        shape = (length, dim, dim)
-        return np.ndarray(shape=shape, dtype=np.float32)
+    #def narray_build(self, length, dim):
+    #    shape = (length, dim, dim)
+    #    return np.ndarray(shape=shape, dtype=np.float32)
 
     def _predict(self, imgs):
         if self.model is None:
@@ -149,7 +152,8 @@ class SVCFace(BasicFaceClassif):
             array_imgs = self.transform_img(imgs)
 
         for prediction in self.model.predict(array_imgs):
-            yield self.convert_label(prediction)
+            label = self.label_other if prediction == -1 else self.label_ref
+            yield self.convert_label(label)
 
     def save_model(self):
         from sklearn.externals import joblib
@@ -166,12 +170,37 @@ class SVCFace(BasicFaceClassif):
             self.check_point+self.model_name+"/"+self.model_name))
 
 
+class SVCFace(Binary):
+
+    def _predict(self, imgs):
+        if self.model is None:
+            self.load_model()
+
+        if isinstance(imgs, list):
+            array_imgs = self.transform_img(np.asarray(imgs))
+        else:
+            array_imgs = self.transform_img(imgs)
+
+        for prediction in self.model.predict(array_imgs):
+            yield self.convert_label(prediction)
+
+    def prepare_model(self):
+        from sklearn import svm
+        reg = svm.LinearSVC(C=1, max_iter=1000)
+        reg = reg.fit(self.train_dataset, self.train_labels)
+        self.model = reg
+
+
 class BasicTensor(BasicFaceClassif):
-    def __init__(self, model_name, dataset, batch_size=None, 
-                image_size=90, check_point_path=CHECK_POINT_PATH, pprint=True):
-        super(BasicTensor, self).__init__(model_name, dataset, image_size=image_size, pprint=pprint)
+    def __init__(self, dataset, batch_size=None, 
+            check_point_path=CHECK_POINT_PATH, num_features=None, pprint=True):
+        super(BasicTensor, self).__init__(dataset, 
+            check_point_path=check_point_path, pprint=pprint)
         self.batch_size = batch_size
-        self.check_point = check_point_path + self.__class__.__name__ + "/"
+        if num_features is None:
+            self.num_features = self.image_size * self.image_size
+        else:
+            self.num_features = num_features
 
     def reformat(self, dataset, labels):
         dataset = self.transform_img(dataset)
@@ -179,8 +208,8 @@ class BasicTensor(BasicFaceClassif):
         labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
         return dataset, labels_m
 
-    def transform_img(self, img):
-        return img.reshape((-1, self.image_size * self.image_size)).astype(np.float32)
+    #def transform_img(self, img):
+    #    return img.reshape((-1, self.image_size * self.image_size)).astype(np.float32)
 
     def prepare_model(self, dropout=True):
         self.graph = tf.Graph()
@@ -188,14 +217,14 @@ class BasicTensor(BasicFaceClassif):
             # Input data. For the training data, we use a placeholder that will be fed
             # at run time with a training minibatch.
             self.tf_train_dataset = tf.placeholder(tf.float32,
-                                            shape=(self.batch_size, self.image_size * self.image_size))
+                                            shape=(self.batch_size, self.num_features))
             self.tf_train_labels = tf.placeholder(tf.float32, shape=(self.batch_size, self.num_labels))
             self.tf_valid_dataset = tf.constant(self.valid_dataset)
             self.tf_test_dataset = tf.constant(self.test_dataset)
 
             # Variables.
             weights = tf.Variable(
-                tf.truncated_normal([self.image_size * self.image_size, self.num_labels]))
+                tf.truncated_normal([self.num_features, self.num_labels]))
             biases = tf.Variable(tf.zeros([self.num_labels]))
 
             # Training computation.
@@ -258,8 +287,6 @@ class BasicTensor(BasicFaceClassif):
                 global_step=step)
 
 class TensorFace(BasicTensor):
-    def __init__(self, *args, **kwargs):
-        super(TensorFace, self).__init__(*args, **kwargs)
 
     def position_index(self, label):
         return np.argmax(label)#[0]
@@ -287,7 +314,7 @@ class TensorFace(BasicTensor):
 class TfLTensor(TensorFace):
     def prepare_model(self, dropout=False):
         import tflearn
-        input_layer = tflearn.input_data(shape=[None, self.image_size*self.image_size])
+        input_layer = tflearn.input_data(shape=[None, self.num_features])
         dense1 = tflearn.fully_connected(input_layer, 124, activation='tanh',
                                          regularizer='L2', weight_decay=0.001)
         dropout1 = tflearn.dropout(dense1, 0.5)
