@@ -7,8 +7,9 @@ from sklearn import preprocessing
 
 settings = get_settings()
 dataset_name = "test"
-dataset_path = "/home/alejandro/"
+dataset_path = "/home/sc/"
 IMAGE_SIZE = int(settings["image_size"])
+check_point_path = "/home/sc/ml_data/checkpoints/"
 
 def build():
     ds_builder = ml.ds.DataSetBuilder(dataset_name, 
@@ -46,12 +47,37 @@ def test():
         io.imsave("/tmp/img2/{}.jpg".format(count), data_n)
         #break
 
+def test_train(dataset):
+    #classif = ml.clf.SVCFace(dataset, check_point_path=check_point_path, pprint=False)
+    #classif = ml.clf.Binary(dataset, check_point_path=check_point_path, pprint=False)
+    classif = ml.clf.TfLTensor(dataset, num_features=21, check_point_path=check_point_path, pprint=False)
+    classif.train(batch_size=200, num_steps=100)
+    dt = ml.clf.ClassifTest()
+    dt.classif_test(classif, "f1")
+    #classifs = {
+    #    "SCV": {"name": ml.clf.SVCFace, 
+    #        "params": {"check_point_path": check_point_path, "pprint":False}}, 
+    #    "TENSOR": {"name": ml.clf.TfLTensor, 
+    #        "params": {"check_point_path": check_point_path, "num_features": 21, "pprint":False}}}
+    #dt.dataset_test(classifs, dataset, "f1")
+
+def predict(dataset, path, label_column):
+    import pandas as pd
+    classif = ml.clf.SVCFace(dataset, check_point_path=check_point_path, pprint=False)
+    #classif = ml.clf.TfLTensor(dataset, num_features=21, 
+    #    check_point_path=check_point_path, pprint=False)
+    df = pd.read_csv(path)
+    dataset = df.drop([label_column], axis=1).as_matrix()
+    ids = df[label_column].as_matrix()
+    #for predic, label in zip(list(classif.predict(dataset))[:20], ids[:20]):
+    #    print(predic, label)
+    for data, label in zip(dataset, ids)[:20]:
+        print(list(classif.predict([data])), label)
+
 #build()
 #matrix()
-#dataset, labels = ml.ds.DataSetBuilder.csv2dataset("/home/alejandro/Descargas/numerai_datasets/numerai_training_data.csv", "target")
-#print(dataset.shape, labels)
 #dataset = ml.ds.DataSetBuilderFile(dataset_name, dataset_path=dataset_path)
-#dataset.build_dataset("/home/alejandro/Descargas/numerai_datasets/numerai_training_data.csv", "target")
+#dataset.build_dataset("/home/sc/test_data/numerai_datasets/numerai_training_data.csv", "target")
 """
          0        1
 --  ------  -------
@@ -59,10 +85,6 @@ def test():
  1  40.42   64.5937
 """
 dataset = ml.ds.DataSetBuilderFile.load_dataset(dataset_name, dataset_path=dataset_path)
-#print(dataset.is_binary())
-#classif = ml.clf.SVCFace(dataset, check_point_path="/home/alejandro/ml_data/checkpoints/", pprint=False)
-#classif = ml.clf.Binary(dataset, check_point_path="/home/alejandro/ml_data/checkpoints/", pprint=False)
-classif = ml.clf.TfLTensor(dataset, num_features=21, check_point_path="/home/alejandro/ml_data/checkpoints/", pprint=False)
-classif.train(num_steps=10)
-dt = ml.clf.ClassifTest()
-dt.classif_test(classif, "f1")
+test_train(dataset)
+#predict(dataset, "/home/sc/test_data/numerai_datasets/numerai_tournament_data.csv", "t_id")
+

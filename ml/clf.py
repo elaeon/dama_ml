@@ -46,8 +46,7 @@ class Measure(object):
 
 class BasicFaceClassif(object):
     def __init__(self, dataset, check_point_path=CHECK_POINT_PATH, pprint=True):
-        self.image_size = dataset.image_size
-        self.model_name = dataset.name
+        #self.image_size = dataset.image_size
         self.model = None
         self.pprint = pprint
         self.le = preprocessing.LabelEncoder()
@@ -56,9 +55,9 @@ class BasicFaceClassif(object):
         self.check_point = check_point_path + self.__class__.__name__ + "/"
 
     def detector_test_dataset(self):
-        predictions = self.predict(self.test_dataset)
+        predictions = self.predict(self.dataset.test_dataset)
         measure = Measure(list(predictions), np.asarray([self.convert_label(label) 
-            for label in self.test_labels]))
+            for label in self.dataset.test_labels]))
         return self.__class__.__name__, measure
 
     def reformat(self, dataset, labels):
@@ -79,22 +78,24 @@ class BasicFaceClassif(object):
         return self.le.inverse_transform(self.position_index(label))
 
     def reformat_all(self):
-        all_ds = np.concatenate((self.train_labels, self.valid_labels, self.test_labels), axis=0)
+        all_ds = np.concatenate((self.dataset.train_labels, 
+            self.dataset.valid_labels, self.dataset.test_labels), axis=0)
         self.labels_encode(all_ds)
-        self.train_dataset, self.train_labels = self.reformat(
-            self.train_dataset, self.le.transform(self.train_labels))
-        self.test_dataset, self.test_labels = self.reformat(
-            self.test_dataset, self.le.transform(self.test_labels))
+        self.dataset.train_dataset, self.dataset.train_labels = self.reformat(
+            self.dataset.train_dataset, self.le.transform(self.dataset.train_labels))
+        self.dataset.test_dataset, self.dataset.test_labels = self.reformat(
+            self.dataset.test_dataset, self.le.transform(self.dataset.test_labels))
 
-        if len(self.valid_labels) > 0:
-            self.valid_dataset, self.valid_labels = self.reformat(
-                self.valid_dataset, self.le.transform(self.valid_labels))
+        if len(self.dataset.valid_labels) > 0:
+            self.dataset.valid_dataset, self.dataset.valid_labels = self.reformat(
+                self.dataset.valid_dataset, self.le.transform(self.dataset.valid_labels))
 
         if self.pprint:
-            print('RF-Training set', self.train_dataset.shape, self.train_labels.shape)
-            if self.valid_dataset.shape[0] > 0:
-                print('RF-Validation set', self.valid_dataset.shape, self.valid_labels.shape)
-            print('RF-Test set', self.test_dataset.shape, self.test_labels.shape)
+            print('RF-Training set', self.dataset.train_dataset.shape, self.dataset.train_labels.shape)
+            if self.dataset.valid_dataset.shape[0] > 0:
+                print('RF-Validation set', self.dataset.valid_dataset.shape,
+                    self.dataset.valid_labels.shape)
+            print('RF-Test set', self.dataset.test_dataset.shape, self.dataset.test_labels.shape)
 
     def accuracy(self, predictions, labels):
         measure = Measure(predictions, labels)
@@ -103,12 +104,15 @@ class BasicFaceClassif(object):
         return measure.accuracy()
 
     def load_dataset(self, dataset):
-        self.train_dataset = dataset.train_dataset
-        self.train_labels = dataset.train_labels
-        self.valid_dataset = dataset.valid_dataset
-        self.valid_labels = dataset.valid_labels
-        self.test_dataset = dataset.test_dataset
-        self.test_labels = dataset.test_labels
+        from ml.ds import DataSetBuilder
+        self.dataset = DataSetBuilder(dataset.name)
+        self.dataset.image_size = dataset.image_size
+        self.dataset.train_dataset = dataset.train_dataset
+        self.dataset.train_labels = dataset.train_labels
+        self.dataset.valid_dataset = dataset.valid_dataset
+        self.dataset.valid_labels = dataset.valid_labels
+        self.dataset.test_dataset = dataset.test_dataset
+        self.dataset.test_labels = dataset.test_labels
         self.reformat_all()
 
 class Binary(BasicFaceClassif):
@@ -119,19 +123,17 @@ class Binary(BasicFaceClassif):
 
     def prepare_model(self):
         from sklearn import svm
-        from ml import ds
-        dataset = ds.DataSetBuilder("")
-        dataset.dataset = self.train_dataset
-        dataset.labels = self.train_labels
-        dataset_ref, _ = dataset.only_labels([self.label_ref])
+        self.dataset.dataset = self.dataset.train_dataset
+        self.dataset.labels = self.dataset.train_labels
+        dataset_ref, _ = self.dataset.only_labels([self.label_ref])
         reg = svm.OneClassSVM(nu=.2, kernel="rbf", gamma=0.5)
         reg.fit(dataset_ref)
         self.model = reg
 
-    def train(self, num_steps=0):
+    def train(self, batch_size=0, num_steps=0):
         self.prepare_model()
-        predictions = self.model.predict(self.test_dataset)
-        score = self.accuracy(predictions, self.test_labels)
+        predictions = self.model.predict(self.dataset.test_dataset)
+        score = self.accuracy(predictions, self.dataset.test_labels)
         self.save_model()
         return score
 
@@ -159,15 +161,15 @@ class Binary(BasicFaceClassif):
         from sklearn.externals import joblib
         if not os.path.exists(self.check_point):
             os.makedirs(self.check_point)
-        if not os.path.exists(self.check_point + self.model_name + "/"):
-            os.makedirs(self.check_point + self.model_name + "/")
+        if not os.path.exists(self.check_point + self.dataset.name + "/"):
+            os.makedirs(self.check_point + self.dataset.name + "/")
         joblib.dump(self.model, '{}.pkl'.format(
-            self.check_point+self.model_name+"/"+self.model_name))
+            self.check_point+self.dataset.name+"/"+self.dataset.name))
 
     def load_model(self):
         from sklearn.externals import joblib
         self.model = joblib.load('{}.pkl'.format(
-            self.check_point+self.model_name+"/"+self.model_name))
+            self.check_point+self.dataset.name+"/"+self.dataset.name))
 
 
 class SVCFace(Binary):
@@ -185,7 +187,7 @@ class SVCFace(Binary):
     def prepare_model(self):
         from sklearn import svm
         reg = svm.LinearSVC(C=1, max_iter=1000)
-        reg = reg.fit(self.train_dataset, self.train_labels)
+        reg = reg.fit(self.dataset.train_dataset, self.dataset.train_labels)
         self.model = reg
 
 
@@ -216,8 +218,8 @@ class BasicTensor(BasicFaceClassif):
             self.tf_train_dataset = tf.placeholder(tf.float32,
                                             shape=(batch_size, self.num_features))
             self.tf_train_labels = tf.placeholder(tf.float32, shape=(batch_size, self.num_labels))
-            self.tf_valid_dataset = tf.constant(self.valid_dataset)
-            self.tf_test_dataset = tf.constant(self.test_dataset)
+            self.tf_valid_dataset = tf.constant(self.dataset.valid_dataset)
+            self.tf_test_dataset = tf.constant(self.dataset.test_dataset)
 
             # Variables.
             weights = tf.Variable(
@@ -254,9 +256,9 @@ class BasicTensor(BasicFaceClassif):
             for step in xrange(num_steps):
                 # Pick an offset within the training data, which has been randomized.
                 # Note: we could use better randomization across epochs.
-                offset = (step * batch_size) % (self.train_labels.shape[0] - batch_size)
+                offset = (step * batch_size) % (self.dataset.train_labels.shape[0] - batch_size)
                 # Generate a minibatch.
-                batch_data = self.train_dataset[offset:(offset + batch_size), :]
+                batch_data = self.dataset.train_dataset[offset:(offset + batch_size), :]
                 batch_labels = self.train_labels[offset:(offset + batch_size), :]
                 # Prepare a dictionary telling the session where to feed the minibatch.
                 # The key of the dictionary is the placeholder node of the graph to be fed,
@@ -268,19 +270,19 @@ class BasicTensor(BasicFaceClassif):
                     print "Minibatch loss at step", step, ":", l
                     print "Minibatch accuracy: %.1f%%" % (self.accuracy(predictions, batch_labels)*100)
                     print "Validation accuracy: %.1f%%" % (self.accuracy(
-                      self.valid_prediction.eval(), self.valid_labels)*100)
-            score_v = self.accuracy(self.test_prediction.eval(), self.test_labels)
+                      self.valid_prediction.eval(), self.dataset.valid_labels)*100)
+            score_v = self.accuracy(self.test_prediction.eval(), self.dataset.test_labels)
             self.save_model(saver, session, step)
             return score_v
 
     def save_model(self, saver, session, step):
         if not os.path.exists(self.check_point):
             os.makedirs(self.check_point)
-        if not os.path.exists(self.check_point + self.model_name + "/"):
-            os.makedirs(self.check_point + self.model_name + "/")
+        if not os.path.exists(self.check_point + self.dataset.name + "/"):
+            os.makedirs(self.check_point + self.dataset.name + "/")
         
         saver.save(session, 
-                '{}{}.ckpt'.format(self.check_point + self.model_name + "/", self.model_name), 
+                '{}{}.ckpt'.format(self.check_point + self.dataset.name + "/", self.dataset.name), 
                 global_step=step)
 
 class TensorFace(BasicTensor):
@@ -296,7 +298,7 @@ class TensorFace(BasicTensor):
     def _predict(self, imgs):
         with tf.Session(graph=self.graph) as session:
             saver = tf.train.Saver()
-            ckpt = tf.train.get_checkpoint_state(self.check_point + self.model_name + "/")
+            ckpt = tf.train.get_checkpoint_state(self.check_point + self.dataset.name + "/")
             if ckpt and ckpt.model_checkpoint_path:
                 saver.restore(session, ckpt.model_checkpoint_path)
             else:
@@ -331,10 +333,10 @@ class TfLTensor(TensorFace):
         with tf.Graph().as_default():
             self.prepare_model()
             self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
-            self.model.fit(self.train_dataset, 
-                self.train_labels, 
+            self.model.fit(self.dataset.train_dataset, 
+                self.dataset.train_labels, 
                 n_epoch=num_steps, 
-                validation_set=(self.valid_dataset, self.valid_labels),
+                validation_set=(self.dataset.valid_dataset, self.dataset.valid_labels),
                 show_metric=True, 
                 batch_size=batch_size,
                 run_id="dense_model")
@@ -343,16 +345,18 @@ class TfLTensor(TensorFace):
     def save_model(self):
         if not os.path.exists(self.check_point):
             os.makedirs(self.check_point)
-        if not os.path.exists(self.check_point + self.model_name + "/"):
-            os.makedirs(self.check_point + self.model_name + "/")
+        if not os.path.exists(self.check_point + self.dataset.name + "/"):
+            os.makedirs(self.check_point + self.dataset.name + "/")
 
-        self.model.save('{}{}.ckpt'.format(self.check_point + self.model_name + "/", self.model_name))
+        self.model.save('{}{}.ckpt'.format(
+            self.check_point + self.dataset.name + "/", self.dataset.name))
 
     def load_model(self):
         import tflearn
         self.prepare_model()
         self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
-        self.model.load('{}{}.ckpt'.format(self.check_point + self.model_name + "/", self.model_name))
+        self.model.load('{}{}.ckpt'.format(
+            self.check_point + self.dataset.name + "/", self.dataset.name))
 
     def predict(self, imgs):
         return self._predict(imgs)
