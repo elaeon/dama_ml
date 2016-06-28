@@ -50,30 +50,41 @@ def test():
 def test_train(dataset):
     #classif = ml.clf.SVCFace(dataset, check_point_path=check_point_path, pprint=False)
     #classif = ml.clf.Binary(dataset, check_point_path=check_point_path, pprint=False)
-    classif = ml.clf.TfLTensor(dataset, num_features=21, check_point_path=check_point_path, pprint=False)
-    classif.train(batch_size=200, num_steps=100)
-    dt = ml.clf.ClassifTest()
+    #classif = ml.clf.TfLTensor(dataset, check_point_path=check_point_path, pprint=False)
+    classif = ml.clf.RandomForest(dataset, check_point_path=check_point_path, pprint=False)
+    classif.train(batch_size=120, num_steps=30)
+    dt = ml.clf.ClassifTest(logloss=True)
     dt.classif_test(classif, "f1")
     #classifs = {
     #    "SCV": {"name": ml.clf.SVCFace, 
     #        "params": {"check_point_path": check_point_path, "pprint":False}}, 
     #    "TENSOR": {"name": ml.clf.TfLTensor, 
-    #        "params": {"check_point_path": check_point_path, "num_features": 21, "pprint":False}}}
+    #        "params": {"check_point_path": check_point_path, "pprint":False}},
+    #    "FOREST": {"name": ml.clf.RandomForest,
+    #        "params": {"check_point_path": check_point_path, "pprint":False}}}
     #dt.dataset_test(classifs, dataset, "f1")
 
 def predict(dataset, path, label_column):
     import pandas as pd
-    classif = ml.clf.SVCFace(dataset, check_point_path=check_point_path, pprint=False)
-    #classif = ml.clf.TfLTensor(dataset, num_features=21, 
-    #    check_point_path=check_point_path, pprint=False)
+    import csv
+    #classif = ml.clf.SVCFace(dataset, check_point_path=check_point_path, pprint=False)
+    classif = ml.clf.TfLTensor(dataset, check_point_path=check_point_path, pprint=False)
+    #classif = ml.clf.RandomForest(dataset, check_point_path=check_point_path, pprint=False)
     df = pd.read_csv(path)
     dataset = df.drop([label_column], axis=1).as_matrix()
     ids = df[label_column].as_matrix()
     #for predic, label in zip(list(classif.predict(dataset))[:20], ids[:20]):
     #    print(predic, label)
-    for data, label in zip(dataset, ids)[:20]:
-        print(list(classif.predict([data])), label)
-
+    predictions = []
+    for value, label in zip(list(classif.predict(dataset, raw=True)), ids):
+        predictions.append([str(label), str(value[1])])
+        #break
+    
+    with open("/home/sc/predictions.csv", "w") as csvfile:
+        csvwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+        csvwriter.writerow(["t_id", "probability"])
+        for row in predictions:
+            csvwriter.writerow(row)
 #build()
 #matrix()
 #dataset = ml.ds.DataSetBuilderFile(dataset_name, dataset_path=dataset_path)
@@ -85,6 +96,6 @@ def predict(dataset, path, label_column):
  1  40.42   64.5937
 """
 dataset = ml.ds.DataSetBuilderFile.load_dataset(dataset_name, dataset_path=dataset_path)
-test_train(dataset)
-#predict(dataset, "/home/sc/test_data/numerai_datasets/numerai_tournament_data.csv", "t_id")
+#test_train(dataset)
+predict(dataset, "/home/sc/test_data/numerai_datasets/numerai_tournament_data.csv", "t_id")
 

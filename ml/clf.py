@@ -9,32 +9,40 @@ CHECK_POINT_PATH = "/home/sc/data/face_recog/"
     
 class Measure(object):
     def __init__(self, predictions, labels):
-        if len(labels.shape) > 1:
-            self.labels = np.argmax(labels, 1)
-            self.predictions = np.argmax(predictions, 1)
+        if len(predictions.shape) > 1:
+            self.transform = lambda x: np.argmax(x, 1)
         else:
-            self.labels = labels
-            self.predictions = predictions
+            self.transform = lambda x: x
+        
+        self.labels = labels
+        self.predictions = predictions
         self.average = "macro"
 
     def accuracy(self):
         from sklearn.metrics import accuracy_score
-        return accuracy_score(self.labels, self.predictions)
+        return accuracy_score(self.labels, self.transform(self.predictions))
 
     #false positives
     def precision(self):
         from sklearn.metrics import precision_score
-        return precision_score(self.labels, self.predictions, average=self.average, pos_label=None)
+        return precision_score(self.labels, self.transform(self.predictions), 
+            average=self.average, pos_label=None)
 
     #false negatives
     def recall(self):
         from sklearn.metrics import recall_score
-        return recall_score(self.labels, self.predictions, average=self.average, pos_label=None)
+        return recall_score(self.labels, self.transform(self.predictions), 
+            average=self.average, pos_label=None)
 
     #weighted avg presicion and recall
     def f1(self):
         from sklearn.metrics import f1_score
-        return f1_score(self.labels, self.predictions, average=self.average, pos_label=None)
+        return f1_score(self.labels, self.transform(self.predictions), 
+            average=self.average, pos_label=None)
+
+    def logloss(self):
+        from sklearn.metrics import log_loss
+        return log_loss(self.labels, self.predictions)
 
     def print_all(self):
         print("#############")
@@ -54,9 +62,9 @@ class BasicFaceClassif(object):
         self.check_point_path = check_point_path
         self.check_point = check_point_path + self.__class__.__name__ + "/"
 
-    def detector_test_dataset(self):
-        predictions = self.predict(self.dataset.test_dataset)
-        measure = Measure(list(predictions), np.asarray([self.convert_label(label) 
+    def detector_test_dataset(self, raw=False):
+        predictions = self.predict(self.dataset.test_dataset, raw=raw)
+        measure = Measure(np.asarray(list(predictions)), np.asarray([self.convert_label(label) 
             for label in self.dataset.test_labels]))
         return self.__class__.__name__, measure
 
@@ -74,8 +82,11 @@ class BasicFaceClassif(object):
     def position_index(self, label):
         return label
 
-    def convert_label(self, label):
-        return self.le.inverse_transform(self.position_index(label))
+    def convert_label(self, label, raw=False):
+        if raw is True:
+            return label
+        else:
+            return self.le.inverse_transform(self.position_index(label))
 
     def reformat_all(self):
         all_ds = np.concatenate((self.dataset.train_labels, 
@@ -85,6 +96,7 @@ class BasicFaceClassif(object):
             self.dataset.train_dataset, self.le.transform(self.dataset.train_labels))
         self.dataset.test_dataset, self.dataset.test_labels = self.reformat(
             self.dataset.test_dataset, self.le.transform(self.dataset.test_labels))
+        self.num_features = self.dataset.test_dataset.shape[-1]
 
         if len(self.dataset.valid_labels) > 0:
             self.dataset.valid_dataset, self.dataset.valid_labels = self.reformat(
@@ -144,16 +156,14 @@ class Binary(BasicFaceClassif):
     #    shape = (length, dim, dim)
     #    return np.ndarray(shape=shape, dtype=np.float32)
 
-    def _predict(self, imgs):
+    def _predict(self, data):
         if self.model is None:
             self.load_model()
 
-        if isinstance(imgs, list):
-            array_imgs = self.transform_img(np.asarray(imgs))
-        else:
-            array_imgs = self.transform_img(imgs)
+        if isinstance(data, list):
+            data = self.transform_img(np.asarray(data))
 
-        for prediction in self.model.predict(array_imgs):
+        for prediction in self.model.predict(self.transform_img(data)):
             label = self.label_other if prediction == -1 else self.label_ref
             yield self.convert_label(label)
 
@@ -173,15 +183,17 @@ class Binary(BasicFaceClassif):
 
 
 class SVCFace(Binary):
+    def predict(self, data, raw=False):
+        return self._predict(data, raw=raw)
 
-    def _predict(self, imgs):
+    def _predict(self, data, raw=False):
         if self.model is None:
             self.load_model()
 
-        if isinstance(imgs, list):
-            imgs = np.asarray(imgs)
+        if isinstance(data, list):
+            data = np.asarray(data)
 
-        for prediction in self.model.predict(self.transform_img(imgs)):
+        for prediction in self.model.predict(self.transform_img(data)):
             yield self.convert_label(prediction)
 
     def prepare_model(self):
@@ -191,15 +203,38 @@ class SVCFace(Binary):
         self.model = reg
 
 
+class RandomForest(Binary):
+    def position_index(self, label):
+        return np.argmax(label)
+
+    def predict(self, data, raw=False):
+        return self._predict(data, raw=raw)
+
+    def _predict(self, data, raw=False):
+        if self.model is None:
+            self.load_model()
+
+        if isinstance(data, list):
+            data = np.asarray(data)
+
+        data = preprocessing.scale(data)
+        for prediction in self.model.predict_proba(self.transform_img(data)):
+            yield self.convert_label(prediction, raw=raw)
+
+    def prepare_model(self):
+        from sklearn.ensemble import RandomForestClassifier
+        from sklearn.calibration import CalibratedClassifierCV
+        reg = RandomForestClassifier(n_estimators=25, min_samples_split=2)
+        reg.fit(self.dataset.train_dataset, self.dataset.train_labels)
+        sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
+        sig_clf.fit(self.dataset.valid_dataset, self.dataset.valid_labels)
+        self.model = sig_clf
+
 class BasicTensor(BasicFaceClassif):
-    def __init__(self, dataset,
-            check_point_path=CHECK_POINT_PATH, num_features=None, pprint=True):
-        super(BasicTensor, self).__init__(dataset, 
-            check_point_path=check_point_path, pprint=pprint)
-        if num_features is None:
-            self.num_features = self.dataset.image_size * self.dataset.image_size
-        else:
-            self.num_features = num_features
+    #def __init__(self, dataset,
+    #        check_point_path=CHECK_POINT_PATH, pprint=True):
+    #    super(BasicTensor, self).__init__(dataset, 
+    #        check_point_path=check_point_path, pprint=pprint)
 
     def reformat(self, dataset, labels):
         dataset = self.transform_img(dataset)
@@ -311,11 +346,11 @@ class TfLTensor(TensorFace):
     def prepare_model(self, dropout=False):
         import tflearn
         input_layer = tflearn.input_data(shape=[None, self.num_features])
-        dense1 = tflearn.fully_connected(input_layer, 124, activation='tanh',
-                                         regularizer='L2', weight_decay=0.001)
+        dense1 = tflearn.fully_connected(input_layer, 128, activation='tanh',
+                                         regularizer='L2', weight_decay=0.001)#128
         dropout1 = tflearn.dropout(dense1, 0.5)
         dense2 = tflearn.fully_connected(dropout1, 64, activation='tanh',
-                                        regularizer='L2', weight_decay=0.001)
+                                        regularizer='L2', weight_decay=0.001)#64
         dropout2 = tflearn.dropout(dense2, 0.5)
         softmax = tflearn.fully_connected(dropout2, self.num_labels, activation='softmax')
 
@@ -355,19 +390,20 @@ class TfLTensor(TensorFace):
         self.model.load('{}{}.ckpt'.format(
             self.check_point + self.dataset.name + "/", self.dataset.name))
 
-    def predict(self, imgs):
-        return self._predict(imgs)
+    def predict(self, data, raw=False):
+        return self._predict(data, raw=raw)
 
-    def _predict(self, imgs):
+    def _predict(self, data, raw=False):
         with tf.Graph().as_default():
             if self.model is None:
                 self.load_model()
 
-            if isinstance(imgs, list):
-                imgs = np.asarray(imgs)
+            if isinstance(data, list):
+                data = np.asarray(data)
 
-            for prediction in self.model.predict(self.transform_img(imgs)):
-                yield self.convert_label(prediction)
+            data = preprocessing.scale(data)
+            for prediction in self.model.predict(self.transform_img(data)):
+                    yield self.convert_label(prediction, raw=raw)
 
 class ConvTensor(TfLTensor):
     def __init__(self, *args, **kwargs):
@@ -643,8 +679,11 @@ class ConvTensorFace(TensorFace):
 
 
 class ClassifTest(object):
-    def __init__(self):
+    def __init__(self, logloss=False):
+        self.logloss = logloss
         self.headers = ["CLF", "Precision", "Recall", "F1"]
+        if logloss is True:
+            self.headers = self.headers + ["logloss"]
 
     def dataset_test(self, classifs, dataset, order_column):
         from utils.order import order_table_print
@@ -654,13 +693,21 @@ class ClassifTest(object):
             classif = classifs[classif_name]["name"]
             params = classifs[classif_name]["params"]
             clf = classif(dataset, **params)
-            name_clf, measure = clf.detector_test_dataset()
-            table.append((name_clf, measure.precision(), measure.recall(), measure.f1()))
+            name_clf, measure = clf.detector_test_dataset(raw=self.logloss)
+            if self.logloss:
+                table.append((name_clf, measure.precision(), measure.recall(), 
+                    measure.f1(), measure.logloss()))
+            else:
+                table.append((name_clf, measure.precision(), measure.recall(), measure.f1()))
         order_table_print(self.headers, table, order_column)
 
     def classif_test(self, clf, order_column):
         from utils.order import order_table_print
         table = []
-        name_clf, measure = clf.detector_test_dataset()
-        table = [(name_clf, measure.precision(), measure.recall(), measure.f1())]
+        name_clf, measure = clf.detector_test_dataset(raw=self.logloss)
+        if self.logloss:
+            table = [(name_clf, measure.precision(), measure.recall(), 
+                measure.f1(), measure.logloss())]
+        else:
+            table = [(name_clf, measure.precision(), measure.recall(), measure.f1())]
         order_table_print(self.headers, table, order_column)
