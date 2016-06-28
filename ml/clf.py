@@ -197,7 +197,7 @@ class BasicTensor(BasicFaceClassif):
         super(BasicTensor, self).__init__(dataset, 
             check_point_path=check_point_path, pprint=pprint)
         if num_features is None:
-            self.num_features = self.image_size * self.image_size
+            self.num_features = self.dataset.image_size * self.dataset.image_size
         else:
             self.num_features = num_features
 
@@ -206,9 +206,6 @@ class BasicTensor(BasicFaceClassif):
         # Map 0 to [1.0, 0.0, 0.0 ...], 1 to [0.0, 1.0, 0.0 ...]
         labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
         return dataset, labels_m
-
-    #def transform_img(self, img):
-    #    return img.reshape((-1, self.image_size * self.image_size)).astype(np.float32)
 
     def prepare_model(self, batch_size, dropout=True):
         self.graph = tf.Graph()

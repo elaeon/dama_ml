@@ -367,7 +367,7 @@ if __name__ == '__main__':
             dt = ml.clf.ClassifTest()
             dataset = ml.ds.DataSetBuilder.load_dataset(dataset_name, 
                 dataset_path=settings["root_data"]+settings["dataset"], pprint=False)
-            dt.dataset_test(classifs, dataset_name, dataset, args.test_clf)
+            dt.dataset_test(classifs, dataset, args.test_clf)
         else:
             class_ = classifs[args.clf]["name"]
             dataset = ml.ds.DataSetBuilder.load_dataset(dataset_name, 
