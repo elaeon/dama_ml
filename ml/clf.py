@@ -149,20 +149,17 @@ class Binary(BasicFaceClassif):
         self.save_model()
         return score
 
-    def predict(self, imgs):
-        return self._predict(imgs)
+    def predict(self, data, raw=False):
+        return self._predict(data)
 
-    #def narray_build(self, length, dim):
-    #    shape = (length, dim, dim)
-    #    return np.ndarray(shape=shape, dtype=np.float32)
-
-    def _predict(self, data):
+    def _predict(self, data, raw=False):
         if self.model is None:
             self.load_model()
 
         if isinstance(data, list):
             data = self.transform_img(np.asarray(data))
 
+        data = preprocessing.scale(data)
         for prediction in self.model.predict(self.transform_img(data)):
             label = self.label_other if prediction == -1 else self.label_ref
             yield self.convert_label(label)
@@ -193,6 +190,7 @@ class SVCFace(Binary):
         if isinstance(data, list):
             data = np.asarray(data)
 
+        data = preprocessing.scale(data)
         for prediction in self.model.predict(self.transform_img(data)):
             yield self.convert_label(prediction)
 
@@ -230,12 +228,17 @@ class RandomForest(Binary):
         sig_clf.fit(self.dataset.valid_dataset, self.dataset.valid_labels)
         self.model = sig_clf
 
-class BasicTensor(BasicFaceClassif):
-    #def __init__(self, dataset,
-    #        check_point_path=CHECK_POINT_PATH, pprint=True):
-    #    super(BasicTensor, self).__init__(dataset, 
-    #        check_point_path=check_point_path, pprint=pprint)
+class LogisticRegression(RandomForest):
+    def prepare_model(self):
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.calibration import CalibratedClassifierCV
+        reg = LogisticRegression(solver="lbfgs", multi_class="multinomial")#"newton-cg")
+        reg.fit(self.dataset.train_dataset, self.dataset.train_labels)
+        sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
+        sig_clf.fit(self.dataset.valid_dataset, self.dataset.valid_labels)
+        self.model = sig_clf
 
+class BasicTensor(BasicFaceClassif):
     def reformat(self, dataset, labels):
         dataset = self.transform_img(dataset)
         # Map 0 to [1.0, 0.0, 0.0 ...], 1 to [0.0, 1.0, 0.0 ...]
@@ -415,16 +418,20 @@ class ConvTensor(TfLTensor):
         super(ConvTensor, self).__init__(*args, **kwargs)
 
     def transform_img(self, img):
-        return img.reshape((-1, self.image_size, self.image_size, self.num_channels)).astype(np.float32)
+        return img.reshape((-1, self.dataset.image_size, self.dataset.image_size,
+            self.num_channels)).astype(np.float32)
 
     def prepare_model(self, dropout=False):
         import tflearn
         network = tflearn.input_data(
-            shape=[None, self.image_size, self.image_size, self.num_channels], name='input')
-        network = tflearn.conv_2d(network, self.depth, self.patch_size, activation='relu', regularizer="L2")
+            shape=[None, self.dataset.image_size, self.dataset.image_size, self.num_channels],
+            name='input')
+        network = tflearn.conv_2d(network, self.depth, self.patch_size, 
+            activation='relu', regularizer="L2")
         network = tflearn.max_pool_2d(network, 2)
         network = tflearn.local_response_normalization(network)
-        network = tflearn.conv_2d(network, self.depth*2, self.patch_size, activation='relu', regularizer="L2")
+        network = tflearn.conv_2d(network, self.depth*2, self.patch_size, 
+            activation='relu', regularizer="L2")
         network = tflearn.max_pool_2d(network, 2)
         network = tflearn.local_response_normalization(network)
         network = tflearn.fully_connected(network, self.depth*4, activation='tanh')
@@ -437,16 +444,17 @@ class ConvTensor(TfLTensor):
         self.net = tflearn.regression(network, optimizer='adam', metric=acc, learning_rate=0.01,
                                  loss='categorical_crossentropy', name='target')
 
-    def train(self, num_steps=1000):
+    def train(self, batch_size=10, num_steps=1000):
         import tflearn
         with tf.Graph().as_default():
             self.prepare_model()
             self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
-            self.model.fit(self.train_dataset, 
-                self.train_labels, 
+            self.model.fit(self.dataset.train_dataset, 
+                self.dataset.train_labels, 
                 n_epoch=num_steps, 
-                validation_set=(self.valid_dataset, self.valid_labels),
+                validation_set=(self.dataset.valid_dataset, self.dataset.valid_labels),
                 show_metric=True, 
+                batch_size=batch_size,
                 snapshot_step=100,
                 run_id="conv_model")
             self.save_model()
