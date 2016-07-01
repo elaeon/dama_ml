@@ -8,6 +8,7 @@ from skimage import exposure
 
 import os
 import numpy as np
+import pandas as pd
 import cPickle as pickle
 import random
 
@@ -430,6 +431,16 @@ class DataSetBuilder(object):
 
     def is_binary(self):
         return len(self.labels_info()) == 2
+
+    @classmethod
+    def to_DF(self, dataset, labels):
+        columns_name = map(lambda x: "c"+str(x), range(dataset.shape[-1])) + ["target"]
+        return pd.DataFrame(data=np.column_stack((dataset, labels)), columns=columns_name)
+
+    def to_df(self):
+        self.desfragment()
+        return self.to_DF(self.dataset, self.labels)
+
 
 class DataSetBuilderFile(DataSetBuilder):
     def from_csv(self, path, label_column):

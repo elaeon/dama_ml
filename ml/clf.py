@@ -68,6 +68,20 @@ class BasicFaceClassif(object):
             for label in self.dataset.test_labels]))
         return self.__class__.__name__, measure
 
+    def only_is(self, op):
+        predictions = list(self.predict(self.dataset.test_dataset, raw=False))
+        labels = [self.convert_label(label) for label in self.dataset.test_labels]
+        data = zip(*filter(lambda x: op(x[1], x[2]), zip(self.dataset.test_dataset, predictions, labels)))
+        return np.array(data[0]), data[1], data[2]
+
+    def erroneous_clf(self):
+        import operator
+        return self.only_is(operator.ne)
+
+    def correct_clf(self):
+        import operator
+        return self.only_is(operator.eq)
+
     def reformat(self, dataset, labels):
         dataset = self.transform_img(dataset)
         return dataset, labels
