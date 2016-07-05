@@ -346,16 +346,16 @@ if __name__ == '__main__':
     else:
         classifs = {
             "svc": {
-                "name": ml.clf.SVCFace,
+                "name": ml.clf_e.SVC,
                 "params": {"check_point_path": checkpoints_path, "pprint": False},
-                "dataset": {"validation": False}},
+                "dataset": {"validation": True}},
             #"tensor": {
             #    "name": ml.clf.TensorFace,
             #    "params": {"check_point_path": checkpoints_path}},
             "tensor2": {
-                "name": ml.clf.TfLTensor,
+                "name": ml.clf_e.MLP,
                 "params": {"check_point_path": checkpoints_path, "pprint": False},
-                "dataset": {"validation": False}},
+                "dataset": {"validation": True}},
             #"cnn": {
             #    "name": ml.clf.ConvTensor,
             #    "params": {"num_channels": 1, "check_point_path": checkpoints_path, "pprint": False}},
@@ -374,7 +374,7 @@ if __name__ == '__main__':
                 dataset_path=settings["root_data"]+settings["dataset"], 
                 validation_dataset=classifs[args.clf]["dataset"]["validation"])
             params = classifs[args.clf]["params"]
-            classif = class_(dataset_name, dataset, **params)
+            classif = class_(dataset, **params)
             classif.batch_size = 100
             print("#########", classif.__class__.__name__)
             if args.test:

@@ -250,15 +250,15 @@ class DataSetBuilder(object):
             print('Global filters: {}'.format(self.get_filters("global")))
             print('Local filters: {}'.format(self.get_filters("local")))
 
-        print('Training set DS[{}], labels[{}]'.format(
-            self.train_dataset.shape, self.train_labels.shape))
+        #print('Training set DS[{}], labels[{}]'.format(
+        #    self.train_dataset.shape, self.train_labels.shape))
 
-        if self.valid_dataset is not None:
-            print('Validation set DS[{}], labels[{}]'.format(
-                self.valid_dataset.shape, self.valid_labels.shape))
+        #if self.valid_dataset is not None:
+        #    print('Validation set DS[{}], labels[{}]'.format(
+        #        self.valid_dataset.shape, self.valid_labels.shape))
 
-        print('Test set DS[{}], labels[{}]'.format(
-            self.test_dataset.shape, self.test_labels.shape))
+        #print('Test set DS[{}], labels[{}]'.format(
+        #    self.test_dataset.shape, self.test_labels.shape))
 
     def randomize(self, dataset, labels):
         permutation = np.random.permutation(labels.shape[0])

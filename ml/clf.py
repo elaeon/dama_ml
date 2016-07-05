@@ -182,14 +182,6 @@ class SKL(BaseClassif):
             yield self.convert_label(prediction)
 
 
-class SVC(SKL):
-    def prepare_model(self):
-        from sklearn import svm
-        reg = svm.LinearSVC(C=1, max_iter=1000)
-        reg = reg.fit(self.dataset.train_dataset, self.dataset.train_labels)
-        self.model = reg
-
-
 class SKLP(SKL):
     def position_index(self, label):
         return np.argmax(label)
@@ -204,6 +196,95 @@ class SKLP(SKL):
         data = preprocessing.scale(data)
         for prediction in self.model.predict_proba(self.transform_img(data)):
             yield self.convert_label(prediction, raw=raw)
+
+
+class TF(BaseClassif):
+    def position_index(self, label):
+        return np.argmax(label)
+
+    def reformat(self, dataset, labels):
+        dataset = self.transform_img(dataset)
+        # Map 0 to [1.0, 0.0, 0.0 ...], 1 to [0.0, 1.0, 0.0 ...]
+        labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
+        return dataset, labels_m
+
+    def train(self, batch_size=10, num_steps=3001):
+        self.prepare_model(batch_size)
+        with tf.Session(graph=self.graph) as session:
+            saver = tf.train.Saver()
+            tf.initialize_all_variables().run()
+            print "Initialized"
+            for step in xrange(num_steps):
+                # Pick an offset within the training data, which has been randomized.
+                # Note: we could use better randomization across epochs.
+                offset = (step * batch_size) % (self.dataset.train_labels.shape[0] - batch_size)
+                # Generate a minibatch.
+                batch_data = self.dataset.train_dataset[offset:(offset + batch_size), :]
+                batch_labels = self.train_labels[offset:(offset + batch_size), :]
+                # Prepare a dictionary telling the session where to feed the minibatch.
+                # The key of the dictionary is the placeholder node of the graph to be fed,
+                # and the value is the numpy array to feed to it.
+                feed_dict = {self.tf_train_dataset : batch_data, self.tf_train_labels : batch_labels}
+                _, l, predictions = session.run(
+                [self.optimizer, self.loss, self.train_prediction], feed_dict=feed_dict)
+                if (step % 500 == 0):
+                    print "Minibatch loss at step", step, ":", l
+                    print "Minibatch accuracy: %.1f%%" % (self.accuracy(predictions, batch_labels)*100)
+                    print "Validation accuracy: %.1f%%" % (self.accuracy(
+                      self.valid_prediction.eval(), self.dataset.valid_labels)*100)
+            score_v = self.accuracy(self.test_prediction.eval(), self.dataset.test_labels)
+            self.save_model(saver, session, step)
+            return score_v
+
+    def save_model(self, saver, session, step):
+        if not os.path.exists(self.check_point):
+            os.makedirs(self.check_point)
+        if not os.path.exists(self.check_point + self.dataset.name + "/"):
+            os.makedirs(self.check_point + self.dataset.name + "/")
+        
+        saver.save(session, 
+                '{}{}.ckpt'.format(self.check_point + self.dataset.name + "/", self.dataset.name), 
+                global_step=step)
+
+
+class TFL(BaseClassif):
+    def position_index(self, label):
+        return np.argmax(label)
+
+    def reformat(self, dataset, labels):
+        dataset = self.transform_img(dataset)
+        # Map 0 to [1.0, 0.0, 0.0 ...], 1 to [0.0, 1.0, 0.0 ...]
+        labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
+        return dataset, labels_m
+
+    def save_model(self):
+        if not os.path.exists(self.check_point):
+            os.makedirs(self.check_point)
+        if not os.path.exists(self.check_point + self.dataset.name + "/"):
+            os.makedirs(self.check_point + self.dataset.name + "/")
+
+        self.model.save('{}{}.ckpt'.format(
+            self.check_point + self.dataset.name + "/", self.dataset.name))
+
+    def load_model(self):
+        import tflearn
+        self.prepare_model()
+        self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
+        self.model.load('{}{}.ckpt'.format(
+            self.check_point + self.dataset.name + "/", self.dataset.name))
+
+
+    def _predict(self, data, raw=False):
+        with tf.Graph().as_default():
+            if self.model is None:
+                self.load_model()
+
+            if isinstance(data, list):
+                data = np.asarray(data)
+
+            data = preprocessing.scale(data)
+            for prediction in self.model.predict(self.transform_img(data)):
+                    yield self.convert_label(prediction, raw=raw)
 
 
 class ClassifTest(object):
