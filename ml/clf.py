@@ -63,7 +63,8 @@ class BaseClassif(object):
 
     def detector_test_dataset(self, raw=False):
         predictions = self.predict(self.dataset.test_dataset, raw=raw)
-        measure = Measure(np.asarray(list(predictions)), np.asarray([self.convert_label(label) 
+        measure = Measure(np.asarray(list(predictions)), 
+            np.asarray([self.convert_label(label) 
             for label in self.dataset.test_labels]))
         return self.__class__.__name__, measure
 
@@ -74,7 +75,8 @@ class BaseClassif(object):
     def only_is(self, op):
         predictions = list(self.predict(self.dataset.test_dataset, raw=False))
         labels = [self.convert_label(label) for label in self.dataset.test_labels]
-        data = zip(*filter(lambda x: op(x[1], x[2]), zip(self.dataset.test_dataset, predictions, labels)))
+        data = zip(*filter(lambda x: op(x[1], x[2]), 
+            zip(self.dataset.test_dataset, predictions, labels)))
         return np.array(data[0]), data[1], data[2]
 
     def erroneous_clf(self):
@@ -134,14 +136,7 @@ class BaseClassif(object):
 
     def load_dataset(self, dataset):
         from ml.ds import DataSetBuilder
-        self.dataset = DataSetBuilder(dataset.name)
-        self.dataset.image_size = dataset.image_size
-        self.dataset.train_dataset = dataset.train_dataset
-        self.dataset.train_labels = dataset.train_labels
-        self.dataset.valid_dataset = dataset.valid_dataset
-        self.dataset.valid_labels = dataset.valid_labels
-        self.dataset.test_dataset = dataset.test_dataset
-        self.dataset.test_labels = dataset.test_labels
+        self.dataset = dataset.copy()
         self.reformat_all()
 
     def predict(self, data, raw=False):

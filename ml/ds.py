@@ -441,6 +441,43 @@ class DataSetBuilder(object):
         self.desfragment()
         return self.to_DF(self.dataset, self.labels)
 
+    def transform(self, fn):
+        data = np.ndarray(
+            shape=self.dataset.shape, dtype=np.float32)
+        for i, row in enumerate(fn(self.dataset)):
+            data[i] = row
+
+        dataset = DataSetBuilder(self.name+"T", dataset_path=self.dataset_path)
+        dataset.build_from_data_labels(self.dataset, self.labels)
+        return dataset
+
+    def build_from_data_labels(self, data, labels):
+        self.dataset = data
+        self.labels = labels
+        self.save_dataset()
+
+    def copy(self):
+        dataset = DataSetBuilder(self.name)
+        dataset.image_size = self.image_size
+        dataset.images = []
+        dataset.dataset = self.dataset
+        dataset.labels = self.labels
+        dataset.channels = self.channels
+        dataset.test_folder_path = self.test_folder_path
+        dataset.train_folder_path = self.train_folder_path
+        dataset.dataset_path = self.dataset_path
+        dataset.filters = self.filters
+        dataset.train_dataset = self.train_dataset
+        dataset.train_labels = self.train_labels
+        dataset.valid_dataset = self.valid_dataset
+        dataset.valid_labels = self.valid_labels
+        dataset.test_dataset = self.test_dataset
+        dataset.test_labels = self.test_labels
+        return dataset
+
+
+class DataSetBuilderImage(DataSetBuilder):
+    pass
 
 class DataSetBuilderFile(DataSetBuilder):
     def from_csv(self, path, label_column):
