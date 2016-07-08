@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 
 from sklearn import preprocessing
+from processing import Preprocessing
 
 CHECK_POINT_PATH = "/home/sc/data/face_recog/"
 #np.random.seed(133)
@@ -62,7 +63,7 @@ class BaseClassif(object):
         self.check_point = check_point_path + self.__class__.__name__ + "/"
 
     def detector_test_dataset(self, raw=False):
-        predictions = self.predict(self.dataset.test_dataset, raw=raw)
+        predictions = self.predict(self.dataset.test_data, raw=raw)
         measure = Measure(np.asarray(list(predictions)), 
             np.asarray([self.convert_label(label) 
             for label in self.dataset.test_labels]))
@@ -73,10 +74,10 @@ class BaseClassif(object):
         dt.classif_test(self, "f1")
 
     def only_is(self, op):
-        predictions = list(self.predict(self.dataset.test_dataset, raw=False))
+        predictions = list(self.predict(self.dataset.test_data, raw=False))
         labels = [self.convert_label(label) for label in self.dataset.test_labels]
         data = zip(*filter(lambda x: op(x[1], x[2]), 
-            zip(self.dataset.test_dataset, predictions, labels)))
+            zip(self.dataset.test_data, predictions, labels)))
         return np.array(data[0]), data[1], data[2]
 
     def erroneous_clf(self):
@@ -111,22 +112,22 @@ class BaseClassif(object):
         all_ds = np.concatenate((self.dataset.train_labels, 
             self.dataset.valid_labels, self.dataset.test_labels), axis=0)
         self.labels_encode(all_ds)
-        self.dataset.train_dataset, self.dataset.train_labels = self.reformat(
-            self.dataset.train_dataset, self.le.transform(self.dataset.train_labels))
-        self.dataset.test_dataset, self.dataset.test_labels = self.reformat(
-            self.dataset.test_dataset, self.le.transform(self.dataset.test_labels))
-        self.num_features = self.dataset.test_dataset.shape[-1]
+        self.dataset.train_data, self.dataset.train_labels = self.reformat(
+            self.dataset.train_data, self.le.transform(self.dataset.train_labels))
+        self.dataset.test_data, self.dataset.test_labels = self.reformat(
+            self.dataset.test_data, self.le.transform(self.dataset.test_labels))
+        self.num_features = self.dataset.test_data.shape[-1]
 
         if len(self.dataset.valid_labels) > 0:
-            self.dataset.valid_dataset, self.dataset.valid_labels = self.reformat(
-                self.dataset.valid_dataset, self.le.transform(self.dataset.valid_labels))
+            self.dataset.valid_data, self.dataset.valid_labels = self.reformat(
+                self.dataset.valid_data, self.le.transform(self.dataset.valid_labels))
 
         if self.pprint:
-            print('RF-Training set', self.dataset.train_dataset.shape, self.dataset.train_labels.shape)
-            if self.dataset.valid_dataset.shape[0] > 0:
-                print('RF-Validation set', self.dataset.valid_dataset.shape,
+            print('RF-Training set', self.dataset.train_data.shape, self.dataset.train_labels.shape)
+            if self.dataset.valid_data.shape[0] > 0:
+                print('RF-Validation set', self.dataset.valid_data.shape,
                     self.dataset.valid_labels.shape)
-            print('RF-Test set', self.dataset.test_dataset.shape, self.dataset.test_labels.shape)
+            print('RF-Test set', self.dataset.test_data.shape, self.dataset.test_labels.shape)
 
     def accuracy(self, predictions, labels):
         measure = Measure(predictions, labels)
@@ -146,7 +147,7 @@ class BaseClassif(object):
 class SKL(BaseClassif):
     def train(self, batch_size=0, num_steps=0):
         self.prepare_model()
-        predictions = self.model.predict(self.dataset.test_dataset)
+        predictions = self.model.predict(self.dataset.test_data)
         score = self.accuracy(predictions, self.dataset.test_labels)
         self.save_model()
         return score
@@ -172,7 +173,7 @@ class SKL(BaseClassif):
         if isinstance(data, list):
             data = np.asarray(data)
 
-        data = preprocessing.scale(data)
+        data = self.dataset.processing(data, Preprocessing, 'global')
         for prediction in self.model.predict(self.transform_img(data)):
             yield self.convert_label(prediction)
 
@@ -188,7 +189,7 @@ class SKLP(SKL):
         if isinstance(data, list):
             data = np.asarray(data)
 
-        data = preprocessing.scale(data)
+        data = self.dataset.processing(data, Preprocessing, 'global')
         for prediction in self.model.predict_proba(self.transform_img(data)):
             yield self.convert_label(prediction, raw=raw)
 
@@ -197,11 +198,11 @@ class TF(BaseClassif):
     def position_index(self, label):
         return np.argmax(label)
 
-    def reformat(self, dataset, labels):
-        dataset = self.transform_img(dataset)
+    def reformat(self, data, labels):
+        data = self.transform_img(data)
         # Map 0 to [1.0, 0.0, 0.0 ...], 1 to [0.0, 1.0, 0.0 ...]
         labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
-        return dataset, labels_m
+        return data, labels_m
 
     def train(self, batch_size=10, num_steps=3001):
         self.prepare_model(batch_size)
@@ -214,12 +215,12 @@ class TF(BaseClassif):
                 # Note: we could use better randomization across epochs.
                 offset = (step * batch_size) % (self.dataset.train_labels.shape[0] - batch_size)
                 # Generate a minibatch.
-                batch_data = self.dataset.train_dataset[offset:(offset + batch_size), :]
+                batch_data = self.dataset.train_data[offset:(offset + batch_size), :]
                 batch_labels = self.train_labels[offset:(offset + batch_size), :]
                 # Prepare a dictionary telling the session where to feed the minibatch.
                 # The key of the dictionary is the placeholder node of the graph to be fed,
                 # and the value is the numpy array to feed to it.
-                feed_dict = {self.tf_train_dataset : batch_data, self.tf_train_labels : batch_labels}
+                feed_dict = {self.tf_train_data : batch_data, self.tf_train_labels : batch_labels}
                 _, l, predictions = session.run(
                 [self.optimizer, self.loss, self.train_prediction], feed_dict=feed_dict)
                 if (step % 500 == 0):
@@ -246,11 +247,11 @@ class TFL(BaseClassif):
     def position_index(self, label):
         return np.argmax(label)
 
-    def reformat(self, dataset, labels):
-        dataset = self.transform_img(dataset)
+    def reformat(self, data, labels):
+        data = self.transform_img(data)
         # Map 0 to [1.0, 0.0, 0.0 ...], 1 to [0.0, 1.0, 0.0 ...]
         labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
-        return dataset, labels_m
+        return data, labels_m
 
     def save_model(self):
         if not os.path.exists(self.check_point):
@@ -268,7 +269,6 @@ class TFL(BaseClassif):
         self.model.load('{}{}.ckpt'.format(
             self.check_point + self.dataset.name + "/", self.dataset.name))
 
-
     def _predict(self, data, raw=False):
         with tf.Graph().as_default():
             if self.model is None:
@@ -277,7 +277,7 @@ class TFL(BaseClassif):
             if isinstance(data, list):
                 data = np.asarray(data)
 
-            data = preprocessing.scale(data)
+            data = self.dataset.processing(data, Preprocessing, 'global')
             for prediction in self.model.predict(self.transform_img(data)):
                     yield self.convert_label(prediction, raw=raw)
 

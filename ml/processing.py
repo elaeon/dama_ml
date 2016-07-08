@@ -8,13 +8,14 @@ from collections import OrderedDict
 
 
 class Transforms(object):
-    def __init__(self, group, transforms):        
+    def __init__(self, transforms):        
         self.transforms = {}
-        self.add_group_transforms(group, transforms)
-        self.placeholders = [k for k, v in self.transforms.items() if v is None]
+        for group, transform in transforms:
+            self.add_group_transforms(group, transform)
+        #self.placeholders = [k for k, v in self.transforms.items() if v is None]
 
-    def get_placeholders(self):
-        return self.placeholders
+    #def get_placeholders(self):
+    #    return self.placeholders
 
     def add_transform(self, group, name, value):
         self.transforms[group][name] = value
@@ -28,6 +29,10 @@ class Transforms(object):
 
     def get_transforms(self, group):
         return self.transforms[group].items()
+
+    def get_all_transforms(self):
+        return [(key, list(self.transforms[key].items())) 
+            for key in self.transforms]
 
     def add_group_transforms(self, group, transforms):
         self.transforms[group] = OrderedDict(transforms)

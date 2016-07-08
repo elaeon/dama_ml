@@ -52,27 +52,27 @@ class DataSetBuilder(object):
                 dataset_path=DATASET_PATH, 
                 test_folder_path=FACE_TEST_FOLDER_PATH, 
                 train_folder_path=FACE_FOLDER_PATH):
-        self.dataset = None
+        self.data = None
         self.labels = None
         self.test_folder_path = test_folder_path
         self.train_folder_path = train_folder_path
         self.dataset_path = dataset_path
         self.name = name
-        self.train_dataset = None
+        self.train_data = None
         self.train_labels = None
-        self.valid_dataset = None
+        self.valid_data = None
         self.valid_labels = None
-        self.test_dataset = None
+        self.test_data = None
         self.test_labels = None
-        self.transforms = Transforms("global", [("scale", None)])
+        self.transforms = Transforms([("global", [("scale", None)])])
 
     def dim(self):
         return self.dataset.shape
 
     def desfragment(self):
-        if self.dataset is None:
-            self.dataset = np.concatenate((
-                self.train_dataset, self.valid_dataset, self.test_dataset), axis=0)
+        if self.data is None:
+            self.data = np.concatenate((
+                self.train_data, self.valid_data, self.test_data), axis=0)
         if self.labels is None:
             self.labels = np.concatenate((
                 self.train_labels, self.valid_labels, self.test_labels), axis=0)
@@ -83,31 +83,30 @@ class DataSetBuilder(object):
 
     def only_labels(self, labels):
         s_labels = set(labels)
-        dataset, n_labels = zip(*filter(lambda x: x[1] in s_labels, zip(self.dataset, self.labels)))
+        dataset, n_labels = zip(*filter(lambda x: x[1] in s_labels, zip(self.data, self.labels)))
         return np.asarray(dataset), np.asarray(n_labels)
 
     def info(self):
-        print('Full dataset tensor:', self.dataset.shape)
-        print('Mean:', np.mean(self.dataset))
-        print('Standard deviation:', np.std(self.dataset))
+        print('Full dataset tensor:', self.data.shape)
+        print('Mean:', np.mean(self.data))
+        print('Standard deviation:', np.std(self.data))
         print('Labels:', self.labels.shape)
-        print('Global filters: {}'.format(self.transforms.get_transforms("global")))
-        #print('Num features {}'.format(self.image_size))
+        print('Filters: {}'.format(self.transforms.get_all_transforms()))
 
-        #print('Training set DS[{}], labels[{}]'.format(
-        #    self.train_dataset.shape, self.train_labels.shape))
+        print('Training set DS[{}], labels[{}]'.format(
+            self.train_data.shape, self.train_labels.shape))
 
-        #if self.valid_dataset is not None:
-        #    print('Validation set DS[{}], labels[{}]'.format(
-        #        self.valid_dataset.shape, self.valid_labels.shape))
+        if self.valid_data is not None:
+            print('Validation set DS[{}], labels[{}]'.format(
+                self.valid_data.shape, self.valid_labels.shape))
 
-        #print('Test set DS[{}], labels[{}]'.format(
-        #    self.test_dataset.shape, self.test_labels.shape))
+        print('Test set DS[{}], labels[{}]'.format(
+            self.test_data.shape, self.test_labels.shape))
 
     def cross_validators(self, train_size=0.7, valid_size=0.1):
         from sklearn import cross_validation
         X_train, X_test, y_train, y_test = cross_validation.train_test_split(
-            self.dataset, self.labels, train_size=train_size, random_state=0)
+            self.data, self.labels, train_size=train_size, random_state=0)
 
         valid_size_index = int(round(X_train.shape[0] * valid_size))
         X_validation = X_train[:valid_size_index]
@@ -118,33 +117,33 @@ class DataSetBuilder(object):
 
     def to_raw(self):
         return {
-            'train_dataset': self.train_dataset,
+            'train_dataset': self.train_data,
             'train_labels': self.train_labels,
-            'valid_dataset': self.valid_dataset,
+            'valid_dataset': self.valid_data,
             'valid_labels': self.valid_labels,
-            'test_dataset': self.test_dataset,
+            'test_dataset': self.test_data,
             'test_labels': self.test_labels,
-            'global_filters': self.transforms.get_transforms("global")}
+            'transforms': self.transforms.get_all_transforms()}
 
     def from_raw(self, raw_data):
-        self.train_dataset = raw_data['train_dataset']
+        self.train_data = raw_data['train_dataset']
         self.train_labels = raw_data['train_labels']
-        self.valid_dataset = raw_data['valid_dataset']
+        self.valid_data = raw_data['valid_dataset']
         self.valid_labels = raw_data['valid_labels']
-        self.test_dataset = raw_data['test_dataset']
+        self.test_data = raw_data['test_dataset']
         self.test_labels = raw_data['test_labels']        
         self.desfragment()
-        self.transforms = Transforms("global", raw_data["global_filters"])
+        self.transforms = Transforms([("global", raw_data["transforms"])])
 
     def save_dataset(self, valid_size=.1, train_size=.7):
-        train_dataset, valid_dataset, test_dataset, train_labels, valid_labels, test_labels = self.cross_validators(train_size=train_size, valid_size=valid_size)
+        train_data, valid_data, test_data, train_labels, valid_labels, test_labels = self.cross_validators(train_size=train_size, valid_size=valid_size)
         try:
             with open(self.dataset_path+self.name, 'wb') as f:
-                self.train_dataset = train_dataset
+                self.train_data = train_data
                 self.train_labels = train_labels
-                self.valid_dataset = valid_dataset
+                self.valid_data = valid_data
                 self.valid_labels = valid_labels
-                self.test_dataset = test_dataset
+                self.test_data = test_data
                 self.test_labels = test_labels
                 pickle.dump(self.to_raw(), f, pickle.HIGHEST_PROTOCOL)
             self.info()
@@ -184,48 +183,42 @@ class DataSetBuilder(object):
 
     def to_df(self):
         self.desfragment()
-        return self.to_DF(self.dataset, self.labels)
+        return self.to_DF(self.data, self.labels)
 
     def transform(self, fn):
         data = np.ndarray(
-            shape=self.dataset.shape, dtype=np.float32)
-        for i, row in enumerate(fn(self.dataset)):
+            shape=self.data.shape, dtype=np.float32)
+        for i, row in enumerate(fn(self.data)):
             data[i] = row
 
         dataset = DataSetBuilder(self.name+"T", dataset_path=self.dataset_path)
-        dataset.build_from_data_labels(self.dataset, self.labels)
+        dataset.build_from_data_labels(self.data, self.labels)
         return dataset
 
     def build_from_data_labels(self, data, labels):
-        self.dataset = data
+        self.data = data
         self.labels = labels
         self.save_dataset()
 
-    def get_transforms(self, name):
-        if self.transforms is not None and name in self.transforms:
-            v_transforms = self.transforms[name].get_transforms()
-        else:
-            v_transforms = None
-        return v_transforms
-
     def copy(self):
         dataset = DataSetBuilder(self.name)
-        dataset.dataset = self.dataset
+        dataset.dataset = self.data
         dataset.labels = self.labels
         dataset.test_folder_path = self.test_folder_path
         dataset.train_folder_path = self.train_folder_path
         dataset.dataset_path = self.dataset_path
-        dataset.train_dataset = self.train_dataset
+        dataset.train_data = self.train_data
         dataset.train_labels = self.train_labels
-        dataset.valid_dataset = self.valid_dataset
+        dataset.valid_data = self.valid_data
         dataset.valid_labels = self.valid_labels
-        dataset.test_dataset = self.test_dataset
+        dataset.test_data = self.test_data
         dataset.test_labels = self.test_labels
+        dataset.transforms = self.transforms
         return dataset
 
-    def processing(self, data, processing_class):
+    def processing(self, data, processing_class, group):
         if not self.transforms.empty():
-            preprocessing = processing_class(data, self.transforms.get_transforms("global"))
+            preprocessing = processing_class(data, self.transforms.get_transforms(group))
             return preprocessing.pipeline()
         else:
             return data
@@ -262,11 +255,11 @@ class DataSetBuilderImage(DataSetBuilder):
         images = self.images_from_directories(folder_base)
         max_num_images = len(images)
         if self.channels is None:
-            self.dataset = np.ndarray(
+            self.data = np.ndarray(
                 shape=(max_num_images, self.image_size, self.image_size), dtype=np.float32)
             dim = (self.image_size, self.image_size)
         else:
-            self.dataset = np.ndarray(
+            self.data = np.ndarray(
                 shape=(max_num_images, self.image_size, self.image_size, self.channels), dtype=np.float32)
             dim = (self.image_size, self.image_size, self.channels)
         self.labels = np.ndarray(shape=(max_num_images,), dtype='|S1')
@@ -275,7 +268,7 @@ class DataSetBuilderImage(DataSetBuilder):
             if image_data.shape != dim:
                 raise Exception('Unexpected image shape: %s' % str(image_data.shape))
             image_data = image_data.astype(float)
-            self.dataset[image_index] = self.processing(image_data, PreprocessingImage)
+            self.data[image_index] = self.processing(image_data, PreprocessingImage, 'global')
             self.labels[image_index] = number_id
 
     @classmethod
@@ -294,7 +287,8 @@ class DataSetBuilderImage(DataSetBuilder):
 
     def original_to_images_set(self, url, test_folder_data=False):
         images_data, labels = self.labels_images(url)
-        images = (PreprocessingImage(img, self.get_transforms("global")).image for img in images_data)
+        #images = (PreprocessingImage(img, self.get_transforms("global")).image for img in images_data)
+        images = (self.processing(img, PreprocessingImage, 'image') for img in images_data)
         image_train, image_test = self.build_train_test(zip(labels, images), sample=test_folder_data)
         for number_id, images in image_train.items():
             self.save_images(self.train_folder_path, number_id, images)
@@ -356,15 +350,12 @@ class DataSetBuilderImage(DataSetBuilder):
         dataset = super(DataSetBuilderImage, self).copy()
         dataset.image_size = self.image_size
         dataset.images = []
-        dataset.transforms = self.transforms
         dataset.channels = self.channels
         return dataset
 
     def to_raw(self):
         raw = super(DataSetBuilderImage, self).to_raw()
-        new = {
-            'local_filters': self.transforms.get_transforms("local"),
-            'array_length': self.image_size}
+        new = {'array_length': self.image_size}
         raw.update(new)
         return raw
 
@@ -378,14 +369,11 @@ class DataSetBuilderImage(DataSetBuilder):
         super(DataSetBuilderImage, self).info()
         print('Image Size {}x{}'.format(self.image_size, self.image_size))
 
-        if not self.transforms.empty():
-            print('Local filters: {}'.format(self.transforms.get_transforms("local")))
-
 
 class DataSetBuilderFile(DataSetBuilder):
     def from_csv(self, path, label_column, processing_class):
-        self.dataset, self.labels = self.csv2dataset(path, label_column)
-        self.dataset = self.processing(self.dataset, processing_class)
+        self.data, self.labels = self.csv2dataset(path, label_column)
+        self.data = self.processing(self.data, processing_class, 'global')
 
     @classmethod
     def csv2dataset(self, path, label_column):

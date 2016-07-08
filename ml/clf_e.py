@@ -8,7 +8,7 @@ class OneClassSVM(SKL):
 
     def prepare_model(self):
         from sklearn import svm
-        self.dataset.dataset = self.dataset.train_dataset
+        self.dataset.dataset = self.dataset.train_data
         self.dataset.labels = self.dataset.train_labels
         dataset_ref, _ = self.dataset.only_labels([self.label_ref])
         reg = svm.OneClassSVM(nu=.2, kernel="rbf", gamma=0.5)
@@ -34,9 +34,9 @@ class SVC(SKL):
         from sklearn.calibration import CalibratedClassifierCV
         from sklearn import svm
         reg = svm.LinearSVC(C=1, max_iter=1000)
-        reg = reg.fit(self.dataset.train_dataset, self.dataset.train_labels)
+        reg = reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
-        sig_clf.fit(self.dataset.valid_dataset, self.dataset.valid_labels)
+        sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
         self.model = sig_clf
 
 
@@ -45,9 +45,9 @@ class RandomForest(SKLP):
         from sklearn.ensemble import RandomForestClassifier
         from sklearn.calibration import CalibratedClassifierCV
         reg = RandomForestClassifier(n_estimators=25, min_samples_split=2)
-        reg.fit(self.dataset.train_dataset, self.dataset.train_labels)
+        reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
-        sig_clf.fit(self.dataset.valid_dataset, self.dataset.valid_labels)
+        sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
         self.model = sig_clf
 
 
@@ -56,9 +56,9 @@ class LogisticRegression(SKLP):
         from sklearn.linear_model import LogisticRegression
         from sklearn.calibration import CalibratedClassifierCV
         reg = LogisticRegression(solver="lbfgs", multi_class="multinomial")#"newton-cg")
-        reg.fit(self.dataset.train_dataset, self.dataset.train_labels)
+        reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
-        sig_clf.fit(self.dataset.valid_dataset, self.dataset.valid_labels)
+        sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
         self.model = sig_clf
 
 
@@ -76,8 +76,8 @@ class TensorFace(TF):
             self.tf_train_dataset = tf.placeholder(tf.float32,
                                             shape=(batch_size, self.num_features))
             self.tf_train_labels = tf.placeholder(tf.float32, shape=(batch_size, self.num_labels))
-            self.tf_valid_dataset = tf.constant(self.dataset.valid_dataset)
-            self.tf_test_dataset = tf.constant(self.dataset.test_dataset)
+            self.tf_valid_dataset = tf.constant(self.dataset.valid_data)
+            self.tf_test_dataset = tf.constant(self.dataset.test_data)
 
             # Variables.
             weights = tf.Variable(
@@ -151,10 +151,10 @@ class MLP(TFL):
         with tf.Graph().as_default():
             self.prepare_model()
             self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
-            self.model.fit(self.dataset.train_dataset, 
+            self.model.fit(self.dataset.train_data, 
                 self.dataset.train_labels, 
                 n_epoch=num_steps, 
-                validation_set=(self.dataset.valid_dataset, self.dataset.valid_labels),
+                validation_set=(self.dataset.valid_data, self.dataset.valid_labels),
                 show_metric=True, 
                 batch_size=batch_size,
                 run_id="dense_model")
@@ -202,10 +202,10 @@ class ConvTensor(TFL):
         with tf.Graph().as_default():
             self.prepare_model()
             self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
-            self.model.fit(self.dataset.train_dataset, 
+            self.model.fit(self.dataset.train_data, 
                 self.dataset.train_labels, 
                 n_epoch=num_steps, 
-                validation_set=(self.dataset.valid_dataset, self.dataset.valid_labels),
+                validation_set=(self.dataset.valid_data, self.dataset.valid_labels),
                 show_metric=True, 
                 batch_size=batch_size,
                 snapshot_step=100,
@@ -229,19 +229,19 @@ class ResidualTensor(TFL):
         import tflearn.data_utils as du
         all_ds = np.concatenate((self.train_labels, self.valid_labels, self.test_labels), axis=0)
         self.labels_encode(all_ds)
-        self.train_dataset, self.train_labels = self.reformat(
-            self.train_dataset, self.le.transform(self.train_labels))
-        self.valid_dataset, self.valid_labels = self.reformat(
-            self.valid_dataset, self.le.transform(self.valid_labels))
-        self.test_dataset, self.test_labels = self.reformat(
-            self.test_dataset, self.le.transform(self.test_labels))
+        self.train_data, self.train_labels = self.reformat(
+            self.train_data, self.le.transform(self.train_labels))
+        self.valid_data, self.valid_labels = self.reformat(
+            self.valid_data, self.le.transform(self.valid_labels))
+        self.test_data, self.test_labels = self.reformat(
+            self.test_data, self.le.transform(self.test_labels))
 
-        self.train_dataset, mean = du.featurewise_zero_center(self.train_dataset)
-        self.test_dataset = du.featurewise_zero_center(self.test_dataset, mean)
+        self.train_data, mean = du.featurewise_zero_center(self.train_data)
+        self.test_data = du.featurewise_zero_center(self.test_data, mean)
 
-        print('RF-Training set', self.train_dataset.shape, self.train_labels.shape)
-        print('RF-Validation set', self.valid_dataset.shape, self.valid_labels.shape)
-        print('RF-Test set', self.test_dataset.shape, self.test_labels.shape)
+        print('RF-Training set', self.train_data.shape, self.train_labels.shape)
+        print('RF-Validation set', self.valid_data.shape, self.valid_labels.shape)
+        print('RF-Test set', self.test_data.shape, self.test_labels.shape)
 
     def prepare_model(self, dropout=False):
         import tflearn
@@ -276,10 +276,10 @@ class ResidualTensor(TFL):
                 tensorboard_verbose=3,
                 max_checkpoints=10)
 
-            self.model.fit(self.train_dataset, 
+            self.model.fit(self.train_data, 
                 self.train_labels, 
                 n_epoch=num_steps, 
-                validation_set=(self.valid_dataset, self.valid_labels),
+                validation_set=(self.valid_data, self.valid_labels),
                 show_metric=True, 
                 snapshot_step=100,
                 batch_size=self.batch_size,
@@ -369,8 +369,8 @@ class ConvTensorFace(TF):
             self.tf_train_dataset = tf.placeholder(
                 tf.float32, shape=(self.batch_size, self.image_size, self.image_size, self.num_channels))
             self.tf_train_labels = tf.placeholder(tf.float32, shape=(self.batch_size, self.num_labels))
-            self.tf_valid_dataset = tf.constant(self.valid_dataset)
-            self.tf_test_dataset = tf.constant(self.test_dataset)
+            self.tf_valid_dataset = tf.constant(self.valid_data)
+            self.tf_test_dataset = tf.constant(self.test_data)
 
             # Variables.
             layer3_size = int(math.ceil(self.image_size / 4.))
@@ -424,9 +424,9 @@ class ConvTensorFace(TF):
             print("Initialized")
             for step in xrange(int(15 * self.train_labels.shape[0]) // self.batch_size):
                 offset = (step * self.batch_size) % (self.train_labels.shape[0] - self.batch_size)
-                batch_data = self.train_dataset[offset:(offset + self.batch_size), :, :, :]
+                batch_data = self.train_data[offset:(offset + self.batch_size), :, :, :]
                 batch_labels = self.train_labels[offset:(offset + self.batch_size), :]
-                feed_dict = {self.tf_train_dataset : batch_data, self.tf_train_labels : batch_labels}
+                feed_dict = {self.tf_train_data : batch_data, self.tf_train_labels : batch_labels}
                 _, l, predictions = session.run(
                 [self.optimizer, self.loss, self.train_prediction], feed_dict=feed_dict)
                 if (step % 5000 == 0):
