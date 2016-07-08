@@ -1,16 +1,12 @@
 from skimage import io
-from skimage import color
-from skimage import filters
-from skimage import transform
-from sklearn import preprocessing
-from skimage import img_as_ubyte
-from skimage import exposure
 
 import os
 import numpy as np
 import pandas as pd
 import cPickle as pickle
 import random
+
+from processing import PreprocessingImage, Preprocessing, Transforms
 
 FACE_FOLDER_PATH = "/home/sc/Pictures/face/"
 FACE_ORIGINAL_PATH = "/home/sc/Pictures/face_o/"
@@ -50,119 +46,6 @@ def proximity_dataset(label_ref, labels, dataset):
         y_pred_train = clf.predict(dataset_other_.reshape(dataset_other_.shape[0], -1))
         return filter(lambda x: x[1] == -1, zip(dataset_other_, y_pred_train))
 
-class Filters(object):
-    def __init__(self, name, filters):
-        from collections import OrderedDict
-        self.filters = OrderedDict(filters)
-        self.placeholders = [k for k, v in self.filters.items() if v is None]
-        self.name = name
-
-    def get_placeholders(self):
-        return self.placeholders
-
-    def add_value(self, filter_name, value):
-        self.filters[filter_name] = value
-
-    def get_filters(self):
-        return self.filters.items()
-
-class ProcessImage(object):
-    def __init__(self, image, filters):
-        self.image = image
-        self.pipeline(filters)
-
-    def resize(self, image_size):
-        if isinstance(image_size, int):
-            type_ = "sym"
-        elif isinstance(image_size, tuple):
-            image_size, type_ = image_size
-
-        if type_ == "asym":
-            dim = []
-            for v in self.image.shape:
-                if v > image_size:
-                    dim.append(image_size)
-                else:
-                    dim.append(v)
-        else:
-            dim = (image_size, image_size)
-        if dim < self.image.shape or self.image.shape <= dim:
-            try:
-                self.image = transform.resize(self.image, dim)
-            except ZeroDivisionError:
-                pass
-        
-    def contrast(self):
-        #contrast stretching
-        p2, p98 = np.percentile(self.image, (2, 98))
-        self.image = exposure.rescale_intensity(self.image, in_range=(p2, p98))
-
-    def upsample(self):
-        self.image = transform.pyramid_expand(
-            self.image, upscale=2, sigma=None, order=1, mode='reflect', cval=0)
-
-    def rgb2gray(self):
-        self.image = img_as_ubyte(color.rgb2gray(self.image))
-
-    def blur(self, level):
-        self.image = filters.gaussian(self.image, level)
-
-    def align_face(self):
-        from ml.face_detector import FaceAlign
-        dlibFacePredictor = "/home/sc/dlib-18.18/python_examples/shape_predictor_68_face_landmarks.dat"
-        align = FaceAlign(dlibFacePredictor)
-        self.image = align.process_img(self.image)
-
-    def detector(self):
-        from ml.face_detector import DetectorDlib
-        dlibFacePredictor = "/home/sc/dlib-18.18/python_examples/shape_predictor_68_face_landmarks.dat"
-        align = DetectorDlib(dlibFacePredictor)
-        self.image = align.process_img(self.image)
-
-    def cut(self, rectangle):
-        top, bottom, left, right = rectangle
-        self.image = self.image[top:bottom, left:right]
-
-    def as_ubyte(self):
-        self.image = img_as_ubyte(self.image)
-
-    def merge_offset(self, image_size):
-        if isinstance(image_size, int):
-            bg_color = 1
-        elif isinstance(image_size, tuple):
-            image_size, bg_color = image_size
-
-        bg = np.ones((image_size, image_size))
-        offset = (int(round(abs(bg.shape[0] - self.image.shape[0]) / 2)), 
-                int(round(abs(bg.shape[1] - self.image.shape[1]) / 2)))
-        pos_v, pos_h = offset
-        v_range1 = slice(max(0, pos_v), max(min(pos_v + self.image.shape[0], bg.shape[0]), 0))
-        h_range1 = slice(max(0, pos_h), max(min(pos_h + self.image.shape[1], bg.shape[1]), 0))
-        v_range2 = slice(max(0, -pos_v), min(-pos_v + bg.shape[0], self.image.shape[0]))
-        h_range2 = slice(max(0, -pos_h), min(-pos_h + bg.shape[1], self.image.shape[1]))
-        if bg_color is None:
-            #print(np.std(image))
-            #print(np.var(image))
-            bg2 = bg - 1 + np.average(self.image) + random.uniform(-np.var(self.image), np.var(self.image))
-        elif bg_color == 1:
-            bg2 = bg
-        else:
-            bg2 = bg - 1
-        
-        bg2[v_range1, h_range1] = bg[v_range1, h_range1] - 1
-        bg2[v_range1, h_range1] = bg2[v_range1, h_range1] + self.image[v_range2, h_range2]
-        self.image = bg2
-
-    def threshold(self, block_size=41):
-        self.image = filters.threshold_adaptive(self.image, block_size, offset=0)
-
-    def pipeline(self, filters):
-        if filters is not None:
-            for filter_, value in filters:
-                if value is not None:
-                    getattr(self, filter_)(value)
-                else:
-                    getattr(self, filter_)()
 
 class DataSetBuilder(object):
     def __init__(self, name, 
@@ -181,6 +64,7 @@ class DataSetBuilder(object):
         self.valid_labels = None
         self.test_dataset = None
         self.test_labels = None
+        self.transforms = Transforms("global", [("scale", None)])
 
     def dim(self):
         return self.dataset.shape
@@ -207,6 +91,7 @@ class DataSetBuilder(object):
         print('Mean:', np.mean(self.dataset))
         print('Standard deviation:', np.std(self.dataset))
         print('Labels:', self.labels.shape)
+        print('Global filters: {}'.format(self.transforms.get_transforms("global")))
         #print('Num features {}'.format(self.image_size))
 
         #print('Training set DS[{}], labels[{}]'.format(
@@ -238,7 +123,8 @@ class DataSetBuilder(object):
             'valid_dataset': self.valid_dataset,
             'valid_labels': self.valid_labels,
             'test_dataset': self.test_dataset,
-            'test_labels': self.test_labels}
+            'test_labels': self.test_labels,
+            'global_filters': self.transforms.get_transforms("global")}
 
     def from_raw(self, raw_data):
         self.train_dataset = raw_data['train_dataset']
@@ -248,6 +134,7 @@ class DataSetBuilder(object):
         self.test_dataset = raw_data['test_dataset']
         self.test_labels = raw_data['test_labels']        
         self.desfragment()
+        self.transforms = Transforms("global", raw_data["global_filters"])
 
     def save_dataset(self, valid_size=.1, train_size=.7):
         train_dataset, valid_dataset, test_dataset, train_labels, valid_labels, test_labels = self.cross_validators(train_size=train_size, valid_size=valid_size)
@@ -314,6 +201,13 @@ class DataSetBuilder(object):
         self.labels = labels
         self.save_dataset()
 
+    def get_transforms(self, name):
+        if self.transforms is not None and name in self.transforms:
+            v_transforms = self.transforms[name].get_transforms()
+        else:
+            v_transforms = None
+        return v_transforms
+
     def copy(self):
         dataset = DataSetBuilder(self.name)
         dataset.dataset = self.dataset
@@ -329,6 +223,13 @@ class DataSetBuilder(object):
         dataset.test_labels = self.test_labels
         return dataset
 
+    def processing(self, data, processing_class):
+        if not self.transforms.empty():
+            preprocessing = processing_class(data, self.transforms.get_transforms("global"))
+            return preprocessing.pipeline()
+        else:
+            return data
+
 
 class DataSetBuilderImage(DataSetBuilder):
     def __init__(self, name, image_size=None, channels=None, 
@@ -338,11 +239,10 @@ class DataSetBuilderImage(DataSetBuilder):
                 filters=None):
         super(DataSetBuilderImage, self).__init__(name, dataset_path=DATASET_PATH, 
                 test_folder_path=FACE_TEST_FOLDER_PATH, 
-                train_folder_path=FACE_FOLDER_PATH,
+                train_folder_path=FACE_FOLDER_PATH)
         self.image_size = image_size
         self.channels = channels
         self.images = []
-        self.filters = None
 
     def add_img(self, img):
         self.images.append(img)
@@ -375,15 +275,8 @@ class DataSetBuilderImage(DataSetBuilder):
             if image_data.shape != dim:
                 raise Exception('Unexpected image shape: %s' % str(image_data.shape))
             image_data = image_data.astype(float)
-            self.dataset[image_index] = preprocessing.scale(image_data)#image_data
+            self.dataset[image_index] = self.processing(image_data, PreprocessingImage)
             self.labels[image_index] = number_id
-
-    def get_filters(self, name):
-        if self.filters is not None and name in self.filters:
-            v_filters = self.filters[name].get_filters()
-        else:
-            v_filters = None
-        return v_filters
 
     @classmethod
     def save_images(self, url, number_id, images):
@@ -401,7 +294,7 @@ class DataSetBuilderImage(DataSetBuilder):
 
     def original_to_images_set(self, url, test_folder_data=False):
         images_data, labels = self.labels_images(url)
-        images = (ProcessImage(img, self.get_filters("global")).image for img in images_data)
+        images = (PreprocessingImage(img, self.get_transforms("global")).image for img in images_data)
         image_train, image_test = self.build_train_test(zip(labels, images), sample=test_folder_data)
         for number_id, images in image_train.items():
             self.save_images(self.train_folder_path, number_id, images)
@@ -415,7 +308,6 @@ class DataSetBuilderImage(DataSetBuilder):
         self.clean_directory(self.train_folder_path)
 
     def build_train_test(self, process_images, sample=True):
-        import random
         images = {}
         images_index = {}
         
@@ -464,26 +356,21 @@ class DataSetBuilderImage(DataSetBuilder):
         dataset = super(DataSetBuilderImage, self).copy()
         dataset.image_size = self.image_size
         dataset.images = []
-        dataset.filters = self.filters
+        dataset.transforms = self.transforms
         dataset.channels = self.channels
         return dataset
 
     def to_raw(self):
         raw = super(DataSetBuilderImage, self).to_raw()
         new = {
-            'local_filters': self.get_filters("local"),
-            'global_filters': self.get_filters("global"),
+            'local_filters': self.transforms.get_transforms("local"),
             'array_length': self.image_size}
         raw.update(new)
         return raw
 
     def from_raw(self, raw_data):
         super(DataSetBuilderImage, self).from_raw(raw_data)
-        self.filters = {}
-        if raw_data["global_filters"] is not None:
-            self.filters["global"] = Filters("global", raw_data["global_filters"])
-        if raw_data["local_filters"] is not None:
-            self.filters["local"] = Filters("local", raw_data["local_filters"])
+        self.transforms.add_transforms("local", raw_data["local_filters"])
         self.image_size = raw_data["array_length"]
         self.desfragment()
 
@@ -491,25 +378,22 @@ class DataSetBuilderImage(DataSetBuilder):
         super(DataSetBuilderImage, self).info()
         print('Image Size {}x{}'.format(self.image_size, self.image_size))
 
-        if self.filters is not None:
-            print('Global filters: {}'.format(self.get_filters("global")))
-            print('Local filters: {}'.format(self.get_filters("local")))
+        if not self.transforms.empty():
+            print('Local filters: {}'.format(self.transforms.get_transforms("local")))
 
 
 class DataSetBuilderFile(DataSetBuilder):
-    def from_csv(self, path, label_column):
+    def from_csv(self, path, label_column, processing_class):
         self.dataset, self.labels = self.csv2dataset(path, label_column)
-        for row in range(self.dataset.shape[0]):
-            self.dataset[row] = preprocessing.scale(self.dataset[row])
+        self.dataset = self.processing(self.dataset, processing_class)
 
     @classmethod
     def csv2dataset(self, path, label_column):
-        import pandas as pd
         df = pd.read_csv(path)
         dataset = df.drop([label_column], axis=1).as_matrix()
         labels = df[label_column].as_matrix()
         return dataset, labels
 
-    def build_dataset(self, path, label_column):
-        self.from_csv(path, label_column)
+    def build_dataset(self, path, label_column, processing_class=Preprocessing):
+        self.from_csv(path, label_column, processing_class)
         self.save_dataset()
