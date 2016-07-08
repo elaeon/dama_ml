@@ -165,21 +165,16 @@ class ProcessImage(object):
                     getattr(self, filter_)()
 
 class DataSetBuilder(object):
-    def __init__(self, name, image_size=None, channels=None, 
+    def __init__(self, name, 
                 dataset_path=DATASET_PATH, 
                 test_folder_path=FACE_TEST_FOLDER_PATH, 
-                train_folder_path=FACE_FOLDER_PATH,
-                filters=None):
-        self.image_size = image_size
-        self.images = []
+                train_folder_path=FACE_FOLDER_PATH):
         self.dataset = None
         self.labels = None
-        self.channels = channels
         self.test_folder_path = test_folder_path
         self.train_folder_path = train_folder_path
         self.dataset_path = dataset_path
         self.name = name
-        self.filters = filters
         self.train_dataset = None
         self.train_labels = None
         self.valid_dataset = None
@@ -187,40 +182,8 @@ class DataSetBuilder(object):
         self.test_dataset = None
         self.test_labels = None
 
-    def add_img(self, img):
-        self.images.append(img)
-        #self.dataset.append(img)
-        
-    def images_from_directories(self, folder_base):
-        images = []
-        for directory in os.listdir(folder_base):
-            files = os.path.join(folder_base, directory)
-            if os.path.isdir(files):
-                number_id = directory
-                for image_file in os.listdir(files):
-                    images.append((number_id, os.path.join(files, image_file)))
-        return images
-
-    def images_to_dataset(self, folder_base):
-        """The loaded images must have been processed"""
-        images = self.images_from_directories(folder_base)
-        max_num_images = len(images)
-        if self.channels is None:
-            self.dataset = np.ndarray(
-                shape=(max_num_images, self.image_size, self.image_size), dtype=np.float32)
-            dim = (self.image_size, self.image_size)
-        else:
-            self.dataset = np.ndarray(
-                shape=(max_num_images, self.image_size, self.image_size, self.channels), dtype=np.float32)
-            dim = (self.image_size, self.image_size, self.channels)
-        self.labels = np.ndarray(shape=(max_num_images,), dtype='|S1')
-        for image_index, (number_id, image_file) in enumerate(images):
-            image_data = io.imread(image_file)
-            if image_data.shape != dim:
-                raise Exception('Unexpected image shape: %s' % str(image_data.shape))
-            image_data = image_data.astype(float)
-            self.dataset[image_index] = preprocessing.scale(image_data)#image_data
-            self.labels[image_index] = number_id
+    def dim(self):
+        return self.dataset.shape
 
     def desfragment(self):
         if self.dataset is None:
@@ -244,11 +207,7 @@ class DataSetBuilder(object):
         print('Mean:', np.mean(self.dataset))
         print('Standard deviation:', np.std(self.dataset))
         print('Labels:', self.labels.shape)
-        print('Num features {}'.format(self.image_size))
-
-        if self.filters is not None:
-            print('Global filters: {}'.format(self.get_filters("global")))
-            print('Local filters: {}'.format(self.get_filters("local")))
+        #print('Num features {}'.format(self.image_size))
 
         #print('Training set DS[{}], labels[{}]'.format(
         #    self.train_dataset.shape, self.train_labels.shape))
@@ -259,12 +218,6 @@ class DataSetBuilder(object):
 
         #print('Test set DS[{}], labels[{}]'.format(
         #    self.test_dataset.shape, self.test_labels.shape))
-
-    def randomize(self, dataset, labels):
-        permutation = np.random.permutation(labels.shape[0])
-        shuffled_dataset = dataset[permutation,:,:]
-        shuffled_labels = labels[permutation]
-        return shuffled_dataset, shuffled_labels
 
     def cross_validators(self, train_size=0.7, valid_size=0.1):
         from sklearn import cross_validation
@@ -278,35 +231,16 @@ class DataSetBuilder(object):
         y_train = y_train[valid_size_index:]
         return X_train, X_validation, X_test, y_train, y_validation, y_test
 
-    def get_filters(self, name):
-        if self.filters is not None and name in self.filters:
-            v_filters = self.filters[name].get_filters()
-        else:
-            v_filters = None
-        return v_filters
-
     def to_raw(self):
-        l_filters = self.get_filters("local")
-        g_filters = self.get_filters("global")
-
         return {
-                'local_filters': l_filters,
-                'global_filters': g_filters,
-                'array_length': self.image_size,
-                'train_dataset': self.train_dataset,
-                'train_labels': self.train_labels,
-                'valid_dataset': self.valid_dataset,
-                'valid_labels': self.valid_labels,
-                'test_dataset': self.test_dataset,
-                'test_labels': self.test_labels}
+            'train_dataset': self.train_dataset,
+            'train_labels': self.train_labels,
+            'valid_dataset': self.valid_dataset,
+            'valid_labels': self.valid_labels,
+            'test_dataset': self.test_dataset,
+            'test_labels': self.test_labels}
 
     def from_raw(self, raw_data):
-        self.filters = {}
-        if raw_data["global_filters"] is not None:
-            self.filters["global"] = Filters("global", raw_data["global_filters"])
-        if raw_data["local_filters"] is not None:
-            self.filters["local"] = Filters("local", raw_data["local_filters"])
-        self.image_size = raw_data["array_length"]
         self.train_dataset = raw_data['train_dataset']
         self.train_labels = raw_data['train_labels']
         self.valid_dataset = raw_data['valid_dataset']
@@ -352,7 +286,105 @@ class DataSetBuilder(object):
         if pprint:
             dataset.info()
         return dataset        
-        
+
+    def is_binary(self):
+        return len(self.labels_info()) == 2
+
+    @classmethod
+    def to_DF(self, dataset, labels):
+        columns_name = map(lambda x: "c"+str(x), range(dataset.shape[-1])) + ["target"]
+        return pd.DataFrame(data=np.column_stack((dataset, labels)), columns=columns_name)
+
+    def to_df(self):
+        self.desfragment()
+        return self.to_DF(self.dataset, self.labels)
+
+    def transform(self, fn):
+        data = np.ndarray(
+            shape=self.dataset.shape, dtype=np.float32)
+        for i, row in enumerate(fn(self.dataset)):
+            data[i] = row
+
+        dataset = DataSetBuilder(self.name+"T", dataset_path=self.dataset_path)
+        dataset.build_from_data_labels(self.dataset, self.labels)
+        return dataset
+
+    def build_from_data_labels(self, data, labels):
+        self.dataset = data
+        self.labels = labels
+        self.save_dataset()
+
+    def copy(self):
+        dataset = DataSetBuilder(self.name)
+        dataset.dataset = self.dataset
+        dataset.labels = self.labels
+        dataset.test_folder_path = self.test_folder_path
+        dataset.train_folder_path = self.train_folder_path
+        dataset.dataset_path = self.dataset_path
+        dataset.train_dataset = self.train_dataset
+        dataset.train_labels = self.train_labels
+        dataset.valid_dataset = self.valid_dataset
+        dataset.valid_labels = self.valid_labels
+        dataset.test_dataset = self.test_dataset
+        dataset.test_labels = self.test_labels
+        return dataset
+
+
+class DataSetBuilderImage(DataSetBuilder):
+    def __init__(self, name, image_size=None, channels=None, 
+                dataset_path=DATASET_PATH, 
+                test_folder_path=FACE_TEST_FOLDER_PATH, 
+                train_folder_path=FACE_FOLDER_PATH,
+                filters=None):
+        super(DataSetBuilderImage, self).__init__(name, dataset_path=DATASET_PATH, 
+                test_folder_path=FACE_TEST_FOLDER_PATH, 
+                train_folder_path=FACE_FOLDER_PATH,
+        self.image_size = image_size
+        self.channels = channels
+        self.images = []
+        self.filters = None
+
+    def add_img(self, img):
+        self.images.append(img)
+
+    def images_from_directories(self, folder_base):
+        images = []
+        for directory in os.listdir(folder_base):
+            files = os.path.join(folder_base, directory)
+            if os.path.isdir(files):
+                number_id = directory
+                for image_file in os.listdir(files):
+                    images.append((number_id, os.path.join(files, image_file)))
+        return images
+
+    def images_to_dataset(self, folder_base):
+        """The loaded images must have been processed"""
+        images = self.images_from_directories(folder_base)
+        max_num_images = len(images)
+        if self.channels is None:
+            self.dataset = np.ndarray(
+                shape=(max_num_images, self.image_size, self.image_size), dtype=np.float32)
+            dim = (self.image_size, self.image_size)
+        else:
+            self.dataset = np.ndarray(
+                shape=(max_num_images, self.image_size, self.image_size, self.channels), dtype=np.float32)
+            dim = (self.image_size, self.image_size, self.channels)
+        self.labels = np.ndarray(shape=(max_num_images,), dtype='|S1')
+        for image_index, (number_id, image_file) in enumerate(images):
+            image_data = io.imread(image_file)
+            if image_data.shape != dim:
+                raise Exception('Unexpected image shape: %s' % str(image_data.shape))
+            image_data = image_data.astype(float)
+            self.dataset[image_index] = preprocessing.scale(image_data)#image_data
+            self.labels[image_index] = number_id
+
+    def get_filters(self, name):
+        if self.filters is not None and name in self.filters:
+            v_filters = self.filters[name].get_filters()
+        else:
+            v_filters = None
+        return v_filters
+
     @classmethod
     def save_images(self, url, number_id, images):
         if not os.path.exists(url):
@@ -362,24 +394,6 @@ class DataSetBuilder(object):
              os.makedirs(n_url)
         for i, image in enumerate(images):
             io.imsave("{}face-{}-{}.png".format(n_url, number_id, i), image)
-
-    def labels_images(self, urls):
-        images_data = []
-        labels = []
-        if not isinstance(urls, list):
-            urls = [urls]
-
-        for url in urls:
-            for number_id, path in self.images_from_directories(url):
-                images_data.append(io.imread(path))
-                labels.append(number_id)
-
-        return images_data, labels
-
-    def build_dataset(self):
-        self.images_to_dataset(self.train_folder_path)
-        self.save_dataset()
-        self.clean_directory(self.train_folder_path)
 
     def clean_directory(self, path):
         import shutil
@@ -394,6 +408,11 @@ class DataSetBuilder(object):
 
         for number_id, images in image_test.items():
             self.save_images(self.test_folder_path, number_id, images)
+
+    def build_dataset(self):
+        self.images_to_dataset(self.train_folder_path)
+        self.save_dataset()
+        self.clean_directory(self.train_folder_path)
 
     def build_train_test(self, process_images, sample=True):
         import random
@@ -429,55 +448,53 @@ class DataSetBuilder(object):
         else:
             return images, {}
 
-    def is_binary(self):
-        return len(self.labels_info()) == 2
+    def labels_images(self, urls):
+        images_data = []
+        labels = []
+        if not isinstance(urls, list):
+            urls = [urls]
 
-    @classmethod
-    def to_DF(self, dataset, labels):
-        columns_name = map(lambda x: "c"+str(x), range(dataset.shape[-1])) + ["target"]
-        return pd.DataFrame(data=np.column_stack((dataset, labels)), columns=columns_name)
-
-    def to_df(self):
-        self.desfragment()
-        return self.to_DF(self.dataset, self.labels)
-
-    def transform(self, fn):
-        data = np.ndarray(
-            shape=self.dataset.shape, dtype=np.float32)
-        for i, row in enumerate(fn(self.dataset)):
-            data[i] = row
-
-        dataset = DataSetBuilder(self.name+"T", dataset_path=self.dataset_path)
-        dataset.build_from_data_labels(self.dataset, self.labels)
-        return dataset
-
-    def build_from_data_labels(self, data, labels):
-        self.dataset = data
-        self.labels = labels
-        self.save_dataset()
+        for url in urls:
+            for number_id, path in self.images_from_directories(url):
+                images_data.append(io.imread(path))
+                labels.append(number_id)
+        return images_data, labels
 
     def copy(self):
-        dataset = DataSetBuilder(self.name)
+        dataset = super(DataSetBuilderImage, self).copy()
         dataset.image_size = self.image_size
         dataset.images = []
-        dataset.dataset = self.dataset
-        dataset.labels = self.labels
-        dataset.channels = self.channels
-        dataset.test_folder_path = self.test_folder_path
-        dataset.train_folder_path = self.train_folder_path
-        dataset.dataset_path = self.dataset_path
         dataset.filters = self.filters
-        dataset.train_dataset = self.train_dataset
-        dataset.train_labels = self.train_labels
-        dataset.valid_dataset = self.valid_dataset
-        dataset.valid_labels = self.valid_labels
-        dataset.test_dataset = self.test_dataset
-        dataset.test_labels = self.test_labels
+        dataset.channels = self.channels
         return dataset
 
+    def to_raw(self):
+        raw = super(DataSetBuilderImage, self).to_raw()
+        new = {
+            'local_filters': self.get_filters("local"),
+            'global_filters': self.get_filters("global"),
+            'array_length': self.image_size}
+        raw.update(new)
+        return raw
 
-class DataSetBuilderImage(DataSetBuilder):
-    pass
+    def from_raw(self, raw_data):
+        super(DataSetBuilderImage, self).from_raw(raw_data)
+        self.filters = {}
+        if raw_data["global_filters"] is not None:
+            self.filters["global"] = Filters("global", raw_data["global_filters"])
+        if raw_data["local_filters"] is not None:
+            self.filters["local"] = Filters("local", raw_data["local_filters"])
+        self.image_size = raw_data["array_length"]
+        self.desfragment()
+
+    def info(self):
+        super(DataSetBuilderImage, self).info()
+        print('Image Size {}x{}'.format(self.image_size, self.image_size))
+
+        if self.filters is not None:
+            print('Global filters: {}'.format(self.get_filters("global")))
+            print('Local filters: {}'.format(self.get_filters("local")))
+
 
 class DataSetBuilderFile(DataSetBuilder):
     def from_csv(self, path, label_column):
