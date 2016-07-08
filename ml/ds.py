@@ -51,7 +51,8 @@ class DataSetBuilder(object):
     def __init__(self, name, 
                 dataset_path=DATASET_PATH, 
                 test_folder_path=FACE_TEST_FOLDER_PATH, 
-                train_folder_path=FACE_FOLDER_PATH):
+                train_folder_path=FACE_FOLDER_PATH,
+                transforms=None):
         self.data = None
         self.labels = None
         self.test_folder_path = test_folder_path
@@ -64,7 +65,8 @@ class DataSetBuilder(object):
         self.valid_labels = None
         self.test_data = None
         self.test_labels = None
-        self.transforms = Transforms([("global", [("scale", None)])])
+        if transforms is None:
+            self.transforms = Transforms([("global", [("scale", None)])])
 
     def dim(self):
         return self.dataset.shape
@@ -185,16 +187,6 @@ class DataSetBuilder(object):
         self.desfragment()
         return self.to_DF(self.data, self.labels)
 
-    def transform(self, fn):
-        data = np.ndarray(
-            shape=self.data.shape, dtype=np.float32)
-        for i, row in enumerate(fn(self.data)):
-            data[i] = row
-
-        dataset = DataSetBuilder(self.name+"T", dataset_path=self.dataset_path)
-        dataset.build_from_data_labels(self.data, self.labels)
-        return dataset
-
     def build_from_data_labels(self, data, labels):
         self.data = data
         self.labels = labels
@@ -250,7 +242,7 @@ class DataSetBuilderImage(DataSetBuilder):
                     images.append((number_id, os.path.join(files, image_file)))
         return images
 
-    def images_to_dataset(self, folder_base):
+    def images_to_dataset(self, folder_base, processing_class):
         """The loaded images must have been processed"""
         images = self.images_from_directories(folder_base)
         max_num_images = len(images)
@@ -268,7 +260,7 @@ class DataSetBuilderImage(DataSetBuilder):
             if image_data.shape != dim:
                 raise Exception('Unexpected image shape: %s' % str(image_data.shape))
             image_data = image_data.astype(float)
-            self.data[image_index] = self.processing(image_data, PreprocessingImage, 'global')
+            self.data[image_index] = self.processing(image_data, processing_class, 'global')
             self.labels[image_index] = number_id
 
     @classmethod
@@ -296,8 +288,8 @@ class DataSetBuilderImage(DataSetBuilder):
         for number_id, images in image_test.items():
             self.save_images(self.test_folder_path, number_id, images)
 
-    def build_dataset(self):
-        self.images_to_dataset(self.train_folder_path)
+    def build_dataset(self, processing_class=PreprocessingImage):
+        self.images_to_dataset(self.train_folder_path, processing_class)
         self.save_dataset()
         self.clean_directory(self.train_folder_path)
 
