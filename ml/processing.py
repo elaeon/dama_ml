@@ -12,10 +12,6 @@ class Transforms(object):
         self.transforms = {}
         for group, transform in transforms:
             self.add_group_transforms(group, transform)
-        #self.placeholders = [k for k, v in self.transforms.items() if v is None]
-
-    #def get_placeholders(self):
-    #    return self.placeholders
 
     def add_transform(self, group, name, value):
         self.transforms[group][name] = value

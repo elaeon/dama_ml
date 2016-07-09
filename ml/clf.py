@@ -2,8 +2,7 @@ import os
 import numpy as np
 import tensorflow as tf
 
-from sklearn import preprocessing
-from processing import Preprocessing
+from sklearn.preprocessing import LabelEncoder
 
 CHECK_POINT_PATH = "/home/sc/data/face_recog/"
 #np.random.seed(133)
@@ -57,7 +56,7 @@ class BaseClassif(object):
     def __init__(self, dataset, check_point_path=CHECK_POINT_PATH, pprint=True):
         self.model = None
         self.pprint = pprint
-        self.le = preprocessing.LabelEncoder()
+        self.le = LabelEncoder()
         self.load_dataset(dataset)
         self.check_point_path = check_point_path
         self.check_point = check_point_path + self.__class__.__name__ + "/"
@@ -173,7 +172,7 @@ class SKL(BaseClassif):
         if isinstance(data, list):
             data = np.asarray(data)
 
-        data = self.dataset.processing(data, Preprocessing, 'global')
+        data = self.dataset.processing(data, 'global')
         for prediction in self.model.predict(self.transform_img(data)):
             yield self.convert_label(prediction)
 
@@ -189,7 +188,7 @@ class SKLP(SKL):
         if isinstance(data, list):
             data = np.asarray(data)
 
-        data = self.dataset.processing(data, Preprocessing, 'global')
+        data = self.dataset.processing(data, 'global')
         for prediction in self.model.predict_proba(self.transform_img(data)):
             yield self.convert_label(prediction, raw=raw)
 
@@ -277,7 +276,7 @@ class TFL(BaseClassif):
             if isinstance(data, list):
                 data = np.asarray(data)
 
-            data = self.dataset.processing(data, Preprocessing, 'global')
+            data = self.dataset.processing(data, 'global')
             for prediction in self.model.predict(self.transform_img(data)):
                     yield self.convert_label(prediction, raw=raw)
 

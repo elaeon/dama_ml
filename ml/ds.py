@@ -6,7 +6,7 @@ import pandas as pd
 import cPickle as pickle
 import random
 
-from processing import PreprocessingImage, Preprocessing, Transforms
+from ml.processing import PreprocessingImage, Preprocessing, Transforms
 
 FACE_FOLDER_PATH = "/home/sc/Pictures/face/"
 FACE_ORIGINAL_PATH = "/home/sc/Pictures/face_o/"
@@ -52,7 +52,8 @@ class DataSetBuilder(object):
                 dataset_path=DATASET_PATH, 
                 test_folder_path=FACE_TEST_FOLDER_PATH, 
                 train_folder_path=FACE_FOLDER_PATH,
-                transforms=None):
+                transforms=None,
+                processing_class=Preprocessing):
         self.data = None
         self.labels = None
         self.test_folder_path = test_folder_path
@@ -65,8 +66,12 @@ class DataSetBuilder(object):
         self.valid_labels = None
         self.test_data = None
         self.test_labels = None
+        self.processing_class = processing_class
+
         if transforms is None:
             self.transforms = Transforms([("global", [("scale", None)])])
+        else:
+            self.transforms = Transforms([("global", transforms)])
 
     def dim(self):
         return self.dataset.shape
@@ -135,7 +140,7 @@ class DataSetBuilder(object):
         self.test_data = raw_data['test_dataset']
         self.test_labels = raw_data['test_labels']        
         self.desfragment()
-        self.transforms = Transforms([("global", raw_data["transforms"])])
+        self.transforms = Transforms(raw_data["transforms"])
 
     def save_dataset(self, valid_size=.1, train_size=.7):
         train_data, valid_data, test_data, train_labels, valid_labels, test_labels = self.cross_validators(train_size=train_size, valid_size=valid_size)
@@ -166,10 +171,12 @@ class DataSetBuilder(object):
             return save
 
     @classmethod
-    def load_dataset(self, name, dataset_path=DATASET_PATH, validation_dataset=True, pprint=True):
+    def load_dataset(self, name, dataset_path=DATASET_PATH, validation_dataset=True, 
+            pprint=True, processing_class=Preprocessing):
         data = self.load_dataset_raw(name, dataset_path=dataset_path, 
                 validation_dataset=validation_dataset)
-        dataset = DataSetBuilder(name, dataset_path=dataset_path)
+        dataset = DataSetBuilder(name, dataset_path=dataset_path, 
+            processing_class=processing_class)
         dataset.from_raw(data)
         if pprint:
             dataset.info()
@@ -206,11 +213,12 @@ class DataSetBuilder(object):
         dataset.test_data = self.test_data
         dataset.test_labels = self.test_labels
         dataset.transforms = self.transforms
+        dataset.processing_class = self.processing_class
         return dataset
 
-    def processing(self, data, processing_class, group):
+    def processing(self, data, group):
         if not self.transforms.empty():
-            preprocessing = processing_class(data, self.transforms.get_transforms(group))
+            preprocessing = self.processing_class(data, self.transforms.get_transforms(group))
             return preprocessing.pipeline()
         else:
             return data
@@ -221,10 +229,13 @@ class DataSetBuilderImage(DataSetBuilder):
                 dataset_path=DATASET_PATH, 
                 test_folder_path=FACE_TEST_FOLDER_PATH, 
                 train_folder_path=FACE_FOLDER_PATH,
-                filters=None):
-        super(DataSetBuilderImage, self).__init__(name, dataset_path=DATASET_PATH, 
-                test_folder_path=FACE_TEST_FOLDER_PATH, 
-                train_folder_path=FACE_FOLDER_PATH)
+                transforms=None,
+                processing_class=Preprocessing):
+        super(DataSetBuilderImage, self).__init__(name, dataset_path=dataset_path, 
+                test_folder_path=test_folder_path, 
+                train_folder_path=train_folder_path,
+                transforms=transforms,
+                processing_class=processing_class)
         self.image_size = image_size
         self.channels = channels
         self.images = []
@@ -363,9 +374,9 @@ class DataSetBuilderImage(DataSetBuilder):
 
 
 class DataSetBuilderFile(DataSetBuilder):
-    def from_csv(self, path, label_column, processing_class):
+    def from_csv(self, path, label_column):
         self.data, self.labels = self.csv2dataset(path, label_column)
-        self.data = self.processing(self.data, processing_class, 'global')
+        self.data = self.processing(self.data, 'global')
 
     @classmethod
     def csv2dataset(self, path, label_column):
@@ -374,6 +385,6 @@ class DataSetBuilderFile(DataSetBuilder):
         labels = df[label_column].as_matrix()
         return dataset, labels
 
-    def build_dataset(self, path, label_column, processing_class=Preprocessing):
-        self.from_csv(path, label_column, processing_class)
+    def build_dataset(self, path, label_column):
+        self.from_csv(path, label_column)
         self.save_dataset()
