@@ -276,6 +276,9 @@ class TFL(BaseClassif):
             if isinstance(data, list):
                 data = np.asarray(data)
 
+            if len(data.shape) > 2:
+                data = data.reshape(data.shape[0], -1).astype(np.float32)
+
             data = self.dataset.processing(data, 'global')
             for prediction in self.model.predict(self.transform_img(data)):
                     yield self.convert_label(prediction, raw=raw)

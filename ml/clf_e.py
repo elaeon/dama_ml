@@ -288,28 +288,29 @@ class ResidualTensor(TFL):
 
 
 class LSTM(TFL):
+    def transform_img(self, data):
+        return data.reshape((-1, 1, data.shape[1])).astype(np.float32)
+
     def prepare_model(self, dropout=False):
         import tflearn
-        layer = tflearn.input_data(shape=[None, self.num_features])
-        layer = tflearn.embedding(layer, input_dim=1000 , output_dim=128)
-        layer = tflearn.lstm(layer, 128, dropout=0.8)
-        softmax = tflearn.fully_connected(layer, self.num_labels, activation='softmax')
+        net = tflearn.input_data(shape=[None, 1, self.num_features])
+        #net = tflearn.embedding(net, input_dim=1000, output_dim=128)
+        net = tflearn.lstm(net, 128, dropout=0.8)
+        net = tflearn.fully_connected(net, self.num_labels, activation='softmax')
+        #sgd = tflearn.SGD(learning_rate=0.1, lr_decay=0.96, decay_step=1000)
         acc = tflearn.metrics.Accuracy()
-        self.net = tflearn.regression(softmax, optimizer='adam', learning_rate=0.001, metric=acc,
+        self.net = tflearn.regression(net, optimizer='adam', learning_rate=0.001, metric=acc,
             loss='categorical_crossentropy')
 
     def train(self, batch_size=10, num_steps=1000):
         import tflearn
-        from tflearn.data_utils import pad_sequences
         with tf.Graph().as_default():
             self.prepare_model()
             self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
-            self.dataset.train_data = pad_sequences(self.dataset.train_data, maxlen=self.num_features, value=0.)
-            #print(self.dataset.train_data.shape)
             self.model.fit(self.dataset.train_data, 
                 self.dataset.train_labels, 
                 n_epoch=num_steps, 
-                #validation_set=(self.dataset.valid_data, self.dataset.valid_labels),
+                validation_set=(self.dataset.valid_data, self.dataset.valid_labels),
                 show_metric=True, 
                 batch_size=batch_size,
                 run_id="lstm_model")
