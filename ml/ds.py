@@ -67,6 +67,8 @@ class DataSetBuilder(object):
         self.test_data = None
         self.test_labels = None
         self.processing_class = processing_class
+        self.valid_size = .1
+        self.train_size = .7
 
         if transforms is None:
             self.transforms = Transforms([("global", [("scale", None)])])
@@ -110,12 +112,12 @@ class DataSetBuilder(object):
         print('Test set DS[{}], labels[{}]'.format(
             self.test_data.shape, self.test_labels.shape))
 
-    def cross_validators(self, train_size=0.7, valid_size=0.1):
+    def cross_validators(self):
         from sklearn import cross_validation
         X_train, X_test, y_train, y_test = cross_validation.train_test_split(
-            self.data, self.labels, train_size=train_size, random_state=0)
+            self.data, self.labels, train_size=self.train_size, random_state=0)
 
-        valid_size_index = int(round(X_train.shape[0] * valid_size))
+        valid_size_index = int(round(X_train.shape[0] * self.valid_size))
         X_validation = X_train[:valid_size_index]
         y_validation = y_train[:valid_size_index]
         X_train = X_train[valid_size_index:]
@@ -142,8 +144,8 @@ class DataSetBuilder(object):
         self.desfragment()
         self.transforms = Transforms(raw_data["transforms"])
 
-    def save_dataset(self, valid_size=.1, train_size=.7):
-        train_data, valid_data, test_data, train_labels, valid_labels, test_labels = self.cross_validators(train_size=train_size, valid_size=valid_size)
+    def save_dataset(self):
+        train_data, valid_data, test_data, train_labels, valid_labels, test_labels = self.cross_validators()
         try:
             with open(self.dataset_path+self.name, 'wb') as f:
                 self.train_data = train_data
@@ -222,6 +224,35 @@ class DataSetBuilder(object):
             return preprocessing.pipeline()
         else:
             return data
+
+    @classmethod
+    def validation_ids(self, df_base, df_pred):
+        data = {}
+        for _, (key, prob) in df_base.iterrows():
+            data[key] = [prob]
+    
+        for _, (key, prob) in df_pred.iterrows():
+            data[key].append(prob)
+            if data[key][0] >= .5 and data[key][1] < .5:
+                v = data[key][1] - data[key][0]
+            else:
+                v = abs(data[key][0] - data[key][1])
+            data[key].append(v)
+    
+        return sorted(data.items(), key=lambda x: x[1][2], reverse=False)
+
+    def new_validation_dataset(self, df, df_base, df_pred, t_id):
+        data = filter(lambda x: x[1][2] < 0, DataSetBuilder.validation_ids(df_base, df_pred))
+        data = data[:int(len(data)*self.valid_size)]
+        validation_data = np.ndarray(
+            shape=(len(data), df.shape[1] - 1), dtype=np.float32)
+        for i, (target, _) in enumerate(data):
+            m = df[df[t_id] == target].as_matrix()[0,1:]
+            validation_data[i] = df[df[t_id] == target].as_matrix()[0,1:]
+        validation_labels = np.ndarray(shape=len(data), dtype=np.float32)
+        for i in range(0, len(data)):
+            validation_labels[i] = 1
+        return validation_data, validation_labels
 
 
 class DataSetBuilderImage(DataSetBuilder):
