@@ -88,10 +88,10 @@ class BaseClassif(object):
         return self.only_is(operator.eq)
 
     def reformat(self, dataset, labels):
-        dataset = self.transform_img(dataset)
+        dataset = self.transform_shape(dataset)
         return dataset, labels
 
-    def transform_img(self, img):
+    def transform_shape(self, img):
         return img.reshape(img.shape[0], -1).astype(np.float32)
 
     def labels_encode(self, labels):
@@ -173,7 +173,7 @@ class SKL(BaseClassif):
             data = np.asarray(data)
 
         data = self.dataset.processing(data, 'global')
-        for prediction in self.model.predict(self.transform_img(data)):
+        for prediction in self.model.predict(self.transform_shape(data)):
             yield self.convert_label(prediction)
 
 
@@ -189,7 +189,7 @@ class SKLP(SKL):
             data = np.asarray(data)
 
         data = self.dataset.processing(data, 'global')
-        for prediction in self.model.predict_proba(self.transform_img(data)):
+        for prediction in self.model.predict_proba(self.transform_shape(data)):
             yield self.convert_label(prediction, raw=raw)
 
 
@@ -198,7 +198,7 @@ class TF(BaseClassif):
         return np.argmax(label)
 
     def reformat(self, data, labels):
-        data = self.transform_img(data)
+        data = self.transform_shape(data)
         # Map 0 to [1.0, 0.0, 0.0 ...], 1 to [0.0, 1.0, 0.0 ...]
         labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
         return data, labels_m
@@ -247,7 +247,7 @@ class TFL(BaseClassif):
         return np.argmax(label)
 
     def reformat(self, data, labels):
-        data = self.transform_img(data)
+        data = self.transform_shape(data)
         # Map 0 to [1.0, 0.0, 0.0 ...], 1 to [0.0, 1.0, 0.0 ...]
         labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
         return data, labels_m
@@ -280,7 +280,7 @@ class TFL(BaseClassif):
                 data = data.reshape(data.shape[0], -1).astype(np.float32)
 
             data = self.dataset.processing(data, 'global')
-            for prediction in self.model.predict(self.transform_img(data)):
+            for prediction in self.model.predict(self.transform_shape(data)):
                     yield self.convert_label(prediction, raw=raw)
 
 

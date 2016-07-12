@@ -20,11 +20,10 @@ class OneClassSVM(SKL):
             self.load_model()
 
         if isinstance(data, list):
-            #data = self.transform_img(np.asarray(data))
             data = np.asarray(data)
 
         data = preprocessing.scale(data)
-        for prediction in self.model.predict(self.transform_img(data)):
+        for prediction in self.model.predict(self.transform_shape(data)):
             label = self.label_other if prediction == -1 else self.label_ref
             yield self.convert_label(label)
 
@@ -115,7 +114,7 @@ class TensorFace(TF):
                 print("...no checkpoint found...")
 
             for img in imgs:
-                img = self.transform_img(img)
+                img = self.transform_shape(img)
                 feed_dict = {self.tf_train_dataset: img}
                 classification = session.run(self.train_prediction, feed_dict=feed_dict)
                 yield self.convert_label(classification)
@@ -170,7 +169,7 @@ class ConvTensor(TFL):
             del kwargs["num_channels"]
         super(ConvTensor, self).__init__(*args, **kwargs)
 
-    def transform_img(self, img):
+    def transform_shape(self, img):
         return img.reshape((-1, self.dataset.image_size, self.dataset.image_size,
             self.num_channels)).astype(np.float32)
 
@@ -222,7 +221,7 @@ class ResidualTensor(TFL):
             del kwargs["num_channels"]
         super(ResidualTensor, self).__init__(*args, **kwargs)
 
-    def transform_img(self, img):
+    def transform_shape(self, img):
         return img.reshape((-1, self.image_size, self.image_size, self.num_channels)).astype(np.float32)
 
     def reformat_all(self):
@@ -288,12 +287,21 @@ class ResidualTensor(TFL):
 
 
 class LSTM(TFL):
-    def transform_img(self, data):
-        return data.reshape((-1, 1, data.shape[1])).astype(np.float32)
+    def __init__(self, dataset, check_point_path=CHECK_POINT_PATH, pprint=True, timesteps=1):
+        self.timesteps = timesteps
+        if len(dataset.data.shape) > 2:
+            raise ValueError("The data shape must be 2 dimensional")
+        elif dataset.data.shape[1] % timesteps > 0:
+            raise ValueError("The number of features is not divisible by {}".format(timesteps))
+        self.num_features_t = dataset.data.shape[1] / self.timesteps
+        super(LSTM, self).__init__(dataset, check_point_path=check_point_path, pprint=pprint)
+
+    def transform_shape(self, data):
+        return data.reshape((-1, self.timesteps, self.num_features_t)).astype(np.float32)
 
     def prepare_model(self, dropout=False):
         import tflearn
-        net = tflearn.input_data(shape=[None, 1, self.num_features])
+        net = tflearn.input_data(shape=[None, self.timesteps, self.num_features_t])
         #net = tflearn.embedding(net, input_dim=1000, output_dim=128)
         net = tflearn.lstm(net, 128, dropout=0.8)
         net = tflearn.fully_connected(net, self.num_labels, activation='softmax')
@@ -374,7 +382,7 @@ class ConvTensorFace(TF):
         super(ConvTensorFace, self).__init__(*args, **kwargs)        
         self.num_hidden = 64
 
-    def transform_img(self, img):
+    def transform_shape(self, img):
         return img.reshape((-1, self.image_size, self.image_size, self.num_channels)).astype(np.float32)
 
     def layers(self, data, layer1_weights, layer1_biases, layer2_weights, layer2_biases, 
