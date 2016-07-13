@@ -252,6 +252,7 @@ class DataSetBuilder(object):
         validation_labels = np.ndarray(shape=len(data), dtype=np.float32)
         for i in range(0, len(data)):
             validation_labels[i] = 1
+        validation_data = self.processing(validation_data, 'global')
         return validation_data, validation_labels
 
 
