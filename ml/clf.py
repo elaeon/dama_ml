@@ -62,7 +62,7 @@ class BaseClassif(object):
         self.check_point = check_point_path + self.__class__.__name__ + "/"
 
     def detector_test_dataset(self, raw=False):
-        predictions = self.predict(self.dataset.test_data, raw=raw)
+        predictions = self.predict(self.dataset.test_data, raw=raw, transform=False)
         measure = Measure(np.asarray(list(predictions)), 
             np.asarray([self.convert_label(label) 
             for label in self.dataset.test_labels]))
@@ -139,8 +139,8 @@ class BaseClassif(object):
         self.dataset = dataset.copy()
         self.reformat_all()
 
-    def predict(self, data, raw=False):
-        return self._predict(data, raw=raw)
+    def predict(self, data, raw=False, transform=True):
+        return self._predict(data, raw=raw, transform=transform)
 
 
 class SKL(BaseClassif):
@@ -268,7 +268,7 @@ class TFL(BaseClassif):
         self.model.load('{}{}.ckpt'.format(
             self.check_point + self.dataset.name + "/", self.dataset.name))
 
-    def _predict(self, data, raw=False):
+    def _predict(self, data, raw=False, transform=True):
         with tf.Graph().as_default():
             if self.model is None:
                 self.load_model()
@@ -276,11 +276,13 @@ class TFL(BaseClassif):
             if isinstance(data, list):
                 data = np.asarray(data)
 
-            if len(data.shape) > 2:
-                data = data.reshape(data.shape[0], -1).astype(np.float32)
+            if transform is True:
+                if len(data.shape) > 2:
+                    data = data.reshape(data.shape[0], -1).astype(np.float32)
 
-            data = self.dataset.processing(data, 'global')
-            for prediction in self.model.predict(self.transform_shape(data)):
+                data = self.transform_shape(self.dataset.processing(data, 'global'))
+
+            for prediction in self.model.predict(data):
                     yield self.convert_label(prediction, raw=raw)
 
 

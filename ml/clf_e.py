@@ -296,12 +296,22 @@ class LSTM(TFL):
         self.num_features_t = dataset.data.shape[1] / self.timesteps
         super(LSTM, self).__init__(dataset, check_point_path=check_point_path, pprint=pprint)
 
+
+    def convert(self, data):
+        ndata = np.ndarray(
+            shape=(data.shape[0], data.shape[1]-2, 3), dtype=np.float32)
+        for i, row in enumerate(data):
+            ndata[i] = np.array(list(zip(row, row[1:], row[2:])))
+        return ndata
+
     def transform_shape(self, data):
+        #return self.convert(data)
         return data.reshape((-1, self.timesteps, self.num_features_t)).astype(np.float32)
 
     def prepare_model(self, dropout=False):
         import tflearn
         net = tflearn.input_data(shape=[None, self.timesteps, self.num_features_t])
+        #net = tflearn.input_data(shape=[None, 19, 3])
         #net = tflearn.embedding(net, input_dim=1000, output_dim=128)
         net = tflearn.lstm(net, 128, dropout=0.8)
         net = tflearn.fully_connected(net, self.num_labels, activation='softmax')

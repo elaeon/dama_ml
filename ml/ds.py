@@ -144,16 +144,13 @@ class DataSetBuilder(object):
         self.desfragment()
         self.transforms = Transforms(raw_data["transforms"])
 
-    def save_dataset(self):
-        train_data, valid_data, test_data, train_labels, valid_labels, test_labels = self.cross_validators()
+    def shuffle_and_save(self):
+        self.train_data, self.valid_data, self.test_data, self.train_labels, self.valid_labels, self.test_labels = self.cross_validators()
+        self.save()
+
+    def save(self):
         try:
             with open(self.dataset_path+self.name, 'wb') as f:
-                self.train_data = train_data
-                self.train_labels = train_labels
-                self.valid_data = valid_data
-                self.valid_labels = valid_labels
-                self.test_data = test_data
-                self.test_labels = test_labels
                 pickle.dump(self.to_raw(), f, pickle.HIGHEST_PROTOCOL)
             self.info()
         except Exception as e:
@@ -199,7 +196,7 @@ class DataSetBuilder(object):
     def build_from_data_labels(self, data, labels):
         self.data = data
         self.labels = labels
-        self.save_dataset()
+        self.shuffle_and_save()
 
     def copy(self):
         dataset = DataSetBuilder(self.name)
@@ -333,7 +330,7 @@ class DataSetBuilderImage(DataSetBuilder):
 
     def build_dataset(self, processing_class=PreprocessingImage):
         self.images_to_dataset(self.train_folder_path, processing_class)
-        self.save_dataset()
+        self.shuffle_and_save()
         self.clean_directory(self.train_folder_path)
 
     def build_train_test(self, process_images, sample=True):
@@ -419,4 +416,4 @@ class DataSetBuilderFile(DataSetBuilder):
 
     def build_dataset(self, path, label_column):
         self.from_csv(path, label_column)
-        self.save_dataset()
+        self.shuffle_and_save()
