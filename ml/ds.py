@@ -186,6 +186,8 @@ class DataSetBuilder(object):
 
     @classmethod
     def to_DF(self, dataset, labels):
+        if len(dataset.shape) > 2:
+            dataset = dataset.reshape(dataset.shape[0], -1)
         columns_name = map(lambda x: "c"+str(x), range(dataset.shape[-1])) + ["target"]
         return pd.DataFrame(data=np.column_stack((dataset, labels)), columns=columns_name)
 
@@ -238,9 +240,10 @@ class DataSetBuilder(object):
     
         return sorted(data.items(), key=lambda x: x[1][2], reverse=False)
 
-    def new_validation_dataset(self, df, df_base, df_pred, t_id):
+    def new_validation_dataset(self, df, df_base, df_pred, t_id, valid_size=None):
+        valid_size = self.valid_size if valid_size is None else valid_size
         data = filter(lambda x: x[1][2] < 0, DataSetBuilder.validation_ids(df_base, df_pred))
-        data = data[:int(len(data)*self.valid_size)]
+        data = data[:int(len(data)*valid_size)]
         validation_data = np.ndarray(
             shape=(len(data), df.shape[1] - 1), dtype=np.float32)
         for i, (target, _) in enumerate(data):

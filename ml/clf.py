@@ -73,7 +73,7 @@ class BaseClassif(object):
         dt.classif_test(self, "f1")
 
     def only_is(self, op):
-        predictions = list(self.predict(self.dataset.test_data, raw=False))
+        predictions = list(self.predict(self.dataset.test_data, raw=False, transform=False))
         labels = [self.convert_label(label) for label in self.dataset.test_labels]
         data = zip(*filter(lambda x: op(x[1], x[2]), 
             zip(self.dataset.test_data, predictions, labels)))
