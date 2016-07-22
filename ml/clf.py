@@ -64,7 +64,7 @@ class BaseClassif(object):
     def detector_test_dataset(self, raw=False):
         predictions = self.predict(self.dataset.test_data, raw=raw, transform=False)
         measure = Measure(np.asarray(list(predictions)), 
-            np.asarray([self.convert_label(label) 
+            np.asarray([self.convert_label(label, raw=raw)
             for label in self.dataset.test_labels]))
         return self.__class__.__name__, measure
 
@@ -146,10 +146,7 @@ class BaseClassif(object):
 class SKL(BaseClassif):
     def train(self, batch_size=0, num_steps=0):
         self.prepare_model()
-        predictions = self.model.predict(self.dataset.test_data)
-        score = self.accuracy(predictions, self.dataset.test_labels)
         self.save_model()
-        return score
 
     def save_model(self):
         from sklearn.externals import joblib
@@ -165,7 +162,7 @@ class SKL(BaseClassif):
         self.model = joblib.load('{}.pkl'.format(
             self.check_point+self.dataset.name+"/"+self.dataset.name))
 
-    def _predict(self, data, raw=False):
+    def _predict(self, data, raw=False, transform=True):
         if self.model is None:
             self.load_model()
 
@@ -181,7 +178,7 @@ class SKLP(SKL):
     def position_index(self, label):
         return np.argmax(label)
 
-    def _predict(self, data, raw=False):
+    def _predict(self, data, raw=False, transform=True):
         if self.model is None:
             self.load_model()
 
@@ -227,9 +224,9 @@ class TF(BaseClassif):
                     print "Minibatch accuracy: %.1f%%" % (self.accuracy(predictions, batch_labels)*100)
                     print "Validation accuracy: %.1f%%" % (self.accuracy(
                       self.valid_prediction.eval(), self.dataset.valid_labels)*100)
-            score_v = self.accuracy(self.test_prediction.eval(), self.dataset.test_labels)
+            #score_v = self.accuracy(self.test_prediction.eval(), self.dataset.test_labels)
             self.save_model(saver, session, step)
-            return score_v
+            #return score_v
 
     def save_model(self, saver, session, step):
         if not os.path.exists(self.check_point):
