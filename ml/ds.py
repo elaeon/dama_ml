@@ -10,7 +10,6 @@ from ml.processing import PreprocessingImage, Preprocessing, Transforms
 
 FACE_FOLDER_PATH = "/home/sc/Pictures/face/"
 FACE_ORIGINAL_PATH = "/home/sc/Pictures/face_o/"
-FACE_TEST_FOLDER_PATH = "/home/sc/Pictures/test/"
 DATASET_PATH = "/home/sc/data/dataset/"
 
 
@@ -50,10 +49,12 @@ def proximity_dataset(label_ref, labels, dataset):
 class DataSetBuilder(object):
     def __init__(self, name, 
                 dataset_path=DATASET_PATH, 
-                test_folder_path=FACE_TEST_FOLDER_PATH, 
-                train_folder_path=FACE_FOLDER_PATH,
+                test_folder_path=None, 
+                train_folder_path=None,
                 transforms=None,
-                processing_class=Preprocessing):
+                processing_class=Preprocessing,
+                train_size=.7,
+                valid_size=.1):
         self.data = None
         self.labels = None
         self.test_folder_path = test_folder_path
@@ -67,8 +68,8 @@ class DataSetBuilder(object):
         self.test_data = None
         self.test_labels = None
         self.processing_class = processing_class
-        self.valid_size = .1
-        self.train_size = .7
+        self.valid_size = valid_size
+        self.train_size = train_size
 
         if transforms is None:
             self.transforms = Transforms([("global", [("scale", None)])])
@@ -96,26 +97,31 @@ class DataSetBuilder(object):
         return np.asarray(dataset), np.asarray(n_labels)
 
     def info(self):
-        print('Full dataset tensor:', self.data.shape)
-        print('Mean:', np.mean(self.data))
-        print('Standard deviation:', np.std(self.data))
-        print('Labels:', self.labels.shape)
+        from utils.order import order_table_print
         print('Filters: {}'.format(self.transforms.get_all_transforms()))
-
-        print('Training set DS[{}], labels[{}]'.format(
-            self.train_data.shape, self.train_labels.shape))
+        headers = ["Dataset", "Mean", "Std", "Shape", "Labels"]
+        table = []
+        table.append(["train set", self.train_data.mean(), self.train_data.std(), 
+            self.train_data.shape, self.train_labels.shape])
 
         if self.valid_data is not None:
-            print('Validation set DS[{}], labels[{}]'.format(
-                self.valid_data.shape, self.valid_labels.shape))
+            table.append(["valid set", self.valid_data.mean(), self.valid_data.std(), 
+            self.valid_data.shape, self.valid_labels.shape])
 
-        print('Test set DS[{}], labels[{}]'.format(
-            self.test_data.shape, self.test_labels.shape))
+        table.append(["test set", self.test_data.mean(), self.test_data.std(), 
+            self.test_data.shape, self.test_labels.shape])
+        order_table_print(headers, table, "shape")
 
     def cross_validators(self):
         from sklearn import cross_validation
-        X_train, X_test, y_train, y_test = cross_validation.train_test_split(
-            self.data, self.labels, train_size=self.train_size, random_state=0)
+        if self.test_folder_path is None:
+            X_train, X_test, y_train, y_test = cross_validation.train_test_split(
+                self.data, self.labels, train_size=self.train_size, random_state=0)
+        else:
+            X_train, X_test, y_train, y_test = self.data, self.test_data,\
+                self.labels, self.test_labels
+            self.data = None
+            self.labels = None
 
         valid_size_index = int(round(X_train.shape[0] * self.valid_size))
         X_validation = X_train[:valid_size_index]
@@ -257,17 +263,8 @@ class DataSetBuilder(object):
 
 
 class DataSetBuilderImage(DataSetBuilder):
-    def __init__(self, name, image_size=None, channels=None, 
-                dataset_path=DATASET_PATH, 
-                test_folder_path=FACE_TEST_FOLDER_PATH, 
-                train_folder_path=FACE_FOLDER_PATH,
-                transforms=None,
-                processing_class=Preprocessing):
-        super(DataSetBuilderImage, self).__init__(name, dataset_path=dataset_path, 
-                test_folder_path=test_folder_path, 
-                train_folder_path=train_folder_path,
-                transforms=transforms,
-                processing_class=processing_class)
+    def __init__(self, image_size=None, channels=None, *args, **kwargs):
+        super(DataSetBuilderImage, self).__init__(*args, **kwargs)
         self.image_size = image_size
         self.channels = channels
         self.images = []
@@ -331,8 +328,8 @@ class DataSetBuilderImage(DataSetBuilder):
         for number_id, images in image_test.items():
             self.save_images(self.test_folder_path, number_id, images)
 
-    def build_dataset(self, processing_class=PreprocessingImage):
-        self.images_to_dataset(self.train_folder_path, processing_class)
+    def build_dataset(self):
+        self.images_to_dataset(self.train_folder_path, self.processing_class)
         self.shuffle_and_save()
         self.clean_directory(self.train_folder_path)
 
@@ -406,8 +403,12 @@ class DataSetBuilderImage(DataSetBuilder):
 
 
 class DataSetBuilderFile(DataSetBuilder):
-    def from_csv(self, path, label_column):
-        self.data, self.labels = self.csv2dataset(path, label_column)
+    def from_csv(self, label_column):
+        self.data, self.labels = self.csv2dataset(self.train_folder_path, label_column)
+        if self.test_folder_path is not None:
+            self.test_data, self.test_labels = self.csv2dataset(self.test_folder_path, label_column)
+            self.test_data = self.processing(self.test_data, 'global')
+
         self.data = self.processing(self.data, 'global')
 
     @classmethod
@@ -417,6 +418,6 @@ class DataSetBuilderFile(DataSetBuilder):
         labels = df[label_column].as_matrix()
         return dataset, labels
 
-    def build_dataset(self, path, label_column):
-        self.from_csv(path, label_column)
+    def build_dataset(self, label_column=None):
+        self.from_csv(label_column)
         self.shuffle_and_save()

@@ -16,13 +16,6 @@ class OneClassSVM(SKL):
         self.model = reg
 
     def _predict(self, data, raw=False):
-        if self.model is None:
-            self.load_model()
-
-        if isinstance(data, list):
-            data = np.asarray(data)
-
-        data = preprocessing.scale(data)
         for prediction in self.model.predict(self.transform_shape(data)):
             label = self.label_other if prediction == -1 else self.label_ref
             yield self.convert_label(label)
@@ -62,11 +55,6 @@ class LogisticRegression(SKLP):
 
 
 class TensorFace(TF):
-    #def predict(self, imgs):
-    #    self.batch_size = 1
-    #    self.fit(dropout=False)
-    #    return self._predict(imgs)
-
     def prepare_model(self, batch_size, dropout=True):
         self.graph = tf.Graph()
         with self.graph.as_default():

@@ -140,7 +140,18 @@ class BaseClassif(object):
         self.reformat_all()
 
     def predict(self, data, raw=False, transform=True):
-        return self._predict(data, raw=raw, transform=transform)
+        if self.model is None:
+            self.load_model()
+
+        if isinstance(data, list):
+            data = np.asarray(data)
+
+        if transform is True:
+            if len(data.shape) > 2:
+                data = data.reshape(data.shape[0], -1).astype(np.float32)
+            data = self.transform_shape(self.dataset.processing(data, 'global'))
+
+        return self._predict(data, raw=raw)
 
 
 class SKL(BaseClassif):
@@ -162,14 +173,7 @@ class SKL(BaseClassif):
         self.model = joblib.load('{}.pkl'.format(
             self.check_point+self.dataset.name+"/"+self.dataset.name))
 
-    def _predict(self, data, raw=False, transform=True):
-        if self.model is None:
-            self.load_model()
-
-        if isinstance(data, list):
-            data = np.asarray(data)
-
-        data = self.dataset.processing(data, 'global')
+    def _predict(self, data, raw=False):
         for prediction in self.model.predict(self.transform_shape(data)):
             yield self.convert_label(prediction)
 
@@ -178,15 +182,8 @@ class SKLP(SKL):
     def position_index(self, label):
         return np.argmax(label)
 
-    def _predict(self, data, raw=False, transform=True):
-        if self.model is None:
-            self.load_model()
-
-        if isinstance(data, list):
-            data = np.asarray(data)
-
-        data = self.dataset.processing(data, 'global')
-        for prediction in self.model.predict_proba(self.transform_shape(data)):
+    def _predict(self, data, raw=False):
+        for prediction in self.model.predict_proba(data):
             yield self.convert_label(prediction, raw=raw)
 
 
@@ -265,7 +262,7 @@ class TFL(BaseClassif):
         self.model.load('{}{}.ckpt'.format(
             self.check_point + self.dataset.name + "/", self.dataset.name))
 
-    def _predict(self, data, raw=False, transform=True):
+    def predict(self, data, raw=False, transform=True):
         with tf.Graph().as_default():
             if self.model is None:
                 self.load_model()
@@ -276,11 +273,13 @@ class TFL(BaseClassif):
             if transform is True:
                 if len(data.shape) > 2:
                     data = data.reshape(data.shape[0], -1).astype(np.float32)
-
                 data = self.transform_shape(self.dataset.processing(data, 'global'))
 
-            for prediction in self.model.predict(data):
-                    yield self.convert_label(prediction, raw=raw)
+            return self._predict(data, raw=raw)
+
+    def _predict(self, data, raw=False):
+        for prediction in self.model.predict(data):
+            yield self.convert_label(prediction, raw=raw)
 
 
 class ClassifTest(object):
