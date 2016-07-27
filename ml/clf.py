@@ -135,7 +135,6 @@ class BaseClassif(object):
         return measure.accuracy()
 
     def load_dataset(self, dataset):
-        from ml.ds import DataSetBuilder
         self.dataset = dataset.copy()
         self.reformat_all()
 

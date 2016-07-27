@@ -208,7 +208,7 @@ class DataSetBuilder(object):
 
     def copy(self):
         dataset = DataSetBuilder(self.name)
-        dataset.dataset = self.data
+        dataset.data = self.data
         dataset.labels = self.labels
         dataset.test_folder_path = self.test_folder_path
         dataset.train_folder_path = self.train_folder_path
@@ -230,33 +230,59 @@ class DataSetBuilder(object):
         else:
             return data
 
-    @classmethod
-    def validation_ids(self, df_base, df_pred):
-        data = {}
-        for _, (key, prob) in df_base.iterrows():
-            data[key] = [prob]
+    #@classmethod
+    #def validation_ids(self, df_base, df_pred):
+    #    data = {}
+    #    for _, (key, prob) in df_base.iterrows():
+    #        data[key] = [prob]
     
-        for _, (key, prob) in df_pred.iterrows():
-            data[key].append(prob)
-            v = data[key][1] - data[key][0]
-            data[key].append(v)
+    #    for _, (key, prob) in df_pred.iterrows():
+    #        data[key].append(prob)
+    #        v = data[key][1] - data[key][0]
+    #        data[key].append(v)
     
-        return sorted(data.items(), key=lambda x: x[1][2], reverse=False)
+    #    return sorted(data.items(), key=lambda x: x[1][2], reverse=False)
 
-    def new_validation_dataset(self, df, df_base, df_pred, t_id, valid_size=None):
+    #def new_validation_dataset(self, df, df_base, df_pred, t_id, valid_size=None):
+    #    valid_size = self.valid_size if valid_size is None else valid_size
+    #    data = filter(lambda x: x[1][2] < 0, DataSetBuilder.validation_ids(df_base, df_pred))
+    #    data = data[:int(len(data)*valid_size)]
+    #    validation_data = np.ndarray(
+    #        shape=(len(data), df.shape[1] - 1), dtype=np.float32)
+    #    for i, (target, _) in enumerate(data):
+    #        m = df[df[t_id] == target].as_matrix()[0,1:]
+    #        validation_data[i] = df[df[t_id] == target].as_matrix()[0,1:]
+    #    validation_labels = np.ndarray(shape=len(data), dtype=np.float32)
+    #    for i in range(0, len(data)):
+    #        validation_labels[i] = 1
+    #    validation_data = self.processing(validation_data, 'global')
+    #    return validation_data, validation_labels
+
+    def rebuild_validation_from_errors(self, classif, valid_size=.1):
         valid_size = self.valid_size if valid_size is None else valid_size
-        data = filter(lambda x: x[1][2] < 0, DataSetBuilder.validation_ids(df_base, df_pred))
-        data = data[:int(len(data)*valid_size)]
-        validation_data = np.ndarray(
-            shape=(len(data), df.shape[1] - 1), dtype=np.float32)
-        for i, (target, _) in enumerate(data):
-            m = df[df[t_id] == target].as_matrix()[0,1:]
-            validation_data[i] = df[df[t_id] == target].as_matrix()[0,1:]
-        validation_labels = np.ndarray(shape=len(data), dtype=np.float32)
-        for i in range(0, len(data)):
-            validation_labels[i] = 1
-        validation_data = self.processing(validation_data, 'global')
-        return validation_data, validation_labels
+        if self.is_binary():
+            predictions = classif.predict(classif.dataset.test_data, raw=True, transform=False)
+            probs = filter(lambda x: x[1] < 0, 
+                [(index,  prob0 - prob1) for index, (prob0, prob1) in enumerate(predictions)])
+            probs = sorted(probs, key=lambda x: x[1], reverse=False)
+            probs = probs[:int(len(probs) * valid_size)]
+            validation_data = np.ndarray(
+                shape=(len(probs), self.valid_data.shape[1]), dtype=np.float32)
+            for i, (j, _) in enumerate(probs):
+                validation_data[i] = self.test_data[j]
+            validation_labels = np.ndarray(shape=len(probs), dtype=np.float32)
+            for i in range(0, len(probs)):
+                validation_labels[i] = 1
+
+            indexes = sorted(np.array([index for index, _ in probs]))
+            test_data = np.delete(self.test_data, indexes, axis=0)
+            test_labels = np.delete(self.test_labels, indexes)
+            ndataset = self.copy()
+            ndataset.valid_data = validation_data #self.processing(validation_data, 'global')
+            ndataset.valid_labels = validation_labels
+            ndataset.test_data = test_data
+            ndataset.test_labels = test_labels
+            return ndataset
 
 
 class DataSetBuilderImage(DataSetBuilder):
