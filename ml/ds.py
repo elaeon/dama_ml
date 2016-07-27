@@ -76,9 +76,6 @@ class DataSetBuilder(object):
         else:
             self.transforms = Transforms([("global", transforms)])
 
-    def dim(self):
-        return self.dataset.shape
-
     def desfragment(self):
         if self.data is None:
             self.data = np.concatenate((
@@ -92,24 +89,27 @@ class DataSetBuilder(object):
         return Counter(self.labels)
 
     def only_labels(self, labels):
+        self.desfragment()
         s_labels = set(labels)
         dataset, n_labels = zip(*filter(lambda x: x[1] in s_labels, zip(self.data, self.labels)))
         return np.asarray(dataset), np.asarray(n_labels)
 
     def info(self):
         from utils.order import order_table_print
+        print('       ')
         print('Filters: {}'.format(self.transforms.get_all_transforms()))
+        print('       ')
         headers = ["Dataset", "Mean", "Std", "Shape", "Labels"]
         table = []
         table.append(["train set", self.train_data.mean(), self.train_data.std(), 
-            self.train_data.shape, self.train_labels.shape])
+            self.train_data.shape, self.train_labels.size])
 
         if self.valid_data is not None:
             table.append(["valid set", self.valid_data.mean(), self.valid_data.std(), 
-            self.valid_data.shape, self.valid_labels.shape])
+            self.valid_data.shape, self.valid_labels.size])
 
         table.append(["test set", self.test_data.mean(), self.test_data.std(), 
-            self.test_data.shape, self.test_labels.shape])
+            self.test_data.shape, self.test_labels.size])
         order_table_print(headers, table, "shape")
 
     def cross_validators(self):
@@ -238,10 +238,7 @@ class DataSetBuilder(object):
     
         for _, (key, prob) in df_pred.iterrows():
             data[key].append(prob)
-            if data[key][0] >= .5 and data[key][1] < .5:
-                v = data[key][1] - data[key][0]
-            else:
-                v = abs(data[key][0] - data[key][1])
+            v = data[key][1] - data[key][0]
             data[key].append(v)
     
         return sorted(data.items(), key=lambda x: x[1][2], reverse=False)
@@ -421,3 +418,10 @@ class DataSetBuilderFile(DataSetBuilder):
     def build_dataset(self, label_column=None):
         self.from_csv(label_column)
         self.shuffle_and_save()
+
+    @classmethod
+    def merge_data_labels(self, data_path, labels_path, column_id):
+        import pandas as pd
+        data_df = pd.read_csv(data_path)
+        labels_df = pd.read_csv(labels_path)
+        return pd.merge(data_df, labels_df, on=column_id)

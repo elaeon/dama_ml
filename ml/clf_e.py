@@ -284,7 +284,6 @@ class LSTM(TFL):
         self.num_features_t = dataset.data.shape[1] / self.timesteps
         super(LSTM, self).__init__(dataset, check_point_path=check_point_path, pprint=pprint)
 
-
     def convert(self, data):
         ndata = np.ndarray(
             shape=(data.shape[0], data.shape[1]-2, 3), dtype=np.float32)

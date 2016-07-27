@@ -64,7 +64,7 @@ class BaseClassif(object):
     def detector_test_dataset(self, raw=False):
         predictions = self.predict(self.dataset.test_data, raw=raw, transform=False)
         measure = Measure(np.asarray(list(predictions)), 
-            np.asarray([self.convert_label(label, raw=raw)
+            np.asarray([self.convert_label(label, raw=False)
             for label in self.dataset.test_labels]))
         return self.__class__.__name__, measure
 
