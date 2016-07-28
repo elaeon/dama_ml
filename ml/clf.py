@@ -91,8 +91,8 @@ class BaseClassif(object):
         dataset = self.transform_shape(dataset)
         return dataset, labels
 
-    def transform_shape(self, img):
-        return img.reshape(img.shape[0], -1).astype(np.float32)
+    def transform_shape(self, data):
+        return data.reshape(data.shape[0], -1).astype(np.float32)
 
     def labels_encode(self, labels):
         self.le.fit(labels)
@@ -128,12 +128,6 @@ class BaseClassif(object):
                     self.dataset.valid_labels.shape)
             print('RF-Test set', self.dataset.test_data.shape, self.dataset.test_labels.shape)
 
-    def accuracy(self, predictions, labels):
-        measure = Measure(predictions, labels)
-        if self.pprint:
-            measure.print_all()
-        return measure.accuracy()
-
     def load_dataset(self, dataset):
         self.dataset = dataset.copy()
         self.reformat_all()
@@ -151,6 +145,60 @@ class BaseClassif(object):
             data = self.transform_shape(self.dataset.processing(data, 'global'))
 
         return self._predict(data, raw=raw)
+
+    def _pred_erros(self, predictions, test_data, test_labels, valid_size=.1):
+        validation_labels_d = {}
+        pred_index = []
+        for index, (pred, label) in enumerate(zip(predictions, test_labels)):
+            if pred[1] >= .5 and (label < .5 or label == 0):
+                pred_index.append((index, label - pred[1]))
+                validation_labels_d[index] = 1
+            elif pred[1] < .5 and (label >= .5 or label == 1):
+                pred_index.append((index, pred[1] - label))
+                validation_labels_d[index] = 0
+
+        pred_index = sorted(filter(lambda x: x[1] < 0, pred_index), 
+            key=lambda x: x[1], reverse=False)
+        pred_index = pred_index[:int(len(pred_index) * valid_size)]
+        validation_data = np.ndarray(
+            shape=(len(pred_index), test_data.shape[1]), dtype=np.float32)
+        validation_labels = np.ndarray(shape=len(pred_index), dtype=np.float32)
+        for i, (j, _) in enumerate(pred_index):
+            validation_data[i] = test_data[j]
+            validation_labels[i] = validation_labels_d[j]
+        return validation_data, validation_labels, pred_index
+
+    def rebuild_validation_from_errors(self, dataset, valid_size=.1, test_data_labels=None):
+        valid_size = dataset.valid_size if valid_size is None else valid_size
+        if dataset.is_binary():
+            if dataset.test_folder_path is not None or test_data_labels is None:
+                test_data, test_labels = dataset.test_data, dataset.test_labels
+                predictions = self.predict(self.dataset.test_data, raw=True, transform=False)
+            else:
+                test_data, test_labels = test_data_labels
+                predictions = self.predict(test_data, raw=True, transform=True)
+
+            ndataset = dataset.copy()
+            ndataset.valid_data, ndataset.valid_labels, pred_index = self._pred_erros(
+                predictions, test_data, test_labels, valid_size=valid_size)
+            indexes = sorted(np.array([index for index, _ in pred_index]))            
+            ndataset.test_data = np.delete(test_data, indexes, axis=0)
+            ndataset.test_labels = np.delete(test_labels, indexes)
+            ndataset.info()
+            return ndataset
+        else:
+            raise Exception
+
+    def retrain(self, dataset, batch_size=10, num_steps=1000):
+        self.dataset = dataset
+        self.reformat_all()
+        self.train(batch_size=batch_size, num_steps=num_steps)
+
+    def train2steps(self, dataset, valid_size=.1, batch_size=10, num_steps=1000, test_data_labels=None):
+        self.train(batch_size=batch_size, num_steps=num_steps)
+        dataset_v = self.rebuild_validation_from_errors(dataset, 
+            valid_size=valid_size, test_data_labels=test_data_labels)
+        self.retrain(dataset_v, batch_size=batch_size, num_steps=num_steps)
 
 
 class SKL(BaseClassif):

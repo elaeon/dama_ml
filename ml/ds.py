@@ -258,32 +258,6 @@ class DataSetBuilder(object):
     #    validation_data = self.processing(validation_data, 'global')
     #    return validation_data, validation_labels
 
-    def rebuild_validation_from_errors(self, classif, valid_size=.1):
-        valid_size = self.valid_size if valid_size is None else valid_size
-        if self.is_binary():
-            predictions = classif.predict(classif.dataset.test_data, raw=True, transform=False)
-            probs = filter(lambda x: x[1] < 0, 
-                [(index,  prob0 - prob1) for index, (prob0, prob1) in enumerate(predictions)])
-            probs = sorted(probs, key=lambda x: x[1], reverse=False)
-            probs = probs[:int(len(probs) * valid_size)]
-            validation_data = np.ndarray(
-                shape=(len(probs), self.valid_data.shape[1]), dtype=np.float32)
-            for i, (j, _) in enumerate(probs):
-                validation_data[i] = self.test_data[j]
-            validation_labels = np.ndarray(shape=len(probs), dtype=np.float32)
-            for i in range(0, len(probs)):
-                validation_labels[i] = 1
-
-            indexes = sorted(np.array([index for index, _ in probs]))
-            test_data = np.delete(self.test_data, indexes, axis=0)
-            test_labels = np.delete(self.test_labels, indexes)
-            ndataset = self.copy()
-            ndataset.valid_data = validation_data #self.processing(validation_data, 'global')
-            ndataset.valid_labels = validation_labels
-            ndataset.test_data = test_data
-            ndataset.test_labels = test_labels
-            return ndataset
-
 
 class DataSetBuilderImage(DataSetBuilder):
     def __init__(self, image_size=None, channels=None, *args, **kwargs):
