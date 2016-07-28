@@ -230,34 +230,6 @@ class DataSetBuilder(object):
         else:
             return data
 
-    #@classmethod
-    #def validation_ids(self, df_base, df_pred):
-    #    data = {}
-    #    for _, (key, prob) in df_base.iterrows():
-    #        data[key] = [prob]
-    
-    #    for _, (key, prob) in df_pred.iterrows():
-    #        data[key].append(prob)
-    #        v = data[key][1] - data[key][0]
-    #        data[key].append(v)
-    
-    #    return sorted(data.items(), key=lambda x: x[1][2], reverse=False)
-
-    #def new_validation_dataset(self, df, df_base, df_pred, t_id, valid_size=None):
-    #    valid_size = self.valid_size if valid_size is None else valid_size
-    #    data = filter(lambda x: x[1][2] < 0, DataSetBuilder.validation_ids(df_base, df_pred))
-    #    data = data[:int(len(data)*valid_size)]
-    #    validation_data = np.ndarray(
-    #        shape=(len(data), df.shape[1] - 1), dtype=np.float32)
-    #    for i, (target, _) in enumerate(data):
-    #        m = df[df[t_id] == target].as_matrix()[0,1:]
-    #        validation_data[i] = df[df[t_id] == target].as_matrix()[0,1:]
-    #    validation_labels = np.ndarray(shape=len(data), dtype=np.float32)
-    #    for i in range(0, len(data)):
-    #        validation_labels[i] = 1
-    #    validation_data = self.processing(validation_data, 'global')
-    #    return validation_data, validation_labels
-
 
 class DataSetBuilderImage(DataSetBuilder):
     def __init__(self, image_size=None, channels=None, *args, **kwargs):

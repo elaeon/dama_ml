@@ -177,8 +177,13 @@ class BaseClassif(object):
             else:
                 test_data, test_labels = test_data_labels
                 predictions = self.predict(test_data, raw=True, transform=True)
+                test_data = dataset.processing(test_data, 'global')
 
             ndataset = dataset.copy()
+            ndataset.train_data = np.concatenate(
+                (dataset.train_data, dataset.valid_data), axis=0)
+            ndataset.train_labels = np.concatenate(
+                (dataset.train_labels, dataset.valid_labels), axis=0)
             ndataset.valid_data, ndataset.valid_labels, pred_index = self._pred_erros(
                 predictions, test_data, test_labels, valid_size=valid_size)
             indexes = sorted(np.array([index for index, _ in pred_index]))            
@@ -199,7 +204,6 @@ class BaseClassif(object):
         dataset_v = self.rebuild_validation_from_errors(dataset, 
             valid_size=valid_size, test_data_labels=test_data_labels)
         self.retrain(dataset_v, batch_size=batch_size, num_steps=num_steps)
-
 
 class SKL(BaseClassif):
     def train(self, batch_size=0, num_steps=0):
