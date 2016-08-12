@@ -129,7 +129,7 @@ def new_df():
     test_data_labels = [data, labels]
     return data, labels
 
-test_data_labels = new_df()
+#test_data_labels = new_df()
 #test_data_labels = None
 #df.to_csv("/home/sc/test_data/numerai_datasets/numerai_tournament_data_c.csv", index=False)
 
@@ -148,9 +148,10 @@ test_data_labels = new_df()
  1  40.42   64.5937
 """
 dataset = ml.ds.DataSetBuilderFile.load_dataset(dataset_name, dataset_path=dataset_path, processing_class=Preprocessing)
+#classif = ml.clf_e.SVC(dataset, check_point_path=check_point_path, pprint=False)
 classif = ml.clf_e.LSTM(dataset, check_point_path=check_point_path, pprint=False, timesteps=7)
 #classif.train(batch_size=128, num_steps=1)
-classif.train2steps(dataset, valid_size=.2, batch_size=128, num_steps=5, test_data_labels=test_data_labels)
-classif = ml.clf_e.LSTM(dataset, check_point_path=check_point_path, pprint=False, timesteps=7)
+#classif.train2steps(dataset, valid_size=.2, batch_size=128, num_steps=10, test_data_labels=test_data_labels)
+#classif = ml.clf_e.LSTM(dataset, check_point_path=check_point_path, pprint=False, timesteps=7)
 classif.print_score()
-#predict(classif, "/home/sc/test_data/numerai_datasets/numerai_tournament_data.csv", "t_id")
+predict(classif, "/home/sc/test_data/numerai_datasets/numerai_tournament_data.csv", "t_id")

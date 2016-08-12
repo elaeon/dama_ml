@@ -99,17 +99,17 @@ class DataSetBuilder(object):
         print('       ')
         print('Filters: {}'.format(self.transforms.get_all_transforms()))
         print('       ')
-        headers = ["Dataset", "Mean", "Std", "Shape", "Labels"]
+        headers = ["Dataset", "Mean", "Std", "Shape", "dType", "Labels"]
         table = []
         table.append(["train set", self.train_data.mean(), self.train_data.std(), 
-            self.train_data.shape, self.train_labels.size])
+            self.train_data.shape, self.train_data.dtype, self.train_labels.size])
 
         if self.valid_data is not None:
             table.append(["valid set", self.valid_data.mean(), self.valid_data.std(), 
-            self.valid_data.shape, self.valid_labels.size])
+            self.valid_data.shape, self.valid_data.dtype, self.valid_labels.size])
 
         table.append(["test set", self.test_data.mean(), self.test_data.std(), 
-            self.test_data.shape, self.test_labels.size])
+            self.test_data.shape, self.test_data.dtype, self.test_labels.size])
         order_table_print(headers, table, "shape")
 
     def cross_validators(self):
