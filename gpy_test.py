@@ -5,93 +5,51 @@ from ml.processing import Preprocessing
 from matplotlib import pyplot as plt
 
 np.random.seed(1)
-dataset_name = "crabs"
-dataset_path = "/home/sc/"
-check_point_path = "/home/sc/ml_data/checkpoints/"
-
-class PreprocessingNull(Preprocessing):
-    def scale(self):
-        pass
-
-
-dataset = ml.ds.DataSetBuilderFile.load_dataset(dataset_name, dataset_path=dataset_path, processing_class=PreprocessingNull)
-
-DIM = 3
+DIM = 21
+SIZE = 1000
 k = GPy.kern.RBF(DIM, variance=7., lengthscale=0.2)
-X = np.random.rand(200, DIM)
-f = np.random.multivariate_normal(np.zeros(200), k.K(X))
-
-#plt.plot(X, f, 'bo')
-#plt.title('latent function values')
-#plt.xlabel('$x$')
-#plt.ylabel('$f(x)$')
-#plt.show()
+X = np.random.rand(SIZE, DIM)
+f = np.random.multivariate_normal(np.zeros(SIZE), k.K(X))
 
 lik = GPy.likelihoods.Bernoulli()
-p = lik.gp_link.transf(f) # squash the latent function
-#plt.plot(X, p, 'ro')
-#plt.title('latent probabilities');plt.xlabel('$x$');plt.ylabel('$\sigma(f(x))$')
-#plt.show()
+p = lik.gp_link.transf(f)
 
 Y = lik.samples(f)
 print(Y.shape)
 Y = Y.reshape(-1,1)
 print(Y.shape)
 index = 3
-print(X[index], Y[index])
-#plt.plot(X, Y, 'kx', mew=2);
-#plt.ylim(-0.1, 1.1)
-#plt.title('Bernoulli draws');
-#plt.xlabel('$x$');plt.ylabel('$y \in \{0,1\}$')
-#plt.show()
+print(Y[index])
+print(Y[index+1])
+print(Y[index+10])
+print(Y[index+100])
 
-m = GPy.core.GP(X=X,
-                Y=Y, 
-                kernel=k, 
-                inference_method=GPy.inference.latent_function_inference.expectation_propagation.EP(),
-                likelihood=lik)
+def r(X, Y):
+    m = GPy.core.GP(X=X,
+                    Y=Y, 
+                    kernel=k, 
+                    inference_method=GPy.inference.latent_function_inference.expectation_propagation.EP(),
+                    likelihood=lik)
 
-#print(m, '\n')
-#for i in range(5):
-#    m.optimize('bfgs', max_iters=100)
-#    print('iteration:', i)
-#    print(m)
-#    print("")
+    for i in range(5):
+        m.optimize('bfgs', max_iters=100)
+        print('iteration:', i)
+        print(m)
+        print("")
 
-probs = m.predict(np.asarray([X[index]]))[0]
-print(probs)
-#GPy.util.classification.conf_matrix(probs, Y[0])
+    probs = m.predict(np.asarray([X[index]]))[0]
+    print(probs)
+    #GPy.util.classification.conf_matrix(probs, Y[0])
+    np.save('model_save.npy', m.param_array)
 
-#print(m)
-#m.plot()
-#plt.plot(X, p, 'ro')
-#plt.ylabel('$y, p(y=1)$')
-#plt.xlabel('$x$')
-#plt.show()
-
-#m.plot_f()
-#plt.plot(X, f, 'bo')
-#plt.ylabel('$f(x)$')
-#plt.xlabel('$x$')
-#plt.show()
-
-#print(m, '\n')
-#for i in range(5):
-#    m.optimize('bfgs', max_iters=100)
-#    print('iteration:', i)
-#    print(m)
-#    print("")
-
-#m.plot()
-#plt.plot(X, p, 'ro', label='Truth')
-#plt.ylabel('$y, p(y=1)$')
-#plt.xlabel('$x$')
-#plt.legend()
-
-#m.plot_f()
-#plt.plot(X, f, 'bo', label='Truth')
-#plt.ylabel('$f(x)$')
-#plt.xlabel('$x$')
-#plt.legend()
-#plt.show()
-
+if 0:
+    r(X, Y)
+else:
+    #pass
+    #m = GPy.core.GP(X, Y, initialize=False)
+    m = GPy.models.GPClassification(X, Y, initialize=True)
+    m[:] = np.load('model_save.npy')
+    #m.initialize_parameter()
+    for index_ in [index, index+1, index+10, index+100]:
+        probs = m.predict(np.asarray([X[index_]]))[0]
+        print(probs)
