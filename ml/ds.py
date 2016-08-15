@@ -76,6 +76,9 @@ class DataSetBuilder(object):
         else:
             self.transforms = Transforms([("global", transforms)])
 
+    def num_features(self):
+        return self.train_data.shape[1]
+
     def desfragment(self):
         if self.data is None:
             self.data = np.concatenate((
@@ -206,19 +209,27 @@ class DataSetBuilder(object):
         self.labels = labels
         self.shuffle_and_save()
 
-    def copy(self):
+    def copy(self, limit=None):
         dataset = DataSetBuilder(self.name)
-        dataset.data = self.data
-        dataset.labels = self.labels
+        
+        def calc_nshape(data, value):
+            if value is None or not (0 < value <= 1) or data is None:
+                value = 1
+
+            limit = int(round(data.shape[0] * value, 0))
+            return data[:limit]
+
+        dataset.data = calc_nshape(self.data, limit)
+        dataset.labels = calc_nshape(self.labels, limit)
         dataset.test_folder_path = self.test_folder_path
         dataset.train_folder_path = self.train_folder_path
         dataset.dataset_path = self.dataset_path
-        dataset.train_data = self.train_data
-        dataset.train_labels = self.train_labels
-        dataset.valid_data = self.valid_data
-        dataset.valid_labels = self.valid_labels
-        dataset.test_data = self.test_data
-        dataset.test_labels = self.test_labels
+        dataset.train_data = calc_nshape(self.train_data, limit)
+        dataset.train_labels = calc_nshape(self.train_labels, limit)
+        dataset.valid_data = calc_nshape(self.valid_data, limit)
+        dataset.valid_labels = calc_nshape(self.valid_labels, limit)
+        dataset.test_data = calc_nshape(self.test_data, limit)
+        dataset.test_labels = calc_nshape(self.test_labels, limit)
         dataset.transforms = self.transforms
         dataset.processing_class = self.processing_class
         return dataset
@@ -229,6 +240,9 @@ class DataSetBuilder(object):
             return preprocessing.pipeline()
         else:
             return data
+
+    def subset(self, value):
+        return self.copy(value)
 
 
 class DataSetBuilderImage(DataSetBuilder):

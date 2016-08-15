@@ -147,11 +147,16 @@ def new_df():
  0  64.991  39.8907
  1  40.42   64.5937
 """
+dataset_name = "gpc_test"
 dataset = ml.ds.DataSetBuilderFile.load_dataset(dataset_name, dataset_path=dataset_path, processing_class=Preprocessing)
+#dataset = dataset.subset(.01)
+#dataset.info()
 #classif = ml.clf_e.SVC(dataset, check_point_path=check_point_path, pprint=False)
-classif = ml.clf_e.LSTM(dataset, check_point_path=check_point_path, pprint=False, timesteps=7)
+#classif = ml.clf_e.LSTM(dataset, check_point_path=check_point_path, pprint=False, timesteps=7)
+classif = ml.clf.GPC(dataset=dataset, check_point_path="/home/sc/ml_data/checkpoints/")
+#classif.train(batch_size=128, num_steps=2)
 #classif.train(batch_size=128, num_steps=1)
 #classif.train2steps(dataset, valid_size=.2, batch_size=128, num_steps=10, test_data_labels=test_data_labels)
 #classif = ml.clf_e.LSTM(dataset, check_point_path=check_point_path, pprint=False, timesteps=7)
 classif.print_score()
-predict(classif, "/home/sc/test_data/numerai_datasets/numerai_tournament_data.csv", "t_id")
+#predict(classif, "/home/sc/test_data/numerai_datasets/numerai_tournament_data.csv", "t_id")
