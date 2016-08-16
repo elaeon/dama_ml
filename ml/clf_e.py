@@ -109,14 +109,12 @@ class TensorFace(TF):
 
 
 class GPC(TFL):
-    def __init__(self, kernel=None, variances=None, **kwargs):
+    def __init__(self, kernel=None, k_params={}, **kwargs):
         super(GPC, self).__init__(**kwargs)
         import GPy
         self.dim = self.dataset.num_features()
-        params = {"variance": 1} if variances is None or isinstance(variances, float)\
-            else {"variances": variances}
         kernel_f = kernel if kernel is not None else GPy.kern.RBF
-        self.k = kernel_f(self.dim, **params)
+        self.k = kernel_f(self.dim, **k_params)
 
     def train(self, batch_size=128, num_steps=1):
         from tqdm import tqdm
