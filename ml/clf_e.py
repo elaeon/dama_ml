@@ -108,6 +108,70 @@ class TensorFace(TF):
                 yield self.convert_label(classification)
 
 
+class GPC(TFL):
+    def __init__(self, kernel=None, variances=None, **kwargs):
+        super(GPC, self).__init__(**kwargs)
+        import GPy
+        self.dim = self.dataset.num_features()
+        params = {"variance": 1} if variances is None or isinstance(variances, float)\
+            else {"variances": variances}
+        kernel_f = kernel if kernel is not None else GPy.kern.RBF
+        self.k = kernel_f(self.dim, **params)
+
+    def train(self, batch_size=128, num_steps=1):
+        from tqdm import tqdm
+        self.prepare_model()
+        pbar = tqdm(range(1, num_steps + 1))
+        for label in pbar:
+            self.model.optimize('scg', max_iters=100, messages=self.pprint)#
+            pbar.set_description("Processing {}".format(label))
+        self.save_model()
+
+    def transform_to_gpy_labels(self, labels):
+        t_labels = np.ndarray(
+            shape=(labels.shape[0], 1), dtype=np.float32)
+        for i, label in enumerate(labels):
+            t_labels[i] = self.convert_label(label, raw=False,)
+        return t_labels
+
+    def prepare_model(self):
+        import GPy
+        k = GPy.kern.RBF(self.dim, variance=7., lengthscale=0.2)
+        self.model = GPy.core.GP(X=self.dataset.train_data,
+                    Y=self.transform_to_gpy_labels(self.dataset.train_labels), 
+                    kernel=self.k + GPy.kern.White(1), 
+                    inference_method=GPy.inference.latent_function_inference.expectation_propagation.EP(),
+                    likelihood=GPy.likelihoods.Bernoulli())
+
+        self.model.kern.white.variance = 1e-2
+        self.model.kern.white.fix()
+
+    def save_model(self):
+        if not os.path.exists(self.check_point):
+            os.makedirs(self.check_point)
+        if not os.path.exists(self.check_point + self.dataset.name + "/"):
+            os.makedirs(self.check_point + self.dataset.name + "/")
+
+        #self.model.save('{}{}.ckpt'.format(
+        #    self.check_point + self.dataset.name + "/", self.dataset.name))
+        
+        np.save('{}{}'.format(
+            self.check_point + self.dataset.name + "/", self.dataset.name), self.model.param_array)
+
+    def _predict(self, data, raw=False):
+        for prediction in self.model.predict(data)[0]:
+            p = [1 - prediction[0], prediction[0]]
+            yield self.convert_label(p, raw=raw)
+
+    def load_model(self):
+        import GPy
+        self.model = GPy.models.GPClassification(self.dataset.train_data, 
+            self.dataset.train_labels.reshape(-1, 1), kernel=self.k, initialize=False)    
+        r = np.load(self.check_point+self.dataset.name+"/"+self.dataset.name+".npy")
+        self.model[:] = r[:2]
+        self.model.initialize_parameter()
+
+
 class MLP(TFL):
     def __init__(self, *args, **kwargs):
         if "layers" in kwargs:

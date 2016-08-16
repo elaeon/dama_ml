@@ -17,8 +17,6 @@ lik = GPy.likelihoods.Bernoulli()
 #Y = lik.samples(f)
 Y = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
 print(Y.shape)
-#Y = Y.reshape(-1,1)
-print(Y.shape)
 index = 3
 print(Y[index])
 print(Y[index+1])
@@ -28,7 +26,7 @@ print(Y[index+100])
 def mll():
     dataset = ml.ds.DataSetBuilder("gpc_test", dataset_path="/home/sc/")
     dataset.build_from_data_labels(X, Y)
-    classif = ml.clf.GPC(dataset=dataset, check_point_path="/home/sc/ml_data/checkpoints/")
+    classif = ml.clf_e.GPC(dataset=dataset, check_point_path="/home/sc/ml_data/checkpoints/")
     classif.train(batch_size=128, num_steps=1)
     classif.print_score()
 
@@ -57,6 +55,7 @@ def svgp(X, Y):
     i = np.random.permutation(X.shape[0])[:10]
     Z = X[i].copy()
     batchsize = 50
+    Y = Y.reshape(-1,1)
     m = GPy.core.SVGP(
         X, 
         Y, 
@@ -66,16 +65,21 @@ def svgp(X, Y):
         batchsize=batchsize)
     m.kern.white.variance = 1e-5
     m.kern.white.fix()
-    opt = climin.Adadelta(m.optimizer_array, m.stochastic_grad, step_rate=0.2, momentum=0.9)
-    
-    def callback(i):
+    #opt = climin.Adadelta(m.optimizer_array, m.stochastic_grad, step_rate=0.2, momentum=0.9)
+    for i in range(50):
+        m.optimize('Adadelta', max_iters=100)
+        print('iteration:', i)
+    #    print(m)
+    #    print("")
+
+    #def callback(i):
         #Stop after 5000 iterations
-        if i['n_iter'] > 5000:
-            return True
-        return False
-    info = opt.minimize_until(callback)
+    #    if i['n_iter'] > 5000:
+    #        return True
+    #    return False
+    #info = opt.minimize_until(callback)
     pred(m, X, index)
-    np.save('model_save2.npy', m.param_array)
+    #np.save('model_save2.npy', m.param_array)
 
 def pred(m, X, index):    
     #GPy.util.classification.conf_matrix(probs, Y[0])
@@ -84,9 +88,9 @@ def pred(m, X, index):
         print(probs)
 
 if 1:
-    mll()
+    #mll()
     #gp(X, Y)
-    #svgp(X, Y)
+    svgp(X, Y)
 else:
     #pass
     #m = GPy.core.GP(X, Y, initialize=False)
