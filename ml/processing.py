@@ -6,6 +6,8 @@ from skimage import img_as_ubyte
 from skimage import exposure
 from collections import OrderedDict
 
+import numpy as np
+
 
 class Transforms(object):
     def __init__(self, transforms):        
@@ -14,10 +16,13 @@ class Transforms(object):
             self.add_group_transforms(group, transform)
 
     def add_transform(self, group, name, value):
-        self.transforms[group][name] = value
+        try:
+            self.transforms[group][name] = value
+        except KeyError:
+            self.transforms[group] = {name: value}
 
     def add_transforms(self, group, transforms):
-        if not group in transforms:
+        if not group in self.transforms:
              self.add_group_transforms(group, transforms)
         else:
             for name, value in transforms.items():

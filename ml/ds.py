@@ -8,10 +8,6 @@ import random
 
 from ml.processing import PreprocessingImage, Preprocessing, Transforms
 
-FACE_FOLDER_PATH = "/home/sc/Pictures/face/"
-FACE_ORIGINAL_PATH = "/home/sc/Pictures/face_o/"
-DATASET_PATH = "/home/sc/data/dataset/"
-
 
 def save_metadata(path, file_path, data):
     if not os.path.exists(path):
@@ -48,7 +44,7 @@ def proximity_dataset(label_ref, labels, dataset):
 
 class DataSetBuilder(object):
     def __init__(self, name, 
-                dataset_path=DATASET_PATH, 
+                dataset_path=None, 
                 test_folder_path=None, 
                 train_folder_path=None,
                 transforms=None,
@@ -167,7 +163,7 @@ class DataSetBuilder(object):
             raise
 
     @classmethod
-    def load_dataset_raw(self, name, dataset_path=DATASET_PATH, validation_dataset=True):
+    def load_dataset_raw(self, name, dataset_path=None, validation_dataset=True):
         with open(dataset_path+name, 'rb') as f:
             save = pickle.load(f)
             if validation_dataset is False:
@@ -179,7 +175,7 @@ class DataSetBuilder(object):
             return save
 
     @classmethod
-    def load_dataset(self, name, dataset_path=DATASET_PATH, validation_dataset=True, 
+    def load_dataset(self, name, dataset_path=None, validation_dataset=True, 
             pprint=True, processing_class=Preprocessing):
         data = self.load_dataset_raw(name, dataset_path=dataset_path, 
                 validation_dataset=validation_dataset)
@@ -246,8 +242,8 @@ class DataSetBuilder(object):
 
 
 class DataSetBuilderImage(DataSetBuilder):
-    def __init__(self, image_size=None, channels=None, *args, **kwargs):
-        super(DataSetBuilderImage, self).__init__(*args, **kwargs)
+    def __init__(self, name, image_size=None, channels=None, **kwargs):
+        super(DataSetBuilderImage, self).__init__(name, **kwargs)
         self.image_size = image_size
         self.channels = channels
         self.images = []
@@ -294,7 +290,7 @@ class DataSetBuilderImage(DataSetBuilder):
         if not os.path.exists(n_url):
              os.makedirs(n_url)
         for i, image in enumerate(images):
-            io.imsave("{}face-{}-{}.png".format(n_url, number_id, i), image)
+            io.imsave("{}img-{}-{}.png".format(n_url, number_id, i), image)
 
     def clean_directory(self, path):
         import shutil
