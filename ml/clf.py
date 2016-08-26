@@ -54,13 +54,15 @@ class Measure(object):
 
 
 class BaseClassif(object):
-    def __init__(self, dataset='test', check_point_path=CHECK_POINT_PATH, pprint=True):
+    def __init__(self, dataset='test', check_point_path=CHECK_POINT_PATH, 
+            pprint=True, model_version=None):
         self.model = None
         self.pprint = pprint
         self.le = LabelEncoder()
         self.load_dataset(dataset)
         self.check_point_path = check_point_path
         self.check_point = check_point_path + self.__class__.__name__ + "/"
+        self.model_version = model_version
 
     def detector_test_dataset(self, raw=False):
         predictions = self.predict(self.dataset.test_data, raw=raw, transform=False)
@@ -206,6 +208,23 @@ class BaseClassif(object):
             valid_size=valid_size, test_data_labels=test_data_labels)
         self.retrain(dataset_v, batch_size=batch_size, num_steps=num_steps)
 
+    def get_model_name(self):
+        if self.model_version is None:
+            import datetime
+            id_ = datetime.datetime.today().strftime("%Y-%m-%d-%H:%M:%S")
+        else:
+            id_ = self.model_version
+        return "{}.{}".format(self.dataset.name, id_)
+
+    def make_model_file(self):
+        model_name = self.get_model_name()
+        if not os.path.exists(self.check_point):
+            os.makedirs(self.check_point)
+
+        if not os.path.exists(self.check_point + model_name + "/"):
+            os.makedirs(self.check_point + model_name + "/")
+            
+        return "{}{}/{}".format(self.check_point, model_name, model_name)
 
 class SKL(BaseClassif):
     def train(self, batch_size=0, num_steps=0):
@@ -214,17 +233,13 @@ class SKL(BaseClassif):
 
     def save_model(self):
         from sklearn.externals import joblib
-        if not os.path.exists(self.check_point):
-            os.makedirs(self.check_point)
-        if not os.path.exists(self.check_point + self.dataset.name + "/"):
-            os.makedirs(self.check_point + self.dataset.name + "/")
-        joblib.dump(self.model, '{}.pkl'.format(
-            self.check_point+self.dataset.name+"/"+self.dataset.name))
+        path = self.make_model_file()
+        joblib.dump(self.model, '{}.pkl'.format(path))
 
     def load_model(self):
         from sklearn.externals import joblib
-        self.model = joblib.load('{}.pkl'.format(
-            self.check_point+self.dataset.name+"/"+self.dataset.name))
+        path = self.make_model_file()
+        self.model = joblib.load('{}.pkl'.format(path))
 
     def _predict(self, data, raw=False):
         for prediction in self.model.predict(self.transform_shape(data)):
@@ -279,14 +294,8 @@ class TF(BaseClassif):
             #return score_v
 
     def save_model(self, saver, session, step):
-        if not os.path.exists(self.check_point):
-            os.makedirs(self.check_point)
-        if not os.path.exists(self.check_point + self.dataset.name + "/"):
-            os.makedirs(self.check_point + self.dataset.name + "/")
-        
-        saver.save(session, 
-                '{}{}.ckpt'.format(self.check_point + self.dataset.name + "/", self.dataset.name), 
-                global_step=step)
+        path = self.make_model_file()
+        saver.save(session, '{}.ckpt'.format(path), global_step=step)
 
 
 class TFL(BaseClassif):
@@ -300,20 +309,15 @@ class TFL(BaseClassif):
         return data, labels_m
 
     def save_model(self):
-        if not os.path.exists(self.check_point):
-            os.makedirs(self.check_point)
-        if not os.path.exists(self.check_point + self.dataset.name + "/"):
-            os.makedirs(self.check_point + self.dataset.name + "/")
-
-        self.model.save('{}{}.ckpt'.format(
-            self.check_point + self.dataset.name + "/", self.dataset.name))
+        path = self.make_model_file()
+        self.model.save('{}.ckpt'.format(path))
 
     def load_model(self):
         import tflearn
         self.prepare_model()
         self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
-        self.model.load('{}{}.ckpt'.format(
-            self.check_point + self.dataset.name + "/", self.dataset.name))
+        path = self.make_model_file()
+        self.model.load('{}.ckpt'.format(path))
 
     def predict(self, data, raw=False, transform=True):
         with tf.Graph().as_default():

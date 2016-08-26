@@ -337,14 +337,15 @@ class ResidualTensor(TFL):
 
 
 class LSTM(TFL):
-    def __init__(self, dataset, check_point_path=CHECK_POINT_PATH, pprint=True, timesteps=1):
+    def __init__(self, timesteps=1, **kwargs):
         self.timesteps = timesteps
+        dataset = kwargs["dataset"]
         if len(dataset.data.shape) > 2:
             raise ValueError("The data shape must be 2 dimensional")
         elif dataset.data.shape[1] % timesteps > 0:
             raise ValueError("The number of features is not divisible by {}".format(timesteps))
         self.num_features_t = dataset.data.shape[1] / self.timesteps
-        super(LSTM, self).__init__(dataset, check_point_path=check_point_path, pprint=pprint)
+        super(LSTM, self).__init__(**kwargs)
 
     def convert(self, data):
         ndata = np.ndarray(

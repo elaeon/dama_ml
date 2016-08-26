@@ -22,7 +22,7 @@ def predict(classif, path, label_column):
     for value, label in zip(list(classif.predict(data, raw=True)), ids):
         predictions.append([str(label), str(value[1])])
     
-    with open(predictions_file_path, "w") as csvfile:
+    with open(settings["predictions_file_path"], "w") as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
         csvwriter.writerow(["t_id", "probability"])
         for row in predictions:
@@ -80,8 +80,8 @@ if __name__ == '__main__':
         dataset = ml.ds.DataSetBuilderFile.load_dataset(
             dataset_name, dataset_path=settings["dataset_path"], processing_class=Preprocessing)
 
-    classif = ml.clf_e.LSTM(dataset, check_point_path=settings["check_point_path"], 
-        pprint=False, timesteps=7)
+    classif = ml.clf_e.LSTM(dataset=dataset, check_point_path=settings["checkpoints_path"], 
+        pprint=False, timesteps=7, model_version="1")
 
     if args.train == 1:
         classif.train(batch_size=128, num_steps=args.epoch)
