@@ -48,6 +48,7 @@ class DataSetBuilder(object):
                 test_folder_path=None, 
                 train_folder_path=None,
                 transforms=None,
+                transforms_apply=True,
                 processing_class=Preprocessing,
                 train_size=.7,
                 valid_size=.1):
@@ -66,6 +67,7 @@ class DataSetBuilder(object):
         self.processing_class = processing_class
         self.valid_size = valid_size
         self.train_size = train_size
+        self.transforms_apply = transforms_apply
 
         if transforms is None:
             self.transforms = Transforms([("global", [("scale", None)])])
@@ -231,7 +233,7 @@ class DataSetBuilder(object):
         return dataset
 
     def processing(self, data, group):
-        if not self.transforms.empty():
+        if not self.transforms.empty() and self.transforms_apply:
             preprocessing = self.processing_class(data, self.transforms.get_transforms(group))
             return preprocessing.pipeline()
         else:
@@ -279,7 +281,7 @@ class DataSetBuilderImage(DataSetBuilder):
             if image_data.shape != dim:
                 raise Exception('Unexpected image shape: %s' % str(image_data.shape))
             image_data = image_data.astype(float)
-            self.data[image_index] = self.processing(image_data, processing_class, 'global')
+            self.data[image_index] = self.processing(image_data, 'global')
             self.labels[image_index] = number_id
 
     @classmethod
@@ -299,7 +301,7 @@ class DataSetBuilderImage(DataSetBuilder):
     def original_to_images_set(self, url, test_folder_data=False):
         images_data, labels = self.labels_images(url)
         #images = (PreprocessingImage(img, self.get_transforms("global")).image for img in images_data)
-        images = (self.processing(img, PreprocessingImage, 'image') for img in images_data)
+        images = (self.processing(img, 'image') for img in images_data)
         image_train, image_test = self.build_train_test(zip(labels, images), sample=test_folder_data)
         for number_id, images in image_train.items():
             self.save_images(self.train_folder_path, number_id, images)
@@ -310,7 +312,7 @@ class DataSetBuilderImage(DataSetBuilder):
     def build_dataset(self):
         self.images_to_dataset(self.train_folder_path, self.processing_class)
         self.shuffle_and_save()
-        self.clean_directory(self.train_folder_path)
+        #self.clean_directory(self.train_folder_path)
 
     def build_train_test(self, process_images, sample=True):
         images = {}

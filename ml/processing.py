@@ -61,6 +61,9 @@ class Preprocessing(object):
 
 
 class PreprocessingImage(Preprocessing):
+    def scale(self):
+        self.data = preprocessing.scale(self.data)
+
     def resize(self, image_size):
         if isinstance(image_size, int):
             type_ = "sym"
