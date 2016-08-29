@@ -6,7 +6,7 @@ from sklearn.preprocessing import LabelEncoder
 
 CHECK_POINT_PATH = "/home/sc/data/face_recog/"
 #np.random.seed(133)
-    
+
 class Measure(object):
     def __init__(self, predictions, labels):
         if len(predictions.shape) > 1:
@@ -42,15 +42,47 @@ class Measure(object):
 
     def logloss(self):
         from sklearn.metrics import log_loss
+        return log_loss(self.labels, self.transform(self.predictions))
+
+
+class UDMeasure(object):
+    def __init__(self, predictions, labels):
+        self.labels = labels
+        self.predictions = predictions
+
+    def logloss(self):
+        from sklearn.metrics import log_loss
         return log_loss(self.labels, self.predictions)
 
-    def print_all(self):
-        print("#############")
-        print("Accuracy: {}%".format(self.accuracy()*100))
-        print("Precision: {}%".format(self.precision()*100))
-        print("Recall: {}%".format(self.recall()*100))
-        print("F1: {}%".format(self.f1()*100))
-        print("#############")
+
+class ListMeasure(object):
+    def __init__(self):
+        self.headers = []
+        self.measures = []
+
+    def add_measure(self, name, value):
+        self.headers.append(name)
+        self.measures.append(value)
+
+    def dataset_test(self, classifs, dataset, order_column):
+        from utils.order import order_table_print
+        table = []
+        print("DATASET", dataset.name)
+        for classif_name in classifs:
+            classif = classifs[classif_name]["name"]
+            params = classifs[classif_name]["params"]
+            clf = classif(dataset, **params)
+            name_clf, measure = clf.detector_test_dataset(raw=self.logloss)
+            if self.logloss:
+                table.append((name_clf, measure.precision(), measure.recall(), 
+                    measure.f1(), measure.logloss()))
+            else:
+                table.append((name_clf, measure.precision(), measure.recall(), measure.f1()))
+        order_table_print(self.headers, table, order_column)
+
+    def print_scores(self, order_column="f1"):
+        from utils.order import order_table_print
+        order_table_print(self.headers, [self.measures], order_column)
 
 
 class BaseClassif(object):
@@ -63,17 +95,24 @@ class BaseClassif(object):
         self.check_point_path = check_point_path
         self.check_point = check_point_path + self.__class__.__name__ + "/"
         self.model_version = model_version
+        self.has_uncertain = False
 
-    def detector_test_dataset(self, raw=False):
-        predictions = self.predict(self.dataset.test_data, raw=raw, transform=False)
+    def scores(self, order_column="f1"):
+        list_measure = ListMeasure()
+        predictions = self.predict(self.dataset.test_data, raw=False, transform=False)
         measure = Measure(np.asarray(list(predictions)), 
             np.asarray([self.convert_label(label, raw=False)
             for label in self.dataset.test_labels]))
-        return self.__class__.__name__, measure
-
-    def print_score(self):
-        dt = ClassifTest(logloss=True)
-        dt.classif_test(self, "f1")
+        list_measure.add_measure("CLF", self.__class__.__name__)
+        list_measure.add_measure("accuracy", measure.accuracy())
+        list_measure.add_measure("precision", measure.precision())
+        list_measure.add_measure("recall", measure.recall()) 
+        list_measure.add_measure("f1", measure.f1())
+        if self.has_uncertain:
+            predictions = self.predict(self.dataset.test_data, raw=True, transform=False)
+            udmeasure = UDMeasure(np.asarray(list(predictions)), self.dataset.test_labels)
+            list_measure.add_measure("logloss", udmeasure.logloss())
+        list_measure.print_scores(order_column=order_column)
 
     def only_is(self, op):
         predictions = list(self.predict(self.dataset.test_data, raw=False, transform=False))
@@ -102,6 +141,8 @@ class BaseClassif(object):
         self.num_labels = self.le.classes_.shape[0]
 
     def position_index(self, label):
+        if isinstance(label, np.ndarray):
+            return np.argmax(label)
         return label
 
     def convert_label(self, label, raw=False):
@@ -247,8 +288,9 @@ class SKL(BaseClassif):
 
 
 class SKLP(SKL):
-    def position_index(self, label):
-        return np.argmax(label)
+    def __init__(self, *args, **kwargs):
+        super(SKLP, self).__init__(*args, **kwargs) 
+        self.has_uncertain = True
 
     def _predict(self, data, raw=False):
         for prediction in self.model.predict_proba(data):
@@ -256,8 +298,8 @@ class SKLP(SKL):
 
 
 class TF(BaseClassif):
-    def position_index(self, label):
-        return np.argmax(label)
+    #def position_index(self, label):
+    #    return np.argmax(label)
 
     def reformat(self, data, labels):
         data = self.transform_shape(data)
@@ -299,8 +341,8 @@ class TF(BaseClassif):
 
 
 class TFL(BaseClassif):
-    def position_index(self, label):
-        return np.argmax(label)
+    #def position_index(self, label):
+    #    return np.argmax(label)
 
     def reformat(self, data, labels):
         data = self.transform_shape(data)
@@ -338,37 +380,3 @@ class TFL(BaseClassif):
         for prediction in self.model.predict(data):
             yield self.convert_label(prediction, raw=raw)
 
-
-class ClassifTest(object):
-    def __init__(self, logloss=False):
-        self.logloss = logloss
-        self.headers = ["CLF", "Precision", "Recall", "F1"]
-        if logloss is True:
-            self.headers = self.headers + ["logloss"]
-
-    def dataset_test(self, classifs, dataset, order_column):
-        from utils.order import order_table_print
-        table = []
-        print("DATASET", dataset.name)
-        for classif_name in classifs:
-            classif = classifs[classif_name]["name"]
-            params = classifs[classif_name]["params"]
-            clf = classif(dataset, **params)
-            name_clf, measure = clf.detector_test_dataset(raw=self.logloss)
-            if self.logloss:
-                table.append((name_clf, measure.precision(), measure.recall(), 
-                    measure.f1(), measure.logloss()))
-            else:
-                table.append((name_clf, measure.precision(), measure.recall(), measure.f1()))
-        order_table_print(self.headers, table, order_column)
-
-    def classif_test(self, clf, order_column):
-        from utils.order import order_table_print
-        table = []
-        name_clf, measure = clf.detector_test_dataset(raw=self.logloss)
-        if self.logloss:
-            table = [(name_clf, measure.precision(), measure.recall(), 
-                measure.f1(), measure.logloss())]
-        else:
-            table = [(name_clf, measure.precision(), measure.recall(), measure.f1())]
-        order_table_print(self.headers, table, order_column)

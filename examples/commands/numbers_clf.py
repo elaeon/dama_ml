@@ -26,6 +26,7 @@ if __name__ == '__main__':
         action="store_true")
     parser.add_argument("--train", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--epoch", type=int)
+    parser.add_argument("--model-version", type=str)
     args = parser.parse_args()
 
     if args.build:
@@ -41,8 +42,16 @@ if __name__ == '__main__':
         dataset = ml.ds.DataSetBuilder.load_dataset(
             settings["dataset_name"], 
             dataset_path=settings["dataset_path"])
-        classif = ml.clf_e.SVC(dataset, check_point_path=settings["checkpoints_path"], pprint=False)
+        classif = ml.clf_e.RandomForest(dataset, 
+            check_point_path=settings["checkpoints_path"], pprint=False)
         classif.batch_size = 100
         classif.train(num_steps=args.epoch)
     elif args.test:
-        pass
+        dataset = ml.ds.DataSetBuilder.load_dataset(
+            settings["dataset_name"], 
+            dataset_path=settings["dataset_path"])
+        classif = ml.clf_e.RandomForest(dataset, 
+            check_point_path=settings["checkpoints_path"], 
+            pprint=False, model_version=args.model_version)
+        classif.batch_size = 100
+        classif.scores()
