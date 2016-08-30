@@ -184,10 +184,8 @@ class BaseClassif(object):
             data = np.asarray(data)
 
         if transform is True:
-            if len(data.shape) > 2:
-                data = data.reshape(data.shape[0], -1).astype(np.float32)
-            data = self.transform_shape(self.dataset.processing(data, 'global'))
-
+            ndata = [self.dataset.processing(datum, 'global') for datum in data]
+            data = self.transform_shape(np.asarray(ndata))
         return self._predict(data, raw=raw)
 
     def _pred_erros(self, predictions, test_data, test_labels, valid_size=.1):
@@ -283,7 +281,7 @@ class SKL(BaseClassif):
         self.model = joblib.load('{}.pkl'.format(path))
 
     def _predict(self, data, raw=False):
-        for prediction in self.model.predict(self.transform_shape(data)):
+        for prediction in self.model.predict(data):
             yield self.convert_label(prediction)
 
 

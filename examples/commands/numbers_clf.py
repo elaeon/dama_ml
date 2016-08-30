@@ -13,14 +13,13 @@ if __name__ == '__main__':
     IMAGE_SIZE = int(settings["image_size"])
     transforms = [
             ("rgb2gray", None),
-            ("cut", None), 
             ("resize", (settings["image_size"], 'asym')), 
             ("threshold", 91), 
-            ("merge_offset", (IMAGE_SIZE, 1))]
+            ("merge_offset", (IMAGE_SIZE, 1)),
+            ("scale", None)]
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--build", help="crea el dataset", action="store_true")
-    parser.add_argument("--dataset", help="nombre del dataset a utilizar", type=str)
+    parser.add_argument("--build-dataset", help="crea el dataset", action="store_true")
     parser.add_argument("--test", 
         help="evalua el predictor en base a los datos de prueba", 
         action="store_true")
@@ -29,14 +28,15 @@ if __name__ == '__main__':
     parser.add_argument("--model-version", type=str)
     args = parser.parse_args()
 
-    if args.build:
+    if args.build_dataset:
         ds_builder = ml.ds.DataSetBuilderImage(
             settings["dataset_name"], 
             image_size=int(settings["image_size"]), 
             dataset_path=settings["dataset_path"], 
             train_folder_path=settings["train_folder_path"],
             transforms=transforms,
-            transforms_apply=False)
+            transforms_apply=True,
+            processing_class=ml.processing.PreprocessingImage)
         ds_builder.build_dataset()
     elif args.train:
         dataset = ml.ds.DataSetBuilder.load_dataset(

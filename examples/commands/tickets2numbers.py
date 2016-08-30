@@ -53,17 +53,23 @@ def numbers_images_set(url, transforms):
 
 if __name__ == '__main__':
     IMAGE_SIZE = int(settings["image_size"])
-    transforms = ml.processing.Transforms([
-        ("global", 
-            [("rgb2gray", None)]),
-        ("local", 
-            [("cut", None), 
-            ("resize", (IMAGE_SIZE, 'asym')), 
-            ("threshold", 91), 
-            ("merge_offset", (IMAGE_SIZE, 1))])])
     parser = argparse.ArgumentParser()
     parser.add_argument("--build", help="crea el detector de numeros", action="store_true")
+    parser.add_argument("--transforms", help="crea el detector de numeros", action="store_true")
     args = parser.parse_args()
 
     if args.build:
+        if args.transforms:
+            transforms = ml.processing.Transforms([
+                ("global", 
+                    [("rgb2gray", None)]),
+                ("local", 
+                    [("cut", None), 
+                    ("resize", (IMAGE_SIZE, 'asym')), 
+                    ("threshold", 91), 
+                    ("merge_offset", (IMAGE_SIZE, 1))])])
+        else:
+            transforms = ml.processing.Transforms([
+                ("global", []),
+                ("local", [])])
         numbers_images_set(settings["numbers"], transforms)

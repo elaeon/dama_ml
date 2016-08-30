@@ -46,6 +46,7 @@ class Preprocessing(object):
     def __init__(self, data, transforms):
         self.data = data
         self.transforms = transforms
+        self.name = self.__class__.__name__
 
     def scale(self):
         self.data = preprocessing.scale(self.data)
@@ -95,7 +96,7 @@ class PreprocessingImage(Preprocessing):
             self.data, upscale=2, sigma=None, order=1, mode='reflect', cval=0)
 
     def rgb2gray(self):
-        self.data = img_as_ubyte(color.rgb2gray(self.data))
+        self.data = img_as_ubyte(exposure.rescale_intensity(color.rgb2gray(self.data), in_range=(0, 255)))
 
     def blur(self, level):
         self.data = filters.gaussian(self.data, level)

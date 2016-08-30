@@ -77,6 +77,10 @@ class DataSetBuilder(object):
     def num_features(self):
         return self.train_data.shape[1]
 
+    @property
+    def shape(self):
+        return self.train_data.shape
+
     def desfragment(self):
         if self.data is None:
             self.data = np.concatenate((
@@ -139,7 +143,8 @@ class DataSetBuilder(object):
             'valid_labels': self.valid_labels,
             'test_dataset': self.test_data,
             'test_labels': self.test_labels,
-            'transforms': self.transforms.get_all_transforms()}
+            'transforms': self.transforms.get_all_transforms(),
+            'preprocessing': self.processing_class.name}
 
     def from_raw(self, raw_data):
         self.train_data = raw_data['train_dataset']
@@ -165,26 +170,19 @@ class DataSetBuilder(object):
             raise
 
     @classmethod
-    def load_dataset_raw(self, name, dataset_path=None, validation_dataset=True):
+    def load_dataset_raw(self, name, dataset_path=None):
         with open(dataset_path+name, 'rb') as f:
             save = pickle.load(f)
-            if validation_dataset is False:
-                save['train_dataset'] = np.concatenate((
-                    save['train_dataset'], save['valid_dataset']), axis=0)
-                save['train_labels'] = save['train_labels'] + save['valid_labels']
-                save['valid_dataset'] = np.empty(0)
-                save['valid_labels'] = []
             return save
 
     @classmethod
-    def load_dataset(self, name, dataset_path=None, validation_dataset=True, 
-            pprint=True, processing_class=Preprocessing):
-        data = self.load_dataset_raw(name, dataset_path=dataset_path, 
-                validation_dataset=validation_dataset)
+    def load_dataset(self, name, dataset_path=None, info=True, 
+            processing_class=Preprocessing):
+        data = self.load_dataset_raw(name, dataset_path=dataset_path)
         dataset = DataSetBuilder(name, dataset_path=dataset_path, 
             processing_class=processing_class)
         dataset.from_raw(data)
-        if pprint:
+        if info:
             dataset.info()
         return dataset        
 
@@ -278,8 +276,6 @@ class DataSetBuilderImage(DataSetBuilder):
         self.labels = np.ndarray(shape=(max_num_images,), dtype='|S1')
         for image_index, (number_id, image_file) in enumerate(images):
             image_data = io.imread(image_file)
-            if image_data.shape != dim:
-                raise Exception('Unexpected image shape: %s' % str(image_data.shape))
             image_data = image_data.astype(float)
             self.data[image_index] = self.processing(image_data, 'global')
             self.labels[image_index] = number_id
