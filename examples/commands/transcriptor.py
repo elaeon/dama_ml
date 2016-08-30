@@ -14,15 +14,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--test-img", help="", type=str)
     parser.add_argument("--model-version", type=str)
+    parser.add_argument("--model-name", type=str)
     args = parser.parse_args()
 
     if args.test_img:
-        dataset = ml.ds.DataSetBuilder.load_dataset(
-            settings["dataset_name"],
-            processing_class=ml.processing.PreprocessingImage,
-            dataset_path=settings["dataset_path"])
-        classif = ml.clf_e.RandomForest(dataset, 
+        classif = ml.clf_e.RandomForest(
+            model_name=args.model_name,
             check_point_path=settings["checkpoints_path"],
-            pprint=False, model_version=args.model_version)
+            model_version=args.model_version)
         data = io.imread(args.test_img)
         print(list(classif.predict([data])))

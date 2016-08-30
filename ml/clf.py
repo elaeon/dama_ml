@@ -86,16 +86,16 @@ class ListMeasure(object):
 
 
 class BaseClassif(object):
-    def __init__(self, dataset='test', check_point_path=CHECK_POINT_PATH, 
-            pprint=True, model_version=None):
+    def __init__(self, model_name=None, dataset=None, 
+            check_point_path=CHECK_POINT_PATH, model_version=None):
         self.model = None
-        self.pprint = pprint
+        self.model_name = model_name
         self.le = LabelEncoder()
-        self.load_dataset(dataset)
         self.check_point_path = check_point_path
         self.check_point = check_point_path + self.__class__.__name__ + "/"
         self.model_version = model_version
         self.has_uncertain = False
+        self.load_dataset(dataset)
 
     def scores(self, order_column="f1"):
         list_measure = ListMeasure()
@@ -165,15 +165,12 @@ class BaseClassif(object):
             self.dataset.valid_data, self.dataset.valid_labels = self.reformat(
                 self.dataset.valid_data, self.le.transform(self.dataset.valid_labels))
 
-        if self.pprint:
-            print('RF-Training set', self.dataset.train_data.shape, self.dataset.train_labels.shape)
-            if self.dataset.valid_data.shape[0] > 0:
-                print('RF-Validation set', self.dataset.valid_data.shape,
-                    self.dataset.valid_labels.shape)
-            print('RF-Test set', self.dataset.test_data.shape, self.dataset.test_labels.shape)
-
     def load_dataset(self, dataset):
-        self.dataset = dataset.copy()
+        if dataset is None:
+            self.dataset = self.get_dataset()
+        else:
+            self.dataset = dataset.copy()
+            self.model_name = self.dataset.name
         self.reformat_all()
 
     def predict(self, data, raw=False, transform=True):
@@ -247,23 +244,48 @@ class BaseClassif(object):
             valid_size=valid_size, test_data_labels=test_data_labels)
         self.retrain(dataset_v, batch_size=batch_size, num_steps=num_steps)
 
-    def get_model_name(self):
+    def get_model_name_v(self):
         if self.model_version is None:
             import datetime
             id_ = datetime.datetime.today().strftime("%Y-%m-%d-%H:%M:%S")
         else:
             id_ = self.model_version
-        return "{}.{}".format(self.dataset.name, id_)
+        return "{}.{}".format(self.model_name, id_)
 
-    def make_model_file(self):
-        model_name = self.get_model_name()
-        if not os.path.exists(self.check_point):
-            os.makedirs(self.check_point)
+    def make_model_file(self, check=True):
+        model_name_v = self.get_model_name_v()
+        if check is True:
+            if not os.path.exists(self.check_point):
+                os.makedirs(self.check_point)
 
-        if not os.path.exists(self.check_point + model_name + "/"):
-            os.makedirs(self.check_point + model_name + "/")
+            if not os.path.exists(self.check_point + model_name_v + "/"):
+                os.makedirs(self.check_point + model_name_v + "/")
             
-        return "{}{}/{}".format(self.check_point, model_name, model_name)
+        return "{}{}/{}".format(self.check_point, model_name_v, model_name_v)
+
+    def _metadata(self):
+        return {"dataset_path": self.dataset.dataset_path,
+                "dataset_name": self.dataset.name}
+
+    def save_meta(self):
+        from ml.ds import save_metadata
+        model_name_v = self.get_model_name_v()
+        path = os.path.join(self.check_point, model_name_v)
+        save_metadata(path, model_name_v+".xmeta", self._metadata())
+
+    def load_meta(self):
+        from ml.ds import load_metadata
+        model_name_v = self.get_model_name_v()
+        path = os.path.join(self.check_point, model_name_v, model_name_v+".xmeta")
+        return load_metadata(path)
+        
+    def get_dataset(self):
+        from ml.ds import DataSetBuilder
+        meta = self.load_meta()
+        return DataSetBuilder.load_dataset(
+            meta["dataset_name"],
+            dataset_path=meta["dataset_path"])
+
 
 class SKL(BaseClassif):
     def train(self, batch_size=0, num_steps=0):
@@ -274,10 +296,11 @@ class SKL(BaseClassif):
         from sklearn.externals import joblib
         path = self.make_model_file()
         joblib.dump(self.model, '{}.pkl'.format(path))
+        self.save_meta()
 
     def load_model(self):
         from sklearn.externals import joblib
-        path = self.make_model_file()
+        path = self.make_model_file(check=False)
         self.model = joblib.load('{}.pkl'.format(path))
 
     def _predict(self, data, raw=False):

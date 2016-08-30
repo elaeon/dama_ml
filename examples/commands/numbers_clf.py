@@ -25,12 +25,13 @@ if __name__ == '__main__':
         action="store_true")
     parser.add_argument("--train", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--epoch", type=int)
+    parser.add_argument("--model-name", type=str)
     parser.add_argument("--model-version", type=str)
     args = parser.parse_args()
 
     if args.build_dataset:
         ds_builder = ml.ds.DataSetBuilderImage(
-            settings["dataset_name"], 
+            args.model_name, 
             image_size=int(settings["image_size"]), 
             dataset_path=settings["dataset_path"], 
             train_folder_path=settings["train_folder_path"],
@@ -40,18 +41,18 @@ if __name__ == '__main__':
         ds_builder.build_dataset()
     elif args.train:
         dataset = ml.ds.DataSetBuilder.load_dataset(
-            settings["dataset_name"], 
+            args.model_name, 
             dataset_path=settings["dataset_path"])
-        classif = ml.clf_e.RandomForest(dataset, 
-            check_point_path=settings["checkpoints_path"], pprint=False)
+        classif = ml.clf_e.RandomForest(
+            dataset=dataset, 
+            check_point_path=settings["checkpoints_path"], 
+            model_version=args.model_version)
         classif.batch_size = 100
         classif.train(num_steps=args.epoch)
     elif args.test:
-        dataset = ml.ds.DataSetBuilder.load_dataset(
-            settings["dataset_name"], 
-            dataset_path=settings["dataset_path"])
-        classif = ml.clf_e.RandomForest(dataset, 
+        classif = ml.clf_e.RandomForest(
+            model_name=args.model_name, 
             check_point_path=settings["checkpoints_path"], 
-            pprint=False, model_version=args.model_version)
+            model_version=args.model_version)
         classif.batch_size = 100
         classif.scores()

@@ -43,10 +43,13 @@ class Transforms(object):
 
 
 class Preprocessing(object):
+    @classmethod
+    def module_cls_name(cls):
+        return "{}.{}".format(cls.__module__, cls.__name__)
+
     def __init__(self, data, transforms):
         self.data = data
         self.transforms = transforms
-        self.name = self.__class__.__name__
 
     def scale(self):
         self.data = preprocessing.scale(self.data)
@@ -62,9 +65,6 @@ class Preprocessing(object):
 
 
 class PreprocessingImage(Preprocessing):
-    def scale(self):
-        self.data = preprocessing.scale(self.data)
-
     def resize(self, image_size):
         if isinstance(image_size, int):
             type_ = "sym"

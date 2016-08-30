@@ -12,7 +12,7 @@ from ml.processing import PreprocessingImage, Preprocessing, Transforms
 def save_metadata(path, file_path, data):
     if not os.path.exists(path):
         os.makedirs(path)
-    with open(file_path, 'wb') as f:
+    with open(os.path.join(path, file_path), 'wb') as f:
         pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
 
 def load_metadata(path):
@@ -74,6 +74,9 @@ class DataSetBuilder(object):
         else:
             self.transforms = Transforms([("global", transforms)])
 
+    def url(self):
+        return os.join.path(self.dataset_path, self.name)
+
     def num_features(self):
         return self.train_data.shape[1]
 
@@ -102,7 +105,8 @@ class DataSetBuilder(object):
     def info(self):
         from utils.order import order_table_print
         print('       ')
-        print('Filters: {}'.format(self.transforms.get_all_transforms()))
+        print('Transforms: {}'.format(self.transforms.get_all_transforms()))
+        print('Preprocessing Class: {}'.format(self.processing_class.module_cls_name()))
         print('       ')
         headers = ["Dataset", "Mean", "Std", "Shape", "dType", "Labels"]
         table = []
@@ -144,9 +148,10 @@ class DataSetBuilder(object):
             'test_dataset': self.test_data,
             'test_labels': self.test_labels,
             'transforms': self.transforms.get_all_transforms(),
-            'preprocessing': self.processing_class.name}
+            'preprocessing_class': self.processing_class.module_cls_name()}
 
     def from_raw(self, raw_data):
+        from pydoc import locate
         self.train_data = raw_data['train_dataset']
         self.train_labels = raw_data['train_labels']
         self.valid_data = raw_data['valid_dataset']
@@ -155,6 +160,8 @@ class DataSetBuilder(object):
         self.test_labels = raw_data['test_labels']        
         self.desfragment()
         self.transforms = Transforms(raw_data["transforms"])
+        if self.processing_class is None:
+            self.processing_class = locate(raw_data["preprocessing_class"])
 
     def shuffle_and_save(self):
         self.train_data, self.valid_data, self.test_data, self.train_labels, self.valid_labels, self.test_labels = self.cross_validators()
@@ -177,7 +184,7 @@ class DataSetBuilder(object):
 
     @classmethod
     def load_dataset(self, name, dataset_path=None, info=True, 
-            processing_class=Preprocessing):
+            processing_class=None):
         data = self.load_dataset_raw(name, dataset_path=dataset_path)
         dataset = DataSetBuilder(name, dataset_path=dataset_path, 
             processing_class=processing_class)
