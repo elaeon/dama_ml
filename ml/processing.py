@@ -95,8 +95,11 @@ class PreprocessingImage(Preprocessing):
         self.data = transform.pyramid_expand(
             self.data, upscale=2, sigma=None, order=1, mode='reflect', cval=0)
 
+    #def rgb2gray(self):
+    #    self.data = img_as_ubyte(exposure.rescale_intensity(color.rgb2gray(self.data), in_range=(0, 255)))
+
     def rgb2gray(self):
-        self.data = img_as_ubyte(exposure.rescale_intensity(color.rgb2gray(self.data), in_range=(0, 255)))
+        self.data = color.rgb2gray(self.data)
 
     def blur(self, level):
         self.data = filters.gaussian(self.data, level)

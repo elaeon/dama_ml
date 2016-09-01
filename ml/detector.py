@@ -4,7 +4,9 @@ import ml
 
 from utils.config import get_settings
 from utils.files import build_tickets_processed, delete_tickets_processed
-settings = get_settings()
+settings = get_settings("ml")
+settings.update(get_settings("tickets"))
+
 
 class HOG(object):
     def __init__(self):
@@ -19,7 +21,6 @@ class HOG(object):
 
     def train(self, xml_filename, detector_path_svm):
         root = settings["examples"] + "xml/"
-        path = os.path.join(settings["root_data"], "checkpoints/")
         training_xml_path = os.path.join(root, xml_filename)
         testing_xml_path = os.path.join(root, "tickets_test.xml")
         dlib.train_simple_object_detector(training_xml_path, detector_path_svm, self.options)
@@ -28,24 +29,20 @@ class HOG(object):
         print("Test accuracy: {}".format(
             dlib.test_simple_object_detector(testing_xml_path, detector_path_svm)))
 
-
     def test(self, detector_path):
         root = settings["examples"] + "xml/"
-        path = os.path.join(settings["root_data"], "checkpoints/")
         testing_xml_path = os.path.join(root, "tickets_test.xml")
         return dlib.test_simple_object_detector(testing_xml_path, detector_path)
 
-    def draw_detections(self, detector_path_svm, d_filters, pictures):
+    def draw_detections(self, detector_path_svm, transforms, pictures):
         from skimage import io
-        detector = dlib.fhog_object_detector(detector_path_svm)
-        #detector = dlib.simple_object_detector(detector_path_svm)
+        detector = dlib.simple_object_detector(detector_path_svm)
         win = dlib.image_window()
         for path in pictures:
-            print(path)
             print("Processing file: {}".format(path))
             img = io.imread(path)
-            img = ml.ds.ProcessImage(img, d_filters.get_filters()).image
-            dets = detector(img, 0)
+            img = ml.ds.PreprocessingImage(img, transforms).pipeline()
+            dets = detector(img)
             print("Numbers detected: {}".format(len(dets)))
 
             win.clear_overlay()
@@ -67,7 +64,7 @@ class HOG(object):
         from utils.order import order_table_print
         headers = ["Detector", "Precision", "Recall", "F1"]
         files = {}
-        for k, v in self.images_from_directories(os.path.join(settings["root_data"], "checkpoints/Hog/")):
+        for k, v in self.images_from_directories(os.path.join(settings["checkpoints_path"], "Hog")):
             files.setdefault(k, {})
             if v.endswith(".svm"):
                 files[k]["svm"] = v
@@ -76,12 +73,9 @@ class HOG(object):
 
         table = []
         for name, type_ in files.items():
-            try:
-                meta = ml.ds.load_metadata(type_["meta"])
-            except KeyError:
-                print("The file '{}' has not metadata".format(name))
-                continue
-            build_tickets_processed(ml.ds.Filters("detector", meta["d_filters"]), settings, PICTURES)
+            transforms = ml.ds.Transforms([
+                ("detector", ml.ds.load_metadata(type_["meta"])["d_filters"])])
+            build_tickets_processed(transforms.get_transforms("detector"), settings, PICTURES)
             measure = self.test(type_["svm"])
             table.append((name, measure.precision, measure.recall, measure.average_precision))
             delete_tickets_processed(settings)

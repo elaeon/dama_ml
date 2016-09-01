@@ -140,7 +140,7 @@ if __name__ == '__main__':
         model_version=args.model_version)
 
     if args.transcriptor_number_test:
-        data = io.imread(args.test_img)
+        data = io.imread(args.transcriptor_number_test)
         print(list(classif.predict([data])))
     elif args.transcriptor_ticket_test:
         transforms = ml.ds.Transforms([
