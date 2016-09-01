@@ -12,13 +12,6 @@ from utils.files import filename_from_path
 settings = get_settings("ml")
 settings.update(get_settings("tickets"))
 
-PICTURES = ["DSC_0055.jpg", "DSC_0056.jpg",
-        "DSC_0058.jpg", "DSC_0059.jpg",
-        "DSC_0060.jpg", "DSC_0061.jpg",
-        "DSC_0062.jpg", "DSC_0053.jpg",
-        "DSC_0054.jpg", "DSC_0057.jpg",
-        "DSC_0063.jpg", "DSC_0064.jpg",
-        "DSC_0065.jpg"]
 
 def numbers_images_set(url, transforms):
     import xmltodict

@@ -141,7 +141,7 @@ class BaseClassif(object):
         self.num_labels = self.le.classes_.shape[0]
 
     def position_index(self, label):
-        if isinstance(label, np.ndarray):
+        if isinstance(label, np.ndarray) or isinstance(label, list):
             return np.argmax(label)
         return label
 
@@ -362,8 +362,9 @@ class TF(BaseClassif):
 
 
 class TFL(BaseClassif):
-    #def position_index(self, label):
-    #    return np.argmax(label)
+    def __init__(self, **kwargs):
+        super(TFL, self).__init__(**kwargs)
+        self.has_uncertain = True
 
     def reformat(self, data, labels):
         data = self.transform_shape(data)
@@ -374,6 +375,7 @@ class TFL(BaseClassif):
     def save_model(self):
         path = self.make_model_file()
         self.model.save('{}.ckpt'.format(path))
+        self.save_meta()
 
     def load_model(self):
         import tflearn

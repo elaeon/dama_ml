@@ -62,35 +62,37 @@ def build(dataset_name):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", help="nombre del dataset a utilizar", type=str)
-    parser.add_argument("--build", help="crea el dataset", action="store_true")
+    parser.add_argument("--model-name", help="nombre del dataset a utilizar", type=str)
+    parser.add_argument("--build-dataset", help="crea el dataset", action="store_true")
     parser.add_argument("--train", help="inicia el entrenamiento", type=int)
     parser.add_argument("--epoch", type=int)
     parser.add_argument("--predic", help="inicia el entrenamiento", action="store_true")
+    parser.add_argument("--model-version", type=str)
     args = parser.parse_args()
 
-    if args.dataset:
-        dataset_name = args.dataset
-    else:
-        dataset_name = "test"
 
-    if args.build:
-        dataset = build(dataset_name)
-    else:
-        dataset = ml.ds.DataSetBuilderFile.load_dataset(
-            dataset_name, dataset_path=settings["dataset_path"], processing_class=Preprocessing)
-
-    classif = ml.clf_e.LSTM(dataset=dataset, check_point_path=settings["checkpoints_path"], 
-        pprint=False, timesteps=7, model_version="1")
+    if args.build_dataset:
+        dataset = build(args.model_name)
 
     if args.train == 1:
+        dataset = ml.ds.DataSetBuilderFile.load_dataset(
+            args.model_name, dataset_path=settings["dataset_path"])
+        classif = ml.clf_e.LSTM(dataset=dataset, check_point_path=settings["checkpoints_path"], 
+            timesteps=7, model_version=args.model_version)
         classif.train(batch_size=128, num_steps=args.epoch)
-        classif.print_score()
+        classif.scores()
     elif args.train == 2:
+        dataset = ml.ds.DataSetBuilderFile.load_dataset(
+            args.model_name, dataset_path=settings["dataset_path"])
+        classif = ml.clf_e.LSTM(dataset=dataset, check_point_path=settings["checkpoints_path"], 
+            timesteps=7, model_version=args.model_version)
         classif.train2steps(dataset, valid_size=.1, batch_size=128, 
             num_steps=args.epoch, test_data_labels=merge_data_labels())
-        classif.print_score()
+        classif.scores()
 
     if args.predic:
-        classif.print_score()
+        classif = ml.clf_e.LSTM(model_name=args.model_name, 
+            check_point_path=settings["checkpoints_path"], 
+            timesteps=7, model_version=args.model_version)
+        classif.scores()
         predict(classif, settings["numerai_test"], "t_id")
