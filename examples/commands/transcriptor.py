@@ -3,11 +3,15 @@ sys.path.append("/home/alejandro/Programas/ML")
 
 import argparse
 import ml
+import os
 
 from skimage import io
 from utils.config import get_settings
 settings = get_settings("ml")
 settings.update(get_settings("transcriptor"))
+settings.update(get_settings("tickets"))
+settings.update(get_settings("numbers"))
+
 
 PICTURES = ["DSC_0055.jpg", "DSC_0056.jpg",
         "DSC_0058.jpg", "DSC_0059.jpg",
@@ -19,6 +23,7 @@ PICTURES = ["DSC_0055.jpg", "DSC_0056.jpg",
 
 
 def transcriptor(classif, transforms, detector_path, url=None):
+    import dlib
     from dlib import rectangle
     from utils.order import order_2d
 
@@ -27,36 +32,30 @@ def transcriptor(classif, transforms, detector_path, url=None):
         pictures = [os.path.join(settings["tickets"], f) for f in PICTURES[0:1]]
     else:
         pictures = [url]
-    #win = dlib.image_window()
+    win = dlib.image_window()
     for f in pictures:
         print("Processing file: {}".format(f))
         img = io.imread(f)
-        dets = detector(ml.ds.ProcessImage(img, d_filters.get_filters()).pipeline())
-        #print("Numbers detected: {}".format(len(dets)))
-        img = ml.ds.ProcessImage(img, g_filters.get_filters()).pipeline()
+        dets = detector(ml.ds.PreprocessingImage(img, transforms.get_transforms("detector")).pipeline())
         data = [(e.left(), e.top(), e.right(), e.bottom()) for e in dets]
         for block, coords in order_2d(data, index=(1, 0), block_size=20).items():
-            #win.clear_overlay()
-            #print("####BLOCK:", block)
-            #win.set_image(img_o)
+            win.clear_overlay()
+            print("####ROW:", block)
+            win.set_image(img)
             numbers = []
             for v in coords:
                 r = rectangle(*v)
                 m_rectangle = (r.top(), r.top() + r.height()-2, 
                     r.left() - 5, r.left() + r.width())
-                l_filters.add_value("cut", m_rectangle)
-                thumb_bg = ml.ds.ProcessImage(img, l_filters.get_filters()).pipeline()
-                #win.set_image(img_as_ubyte(thumb_bg))
-                #win.add_overlay(r)
-                #print(list(classif.predict([thumb_bg])))
+                thumb_bg = ml.ds.PreprocessingImage(img, [("cut", m_rectangle)]).pipeline()
+                win.add_overlay(r)
                 numbers.append(thumb_bg)
-                #dlib.hit_enter_to_continue()
             numbers_predicted = list(classif.predict(numbers))
+            print("PREDICTED", numbers_predicted)
             num_pred_coords = zip(numbers_predicted, coords)
             if len(num_pred_coords) >= 2:
                 num_pred_coords = num_pred_coords + [num_pred_coords[-2]]
             elif len(num_pred_coords) == 1:
-                #num_pred_coords = num_pred_coords + [num_pred_coords[-1]]
                 continue
             results = []
             tmp_l = []
@@ -72,9 +71,8 @@ def transcriptor(classif, transforms, detector_path, url=None):
                 else:
                     tmp_l.append(v1[0])
             results.append(tmp_l)
-            #print(results, numbers_predicted, len(num_pred_coords))
-            #print(results)
-            #dlib.hit_enter_to_continue()
+            dlib.hit_enter_to_continue()
+            #break
             yield results
 
 def transcriptor_test(classif, transforms, detector_path, url=None):
@@ -96,30 +94,14 @@ def transcriptor_test(classif, transforms, detector_path, url=None):
             total += len(mask)
             total_positive += mask.count(True)
         return total, total_positive
-
-    def mark_error(result, prediction):
-        results = []
-        for r_chain, p_chain in zip(result, prediction):
-            str_l = []
-            for chr1, chr2 in zip(r_chain, p_chain):
-                if chr1 != chr2:
-                    str_l.append("|")
-                    str_l.append(chr2)
-                    str_l.append("|")
-                else:
-                    str_l.append(chr2)
-            results.append("".join(str_l))
-        return results
                     
     flat_p = flat_results()
     total = 0
     total_positive = 0
     total_false = 0
     for result, prediction in zip(results, flat_p):
-        d_false = 0
         if len(result) == len(prediction):
             v1, v2 = count(result, prediction)
-            error_p = mark_error(result, prediction)
         else:
             clean_prediction = []
             for elem in prediction:
@@ -127,15 +109,14 @@ def transcriptor_test(classif, transforms, detector_path, url=None):
                     clean_prediction.append(elem)
                 elif len(elem) == 1 and elem != "$":
                     total_false += 1
-                    d_false += 1
             v1, v2 = count(result, clean_prediction)
-            error_p = mark_error(result, clean_prediction)
         if v1 != v2 or len(result) != len(prediction):
-            print(result, error_p, d_false, prediction)
+            print("ORIGINAL: {}, PREDICTION {}". format(result, prediction))
         total += v1
         total_positive += v2
-            
-    print(total, total_positive, total_false)
+          
+    print("TOTAL NUMBERS: [{}] POSITIVE: [{}] NEGATIVE: [{}]".format(
+        total, total_positive, total_false))
     print("Accuracy {}%".format(total_positive*100./total))
     print("Precision {}%".format((total-total_false)*100/total))
 
@@ -164,5 +145,5 @@ if __name__ == '__main__':
     elif args.transcriptor_ticket_test:
         transforms = ml.ds.Transforms([
             ("detector", ml.ds.load_metadata(detector_path_meta)["d_filters"])])
-        print("Detector Filters:", transforms.get_transforms("detector"))
-        #transcriptor_test(classif, g_filters, l_filters, d_filters, detector_path_svm)
+        print("HOG Filters:", transforms.get_transforms("detector"))
+        transcriptor_test(classif, transforms, detector_path_svm)

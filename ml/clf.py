@@ -177,9 +177,6 @@ class BaseClassif(object):
         if self.model is None:
             self.load_model()
 
-        if isinstance(data, list):
-            data = np.asarray(data)
-
         if transform is True:
             ndata = [self.dataset.processing(datum, 'global') for datum in data]
             data = self.transform_shape(np.asarray(ndata))
