@@ -7,6 +7,7 @@ import os
 
 from skimage import io
 from utils.config import get_settings
+
 settings = get_settings("ml")
 settings.update(get_settings("transcriptor"))
 settings.update(get_settings("tickets"))
@@ -26,6 +27,7 @@ def transcriptor(classif, transforms, detector_path, url=None):
     import dlib
     from dlib import rectangle
     from utils.order import order_2d
+    from skimage import img_as_ubyte
 
     detector = dlib.simple_object_detector(detector_path)
     if url is None:
@@ -36,7 +38,10 @@ def transcriptor(classif, transforms, detector_path, url=None):
     for f in pictures:
         print("Processing file: {}".format(f))
         img = io.imread(f)
-        dets = detector(ml.ds.PreprocessingImage(img, transforms.get_transforms("detector")).pipeline())
+        img = img_as_ubyte(
+            ml.ds.PreprocessingImage(img, 
+            transforms.get_transforms("detector")).pipeline())
+        dets = detector(img)
         data = [(e.left(), e.top(), e.right(), e.bottom()) for e in dets]
         for block, coords in order_2d(data, index=(1, 0), block_size=20).items():
             win.clear_overlay()

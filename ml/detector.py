@@ -36,12 +36,14 @@ class HOG(object):
 
     def draw_detections(self, detector_path_svm, transforms, pictures):
         from skimage import io
+        from skimage import img_as_ubyte
+
         detector = dlib.simple_object_detector(detector_path_svm)
         win = dlib.image_window()
         for path in pictures:
             print("Processing file: {}".format(path))
             img = io.imread(path)
-            img = ml.ds.PreprocessingImage(img, transforms).pipeline()
+            img = img_as_ubyte(ml.ds.PreprocessingImage(img, transforms).pipeline())
             dets = detector(img)
             print("Numbers detected: {}".format(len(dets)))
 
