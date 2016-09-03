@@ -10,10 +10,11 @@ from utils.config import get_settings
 from utils.files import filename_from_path
 
 settings = get_settings("ml")
+settings.update(get_settings("numbers"))
 settings.update(get_settings("tickets"))
 
 
-def numbers_images_set(url, transforms):
+def tickets2numbers_from_xml(url, transforms):
     import xmltodict
     from tqdm import tqdm
 
@@ -44,25 +45,80 @@ def numbers_images_set(url, transforms):
         pbar.set_description("Processing {}".format(label))
         ds_builder.save_images(url, label, images)
 
+
+def tickets2numbers_from_detector(url, classif, transforms):
+    from tqdm import tqdm
+    from skimage import img_as_ubyte
+    from ml.detector import HOG
+    import glob
+    import dlib
+
+    tickets = glob.glob(os.path.join(settings["tickets"], "*.jpg"))
+    settings.update(get_settings("transcriptor"))
+    numbers = []
+    hog = HOG(name="detector3", checkpoints_path=settings["checkpoints_path"])
+    detector = hog.detector()
+    for path in [os.path.join(settings["tickets"], f) for f in tickets]:
+        img = io.imread(path)
+        img = img_as_ubyte(
+            ml.ds.PreprocessingImage(img, transforms.get_transforms("global")).pipeline()) 
+        dets = detector(img)
+        print(path)
+        print("Numbers detected: {}".format(len(dets)))        
+        for r in dets:
+            m_rectangle = (r.top(), r.top() + r.height()-2, 
+                r.left() - 5, r.left() + r.width())
+            transforms.add_transform("local", "cut", m_rectangle)
+            thumb_bg = ml.ds.PreprocessingImage(img, transforms.get_transforms("local")).pipeline()
+            numbers.append(thumb_bg)
+    numbers_predicted = list(classif.predict(numbers))
+    labels_numbers = zip(numbers_predicted, numbers)
+
+    numbers_g = {}
+    for label, number in labels_numbers:
+        numbers_g.setdefault(label, [])
+        numbers_g[label].append(number)
+
+    pbar = tqdm(numbers_g.items())
+    ds_builder = ml.ds.DataSetBuilderImage("", image_size=settings["image_size"])
+    for label, images in pbar:
+        pbar.set_description("Processing {}".format(label))
+        ds_builder.save_images(url, label, images)
+
+
 if __name__ == '__main__':
     IMAGE_SIZE = int(settings["image_size"])
     parser = argparse.ArgumentParser()
-    parser.add_argument("--build", help="crea el detector de numeros", action="store_true")
+    parser.add_argument("--build-images", help="crea el detector de numeros", type=str)
     parser.add_argument("--transforms", help="crea el detector de numeros", action="store_true")
+    parser.add_argument("--model-version", type=str)
+    parser.add_argument("--model-name", type=str)
     args = parser.parse_args()
 
-    if args.build:
-        if args.transforms:
-            transforms = ml.processing.Transforms([
-                ("global", 
-                    [("rgb2gray", None)]),
-                ("local", 
-                    [("cut", None), 
-                    ("resize", (IMAGE_SIZE, 'asym')), 
-                    ("threshold", 91), 
-                    ("merge_offset", (IMAGE_SIZE, 1))])])
-        else:
-            transforms = ml.processing.Transforms([
-                ("global", []),
-                ("local", [])])
-        numbers_images_set(settings["numbers"], transforms)
+    if args.transforms:
+        transforms = ml.processing.Transforms([
+            ("global", 
+                [("rgb2gray", None)]),
+            ("local", 
+                [("cut", None), 
+                ("resize", (IMAGE_SIZE, 'asym')), 
+                ("threshold", 91), 
+                ("merge_offset", (IMAGE_SIZE, 1))])])
+    else:
+        transforms = ml.processing.Transforms([
+            ("global", []),
+            ("local", [])])
+
+    if args.build_images == "xml":
+        tickets2numbers_from_xml(settings["numbers"], transforms)
+    elif args.build_images == "detector":
+        transforms = ml.processing.Transforms([
+            ("global", 
+                [("rgb2gray", None), ("contrast", None)]),
+            ("local", 
+                [])])
+        classif = ml.clf_e.RandomForest(
+            model_name=args.model_name,
+            check_point_path=settings["checkpoints_path"],
+            model_version=args.model_version)
+        tickets2numbers_from_detector(settings["numbers"], classif, transforms)

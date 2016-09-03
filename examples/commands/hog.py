@@ -31,21 +31,16 @@ if __name__ == '__main__':
     parser.add_argument("--draw", action="store_true")
     args = parser.parse_args()
 
-    checkpoints_path = settings["checkpoints_path"]
-    detector_path = checkpoints_path + "Hog/" + settings["detector_name"] + "/"
-    detector_path_meta = detector_path + settings["detector_name"] + "_meta.pkl"
-    detector_path_svm = detector_path + settings["detector_name"] + ".svm"
-
     if args.train:
         from ml.detector import HOG
-        hog = HOG()
+        hog = HOG(name=settings["detector_name"], checkpoints_path=settings["checkpoints_path"])
         transforms = ml.ds.Transforms([("detector", 
             [("rgb2gray", None), ("contrast", None)])])
         build_tickets_processed(transforms.get_transforms("detector"), settings, PICTURES)
         ml.ds.save_metadata(detector_path, detector_path_meta,
             {"d_filters": transforms.get_transforms("detector"), 
             "filename_training": args.train})
-        hog.train(args.train, detector_path_svm)
+        hog.train(args.train)
         delete_tickets_processed(settings)
         print("Cleaned")
     elif args.test:
@@ -59,5 +54,4 @@ if __name__ == '__main__':
         print("HOG Filters:", transforms.get_transforms("detector"))
         pictures = glob.glob(os.path.join(settings["tickets"], "*.jpg"))
         hog = HOG()
-        hog.draw_detections(detector_path_svm, 
-            transforms.get_transforms("detector"), sorted(pictures)[0:1])
+        hog.draw_detections(transforms.get_transforms("detector"), sorted(pictures)[0:1])

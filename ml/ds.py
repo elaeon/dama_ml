@@ -295,7 +295,10 @@ class DataSetBuilderImage(DataSetBuilder):
         if not os.path.exists(n_url):
              os.makedirs(n_url)
         for i, image in enumerate(images):
-            io.imsave("{}img-{}-{}.png".format(n_url, number_id, i), image)
+            try:
+                io.imsave("{}img-{}-{}.png".format(n_url, number_id, i), image)
+            except IndexError:
+                print("Index error", n_url, number_id)
 
     def clean_directory(self, path):
         import shutil

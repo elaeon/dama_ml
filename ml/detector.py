@@ -9,7 +9,7 @@ settings.update(get_settings("tickets"))
 
 
 class HOG(object):
-    def __init__(self):
+    def __init__(self, name=None, checkpoints_path=None, detector_version=None):
         self.options = dlib.simple_object_detector_training_options()
 
         self.options.add_left_right_image_flips = False
@@ -18,27 +18,34 @@ class HOG(object):
         self.options.be_verbose = True
         #self.options.epsilon = 0.0005
         #self.options.detection_window_size #60 pixels wide by 107 tall
+        self.name = name
+        self.checkpoints_path = checkpoints_path
+        self.detector_version = detector_version
+        self.detector_path_meta = os.path.join(
+            self.checkpoints_path, self.__class__.__name__, self.name, self.name+"_meta.pkl")
+        self.detector_path_svm = os.path.join(
+            self.checkpoints_path, self.__class__.__name__, self.name, self.name+".svm")
 
-    def train(self, xml_filename, detector_path_svm):
+    def train(self, xml_filename):
         root = settings["examples"] + "xml/"
         training_xml_path = os.path.join(root, xml_filename)
         testing_xml_path = os.path.join(root, "tickets_test.xml")
-        dlib.train_simple_object_detector(training_xml_path, detector_path_svm, self.options)
+        dlib.train_simple_object_detector(training_xml_path, self.detector_path_svm, self.options)
 
         print("")
         print("Test accuracy: {}".format(
-            dlib.test_simple_object_detector(testing_xml_path, detector_path_svm)))
+            dlib.test_simple_object_detector(testing_xml_path, self.detector_path_svm)))
 
     def test(self, detector_path):
         root = settings["examples"] + "xml/"
         testing_xml_path = os.path.join(root, "tickets_test.xml")
-        return dlib.test_simple_object_detector(testing_xml_path, detector_path)
+        return dlib.test_simple_object_detector(testing_xml_path, self.detector_path_svm)
 
-    def draw_detections(self, detector_path_svm, transforms, pictures):
+    def draw_detections(self, transforms, pictures):
         from skimage import io
         from skimage import img_as_ubyte
 
-        detector = dlib.simple_object_detector(detector_path_svm)
+        detector = self.detector()
         win = dlib.image_window()
         for path in pictures:
             print("Processing file: {}".format(path))
@@ -83,3 +90,6 @@ class HOG(object):
             delete_tickets_processed(settings)
 
         order_table_print(headers, table, order_column)
+
+    def detector(self):
+        return dlib.simple_object_detector(self.detector_path_svm)

@@ -4,7 +4,6 @@ import tensorflow as tf
 
 from sklearn.preprocessing import LabelEncoder
 
-CHECK_POINT_PATH = "/home/sc/data/face_recog/"
 #np.random.seed(133)
 
 class Measure(object):
@@ -87,12 +86,12 @@ class ListMeasure(object):
 
 class BaseClassif(object):
     def __init__(self, model_name=None, dataset=None, 
-            check_point_path=CHECK_POINT_PATH, model_version=None):
+            check_point_path=None, model_version=None):
         self.model = None
         self.model_name = model_name
         self.le = LabelEncoder()
         self.check_point_path = check_point_path
-        self.check_point = check_point_path + self.__class__.__name__ + "/"
+        self.check_point = os.path.join(check_point_path, self.__class__.__name__)
         self.model_version = model_version
         self.has_uncertain = False
         self.load_dataset(dataset)
@@ -258,7 +257,7 @@ class BaseClassif(object):
             if not os.path.exists(self.check_point + model_name_v + "/"):
                 os.makedirs(self.check_point + model_name_v + "/")
             
-        return "{}{}/{}".format(self.check_point, model_name_v, model_name_v)
+        return os.path.join(self.check_point, model_name_v, model_name_v)
 
     def _metadata(self):
         return {"dataset_path": self.dataset.dataset_path,
