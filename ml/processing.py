@@ -11,7 +11,6 @@ import numpy as np
 def mean(array):
     return np.mean(array, axis=0, dtype=np.int32)
 
-    
 def pixelate_mode(mode):
     if mode == 'mean':
         return mean
@@ -27,11 +26,24 @@ class Transforms(object):
         for group, transform in transforms:
             self.add_group_transforms(group, transform)
 
+    def add_first_transform(self, group, name, value):
+        tail = self.transforms[group]
+        if name in tail:
+            if name == tail.iterkeys().next():
+                self.add_transform(group, name, value)
+            else:
+                del tail[name]
+                self.transforms[group] = OrderedDict({name: value})                
+                self.transforms[group].update(tail)
+        else:
+            self.transforms[group] = OrderedDict({name: value})
+            self.transforms[group].update(tail)
+
     def add_transform(self, group, name, value):
         try:
             self.transforms[group][name] = value
         except KeyError:
-            self.transforms[group] = {name: value}
+            self.transforms[group] = OrderedDict({name: value})
 
     def add_transforms(self, group, transforms):
         if not group in self.transforms:
@@ -163,6 +175,8 @@ class PreprocessingImage(Preprocessing):
         self.data = filters.threshold_adaptive(self.data, block_size, offset=0)
 
     def pixelate(self, (pixel_width, pixel_height), mode='mean'):
+        #import time
+        #start_time = time.time()
         if len(self.data.shape) > 2:
             width, height, channels = self.data.shape
         else:
@@ -180,4 +194,5 @@ class PreprocessingImage(Preprocessing):
                 for x in xrange(minx, maxx):
                     for y in xrange(miny, maxy):
                         data[x][y] = color
+        #print("--- %s seconds ---" % (time.time() - start_time))
         self.data = data

@@ -36,8 +36,8 @@ if __name__ == '__main__':
             image_size=int(settings["image_size"]), 
             dataset_path=settings["dataset_path"], 
             train_folder_path=[
-                settings["train_folder_path"], 
-                settings["numbers_detector"]],
+                settings["train_folder_path"]], 
+                #settings["numbers_detector"]],
             transforms=transforms,
             transforms_apply=True,
             processing_class=ml.processing.PreprocessingImage)

@@ -254,8 +254,9 @@ class BaseClassif(object):
             if not os.path.exists(self.check_point):
                 os.makedirs(self.check_point)
 
-            if not os.path.exists(self.check_point + model_name_v + "/"):
-                os.makedirs(self.check_point + model_name_v + "/")
+            destination = os.path.join(self.check_point, model_name_v)
+            if not os.path.exists(destination):
+                os.makedirs(destination)
             
         return os.path.join(self.check_point, model_name_v, model_name_v)
 

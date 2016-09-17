@@ -36,15 +36,17 @@ def tickets2numbers_from_xml(url, transforms):
                         int(box["@top"])+int(box["@height"]), 
                         int(box["@left"]), 
                         int(box["@left"])+int(box["@width"]))
-                    transforms.add_transform("local", "cut", rectangle)
+                    transforms.add_first_transform("local", "cut", rectangle)
+                    #print(transforms.get_transforms("local"), rectangle)
                     thumb_bg = ml.ds.PreprocessingImage(image, transforms.get_transforms("local")).pipeline()
+                    #ds_builder.save_images(url, box["label"], [thumb_bg])
                     labels_images.setdefault(box["label"], [])
                     labels_images[box["label"]].append(thumb_bg)
 
     pbar = tqdm(labels_images.items())
     for label, images in pbar:
         pbar.set_description("Processing {}".format(label))
-        ds_builder.save_images(url, label, images)
+        ds_builder.save_images(url, label, images, rewrite=True)
 
 
 def tickets2numbers_from_detector(url, classif, transforms):
@@ -99,8 +101,7 @@ if __name__ == '__main__':
     if args.transforms:
         transforms = ml.processing.Transforms([
             ("global", []), 
-            ("local",
-                [("pixelate", (16, 16))])])
+            ("local", [("pixelate", (16, 16))])])
     else:
         transforms = ml.processing.Transforms([
             ("global", []),

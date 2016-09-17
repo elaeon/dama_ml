@@ -295,15 +295,18 @@ class DataSetBuilderImage(DataSetBuilder):
             self.labels[image_index] = number_id
 
     @classmethod
-    def save_images(self, url, number_id, images):
+    def save_images(self, url, number_id, images, rewrite=False):
         if not os.path.exists(url):
             os.makedirs(url)
-        n_url = "{}{}/".format(url, number_id)
+        n_url = os.path.join(url, number_id)
         if not os.path.exists(n_url):
              os.makedirs(n_url)
-        for i, image in enumerate(images):
+
+        initial = 0 if rewrite else len(os.listdir(n_url)) 
+        for i, image in enumerate(images, initial):
             try:
-                io.imsave("{}img-{}-{}.png".format(n_url, number_id, i), image)
+                image_path = "img-{}-{}.png".format(number_id, i)
+                io.imsave(os.path.join(n_url, image_path), image)
             except IndexError:
                 print("Index error", n_url, number_id)
 
