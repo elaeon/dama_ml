@@ -1,5 +1,6 @@
 import sys
-sys.path.append("/home/alejandro/Programas/ML")
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 import os
 import argparse
@@ -89,7 +90,7 @@ def tickets2numbers_from_detector(url, classif, transforms):
 if __name__ == '__main__':
     IMAGE_SIZE = int(settings["image_size"])
     parser = argparse.ArgumentParser()
-    parser.add_argument("--build-images", help="crea el detector de numeros", type=str)
+    parser.add_argument("--build-images", help="[xml] [detector]", type=str)
     parser.add_argument("--transforms", help="crea el detector de numeros", action="store_true")
     parser.add_argument("--model-version", type=str)
     parser.add_argument("--model-name", type=str)
@@ -121,4 +122,4 @@ if __name__ == '__main__':
             model_name=args.model_name,
             check_point_path=settings["checkpoints_path"],
             model_version=args.model_version)
-        tickets2numbers_from_detector(settings["numbers"], classif, transforms)
+        tickets2numbers_from_detector(settings["numbers_detector"], classif, transforms)

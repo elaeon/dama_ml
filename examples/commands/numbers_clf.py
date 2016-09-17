@@ -1,5 +1,6 @@
 import sys
-sys.path.append("/home/alejandro/Programas/ML")
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 import argparse
 import ml
@@ -19,7 +20,7 @@ if __name__ == '__main__':
             ("scale", None)]
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--build-dataset", help="crea el dataset", action="store_true")
+    parser.add_argument("--build-dataset", help="crea el dataset", type=str)
     parser.add_argument("--test", 
         help="evalua el predictor en base a los datos de prueba", 
         action="store_true")
@@ -31,10 +32,12 @@ if __name__ == '__main__':
 
     if args.build_dataset:
         ds_builder = ml.ds.DataSetBuilderImage(
-            args.model_name, 
+            args.build_dataset, 
             image_size=int(settings["image_size"]), 
             dataset_path=settings["dataset_path"], 
-            train_folder_path=settings["train_folder_path"],
+            train_folder_path=[
+                settings["train_folder_path"], 
+                settings["numbers_detector"]],
             transforms=transforms,
             transforms_apply=True,
             processing_class=ml.processing.PreprocessingImage)

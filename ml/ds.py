@@ -258,18 +258,25 @@ class DataSetBuilderImage(DataSetBuilder):
     def add_img(self, img):
         self.images.append(img)
 
-    def images_from_directories(self, folder_base):
+    def images_from_directories(self, directories):
+        if isinstance(directories, str):
+            directories = [directories]
+        elif isinstance(directories, list):
+            pass
+        else:
+            raise Exception
+
         images = []
-        for directory in os.listdir(folder_base):
-            files = os.path.join(folder_base, directory)
-            if os.path.isdir(files):
-                number_id = directory
-                for image_file in os.listdir(files):
-                    images.append((number_id, os.path.join(files, image_file)))
+        for root_directory in directories:
+            for directory in os.listdir(root_directory):
+                files = os.path.join(root_directory, directory)
+                if os.path.isdir(files):
+                    number_id = directory
+                    for image_file in os.listdir(files):
+                        images.append((number_id, os.path.join(files, image_file)))
         return images
 
     def images_to_dataset(self, folder_base, processing_class):
-        """The loaded images must have been processed"""
         images = self.images_from_directories(folder_base)
         max_num_images = len(images)
         if self.channels is None:
@@ -306,7 +313,6 @@ class DataSetBuilderImage(DataSetBuilder):
 
     def original_to_images_set(self, url, test_folder_data=False):
         images_data, labels = self.labels_images(url)
-        #images = (PreprocessingImage(img, self.get_transforms("global")).image for img in images_data)
         images = (self.processing(img, 'image') for img in images_data)
         image_train, image_test = self.build_train_test(zip(labels, images), sample=test_folder_data)
         for number_id, images in image_train.items():

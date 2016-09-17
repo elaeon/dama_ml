@@ -1,5 +1,6 @@
 import sys
-sys.path.append("/home/alejandro/Programas/ML")
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 import argparse
 import ml
@@ -87,7 +88,9 @@ def transcriptor_test(classif, transforms, detector_path, url=None):
             for row in predictions]
         return flat_p
 
-    with open(settings["examples"]+"txt/transcriptor.txt") as f:
+    transcriptor_example = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), '..', 'txt/transcriptor.txt'))
+    with open(transcriptor_example) as f:
         file_ = f.read().split("\n")
         results = [[col.strip(" ") for col in line.split(",")] for line in file_]
 
@@ -135,7 +138,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     checkpoints_path = settings["checkpoints_path"]
-    detector_path = checkpoints_path + "Hog/" + settings["detector_name"] + "/"
+    detector_path = checkpoints_path + "HOG/" + settings["detector_name"] + "/"
     detector_path_meta = detector_path + settings["detector_name"] + "_meta.pkl"
     detector_path_svm = detector_path + settings["detector_name"] + ".svm"
 
