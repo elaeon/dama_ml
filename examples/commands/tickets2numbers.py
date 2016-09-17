@@ -98,13 +98,9 @@ if __name__ == '__main__':
 
     if args.transforms:
         transforms = ml.processing.Transforms([
-            ("global", 
-                [("rgb2gray", None)]),
-            ("local", 
-                [("cut", None), 
-                ("resize", (IMAGE_SIZE, 'asym')), 
-                ("threshold", 91), 
-                ("merge_offset", (IMAGE_SIZE, 1))])])
+            ("global", []), 
+            ("local",
+                [("pixelate", (16, 16))])])
     else:
         transforms = ml.processing.Transforms([
             ("global", []),

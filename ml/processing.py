@@ -5,8 +5,20 @@ from sklearn import preprocessing
 from skimage import img_as_ubyte
 from skimage import exposure
 from collections import OrderedDict
-
 import numpy as np
+
+
+def mean(array):
+    return np.mean(array, axis=0, dtype=np.int32)
+
+    
+def pixelate_mode(mode):
+    if mode == 'mean':
+        return mean
+    elif mode == 'min':
+        return min
+    elif mode == 'max':
+        return max
 
 
 class Transforms(object):
@@ -95,9 +107,6 @@ class PreprocessingImage(Preprocessing):
         self.data = transform.pyramid_expand(
             self.data, upscale=2, sigma=None, order=1, mode='reflect', cval=0)
 
-    #def rgb2gray(self):
-    #    self.data = img_as_ubyte(exposure.rescale_intensity(color.rgb2gray(self.data), in_range=(0, 255)))
-
     def rgb2gray(self):
         self.data = color.rgb2gray(self.data)
 
@@ -152,3 +161,23 @@ class PreprocessingImage(Preprocessing):
 
     def threshold(self, block_size=41):
         self.data = filters.threshold_adaptive(self.data, block_size, offset=0)
+
+    def pixelate(self, (pixel_width, pixel_height), mode='mean'):
+        if len(self.data.shape) > 2:
+            width, height, channels = self.data.shape
+        else:
+            width, height = self.data.shape
+
+        data = np.ndarray(shape=self.data.shape, dtype=np.uint8)
+        modefunc = pixelate_mode(mode)
+        for w in range(0, width, pixel_width):
+            minx, maxx = w, min(width, w + pixel_width)
+            for h in range(0, height, pixel_height):
+                miny, maxy = h, min(height, h + pixel_height)
+                color = tuple(modefunc([self.data[x][y]
+                        for x in xrange(minx, maxx)
+                        for y in xrange(miny, maxy)]))
+                for x in xrange(minx, maxx):
+                    for y in xrange(miny, maxy):
+                        data[x][y] = color
+        self.data = data
