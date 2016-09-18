@@ -46,7 +46,7 @@ if __name__ == '__main__':
         print("Cleaned")
     elif args.test:
         from ml.detector import HOG
-        hog = HOG()
+        hog = HOG(name=settings["detector_name"], checkpoints_path=settings["checkpoints_path"])
         hog.test_set("f1", PICTURES)
     elif args.draw:
         from ml.detector import HOG

@@ -27,9 +27,9 @@ class HOG(object):
             self.checkpoints_path, self.__class__.__name__, self.name, self.name+".svm")
 
     def train(self, xml_filename):
-        root = settings["examples"] + "xml/"
-        training_xml_path = os.path.join(root, xml_filename)
-        testing_xml_path = os.path.join(root, "tickets_test.xml")
+        examples = os.path.join(os.path.dirname(__file__), '../examples/xml')
+        training_xml_path = os.path.join(examples, xml_filename)
+        testing_xml_path = os.path.join(examples, "tickets_test.xml")
         dlib.train_simple_object_detector(training_xml_path, self.detector_path_svm, self.options)
 
         print("")
@@ -37,8 +37,8 @@ class HOG(object):
             dlib.test_simple_object_detector(testing_xml_path, self.detector_path_svm)))
 
     def test(self, detector_path):
-        root = settings["examples"] + "xml/"
-        testing_xml_path = os.path.join(root, "tickets_test.xml")
+        examples = os.path.join(os.path.dirname(__file__), '../examples/xml')
+        testing_xml_path = os.path.join(examples, "tickets_test.xml")
         return dlib.test_simple_object_detector(testing_xml_path, self.detector_path_svm)
 
     def draw_detections(self, transforms, pictures):
@@ -73,7 +73,8 @@ class HOG(object):
         from utils.order import order_table_print
         headers = ["Detector", "Precision", "Recall", "F1"]
         files = {}
-        for k, v in self.images_from_directories(os.path.join(settings["checkpoints_path"], "Hog")):
+        base_dir = os.path.join(settings["checkpoints_path"], self.__class__.__name__)
+        for k, v in self.images_from_directories(base_dir):
             files.setdefault(k, {})
             if v.endswith(".svm"):
                 files[k]["svm"] = v

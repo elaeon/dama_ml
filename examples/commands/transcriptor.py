@@ -142,7 +142,7 @@ if __name__ == '__main__':
     detector_path_meta = detector_path + settings["detector_name"] + "_meta.pkl"
     detector_path_svm = detector_path + settings["detector_name"] + ".svm"
 
-    classif = ml.clf_e.RandomForest(
+    classif = ml.clf.extended.RandomForest(
         model_name=args.model_name,
         check_point_path=settings["checkpoints_path"],
         model_version=args.model_version)
