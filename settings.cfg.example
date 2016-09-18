@@ -1,5 +1,24 @@
 [ml]
-root_data = /home/sc/ml_data/
-examples = examples/
-pictures = Pictures/
-dataset = dataset/
+;dataset_path = 
+;checkpoints_path = 
+
+[numerai]
+;predictions_file_path = 
+;numerai_test = 
+;numerai_example = 
+;numerai_train = 
+
+[tickets]
+;tickets = 
+;xml = 
+;numbers = 
+;tickets_processed = 
+
+[numbers]
+image_size = 90
+;train_folder_path = 
+
+[transcriptor]
+detector_name = detector
+;numbers_detector = 
+
