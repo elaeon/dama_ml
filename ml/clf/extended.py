@@ -1,4 +1,4 @@
-from clf import *
+from generic import *
 
 class OneClassSVM(SKL):
     def __init__(self, *args, **kwargs):

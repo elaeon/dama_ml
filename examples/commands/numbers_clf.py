@@ -46,14 +46,14 @@ if __name__ == '__main__':
         dataset = ml.ds.DataSetBuilder.load_dataset(
             args.model_name, 
             dataset_path=settings["dataset_path"])
-        classif = ml.clf_e.RandomForest(
+        classif = ml.clf.extended.RandomForest(
             dataset=dataset, 
             check_point_path=settings["checkpoints_path"], 
             model_version=args.model_version)
         classif.batch_size = 100
         classif.train(num_steps=args.epoch)
     elif args.test:
-        classif = ml.clf_e.RandomForest(
+        classif = ml.clf.extended.RandomForest(
             model_name=args.model_name, 
             check_point_path=settings["checkpoints_path"], 
             model_version=args.model_version)

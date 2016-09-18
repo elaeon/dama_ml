@@ -63,21 +63,21 @@ class ListMeasure(object):
         self.headers.append(name)
         self.measures.append(value)
 
-    def dataset_test(self, classifs, dataset, order_column):
-        from utils.order import order_table_print
-        table = []
-        print("DATASET", dataset.name)
-        for classif_name in classifs:
-            classif = classifs[classif_name]["name"]
-            params = classifs[classif_name]["params"]
-            clf = classif(dataset, **params)
-            name_clf, measure = clf.detector_test_dataset(raw=self.logloss)
-            if self.logloss:
-                table.append((name_clf, measure.precision(), measure.recall(), 
-                    measure.f1(), measure.logloss()))
-            else:
-                table.append((name_clf, measure.precision(), measure.recall(), measure.f1()))
-        order_table_print(self.headers, table, order_column)
+    #def dataset_test(self, classifs, dataset, order_column):
+    #    from utils.order import order_table_print
+    #    table = []
+    #    print("DATASET", dataset.name)
+    #    for classif_name in classifs:
+    #        classif = classifs[classif_name]["name"]
+    #        params = classifs[classif_name]["params"]
+    #        clf = classif(dataset, **params)
+    #        name_clf, measure = clf.detector_test_dataset(raw=self.logloss)
+    #        if self.logloss:
+    #            table.append((name_clf, measure.precision(), measure.recall(), 
+    #                measure.f1(), measure.logloss()))
+    #        else:
+    #            table.append((name_clf, measure.precision(), measure.recall(), measure.f1()))
+    #    order_table_print(self.headers, table, order_column)
 
     def print_scores(self, order_column="f1"):
         from utils.order import order_table_print
