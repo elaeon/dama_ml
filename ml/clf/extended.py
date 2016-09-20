@@ -121,7 +121,7 @@ class GPC(TFL):
         self.prepare_model()
         pbar = tqdm(range(1, num_steps + 1))
         for label in pbar:
-            self.model.optimize('scg', max_iters=100, messages=self.pprint)#
+            self.model.optimize('scg', max_iters=100, messages=False) #bfgs
             pbar.set_description("Processing {}".format(label))
         self.save_model()
 
@@ -145,16 +145,9 @@ class GPC(TFL):
         self.model.kern.white.fix()
 
     def save_model(self):
-        if not os.path.exists(self.check_point):
-            os.makedirs(self.check_point)
-        if not os.path.exists(self.check_point + self.dataset.name + "/"):
-            os.makedirs(self.check_point + self.dataset.name + "/")
-
-        #self.model.save('{}{}.ckpt'.format(
-        #    self.check_point + self.dataset.name + "/", self.dataset.name))
-        
-        np.save('{}{}'.format(
-            self.check_point + self.dataset.name + "/", self.dataset.name), self.model.param_array)
+        path = self.make_model_file()
+        self.save_meta()
+        np.save(path, self.model.param_array)
 
     def _predict(self, data, raw=False):
         for prediction in self.model.predict(data)[0]:
