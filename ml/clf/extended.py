@@ -54,6 +54,18 @@ class LogisticRegression(SKLP):
         self.model = sig_clf
 
 
+class SGDClassifier(SKLP):
+    def prepare_model(self):
+        from sklearn.linear_model import SGDClassifier
+        from sklearn.calibration import CalibratedClassifierCV
+        reg = SGDClassifier(loss='log', penalty='elasticnet', 
+            alpha=.0001, n_iter=100, n_jobs=-1)
+        reg.fit(self.dataset.train_data, self.dataset.train_labels)
+        sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
+        sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
+        self.model = sig_clf
+
+
 class TensorFace(TF):
     def prepare_model(self, batch_size, dropout=True):
         self.graph = tf.Graph()
@@ -109,7 +121,7 @@ class TensorFace(TF):
 
 
 class GPC(TFL):
-    def __init__(self, kernel=None, k_params={}, **kwargs):
+    def __init__(self, kernel=None, k_params={"variance":7., "lengthscale":0.2}, **kwargs):
         super(GPC, self).__init__(**kwargs)
         import GPy
         self.dim = self.dataset.num_features()
@@ -134,8 +146,8 @@ class GPC(TFL):
 
     def prepare_model(self):
         import GPy
-        k = GPy.kern.RBF(self.dim, variance=7., lengthscale=0.2)
-        self.model = GPy.core.GP(X=self.dataset.train_data,
+        self.model = GPy.core.GP(
+                    X=self.dataset.train_data,
                     Y=self.transform_to_gpy_labels(self.dataset.train_labels), 
                     kernel=self.k + GPy.kern.White(1), 
                     inference_method=GPy.inference.latent_function_inference.expectation_propagation.EP(),
@@ -161,6 +173,23 @@ class GPC(TFL):
         r = np.load(self.check_point+self.dataset.name+"/"+self.dataset.name+".npy")
         self.model[:] = r[:2]
         self.model.initialize_parameter()
+
+
+class SVGPC(GPC):
+    def prepare_model(self):
+        import GPy
+        i = np.random.permutation(self.dataset.train_data.shape[0])[:10]
+        Z = self.dataset.train_data[i].copy()
+        print(i)
+        self.model = GPy.core.SVGP(
+            X=self.dataset.train_data, 
+            Y=self.transform_to_gpy_labels(self.dataset.train_labels), 
+            Z=Z, 
+            kernel=self.k + GPy.kern.White(1), 
+            likelihood=GPy.likelihoods.Bernoulli(),
+            batchsize=50)
+        self.model.kern.white.variance = 1e-5
+        self.model.kern.white.fix()
 
 
 class MLP(TFL):
