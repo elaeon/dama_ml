@@ -121,19 +121,23 @@ class TensorFace(TF):
 
 
 class GPC(TFL):
-    def __init__(self, kernel=None, k_params={"variance":7., "lengthscale":0.2}, **kwargs):
+    def __init__(self, kernel=None, optimizer='scg', 
+                k_params={"variance":7., "lengthscale":0.2}, **kwargs):
         super(GPC, self).__init__(**kwargs)
         import GPy
         self.dim = self.dataset.num_features()
         kernel_f = kernel if kernel is not None else GPy.kern.RBF
         self.k = kernel_f(self.dim, **k_params)
+        self.optimizer = optimizer
+        #bfgs
+        #Adadelta
 
     def train(self, batch_size=128, num_steps=1):
         from tqdm import tqdm
         self.prepare_model()
         pbar = tqdm(range(1, num_steps + 1))
         for label in pbar:
-            self.model.optimize('scg', max_iters=100, messages=False) #bfgs
+            self.model.optimize(self.optimizer, max_iters=100, messages=False) 
             pbar.set_description("Processing {}".format(label))
         self.save_model()
 
@@ -171,23 +175,26 @@ class GPC(TFL):
         self.model = GPy.models.GPClassification(self.dataset.train_data, 
             self.dataset.train_labels.reshape(-1, 1), kernel=self.k, initialize=False)    
         r = np.load(self.check_point+self.dataset.name+"/"+self.dataset.name+".npy")
-        self.model[:] = r[:2]
-        self.model.initialize_parameter()
+        self.model.update_model(False) # do not call the underlying expensive algebra on load
+        self.model.initialize_parameter() # Initialize the parameters (connect the parameters up)
+        self.model[:] = r
+        self.model.update_model(True) # Call the algebra only once 
+        ## old ##       
+        #self.model[:] = r[:2]
+        #self.model.initialize_parameter()
 
 
 class SVGPC(GPC):
     def prepare_model(self):
         import GPy
-        i = np.random.permutation(self.dataset.train_data.shape[0])[:10]
-        Z = self.dataset.train_data[i].copy()
-        print(i)
+        Z = np.random.rand(100, self.dataset.train_data.shape[1])
         self.model = GPy.core.SVGP(
             X=self.dataset.train_data, 
             Y=self.transform_to_gpy_labels(self.dataset.train_labels), 
             Z=Z, 
             kernel=self.k + GPy.kern.White(1), 
             likelihood=GPy.likelihoods.Bernoulli(),
-            batchsize=50)
+            batchsize=100)
         self.model.kern.white.variance = 1e-5
         self.model.kern.white.fix()
 

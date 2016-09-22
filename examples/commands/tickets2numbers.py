@@ -115,7 +115,7 @@ if __name__ == '__main__':
                 [("rgb2gray", None), ("contrast", None)]),
             ("local", 
                 [])])
-        classif = ml.clf_e.RandomForest(
+        classif = ml.clf.extended.RandomForest(
             model_name=args.model_name,
             check_point_path=settings["checkpoints_path"],
             model_version=args.model_version)

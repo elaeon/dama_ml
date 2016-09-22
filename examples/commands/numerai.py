@@ -78,21 +78,21 @@ if __name__ == '__main__':
     if args.train == 1:
         dataset = ml.ds.DataSetBuilderFile.load_dataset(
             args.model_name, dataset_path=settings["dataset_path"])
-        classif = ml.clf_e.LSTM(dataset=dataset, check_point_path=settings["checkpoints_path"], 
+        classif = ml.clf.extended.LSTM(dataset=dataset, check_point_path=settings["checkpoints_path"], 
             timesteps=7, model_version=args.model_version)
         classif.train(batch_size=128, num_steps=args.epoch)
         classif.scores()
     elif args.train == 2:
         dataset = ml.ds.DataSetBuilderFile.load_dataset(
             args.model_name, dataset_path=settings["dataset_path"])
-        classif = ml.clf_e.LSTM(dataset=dataset, check_point_path=settings["checkpoints_path"], 
+        classif = ml.clf.extended.LSTM(dataset=dataset, check_point_path=settings["checkpoints_path"], 
             timesteps=7, model_version=args.model_version)
         classif.train2steps(dataset, valid_size=.1, batch_size=128, 
             num_steps=args.epoch, test_data_labels=merge_data_labels())
         classif.scores()
 
     if args.predic:
-        classif = ml.clf_e.LSTM(model_name=args.model_name, 
+        classif = ml.clf.extended.LSTM(model_name=args.model_name, 
             check_point_path=settings["checkpoints_path"], 
             timesteps=7, model_version=args.model_version)
         classif.scores()
