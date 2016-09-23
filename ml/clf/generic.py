@@ -55,38 +55,78 @@ class UDMeasure(object):
 
 
 class ListMeasure(object):
-    def __init__(self):
-        self.headers = []
-        self.measures = []
+    def __init__(self, headers=None, measures=None):
+        if headers is None:
+            headers = []
+        if measures is None:
+            measures = [[]]
 
-    def add_measure(self, name, value):
+        self.headers = headers
+        self.measures = measures
+
+    def add_measure(self, name, value, i=0):
         self.headers.append(name)
-        self.measures.append(value)
-
-    #def dataset_test(self, classifs, dataset, order_column):
-    #    from utils.order import order_table_print
-    #    table = []
-    #    print("DATASET", dataset.name)
-    #    for classif_name in classifs:
-    #        classif = classifs[classif_name]["name"]
-    #        params = classifs[classif_name]["params"]
-    #        clf = classif(dataset, **params)
-    #        name_clf, measure = clf.detector_test_dataset(raw=self.logloss)
-    #        if self.logloss:
-    #            table.append((name_clf, measure.precision(), measure.recall(), 
-    #                measure.f1(), measure.logloss()))
-    #        else:
-    #            table.append((name_clf, measure.precision(), measure.recall(), measure.f1()))
-    #    order_table_print(self.headers, table, order_column)
+        self.measures[i].append(value)
 
     def print_scores(self, order_column="f1"):
         from utils.order import order_table_print
-        order_table_print(self.headers, [self.measures], order_column)
+        order_table_print(self.headers, self.measures, order_column)
+
+    def __add__(self, other):
+        for hs, ho in zip(self.headers, other.headers):
+            if hs != ho:
+                raise Exception
+
+        diff_len = abs(len(self.headers) - len(other.headers)) + 1
+        if len(self.headers) < len(other.headers):
+            headers = other.headers
+            this_measures = [m +  ([None] * diff_len) for m in self.measures]
+            other_measures = other.measures
+        elif len(self.headers) > len(other.headers):
+            headers = self.headers
+            this_measures = self.measures
+            other_measures = [m + ([None] * diff_len) for m in other.measures]
+        else:
+            headers = self.headers
+            this_measures = self.measures
+            other_measures = other.measures
+
+        measures = []
+        measures.extend(this_measures) 
+        measures.extend(other_measures)
+        list_measure = ListMeasure(headers=headers, measures=measures)
+        return list_measure
+
+
+class Grid(object):
+    def __init__(self, classifs, model_name=None, dataset=None, 
+            check_point_path=None, model_version=None):
+        self.model = None
+        self.model_name = model_name
+        self.check_point_path = check_point_path
+        self.model_version = model_version
+        self.classifs = classifs
+        self.dataset = dataset
+        
+    def _train(self, batch_size, num_steps):
+        for classif in self.classifs:
+            c = classif(dataset=self.dataset, check_point_path=self.check_point_path)
+            c.train(batch_size=batch_size, num_steps=num_steps)
+            yield c
+
+    def train(self, batch_size=128, num_steps=1):
+        self.classifs = list(self._train(batch_size=batch_size, num_steps=num_steps))
+
+    def scores(self, order_column="f1"):
+        from operator import add
+        list_measure = reduce(add, (classif.calc_scores() for classif in self.classifs))
+        list_measure.print_scores(order_column=order_column)
 
 
 class BaseClassif(object):
     def __init__(self, model_name=None, dataset=None, 
-            check_point_path=None, model_version=None):
+            check_point_path=None, model_version=None,
+            dataset_train_limit=None):
         self.model = None
         self.model_name = model_name
         self.le = LabelEncoder()
@@ -94,9 +134,10 @@ class BaseClassif(object):
         self.check_point = os.path.join(check_point_path, self.__class__.__name__)
         self.model_version = model_version
         self.has_uncertain = False
+        self.dataset_train_limit = dataset_train_limit
         self.load_dataset(dataset)
 
-    def scores(self, order_column="f1"):
+    def calc_scores(self):
         list_measure = ListMeasure()
         predictions = self.predict(self.dataset.test_data, raw=False, transform=False)
         measure = Measure(np.asarray(list(predictions)), 
@@ -111,6 +152,11 @@ class BaseClassif(object):
             predictions = self.predict(self.dataset.test_data, raw=True, transform=False)
             udmeasure = UDMeasure(np.asarray(list(predictions)), self.dataset.test_labels)
             list_measure.add_measure("logloss", udmeasure.logloss())
+
+        return list_measure
+
+    def scores(self, order_column="f1"):
+        list_measure = self.calc_scores()
         list_measure.print_scores(order_column=order_column)
 
     def only_is(self, op):
@@ -163,6 +209,15 @@ class BaseClassif(object):
         if len(self.dataset.valid_labels) > 0:
             self.dataset.valid_data, self.dataset.valid_labels = self.reformat(
                 self.dataset.valid_data, self.le.transform(self.dataset.valid_labels))
+
+        if self.dataset_train_limit is not None:
+            if self.dataset.train_data.shape[0] > self.dataset_train_limit:
+                self.dataset.train_data = self.dataset.train_data[:self.dataset_train_limit]
+                self.dataset.train_labels = self.dataset.train_labels[:self.dataset_train_limit]
+
+            if self.dataset.valid_data.shape[0] > self.dataset_train_limit:
+                self.dataset.valid_data = self.dataset.valid_data[:self.dataset_train_limit]
+                self.dataset.valid_labels = self.dataset.valid_labels[:self.dataset_train_limit]
 
     def load_dataset(self, dataset):
         if dataset is None:
@@ -283,6 +338,9 @@ class BaseClassif(object):
             meta["dataset_name"],
             dataset_path=meta["dataset_path"])
 
+    def confusion_matrix(self):
+        pass
+
 
 class SKL(BaseClassif):
     def train(self, batch_size=0, num_steps=0):
@@ -315,47 +373,44 @@ class SKLP(SKL):
             yield self.convert_label(prediction, raw=raw)
 
 
-class TF(BaseClassif):
-    #def position_index(self, label):
-    #    return np.argmax(label)
-
-    def reformat(self, data, labels):
-        data = self.transform_shape(data)
+#class TF(BaseClassif):
+#    def reformat(self, data, labels):
+#        data = self.transform_shape(data)
         # Map 0 to [1.0, 0.0, 0.0 ...], 1 to [0.0, 1.0, 0.0 ...]
-        labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
-        return data, labels_m
+#        labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
+#        return data, labels_m
 
-    def train(self, batch_size=10, num_steps=3001):
-        self.prepare_model(batch_size)
-        with tf.Session(graph=self.graph) as session:
-            saver = tf.train.Saver()
-            tf.initialize_all_variables().run()
-            print "Initialized"
-            for step in xrange(num_steps):
+#    def train(self, batch_size=10, num_steps=3001):
+#        self.prepare_model(batch_size)
+#        with tf.Session(graph=self.graph) as session:
+#            saver = tf.train.Saver()
+#            tf.initialize_all_variables().run()
+#            print "Initialized"
+#            for step in xrange(num_steps):
                 # Pick an offset within the training data, which has been randomized.
                 # Note: we could use better randomization across epochs.
-                offset = (step * batch_size) % (self.dataset.train_labels.shape[0] - batch_size)
+#                offset = (step * batch_size) % (self.dataset.train_labels.shape[0] - batch_size)
                 # Generate a minibatch.
-                batch_data = self.dataset.train_data[offset:(offset + batch_size), :]
-                batch_labels = self.train_labels[offset:(offset + batch_size), :]
+#                batch_data = self.dataset.train_data[offset:(offset + batch_size), :]
+#                batch_labels = self.train_labels[offset:(offset + batch_size), :]
                 # Prepare a dictionary telling the session where to feed the minibatch.
                 # The key of the dictionary is the placeholder node of the graph to be fed,
                 # and the value is the numpy array to feed to it.
-                feed_dict = {self.tf_train_data : batch_data, self.tf_train_labels : batch_labels}
-                _, l, predictions = session.run(
-                [self.optimizer, self.loss, self.train_prediction], feed_dict=feed_dict)
-                if (step % 500 == 0):
-                    print "Minibatch loss at step", step, ":", l
-                    print "Minibatch accuracy: %.1f%%" % (self.accuracy(predictions, batch_labels)*100)
-                    print "Validation accuracy: %.1f%%" % (self.accuracy(
-                      self.valid_prediction.eval(), self.dataset.valid_labels)*100)
+#                feed_dict = {self.tf_train_data : batch_data, self.tf_train_labels : batch_labels}
+#                _, l, predictions = session.run(
+#                [self.optimizer, self.loss, self.train_prediction], feed_dict=feed_dict)
+#                if (step % 500 == 0):
+#                    print "Minibatch loss at step", step, ":", l
+#                    print "Minibatch accuracy: %.1f%%" % (self.accuracy(predictions, batch_labels)*100)
+#                    print "Validation accuracy: %.1f%%" % (self.accuracy(
+#                      self.valid_prediction.eval(), self.dataset.valid_labels)*100)
             #score_v = self.accuracy(self.test_prediction.eval(), self.dataset.test_labels)
-            self.save_model(saver, session, step)
+#            self.save_model(saver, session, step)
             #return score_v
 
-    def save_model(self, saver, session, step):
-        path = self.make_model_file()
-        saver.save(session, '{}.ckpt'.format(path), global_step=step)
+#    def save_model(self, saver, session, step):
+#        path = self.make_model_file()
+#        saver.save(session, '{}.ckpt'.format(path), global_step=step)
 
 
 class TFL(BaseClassif):

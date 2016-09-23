@@ -66,63 +66,65 @@ class SGDClassifier(SKLP):
         self.model = sig_clf
 
 
-class TensorFace(TF):
-    def prepare_model(self, batch_size, dropout=True):
-        self.graph = tf.Graph()
-        with self.graph.as_default():
+#class TensorFace(TF):
+#    def prepare_model(self, batch_size, dropout=True):
+#        self.graph = tf.Graph()
+#        with self.graph.as_default():
             # Input data. For the training data, we use a placeholder that will be fed
             # at run time with a training minibatch.
-            self.tf_train_dataset = tf.placeholder(tf.float32,
-                                            shape=(batch_size, self.num_features))
-            self.tf_train_labels = tf.placeholder(tf.float32, shape=(batch_size, self.num_labels))
-            self.tf_valid_dataset = tf.constant(self.dataset.valid_data)
-            self.tf_test_dataset = tf.constant(self.dataset.test_data)
+#            self.tf_train_dataset = tf.placeholder(tf.float32,
+#                                            shape=(batch_size, self.num_features))
+#            self.tf_train_labels = tf.placeholder(tf.float32, shape=(batch_size, self.num_labels))
+#            self.tf_valid_dataset = tf.constant(self.dataset.valid_data)
+#            self.tf_test_dataset = tf.constant(self.dataset.test_data)
 
             # Variables.
-            weights = tf.Variable(
-                tf.truncated_normal([self.num_features, self.num_labels]))
-            biases = tf.Variable(tf.zeros([self.num_labels]))
+#            weights = tf.Variable(
+#                tf.truncated_normal([self.num_features, self.num_labels]))
+#            biases = tf.Variable(tf.zeros([self.num_labels]))
 
             # Training computation.
-            if dropout is True:
-                hidden = tf.nn.dropout(self.tf_train_dataset, 0.5, seed=66478)
-                self.logits = tf.matmul(hidden, weights) + biases
-            else:
-                self.logits = tf.matmul(self.tf_train_dataset, weights) + biases
-            self.loss = tf.reduce_mean(
-                tf.nn.softmax_cross_entropy_with_logits(self.logits, self.tf_train_labels))
+#            if dropout is True:
+#                hidden = tf.nn.dropout(self.tf_train_dataset, 0.5, seed=66478)
+#                self.logits = tf.matmul(hidden, weights) + biases
+#            else:
+#                self.logits = tf.matmul(self.tf_train_dataset, weights) + biases
+#            self.loss = tf.reduce_mean(
+#                tf.nn.softmax_cross_entropy_with_logits(self.logits, self.tf_train_labels))
 
-            regularizers = tf.nn.l2_loss(weights) + tf.nn.l2_loss(biases)
-            self.loss += 5e-4 * regularizers
+#            regularizers = tf.nn.l2_loss(weights) + tf.nn.l2_loss(biases)
+#            self.loss += 5e-4 * regularizers
 
             # Optimizer.
-            self.optimizer = tf.train.GradientDescentOptimizer(0.5).minimize(self.loss)
+#            self.optimizer = tf.train.GradientDescentOptimizer(0.5).minimize(self.loss)
 
             # Predictions for the training, validation, and test data.
-            self.train_prediction = tf.nn.softmax(self.logits)
-            self.valid_prediction = tf.nn.softmax(
-                tf.matmul(self.tf_valid_dataset, weights) + biases)
-            self.test_prediction = tf.nn.softmax(tf.matmul(self.tf_test_dataset, weights) + biases)
+#            self.train_prediction = tf.nn.softmax(self.logits)
+#            self.valid_prediction = tf.nn.softmax(
+#                tf.matmul(self.tf_valid_dataset, weights) + biases)
+#            self.test_prediction = tf.nn.softmax(tf.matmul(self.tf_test_dataset, weights) + biases)
 
-    def _predict(self, imgs):
-        with tf.Session(graph=self.graph) as session:
-            saver = tf.train.Saver()
-            ckpt = tf.train.get_checkpoint_state(self.check_point + self.dataset.name + "/")
-            if ckpt and ckpt.model_checkpoint_path:
-                saver.restore(session, ckpt.model_checkpoint_path)
-            else:
-                print("...no checkpoint found...")
+#    def _predict(self, imgs):
+#        with tf.Session(graph=self.graph) as session:
+#            saver = tf.train.Saver()
+#            ckpt = tf.train.get_checkpoint_state(self.check_point + self.dataset.name + "/")
+#            if ckpt and ckpt.model_checkpoint_path:
+#                saver.restore(session, ckpt.model_checkpoint_path)
+#            else:
+#                print("...no checkpoint found...")
 
-            for img in imgs:
-                img = self.transform_shape(img)
-                feed_dict = {self.tf_train_dataset: img}
-                classification = session.run(self.train_prediction, feed_dict=feed_dict)
-                yield self.convert_label(classification)
+#            for img in imgs:
+#                img = self.transform_shape(img)
+#                feed_dict = {self.tf_train_dataset: img}
+#                classification = session.run(self.train_prediction, feed_dict=feed_dict)
+#                yield self.convert_label(classification)
 
 
 class GPC(TFL):
     def __init__(self, kernel=None, optimizer='scg', 
                 k_params={"variance":7., "lengthscale":0.2}, **kwargs):
+        if not 'dataset_train_limit' in kwargs:
+            kwargs['dataset_train_limit'] = 1000
         super(GPC, self).__init__(**kwargs)
         import GPy
         self.dim = self.dataset.num_features()
@@ -185,6 +187,9 @@ class GPC(TFL):
 
 
 class SVGPC(GPC):
+    def __init__(self, **kwargs):
+        super(SVGPC, self).__init__(**kwargs)
+
     def prepare_model(self):
         import GPy
         Z = np.random.rand(100, self.dataset.train_data.shape[1])
@@ -421,154 +426,154 @@ class LSTM(TFL):
             self.save_model()
 
 
-class Tensor2LFace(TF):
-    def __init__(self, *args, **kwargs):
-        super(Tensor2LFace, self).__init__(*args, **kwargs)
-        self.num_hidden = 1024
+#class Tensor2LFace(TF):
+#    def __init__(self, *args, **kwargs):
+#        super(Tensor2LFace, self).__init__(*args, **kwargs)
+#        self.num_hidden = 1024
 
-    def layers(self, dropout):
-        W1 = tf.Variable(
-            tf.truncated_normal([self.image_size * self.image_size, self.num_hidden], stddev=1.0 / 10), 
-            name='weights')
-        b1 = tf.Variable(tf.zeros([self.num_hidden]), name='biases')
-        hidden = tf.nn.relu(tf.matmul(self.tf_train_dataset, W1) + b1)
+#    def layers(self, dropout):
+#        W1 = tf.Variable(
+#            tf.truncated_normal([self.image_size * self.image_size, self.num_hidden], stddev=1.0 / 10), 
+#            name='weights')
+#        b1 = tf.Variable(tf.zeros([self.num_hidden]), name='biases')
+#        hidden = tf.nn.relu(tf.matmul(self.tf_train_dataset, W1) + b1)
 
-        W2 = tf.Variable(
-            tf.truncated_normal([self.num_hidden, self.num_labels]))
-        b2 = tf.Variable(tf.zeros([self.num_labels]))
+#        W2 = tf.Variable(
+#            tf.truncated_normal([self.num_hidden, self.num_labels]))
+#        b2 = tf.Variable(tf.zeros([self.num_labels]))
 
-        if dropout is True:
-            hidden = tf.nn.dropout(hidden, 0.5, seed=66478)
-        self.logits = tf.matmul(hidden, W2) + b2
-        return W1, b1, W2, b2
+#        if dropout is True:
+#            hidden = tf.nn.dropout(hidden, 0.5, seed=66478)
+#        self.logits = tf.matmul(hidden, W2) + b2
+#        return W1, b1, W2, b2
 
-    def fit(self, dropout=True):
-        self.graph = tf.Graph()
-        with self.graph.as_default():
-            self.tf_train_dataset = tf.placeholder(tf.float32,
-                                            shape=(self.batch_size, self.image_size * self.image_size))
-            self.tf_train_labels = tf.placeholder(tf.float32, shape=(self.batch_size, self.num_labels))
-            self.tf_valid_dataset = tf.constant(self.valid_dataset)
-            self.tf_test_dataset = tf.constant(self.test_dataset)
+#    def fit(self, dropout=True):
+#        self.graph = tf.Graph()
+#        with self.graph.as_default():
+#            self.tf_train_dataset = tf.placeholder(tf.float32,
+#                                            shape=(self.batch_size, self.image_size * self.image_size))
+#            self.tf_train_labels = tf.placeholder(tf.float32, shape=(self.batch_size, self.num_labels))
+#            self.tf_valid_dataset = tf.constant(self.valid_dataset)
+#            self.tf_test_dataset = tf.constant(self.test_dataset)
 
-            W1, b1, W2, b2 = self.layers(dropout)
+#            W1, b1, W2, b2 = self.layers(dropout)
 
-            self.loss = tf.reduce_mean(
-                tf.nn.softmax_cross_entropy_with_logits(self.logits, self.tf_train_labels))
+#            self.loss = tf.reduce_mean(
+#                tf.nn.softmax_cross_entropy_with_logits(self.logits, self.tf_train_labels))
 
-            regularizers = tf.nn.l2_loss(W1) + tf.nn.l2_loss(b1) + tf.nn.l2_loss(W2) + tf.nn.l2_loss(b2)
-            self.loss += 5e-4 * regularizers
+#            regularizers = tf.nn.l2_loss(W1) + tf.nn.l2_loss(b1) + tf.nn.l2_loss(W2) + tf.nn.l2_loss(b2)
+#            self.loss += 5e-4 * regularizers
 
-            self.optimizer = tf.train.GradientDescentOptimizer(0.5).minimize(self.loss)
+#            self.optimizer = tf.train.GradientDescentOptimizer(0.5).minimize(self.loss)
 
-            self.train_prediction = tf.nn.softmax(self.logits)
-            hidden_valid =  tf.nn.relu(tf.matmul(self.tf_valid_dataset, W1) + b1)
-            valid_logits = tf.matmul(hidden_valid, W2) + b2
-            self.valid_prediction = tf.nn.softmax(valid_logits)
-            hidden_test = tf.nn.relu(tf.matmul(self.tf_test_dataset, W1) + b1)
-            test_logits = tf.matmul(hidden_test, W2) + b2
-            self.test_prediction = tf.nn.softmax(test_logits)
+#            self.train_prediction = tf.nn.softmax(self.logits)
+#            hidden_valid =  tf.nn.relu(tf.matmul(self.tf_valid_dataset, W1) + b1)
+#            valid_logits = tf.matmul(hidden_valid, W2) + b2
+#            self.valid_prediction = tf.nn.softmax(valid_logits)
+#            hidden_test = tf.nn.relu(tf.matmul(self.tf_test_dataset, W1) + b1)
+#            test_logits = tf.matmul(hidden_test, W2) + b2
+#            self.test_prediction = tf.nn.softmax(test_logits)
 
 
-class ConvTensorFace(TF):
-    def __init__(self, *args, **kwargs):
-        self.num_channels = 1
-        self.patch_size = 5
-        self.depth = 32
-        super(ConvTensorFace, self).__init__(*args, **kwargs)        
-        self.num_hidden = 64
+#class ConvTensorFace(TF):
+#    def __init__(self, *args, **kwargs):
+#        self.num_channels = 1
+#        self.patch_size = 5
+#        self.depth = 32
+#        super(ConvTensorFace, self).__init__(*args, **kwargs)        
+#        self.num_hidden = 64
 
-    def transform_shape(self, img):
-        return img.reshape((-1, self.image_size, self.image_size, self.num_channels)).astype(np.float32)
+#    def transform_shape(self, img):
+#        return img.reshape((-1, self.image_size, self.image_size, self.num_channels)).astype(np.float32)
 
-    def layers(self, data, layer1_weights, layer1_biases, layer2_weights, layer2_biases, 
-            layer3_weights, layer3_biases, dropout=False):
-        conv = tf.nn.conv2d(data, layer1_weights, [1, 2, 2, 1], padding='SAME')
-        hidden = tf.nn.relu(conv + layer1_biases)
-        pool = tf.nn.max_pool(hidden,
-                              ksize=[1, 2, 2, 1],
-                              strides=[1, 2, 2, 1],
-                              padding='SAME')
-        shape = pool.get_shape().as_list()
-        reshape = tf.reshape(pool, [shape[0], shape[1] * shape[2] * shape[3]])
-        hidden = tf.nn.relu(tf.matmul(reshape, layer2_weights) + layer2_biases)
-        if dropout:
-            hidden = tf.nn.dropout(hidden, 0.5, seed=66478)
-        return tf.matmul(hidden, layer3_weights) + layer3_biases
+#    def layers(self, data, layer1_weights, layer1_biases, layer2_weights, layer2_biases, 
+#            layer3_weights, layer3_biases, dropout=False):
+#        conv = tf.nn.conv2d(data, layer1_weights, [1, 2, 2, 1], padding='SAME')
+#        hidden = tf.nn.relu(conv + layer1_biases)
+#        pool = tf.nn.max_pool(hidden,
+#                              ksize=[1, 2, 2, 1],
+#                              strides=[1, 2, 2, 1],
+#                              padding='SAME')
+#        shape = pool.get_shape().as_list()
+#        reshape = tf.reshape(pool, [shape[0], shape[1] * shape[2] * shape[3]])
+#        hidden = tf.nn.relu(tf.matmul(reshape, layer2_weights) + layer2_biases)
+#        if dropout:
+#            hidden = tf.nn.dropout(hidden, 0.5, seed=66478)
+#        return tf.matmul(hidden, layer3_weights) + layer3_biases
 
-    def fit(self, dropout=True):
-        import math
-        self.graph = tf.Graph()
-        with self.graph.as_default():
-            self.tf_train_dataset = tf.placeholder(
-                tf.float32, shape=(self.batch_size, self.image_size, self.image_size, self.num_channels))
-            self.tf_train_labels = tf.placeholder(tf.float32, shape=(self.batch_size, self.num_labels))
-            self.tf_valid_dataset = tf.constant(self.valid_data)
-            self.tf_test_dataset = tf.constant(self.test_data)
+#    def fit(self, dropout=True):
+#        import math
+#        self.graph = tf.Graph()
+#        with self.graph.as_default():
+#            self.tf_train_dataset = tf.placeholder(
+#                tf.float32, shape=(self.batch_size, self.image_size, self.image_size, self.num_channels))
+#            self.tf_train_labels = tf.placeholder(tf.float32, shape=(self.batch_size, self.num_labels))
+#            self.tf_valid_dataset = tf.constant(self.valid_data)
+#            self.tf_test_dataset = tf.constant(self.test_data)
 
             # Variables.
-            layer3_size = int(math.ceil(self.image_size / 4.))
-            layer1_weights = tf.Variable(tf.truncated_normal(
-                [self.patch_size, self.patch_size, self.num_channels, self.depth], stddev=0.1))
-            layer1_biases = tf.Variable(tf.zeros([self.depth]))
-            layer2_weights = tf.Variable(tf.truncated_normal(
-                [layer3_size * layer3_size * self.depth, self.num_hidden], stddev=0.1)) # 4 num of ksize
-            layer2_biases = tf.Variable(tf.constant(1.0, shape=[self.num_hidden]))
-            layer3_weights = tf.Variable(tf.truncated_normal(
-                [self.num_hidden, self.num_labels], stddev=0.1))
-            layer3_biases = tf.Variable(tf.constant(1.0, shape=[self.num_labels]))
+#            layer3_size = int(math.ceil(self.image_size / 4.))
+#            layer1_weights = tf.Variable(tf.truncated_normal(
+#                [self.patch_size, self.patch_size, self.num_channels, self.depth], stddev=0.1))
+#            layer1_biases = tf.Variable(tf.zeros([self.depth]))
+#            layer2_weights = tf.Variable(tf.truncated_normal(
+#                [layer3_size * layer3_size * self.depth, self.num_hidden], stddev=0.1)) # 4 num of ksize
+#            layer2_biases = tf.Variable(tf.constant(1.0, shape=[self.num_hidden]))
+#            layer3_weights = tf.Variable(tf.truncated_normal(
+#                [self.num_hidden, self.num_labels], stddev=0.1))
+#            layer3_biases = tf.Variable(tf.constant(1.0, shape=[self.num_labels]))
 
-            self.logits = self.layers(self.tf_train_dataset, layer1_weights, 
-                layer1_biases, layer2_weights, layer2_biases, layer3_weights, 
-                layer3_biases, dropout=dropout)
+#            self.logits = self.layers(self.tf_train_dataset, layer1_weights, 
+#                layer1_biases, layer2_weights, layer2_biases, layer3_weights, 
+#                layer3_biases, dropout=dropout)
 
-            self.loss = tf.reduce_mean(
-                tf.nn.softmax_cross_entropy_with_logits(self.logits, self.tf_train_labels))
-            regularizers = tf.nn.l2_loss(layer1_weights) + tf.nn.l2_loss(layer1_biases) +\
-            tf.nn.l2_loss(layer2_weights) + tf.nn.l2_loss(layer2_biases) +\
-            tf.nn.l2_loss(layer3_weights) + tf.nn.l2_loss(layer3_biases)
-            self.loss += 5e-4 * regularizers
+#            self.loss = tf.reduce_mean(
+#                tf.nn.softmax_cross_entropy_with_logits(self.logits, self.tf_train_labels))
+#            regularizers = tf.nn.l2_loss(layer1_weights) + tf.nn.l2_loss(layer1_biases) +\
+#            tf.nn.l2_loss(layer2_weights) + tf.nn.l2_loss(layer2_biases) +\
+#            tf.nn.l2_loss(layer3_weights) + tf.nn.l2_loss(layer3_biases)
+#            self.loss += 5e-4 * regularizers
 
             # Optimizer: set up a variable that's incremented once per batch and
             # controls the learning rate decay.
-            batch = tf.Variable(0)
+#            batch = tf.Variable(0)
             # Decay once per epoch, using an exponential schedule starting at 0.01.
-            learning_rate = tf.train.exponential_decay(
-              0.01,                # Base learning rate.
-              batch * self.batch_size,  # Current index into the dataset.
-              self.train_labels.shape[0],          # train_labels.shape[0] Decay step.
-              0.95,                # Decay rate.
-              staircase=True)
-            self.optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9).minimize(self.loss,
-                global_step=batch)
+#            learning_rate = tf.train.exponential_decay(
+#              0.01,                # Base learning rate.
+#              batch * self.batch_size,  # Current index into the dataset.
+#              self.train_labels.shape[0],          # train_labels.shape[0] Decay step.
+#              0.95,                # Decay rate.
+#              staircase=True)
+#            self.optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9).minimize(self.loss,
+#                global_step=batch)
 
             # Predictions for the training, validation, and test data.
-            self.train_prediction = tf.nn.softmax(self.logits)
-            self.valid_prediction = tf.nn.softmax(self.layers(self.tf_valid_dataset, layer1_weights, 
-                layer1_biases, layer2_weights, layer2_biases, layer3_weights, 
-                layer3_biases))
-            self.test_prediction = tf.nn.softmax(self.layers(self.tf_test_dataset, layer1_weights, 
-                layer1_biases, layer2_weights, layer2_biases, layer3_weights, 
-                layer3_biases))
+#            self.train_prediction = tf.nn.softmax(self.logits)
+#            self.valid_prediction = tf.nn.softmax(self.layers(self.tf_valid_dataset, layer1_weights, 
+#                layer1_biases, layer2_weights, layer2_biases, layer3_weights, 
+#                layer3_biases))
+#            self.test_prediction = tf.nn.softmax(self.layers(self.tf_test_dataset, layer1_weights, 
+#                layer1_biases, layer2_weights, layer2_biases, layer3_weights, 
+#                layer3_biases))
 
-    def train(self, num_steps=0):
-        with tf.Session(graph=self.graph) as session:
-            saver = tf.train.Saver()
-            tf.initialize_all_variables().run()
-            print("Initialized")
-            for step in xrange(int(15 * self.train_labels.shape[0]) // self.batch_size):
-                offset = (step * self.batch_size) % (self.train_labels.shape[0] - self.batch_size)
-                batch_data = self.train_data[offset:(offset + self.batch_size), :, :, :]
-                batch_labels = self.train_labels[offset:(offset + self.batch_size), :]
-                feed_dict = {self.tf_train_data : batch_data, self.tf_train_labels : batch_labels}
-                _, l, predictions = session.run(
-                [self.optimizer, self.loss, self.train_prediction], feed_dict=feed_dict)
-                if (step % 5000 == 0):
-                    print "Minibatch loss at step", step, ":", l
-                    print "Minibatch accuracy: %.1f%%" % self.accuracy(predictions, batch_labels)
-                    print "Validation accuracy: %.1f%%" % self.accuracy(
-                    self.valid_prediction.eval(), self.valid_labels)
-            score = self.accuracy(self.test_prediction.eval(), self.test_labels)
+#    def train(self, num_steps=0):
+#        with tf.Session(graph=self.graph) as session:
+#            saver = tf.train.Saver()
+#            tf.initialize_all_variables().run()
+#            print("Initialized")
+#            for step in xrange(int(15 * self.train_labels.shape[0]) // self.batch_size):
+#                offset = (step * self.batch_size) % (self.train_labels.shape[0] - self.batch_size)
+#                batch_data = self.train_data[offset:(offset + self.batch_size), :, :, :]
+#                batch_labels = self.train_labels[offset:(offset + self.batch_size), :]
+#                feed_dict = {self.tf_train_data : batch_data, self.tf_train_labels : batch_labels}
+#                _, l, predictions = session.run(
+#                [self.optimizer, self.loss, self.train_prediction], feed_dict=feed_dict)
+#                if (step % 5000 == 0):
+#                    print "Minibatch loss at step", step, ":", l
+#                    print "Minibatch accuracy: %.1f%%" % self.accuracy(predictions, batch_labels)
+#                    print "Validation accuracy: %.1f%%" % self.accuracy(
+#                    self.valid_prediction.eval(), self.valid_labels)
+#            score = self.accuracy(self.test_prediction.eval(), self.test_labels)
             #print('Test accuracy: %.1f' % score)
-            self.save_model(saver, session, step)
-            return score
+#            self.save_model(saver, session, step)
+#            return score

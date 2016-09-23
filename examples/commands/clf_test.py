@@ -14,16 +14,19 @@ np.random.seed(1)
 
 def mll():
     DIM = 21
-    SIZE = 1000
+    SIZE = 100000
     X = np.random.rand(SIZE, DIM)
     Y = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
     dataset = ml.ds.DataSetBuilder("gpc_test", dataset_path=settings["dataset_path"])
     dataset.build_from_data_labels(X, Y)
-    classif = ml.clf.extended.GPC(dataset=dataset, check_point_path=settings["checkpoints_path"])
-    #classif = ml.clf.extended.RandomForest(dataset=dataset, check_point_path="/home/sc/ml_data/checkpoints/")
-    #classif = ml.clf.extended.SGDClassifier(dataset=dataset, check_point_path="/home/sc/ml_data/checkpoints/")
-    #classif = ml.clf.extended.SVC(dataset=dataset, check_point_path="/home/sc/ml_data/checkpoints/")
-    #classif = ml.clf.extended.SVGPC(optimizer='Adadelta', dataset=dataset, check_point_path="/home/sc/ml_data/checkpoints/")
+    classif = ml.clf.generic.Grid([
+        ml.clf.extended.RandomForest,
+        ml.clf.extended.SGDClassifier,
+        ml.clf.extended.SVC,
+        #ml.clf.extended.SVGPC,
+        ml.clf.extended.GPC],
+        dataset=dataset, 
+        check_point_path="/home/sc/ml_data/checkpoints/")
     classif.train(batch_size=128, num_steps=2)
     classif.scores()
 
