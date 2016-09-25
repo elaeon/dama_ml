@@ -120,7 +120,7 @@ class SGDClassifier(SKLP):
 #                yield self.convert_label(classification)
 
 
-class GPC(TFL):
+class GPC(SKLP):
     def __init__(self, kernel=None, optimizer='scg', 
                 k_params={"variance":7., "lengthscale":0.2}, **kwargs):
         if not 'dataset_train_limit' in kwargs:
@@ -175,20 +175,20 @@ class GPC(TFL):
     def load_model(self):
         import GPy
         self.model = GPy.models.GPClassification(self.dataset.train_data, 
-            self.dataset.train_labels.reshape(-1, 1), kernel=self.k, initialize=False)    
-        r = np.load(self.check_point+self.dataset.name+"/"+self.dataset.name+".npy")
+            self.dataset.train_labels.reshape(-1, 1), kernel=self.k, initialize=False)
+        path = self.make_model_file(check=False)
+        r = np.load(path+".npy")
         self.model.update_model(False) # do not call the underlying expensive algebra on load
         self.model.initialize_parameter() # Initialize the parameters (connect the parameters up)
-        self.model[:] = r
+        self.model[:] = r[:2]
         self.model.update_model(True) # Call the algebra only once 
-        ## old ##       
-        #self.model[:] = r[:2]
-        #self.model.initialize_parameter()
 
 
 class SVGPC(GPC):
-    def __init__(self, **kwargs):
-        super(SVGPC, self).__init__(**kwargs)
+    def __init__(self, kernel=None, optimizer='Adadelta', 
+                k_params={"variance":7., "lengthscale":0.2}, **kwargs):
+        super(SVGPC, self).__init__(kernel=kernel, optimizer=optimizer, 
+                                    k_params=k_params, **kwargs)
 
     def prepare_model(self):
         import GPy

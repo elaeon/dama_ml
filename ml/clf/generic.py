@@ -105,21 +105,30 @@ class Grid(object):
         self.model_name = model_name
         self.check_point_path = check_point_path
         self.model_version = model_version
-        self.classifs = classifs
         self.dataset = dataset
+        self.classifs = classifs
+        self.classifs_reader = None
         
-    def _train(self, batch_size, num_steps):
+    def load_models(self):
         for classif in self.classifs:
-            c = classif(dataset=self.dataset, check_point_path=self.check_point_path)
-            c.train(batch_size=batch_size, num_steps=num_steps)
-            yield c
+            yield classif(dataset=self.dataset, 
+                model_name=self.model_name, 
+                model_version=self.model_version, 
+                check_point_path=self.check_point_path)
+    
+    def _train(self, batch_size=128, num_steps=1):
+        for classif in self.load_models():
+            classif.train(batch_size=batch_size, num_steps=num_steps)
+            yield classif
 
     def train(self, batch_size=128, num_steps=1):
-        self.classifs = list(self._train(batch_size=batch_size, num_steps=num_steps))
-
+        self.classifs_reader = self._train(batch_size=batch_size, num_steps=num_steps)
+    
     def scores(self, order_column="f1"):
         from operator import add
-        list_measure = reduce(add, (classif.calc_scores() for classif in self.classifs))
+        if self.classifs_reader is None:
+            self.classifs_reader = self.load_models()
+        list_measure = reduce(add, (classif.calc_scores() for classif in self.classifs_reader))
         list_measure.print_scores(order_column=order_column)
 
 
@@ -441,13 +450,9 @@ class TFL(BaseClassif):
             if self.model is None:
                 self.load_model()
 
-            if isinstance(data, list):
-                data = np.asarray(data)
-
             if transform is True:
-                if len(data.shape) > 2:
-                    data = data.reshape(data.shape[0], -1).astype(np.float32)
-                data = self.transform_shape(self.dataset.processing(data, 'global'))
+                ndata = [self.dataset.processing(datum, 'global') for datum in data]
+                data = self.transform_shape(np.asarray(ndata))
 
             return self._predict(data, raw=raw)
 

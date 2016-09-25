@@ -12,7 +12,7 @@ settings = get_settings("ml")
 np.random.seed(1)
 
 
-def mll():
+def train():
     DIM = 21
     SIZE = 100000
     X = np.random.rand(SIZE, DIM)
@@ -23,11 +23,24 @@ def mll():
         ml.clf.extended.RandomForest,
         ml.clf.extended.SGDClassifier,
         ml.clf.extended.SVC,
-        #ml.clf.extended.SVGPC,
+        ml.clf.extended.SVGPC,
         ml.clf.extended.GPC],
-        dataset=dataset, 
-        check_point_path="/home/sc/ml_data/checkpoints/")
+        dataset=dataset,
+        model_version="1",
+        check_point_path=settings["checkpoints_path"])
     classif.train(batch_size=128, num_steps=2)
+    classif.scores()
+
+def test():
+    classif = ml.clf.generic.Grid([
+        ml.clf.extended.RandomForest,
+        ml.clf.extended.SGDClassifier,
+        ml.clf.extended.SVC,
+        ml.clf.extended.SVGPC,
+        ml.clf.extended.GPC],
+        model_name="gpc_test",
+        model_version="1", 
+        check_point_path=settings["checkpoints_path"])
     classif.scores()
 
 
@@ -41,4 +54,7 @@ if __name__ == '__main__':
     parser.add_argument("--model-name", type=str)
     parser.add_argument("--model-version", type=str)
     args = parser.parse_args()
-    mll()
+    if args.train:
+        train()
+    elif args.test:
+        test()
