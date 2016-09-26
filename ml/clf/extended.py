@@ -43,6 +43,17 @@ class RandomForest(SKLP):
         self.model = sig_clf
 
 
+class ExtraTrees(SKLP):
+    def prepare_model(self):
+        from sklearn.ensemble import ExtraTreesClassifier
+        from sklearn.calibration import CalibratedClassifierCV
+        reg = ExtraTreesClassifier(n_estimators=25, min_samples_split=2)
+        reg.fit(self.dataset.train_data, self.dataset.train_labels)
+        sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
+        sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
+        self.model = sig_clf
+
+
 class LogisticRegression(SKLP):
     def prepare_model(self):
         from sklearn.linear_model import LogisticRegression
@@ -64,6 +75,46 @@ class SGDClassifier(SKLP):
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
         self.model = sig_clf
+
+
+class AdaBoost(SKLP):
+    def prepare_model(self):
+        from sklearn.ensemble import AdaBoostClassifier
+        from sklearn.calibration import CalibratedClassifierCV
+        reg = AdaBoostClassifier(n_estimators=25, learning_rate=1.0)
+        reg.fit(self.dataset.train_data, self.dataset.train_labels)
+        sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
+        sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
+        self.model = sig_clf
+
+
+class GradientBoost(SKLP):
+    def prepare_model(self):
+        from sklearn.ensemble import GradientBoostingClassifier
+        from sklearn.calibration import CalibratedClassifierCV
+        reg = GradientBoostingClassifier(n_estimators=25, learning_rate=1.0)
+        reg.fit(self.dataset.train_data, self.dataset.train_labels)
+        sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
+        sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
+        self.model = sig_clf
+
+
+class Voting(SKLP):
+    def prepare_model(self):
+        from sklearn.ensemble import VotingClassifier
+        from sklearn.linear_model import SGDClassifier
+        from sklearn.ensemble import RandomForestClassifier
+        from sklearn import svm
+        from sklearn.calibration import CalibratedClassifierCV
+
+        clf1 = CalibratedClassifierCV(svm.SVC(C=1, kernel='rbf', probability=True), method="sigmoid")
+        clf2 = CalibratedClassifierCV(RandomForestClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
+        clf3 = CalibratedClassifierCV(SGDClassifier(loss='log', penalty='elasticnet', 
+            alpha=.0001, n_iter=100, n_jobs=-1), method="sigmoid")
+        eclf = VotingClassifier(estimators=[('svc', clf1), ('rf', clf2), ('sgd', clf3)], 
+            voting='soft', weights=[1,2,1])
+        eclf.fit(self.dataset.train_data, self.dataset.train_labels)
+        self.model = eclf
 
 
 #class TensorFace(TF):
@@ -142,6 +193,7 @@ class GPC(SKLP):
             self.model.optimize(self.optimizer, max_iters=100, messages=False) 
             pbar.set_description("Processing {}".format(label))
         self.save_model()
+        self.load_model()
 
     def transform_to_gpy_labels(self, labels):
         t_labels = np.ndarray(

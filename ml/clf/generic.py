@@ -14,34 +14,39 @@ class Measure(object):
             self.transform = lambda x: x
         
         self.labels = labels
-        self.predictions = predictions
+        self.predictions = self.transform(predictions)
         self.average = "macro"
 
     def accuracy(self):
         from sklearn.metrics import accuracy_score
-        return accuracy_score(self.labels, self.transform(self.predictions))
+        return accuracy_score(self.labels, self.predictions)
 
     #false positives
     def precision(self):
         from sklearn.metrics import precision_score
-        return precision_score(self.labels, self.transform(self.predictions), 
+        return precision_score(self.labels, self.predictions, 
             average=self.average, pos_label=None)
 
     #false negatives
     def recall(self):
         from sklearn.metrics import recall_score
-        return recall_score(self.labels, self.transform(self.predictions), 
+        return recall_score(self.labels, self.predictions, 
             average=self.average, pos_label=None)
 
     #weighted avg presicion and recall
     def f1(self):
         from sklearn.metrics import f1_score
-        return f1_score(self.labels, self.transform(self.predictions), 
+        return f1_score(self.labels, self.predictions, 
             average=self.average, pos_label=None)
 
     def logloss(self):
         from sklearn.metrics import log_loss
-        return log_loss(self.labels, self.transform(self.predictions))
+        return log_loss(self.labels, self.predictions)
+
+    def auc(self):
+        from sklearn.metrics import roc_auc_score
+        return roc_auc_score(self.labels, self.predictions, 
+            average=self.average)
 
 
 class UDMeasure(object):
@@ -91,10 +96,8 @@ class ListMeasure(object):
             this_measures = self.measures
             other_measures = other.measures
 
-        measures = []
-        measures.extend(this_measures) 
-        measures.extend(other_measures)
-        list_measure = ListMeasure(headers=headers, measures=measures)
+        list_measure = ListMeasure(
+            headers=headers, measures=this_measures+other_measures)
         return list_measure
 
 
@@ -110,11 +113,12 @@ class Grid(object):
         self.classifs_reader = None
         
     def load_models(self):
-        for classif in self.classifs:
+        for index, classif in enumerate(self.classifs):
             yield classif(dataset=self.dataset, 
                 model_name=self.model_name, 
                 model_version=self.model_version, 
-                check_point_path=self.check_point_path)
+                check_point_path=self.check_point_path,
+                info=(index == 0))
     
     def _train(self, batch_size=128, num_steps=1):
         for classif in self.load_models():
@@ -135,7 +139,8 @@ class Grid(object):
 class BaseClassif(object):
     def __init__(self, model_name=None, dataset=None, 
             check_point_path=None, model_version=None,
-            dataset_train_limit=None):
+            dataset_train_limit=None,
+            info=True):
         self.model = None
         self.model_name = model_name
         self.le = LabelEncoder()
@@ -144,6 +149,7 @@ class BaseClassif(object):
         self.model_version = model_version
         self.has_uncertain = False
         self.dataset_train_limit = dataset_train_limit
+        self.print_info = info
         self.load_dataset(dataset)
 
     def calc_scores(self):
@@ -157,6 +163,7 @@ class BaseClassif(object):
         list_measure.add_measure("precision", measure.precision())
         list_measure.add_measure("recall", measure.recall()) 
         list_measure.add_measure("f1", measure.f1())
+        list_measure.add_measure("auc", measure.auc())
         if self.has_uncertain:
             predictions = self.predict(self.dataset.test_data, raw=True, transform=False)
             udmeasure = UDMeasure(np.asarray(list(predictions)), self.dataset.test_labels)
@@ -345,7 +352,8 @@ class BaseClassif(object):
         meta = self.load_meta()
         return DataSetBuilder.load_dataset(
             meta["dataset_name"],
-            dataset_path=meta["dataset_path"])
+            dataset_path=meta["dataset_path"],
+            info=self.print_info)
 
     def confusion_matrix(self):
         pass
