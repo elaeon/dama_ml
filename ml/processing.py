@@ -75,6 +75,11 @@ class Preprocessing(object):
         self.data = data
         self.transforms = transforms
 
+    def variance_threshold(self, threshold):
+        from sklearn.feature_selection import VarianceThreshold
+        selector = VarianceThreshold(threshold=threshold)
+        self.data = selector.fit_transform(self.data)
+        
     def scale(self):
         self.data = preprocessing.scale(self.data)
 

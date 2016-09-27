@@ -17,19 +17,21 @@ def train():
     SIZE = 100000
     X = np.random.rand(SIZE, DIM)
     Y = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
-    dataset = ml.ds.DataSetBuilder("gpc_test", dataset_path=settings["dataset_path"])
+    dataset = ml.ds.DataSetBuilder(
+        "gpc_test", dataset_path=settings["dataset_path"], 
+        transforms=[("variance_threshold", 0.0), ('scale', None)])
     dataset.build_from_data_labels(X, Y)
     classif = ml.clf.generic.Grid([
-        #ml.clf.extended.ExtraTrees,
-        #ml.clf.extended.MLP,
-        #ml.clf.extended.RandomForest,
-        #ml.clf.extended.SGDClassifier,
-        #ml.clf.extended.SVC,
-        #ml.clf.extended.SVGPC,
-        #ml.clf.extended.GPC,
-        #ml.clf.extended.LogisticRegression,
-        #ml.clf.extended.AdaBoost,
-        #ml.clf.extended.GradientBoost,
+        ml.clf.extended.ExtraTrees,
+        ml.clf.extended.MLP,
+        ml.clf.extended.RandomForest,
+        ml.clf.extended.SGDClassifier,
+        ml.clf.extended.SVC,
+        ml.clf.extended.SVGPC,
+        ml.clf.extended.GPC,
+        ml.clf.extended.LogisticRegression,
+        ml.clf.extended.AdaBoost,
+        ml.clf.extended.GradientBoost,
         ml.clf.extended.Voting],
         dataset=dataset,
         model_version="1",

@@ -25,7 +25,8 @@ class SVC(SKL):
     def prepare_model(self):
         from sklearn.calibration import CalibratedClassifierCV
         from sklearn import svm
-        reg = svm.LinearSVC(C=1, max_iter=1000)
+        reg = CalibratedClassifierCV(
+            svm.LinearSVC(C=1, max_iter=1000), method="sigmoid")
         reg = reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
@@ -36,7 +37,8 @@ class RandomForest(SKLP):
     def prepare_model(self):
         from sklearn.ensemble import RandomForestClassifier
         from sklearn.calibration import CalibratedClassifierCV
-        reg = RandomForestClassifier(n_estimators=25, min_samples_split=2)
+        reg = CalibratedClassifierCV(
+            RandomForestClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
@@ -47,7 +49,8 @@ class ExtraTrees(SKLP):
     def prepare_model(self):
         from sklearn.ensemble import ExtraTreesClassifier
         from sklearn.calibration import CalibratedClassifierCV
-        reg = ExtraTreesClassifier(n_estimators=25, min_samples_split=2)
+        reg = CalibratedClassifierCV(
+            ExtraTreesClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
@@ -58,7 +61,9 @@ class LogisticRegression(SKLP):
     def prepare_model(self):
         from sklearn.linear_model import LogisticRegression
         from sklearn.calibration import CalibratedClassifierCV
-        reg = LogisticRegression(solver="lbfgs", multi_class="multinomial")#"newton-cg")
+        reg = CalibratedClassifierCV(
+            LogisticRegression(solver="lbfgs", multi_class="multinomial")#"newton-cg")
+            , method="sigmoid")
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
@@ -69,8 +74,9 @@ class SGDClassifier(SKLP):
     def prepare_model(self):
         from sklearn.linear_model import SGDClassifier
         from sklearn.calibration import CalibratedClassifierCV
-        reg = SGDClassifier(loss='log', penalty='elasticnet', 
-            alpha=.0001, n_iter=100, n_jobs=-1)
+        reg = CalibratedClassifierCV(
+            SGDClassifier(loss='log', penalty='elasticnet', 
+            alpha=.0001, n_iter=100, n_jobs=-1), method="sigmoid")
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
@@ -81,7 +87,8 @@ class AdaBoost(SKLP):
     def prepare_model(self):
         from sklearn.ensemble import AdaBoostClassifier
         from sklearn.calibration import CalibratedClassifierCV
-        reg = AdaBoostClassifier(n_estimators=25, learning_rate=1.0)
+        reg = CalibratedClassifierCV(
+            AdaBoostClassifier(n_estimators=25, learning_rate=1.0), method="sigmoid")
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
@@ -92,7 +99,8 @@ class GradientBoost(SKLP):
     def prepare_model(self):
         from sklearn.ensemble import GradientBoostingClassifier
         from sklearn.calibration import CalibratedClassifierCV
-        reg = GradientBoostingClassifier(n_estimators=25, learning_rate=1.0)
+        reg = CalibratedClassifierCV(
+            GradientBoostingClassifier(n_estimators=25, learning_rate=1.0), method="sigmoid")
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
@@ -104,17 +112,22 @@ class Voting(SKLP):
         from sklearn.ensemble import VotingClassifier
         from sklearn.linear_model import SGDClassifier
         from sklearn.ensemble import RandomForestClassifier
-        from sklearn import svm
+        from sklearn.ensemble import GradientBoostingClassifier
         from sklearn.calibration import CalibratedClassifierCV
 
-        clf1 = CalibratedClassifierCV(svm.SVC(C=1, kernel='rbf', probability=True), method="sigmoid")
-        clf2 = CalibratedClassifierCV(RandomForestClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
-        clf3 = CalibratedClassifierCV(SGDClassifier(loss='log', penalty='elasticnet', 
+        clf1 = CalibratedClassifierCV(
+            GradientBoostingClassifier(n_estimators=25, learning_rate=1.0), method="sigmoid")
+        clf2 = CalibratedClassifierCV(
+            RandomForestClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
+        clf3 = CalibratedClassifierCV(
+            SGDClassifier(loss='log', penalty='elasticnet', 
             alpha=.0001, n_iter=100, n_jobs=-1), method="sigmoid")
-        eclf = VotingClassifier(estimators=[('svc', clf1), ('rf', clf2), ('sgd', clf3)], 
-            voting='soft', weights=[1,2,1])
+        eclf = VotingClassifier(estimators=[('ada', clf1), ('rf', clf2), ('sgd', clf3)], 
+            voting='soft', weights=[3,2,1])
         eclf.fit(self.dataset.train_data, self.dataset.train_labels)
-        self.model = eclf
+        sig_clf = CalibratedClassifierCV(eclf, method="sigmoid", cv="prefit")
+        sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
+        self.model = sig_clf
 
 
 #class TensorFace(TF):

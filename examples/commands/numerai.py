@@ -43,23 +43,16 @@ def merge_data_labels():
     return data, labels
 
 
-def build(dataset_name):
+def build(dataset_name, transforms=None):
     dataset = ml.ds.DataSetBuilderFile(
         dataset_name, 
         dataset_path=settings["dataset_path"], 
         processing_class=Preprocessing,
-        train_folder_path=settings["numerai_train"])
+        train_folder_path=settings["numerai_train"],
+        transforms=transforms)
     dataset.build_dataset(label_column="target")
     return dataset
 
-
-#dataset = dataset.subset(.0085)
-#dataset.info()
-#import GPy
-#classif = ml.clf_e.SVC(dataset, check_point_path=check_point_path, pprint=False)
-#classif = ml.clf_e.LSTM(dataset, check_point_path=check_point_path, pprint=False, timesteps=7)
-#classif = ml.clf_e.GPC(kernel=GPy.kern.sde_StdPeriodic, k_params={"variance":1., "period": 3}, dataset=dataset, check_point_path=check_point_path, pprint=False)
-#
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -69,17 +62,32 @@ if __name__ == '__main__':
     parser.add_argument("--epoch", type=int)
     parser.add_argument("--predic", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--model-version", type=str)
+    parser.add_argument("--transform", action="store_true")
     args = parser.parse_args()
 
 
     if args.build_dataset:
-        dataset = build(args.model_name)
+        transforms = None if args.transform else []
+        dataset = build(args.model_name, transforms=transforms)
 
     if args.train == 1:
         dataset = ml.ds.DataSetBuilderFile.load_dataset(
             args.model_name, dataset_path=settings["dataset_path"])
-        classif = ml.clf.extended.LSTM(dataset=dataset, check_point_path=settings["checkpoints_path"], 
-            timesteps=7, model_version=args.model_version)
+        #classif = ml.clf.extended.LSTM(dataset=dataset, check_point_path=settings["checkpoints_path"], 
+        #    timesteps=7, model_version=args.model_version)
+        classif = ml.clf.generic.Grid([
+            ml.clf.extended.ExtraTrees,
+            ml.clf.extended.MLP,
+            ml.clf.extended.RandomForest,
+            ml.clf.extended.SGDClassifier,
+            ml.clf.extended.SVC,
+            ml.clf.extended.LogisticRegression,
+            ml.clf.extended.AdaBoost,
+            ml.clf.extended.GradientBoost,
+            ml.clf.extended.Voting],
+            dataset=dataset,
+            model_version=args.model_version,
+            check_point_path=settings["checkpoints_path"])
         classif.train(batch_size=128, num_steps=args.epoch)
         classif.scores()
     elif args.train == 2:
@@ -92,8 +100,11 @@ if __name__ == '__main__':
         classif.scores()
 
     if args.predic:
-        classif = ml.clf.extended.LSTM(model_name=args.model_name, 
+        #classif = ml.clf.extended.LSTM(model_name=args.model_name, 
+        #    check_point_path=settings["checkpoints_path"], 
+        #    timesteps=7, model_version=args.model_version)
+        classif = ml.clf.extended.MLP(model_name=args.model_name, 
             check_point_path=settings["checkpoints_path"], 
-            timesteps=7, model_version=args.model_version)
+            model_version=args.model_version)
         classif.scores()
         predict(classif, settings["numerai_test"], "t_id")

@@ -208,7 +208,7 @@ class DataSetBuilder(object):
         return self.to_DF(self.data, self.labels)
 
     def build_from_data_labels(self, data, labels):
-        self.data = data
+        self.data = self.processing(data, 'global')
         self.labels = labels
         self.shuffle_and_save()
 
