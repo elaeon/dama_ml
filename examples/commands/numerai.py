@@ -100,11 +100,9 @@ if __name__ == '__main__':
         classif.scores()
 
     if args.predic:
-        #classif = ml.clf.extended.LSTM(model_name=args.model_name, 
-        #    check_point_path=settings["checkpoints_path"], 
-        #    timesteps=7, model_version=args.model_version)
-        classif = ml.clf.extended.MLP(model_name=args.model_name, 
+        classif = ml.clf.extended.LSTM(model_name=args.model_name, 
             check_point_path=settings["checkpoints_path"], 
-            model_version=args.model_version)
+            timesteps=7, model_version=args.model_version)
+        classif.confusion_matrix().print_matrix(classif.base_labels)
         classif.scores()
         predict(classif, settings["numerai_test"], "t_id")

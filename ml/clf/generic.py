@@ -48,6 +48,11 @@ class Measure(object):
         return roc_auc_score(self.labels, self.predictions, 
             average=self.average)
 
+    def confusion_matrix(self, base_labels=None):
+        from sklearn.metrics import confusion_matrix
+        cm = confusion_matrix(self.labels, self.predictions, labels=base_labels)
+        return cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+
 
 class UDMeasure(object):
     def __init__(self, predictions, labels):
@@ -76,6 +81,17 @@ class ListMeasure(object):
     def print_scores(self, order_column="f1"):
         from utils.order import order_table_print
         order_table_print(self.headers, self.measures, order_column)
+
+    def print_matrix(self, labels):
+        from tabulate import tabulate
+        #headers_lower = [h.lower() for h in headers]
+        #order_index = headers_lower.index(order_column)
+        #table = sorted(table, key=lambda x: x[order_index], reverse=reverse)
+        for name, measure in self.measures:
+            print("******")
+            print(name)
+            print("******")
+            print(tabulate(np.c_[labels.T, measure], list(labels)))
 
     def __add__(self, other):
         for hs, ho in zip(self.headers, other.headers):
@@ -150,6 +166,7 @@ class BaseClassif(object):
         self.has_uncertain = False
         self.dataset_train_limit = dataset_train_limit
         self.print_info = info
+        self.base_labels = None
         self.load_dataset(dataset)
 
     def calc_scores(self):
@@ -169,6 +186,16 @@ class BaseClassif(object):
             udmeasure = UDMeasure(np.asarray(list(predictions)), self.dataset.test_labels)
             list_measure.add_measure("logloss", udmeasure.logloss())
 
+        return list_measure
+
+    def confusion_matrix(self):
+        list_measure = ListMeasure()
+        predictions = self.predict(self.dataset.test_data, raw=False, transform=False)
+        measure = Measure(np.asarray(list(predictions)), 
+            np.asarray([self.convert_label(label, raw=False)
+            for label in self.dataset.test_labels]))
+        list_measure.add_measure("CLF", self.__class__.__name__)
+        list_measure.add_measure("CM", measure.confusion_matrix(base_labels=self.base_labels))
         return list_measure
 
     def scores(self, order_column="f1"):
@@ -200,6 +227,7 @@ class BaseClassif(object):
     def labels_encode(self, labels):
         self.le.fit(labels)
         self.num_labels = self.le.classes_.shape[0]
+        self.base_labels = self.le.classes_
 
     def position_index(self, label):
         if isinstance(label, np.ndarray) or isinstance(label, list):
@@ -354,9 +382,6 @@ class BaseClassif(object):
             meta["dataset_name"],
             dataset_path=meta["dataset_path"],
             info=self.print_info)
-
-    def confusion_matrix(self):
-        pass
 
 
 class SKL(BaseClassif):
