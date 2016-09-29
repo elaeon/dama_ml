@@ -84,9 +84,6 @@ class ListMeasure(object):
 
     def print_matrix(self, labels):
         from tabulate import tabulate
-        #headers_lower = [h.lower() for h in headers]
-        #order_index = headers_lower.index(order_column)
-        #table = sorted(table, key=lambda x: x[order_index], reverse=reverse)
         for name, measure in self.measures:
             print("******")
             print(name)

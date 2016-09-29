@@ -3,10 +3,10 @@
 ;checkpoints_path = 
 
 [numerai]
-;predictions_file_path = 
-;numerai_test = 
-;numerai_example = 
-;numerai_train = 
+;predictions_file_path = /home/.../predictions.csv
+;numerai_test = /home/.../numerai_tournament_data.csv
+;numerai_example = /home/.../example_predictions.csv
+;numerai_train = /home/.../numerai_training_data.csv
 
 [tickets]
 ;tickets = 
