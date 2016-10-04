@@ -130,60 +130,6 @@ class Voting(SKLP):
         self.model = sig_clf
 
 
-#class TensorFace(TF):
-#    def prepare_model(self, batch_size, dropout=True):
-#        self.graph = tf.Graph()
-#        with self.graph.as_default():
-            # Input data. For the training data, we use a placeholder that will be fed
-            # at run time with a training minibatch.
-#            self.tf_train_dataset = tf.placeholder(tf.float32,
-#                                            shape=(batch_size, self.num_features))
-#            self.tf_train_labels = tf.placeholder(tf.float32, shape=(batch_size, self.num_labels))
-#            self.tf_valid_dataset = tf.constant(self.dataset.valid_data)
-#            self.tf_test_dataset = tf.constant(self.dataset.test_data)
-
-            # Variables.
-#            weights = tf.Variable(
-#                tf.truncated_normal([self.num_features, self.num_labels]))
-#            biases = tf.Variable(tf.zeros([self.num_labels]))
-
-            # Training computation.
-#            if dropout is True:
-#                hidden = tf.nn.dropout(self.tf_train_dataset, 0.5, seed=66478)
-#                self.logits = tf.matmul(hidden, weights) + biases
-#            else:
-#                self.logits = tf.matmul(self.tf_train_dataset, weights) + biases
-#            self.loss = tf.reduce_mean(
-#                tf.nn.softmax_cross_entropy_with_logits(self.logits, self.tf_train_labels))
-
-#            regularizers = tf.nn.l2_loss(weights) + tf.nn.l2_loss(biases)
-#            self.loss += 5e-4 * regularizers
-
-            # Optimizer.
-#            self.optimizer = tf.train.GradientDescentOptimizer(0.5).minimize(self.loss)
-
-            # Predictions for the training, validation, and test data.
-#            self.train_prediction = tf.nn.softmax(self.logits)
-#            self.valid_prediction = tf.nn.softmax(
-#                tf.matmul(self.tf_valid_dataset, weights) + biases)
-#            self.test_prediction = tf.nn.softmax(tf.matmul(self.tf_test_dataset, weights) + biases)
-
-#    def _predict(self, imgs):
-#        with tf.Session(graph=self.graph) as session:
-#            saver = tf.train.Saver()
-#            ckpt = tf.train.get_checkpoint_state(self.check_point + self.dataset.name + "/")
-#            if ckpt and ckpt.model_checkpoint_path:
-#                saver.restore(session, ckpt.model_checkpoint_path)
-#            else:
-#                print("...no checkpoint found...")
-
-#            for img in imgs:
-#                img = self.transform_shape(img)
-#                feed_dict = {self.tf_train_dataset: img}
-#                classification = session.run(self.train_prediction, feed_dict=feed_dict)
-#                yield self.convert_label(classification)
-
-
 class GPC(SKLP):
     def __init__(self, kernel=None, optimizer='scg', 
                 k_params={"variance":7., "lengthscale":0.2}, **kwargs):
@@ -279,26 +225,13 @@ class MLP(TFL):
         super(MLP, self).__init__(*args, **kwargs)
 
     def prepare_model(self, dropout=False):
-        import tflearn
-        input_layer = tflearn.input_data(shape=[None, self.num_features])
-        layer_ = input_layer
-        for layer_size in self.layers:
-            dense = tflearn.fully_connected(layer_, layer_size, activation='tanh',
-                                             regularizer='L2', weight_decay=0.001)
-            dropout = tflearn.dropout(dense, 0.5)
-            layer_ = dropout
-
-        softmax = tflearn.fully_connected(layer_, self.num_labels, activation='softmax')
-        sgd = tflearn.SGD(learning_rate=0.1, lr_decay=0.96, decay_step=1000)
-        acc = tflearn.metrics.Accuracy()
-        self.net = tflearn.regression(softmax, optimizer=sgd, metric=acc,
-                         loss='categorical_crossentropy')
+        from ml.models import MMLP
+        self.model = MMLP(self.num_features, self.layers, self.num_labels)
 
     def train(self, batch_size=10, num_steps=1000):
         import tflearn
         with tf.Graph().as_default():
             self.prepare_model()
-            self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
             self.model.fit(self.dataset.train_data, 
                 self.dataset.train_labels, 
                 n_epoch=num_steps, 
