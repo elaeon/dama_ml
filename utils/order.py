@@ -37,3 +37,5 @@ def order_table_print(headers, table, order_column, reverse=True):
     order_index = headers_lower.index(order_column)
     table = sorted(table, key=lambda x: x[order_index], reverse=reverse)
     print(tabulate(table, headers))
+    print("")
+    print("")

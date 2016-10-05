@@ -1,9 +1,12 @@
 import os
 import numpy as np
 import tensorflow as tf
+import logging
 
 from sklearn.preprocessing import LabelEncoder
 
+logging.basicConfig()
+log = logging.getLogger(__name__)
 #np.random.seed(133)
 
 class Measure(object):
@@ -164,6 +167,7 @@ class BaseClassif(object):
         self.dataset_train_limit = dataset_train_limit
         self.print_info = info
         self.base_labels = None
+        self._original_dataset_md5 = None
         self.load_dataset(dataset)
 
     def calc_scores(self):
@@ -266,6 +270,7 @@ class BaseClassif(object):
         else:
             self.dataset = dataset.copy()
             self.model_name = self.dataset.name
+        self._original_dataset_md5 = self.dataset.md5()
         self.reformat_all()
 
     def predict(self, data, raw=False, transform=True):
@@ -358,7 +363,10 @@ class BaseClassif(object):
 
     def _metadata(self):
         return {"dataset_path": self.dataset.dataset_path,
-                "dataset_name": self.dataset.name}
+                "dataset_name": self.dataset.name,
+                "md5": self._original_dataset_md5,
+                "transforms": self.dataset.transforms.get_all_transforms(),
+                "preprocessing_class": self.dataset.processing_class.module_cls_name()}
 
     def save_meta(self):
         from ml.ds import save_metadata
@@ -375,10 +383,17 @@ class BaseClassif(object):
     def get_dataset(self):
         from ml.ds import DataSetBuilder
         meta = self.load_meta()
-        return DataSetBuilder.load_dataset(
+        dataset = DataSetBuilder.load_dataset(
             meta["dataset_name"],
             dataset_path=meta["dataset_path"],
             info=self.print_info)
+        if meta.get('md5', None) != dataset.md5():
+            log.warning("The dataset md5 is not equal to the model '{}'".format(
+                self.__class__.__name__))
+        elif meta.get('transforms', None) != dataset.transforms.get_all_transforms():
+            log.warning(
+                "The filters in the dataset are distinct to training model '{}'".format(self.__class__.__name__))
+        return dataset
 
 
 class SKL(BaseClassif):

@@ -52,7 +52,6 @@ class DataSetBuilder(object):
                 processing_class=Preprocessing,
                 train_size=.7,
                 valid_size=.1):
-        self.data = None
         self.labels = None
         self.test_folder_path = test_folder_path
         self.train_folder_path = train_folder_path
@@ -68,6 +67,7 @@ class DataSetBuilder(object):
         self.valid_size = valid_size
         self.train_size = train_size
         self.transforms_apply = transforms_apply
+        self._cached_md5 = None
 
         if transforms is None:
             self.transforms = Transforms([("global", [("scale", None)])])
@@ -85,21 +85,20 @@ class DataSetBuilder(object):
         return self.train_data.shape
 
     def desfragment(self):
-        if self.data is None:
-            self.data = np.concatenate((
-                self.train_data, self.valid_data, self.test_data), axis=0)
-        if self.labels is None:
-            self.labels = np.concatenate((
-                self.train_labels, self.valid_labels, self.test_labels), axis=0)
+        data = np.concatenate((
+            self.train_data, self.valid_data, self.test_data), axis=0)
+        labels = np.concatenate((
+            self.train_labels, self.valid_labels, self.test_labels), axis=0)
+        return data, labels
 
     def labels_info(self):
         from collections import Counter
         return Counter(self.labels)
 
-    def only_labels(self, labels):
-        self.desfragment()
-        s_labels = set(labels)
-        dataset, n_labels = zip(*filter(lambda x: x[1] in s_labels, zip(self.data, self.labels)))
+    def only_labels(self, base_labels):
+        data, labels = self.desfragment()
+        s_labels = set(base_labels)
+        dataset, n_labels = zip(*filter(lambda x: x[1] in s_labels, zip(data, labels)))
         return np.asarray(dataset), np.asarray(n_labels)
 
     def info(self):
@@ -107,6 +106,7 @@ class DataSetBuilder(object):
         print('       ')
         print('Transforms: {}'.format(self.transforms.get_all_transforms()))
         print('Preprocessing Class: {}'.format(self.processing_class.module_cls_name()))
+        print('MD5: {}'.format(self._cached_md5))
         print('       ')
         headers = ["Dataset", "Mean", "Std", "Shape", "dType", "Labels"]
         table = []
@@ -121,16 +121,10 @@ class DataSetBuilder(object):
             self.test_data.shape, self.test_data.dtype, self.test_labels.size])
         order_table_print(headers, table, "shape")
 
-    def cross_validators(self):
+    def cross_validators(self, data, labels):
         from sklearn import cross_validation
-        if self.test_folder_path is None:
-            X_train, X_test, y_train, y_test = cross_validation.train_test_split(
-                self.data, self.labels, train_size=self.train_size, random_state=0)
-        else:
-            X_train, X_test, y_train, y_test = self.data, self.test_data,\
-                self.labels, self.test_labels
-            self.data = None
-            self.labels = None
+        X_train, X_test, y_train, y_test = cross_validation.train_test_split(
+            data, labels, train_size=self.train_size, random_state=0)
 
         valid_size_index = int(round(X_train.shape[0] * self.valid_size))
         X_validation = X_train[:valid_size_index]
@@ -148,7 +142,8 @@ class DataSetBuilder(object):
             'test_dataset': self.test_data,
             'test_labels': self.test_labels,
             'transforms': self.transforms.get_all_transforms(),
-            'preprocessing_class': self.processing_class.module_cls_name()}
+            'preprocessing_class': self.processing_class.module_cls_name(),
+            'md5': self.md5()}
 
     def from_raw(self, raw_data):
         from pydoc import locate
@@ -157,14 +152,15 @@ class DataSetBuilder(object):
         self.valid_data = raw_data['valid_dataset']
         self.valid_labels = raw_data['valid_labels']
         self.test_data = raw_data['test_dataset']
-        self.test_labels = raw_data['test_labels']        
-        self.desfragment()
+        self.test_labels = raw_data['test_labels']
         self.transforms = Transforms(raw_data["transforms"])
+        self._cached_md5 = raw_data["md5"]
+
         if self.processing_class is None:
             self.processing_class = locate(raw_data["preprocessing_class"])
 
-    def shuffle_and_save(self):
-        self.train_data, self.valid_data, self.test_data, self.train_labels, self.valid_labels, self.test_labels = self.cross_validators()
+    def shuffle_and_save(self, data, labels):
+        self.train_data, self.valid_data, self.test_data, self.train_labels, self.valid_labels, self.test_labels = self.cross_validators(data, labels)
         self.save()
 
     def save(self):
@@ -204,17 +200,15 @@ class DataSetBuilder(object):
         return pd.DataFrame(data=np.column_stack((dataset, labels)), columns=columns_name)
 
     def to_df(self):
-        self.desfragment()
-        return self.to_DF(self.data, self.labels)
+        data, labels = self.desfragment()
+        return self.to_DF(data, labels)
 
     def build_from_data_labels(self, data, labels):
-        self.data = self.processing(data, 'global')
-        self.labels = labels
-        self.shuffle_and_save()
+        data = self.processing(data, 'global')
+        self.shuffle_and_save(data, labels)
 
     def copy(self, limit=None):
         dataset = DataSetBuilder(self.name)
-        
         def calc_nshape(data, value):
             if value is None or not (0 < value <= 1) or data is None:
                 value = 1
@@ -222,8 +216,6 @@ class DataSetBuilder(object):
             limit = int(round(data.shape[0] * value, 0))
             return data[:limit]
 
-        dataset.data = calc_nshape(self.data, limit)
-        dataset.labels = calc_nshape(self.labels, limit)
         dataset.test_folder_path = self.test_folder_path
         dataset.train_folder_path = self.train_folder_path
         dataset.dataset_path = self.dataset_path
@@ -235,6 +227,7 @@ class DataSetBuilder(object):
         dataset.test_labels = calc_nshape(self.test_labels, limit)
         dataset.transforms = self.transforms
         dataset.processing_class = self.processing_class
+        dataset.md5()
         return dataset
 
     def processing(self, data, group):
@@ -244,8 +237,15 @@ class DataSetBuilder(object):
         else:
             return data
 
-    def subset(self, value):
-        return self.copy(value)
+    def subset(self, percentaje):
+        return self.copy(percentaje)
+
+    def md5(self):
+        import hashlib
+        data, labels = self.desfragment()
+        h = hashlib.md5(data)
+        self._cached_md5 = h.hexdigest()
+        return self._cached_md5
 
 
 class DataSetBuilderImage(DataSetBuilder):
