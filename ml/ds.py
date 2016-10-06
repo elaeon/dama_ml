@@ -124,7 +124,7 @@ class DataSetBuilder(object):
     def cross_validators(self, data, labels):
         from sklearn import cross_validation
         X_train, X_test, y_train, y_test = cross_validation.train_test_split(
-            data, labels, train_size=self.train_size, random_state=0)
+            data, labels, train_size=self.train_size+self.valid_size, random_state=0)
 
         valid_size_index = int(round(X_train.shape[0] * self.valid_size))
         X_validation = X_train[:valid_size_index]
@@ -163,18 +163,24 @@ class DataSetBuilder(object):
         self.train_data, self.valid_data, self.test_data, self.train_labels, self.valid_labels, self.test_labels = self.cross_validators(data, labels)
         self.save()
 
-    def adversarial_validator_and_save(self, train_data, test_data, train_labels, test_labels):
-        self.save()
+    def adversarial_validator_and_save(self, train_data, train_labels, test_data, test_labels):
+        self.train_data = train_data
+        self.test_data = test_data
+        self.train_labels = train_labels
+        self.test_labels = test_labels
+        self.valid_data = train_data[0:1]
+        self.valid_labels = train_labels[0:1]
+        #self.save()
 
     def save(self):
         if self.dataset_path is not None:
             try:
                 with open(self.dataset_path+self.name, 'wb') as f:
                     pickle.dump(self.to_raw(), f, pickle.HIGHEST_PROTOCOL)
-                self.info()
             except Exception as e:
                 print('Unable to save data to: ', self.dataset_path+self.name, e)
                 raise
+        self.info()
 
     @classmethod
     def load_dataset_raw(self, name, dataset_path=None):
@@ -207,9 +213,13 @@ class DataSetBuilder(object):
         data, labels = self.desfragment()
         return self.to_DF(data, labels)
 
-    def build_dataset(self, data, labels):
+    def build_dataset(self, data, labels, test_data=None, test_labels=None):
         data = self.processing(data, 'global')
-        self.shuffle_and_save(data, labels)
+        if self.validator == 'cross':
+            self.shuffle_and_save(data, labels)
+        else:
+            test_data = self.processing(test_data, 'global')
+            self.adversarial_validator_and_save(data, labels, test_data, test_labels)
 
     def copy(self, limit=None):
         dataset = DataSetBuilder(self.name)
@@ -255,8 +265,9 @@ class DataSetBuilder(object):
         from ml.clf.extended import RandomForest
         train_labels = np.ones(self.train_data.shape[0])
         test_labels = np.zeros(self.test_data.shape[0])
-        data = np.concatenate((self.train_data, self.test_data), axis=0)
-        labels = np.concatenate((train_labels, test_labels), axis=0)
+        valid_labels = np.ones(self.valid_data.shape[0])
+        data = np.concatenate((self.train_data, self.valid_data, self.test_data), axis=0)
+        labels = np.concatenate((train_labels, valid_labels, test_labels), axis=0)
         dataset = DataSetBuilder(None)
         dataset.build_dataset(data, labels)
         classif = RandomForest(dataset=dataset)
