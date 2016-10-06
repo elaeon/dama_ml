@@ -161,7 +161,6 @@ class BaseClassif(object):
         self.model_name = model_name
         self.le = LabelEncoder()
         self.check_point_path = check_point_path
-        self.check_point = os.path.join(check_point_path, self.__class__.__name__)
         self.model_version = model_version
         self.has_uncertain = False
         self.dataset_train_limit = dataset_train_limit
@@ -170,22 +169,34 @@ class BaseClassif(object):
         self._original_dataset_md5 = None
         self.load_dataset(dataset)
 
-    def calc_scores(self):
+    def calc_scores(self, measures=None):
         list_measure = ListMeasure()
         predictions = self.predict(self.dataset.test_data, raw=False, transform=False)
         measure = Measure(np.asarray(list(predictions)), 
             np.asarray([self.convert_label(label, raw=False)
             for label in self.dataset.test_labels]))
         list_measure.add_measure("CLF", self.__class__.__name__)
-        list_measure.add_measure("accuracy", measure.accuracy())
-        list_measure.add_measure("precision", measure.precision())
-        list_measure.add_measure("recall", measure.recall()) 
-        list_measure.add_measure("f1", measure.f1())
-        list_measure.add_measure("auc", measure.auc())
-        if self.has_uncertain:
+
+        if measures is None:
+            measures = ["accuracy", "presicion", "recall", "f1", "auc", "logloss"]
+        elif isinstance(measures, str):
+            measures = measures.split(",")
+        else:
+            measures = []
+
+        measure_class = []
+        for measure_name in measures:
+            measure_name = measure_name.strip()
+            if hasattr(measure, measure_name):
+                measure_class.append((measure_name, measure))
+
+        if self.has_uncertain and "logloss" in measures:
             predictions = self.predict(self.dataset.test_data, raw=True, transform=False)
             udmeasure = UDMeasure(np.asarray(list(predictions)), self.dataset.test_labels)
-            list_measure.add_measure("logloss", udmeasure.logloss())
+            measure_class.append(("logloss", udmeasure))
+
+        for measure_name, measure in measure_class:
+            list_measure.add_measure(measure_name, getattr(measure, measure_name)())
 
         return list_measure
 
@@ -199,8 +210,8 @@ class BaseClassif(object):
         list_measure.add_measure("CM", measure.confusion_matrix(base_labels=self.base_labels))
         return list_measure
 
-    def scores(self, order_column="f1"):
-        list_measure = self.calc_scores()
+    def scores(self, measures=None, order_column="f1"):
+        list_measure = self.calc_scores(measures=measures)
         list_measure.print_scores(order_column=order_column)
 
     def only_is(self, op):
@@ -341,6 +352,9 @@ class BaseClassif(object):
             valid_size=valid_size, test_data_labels=test_data_labels)
         self.retrain(dataset_v, batch_size=batch_size, num_steps=num_steps)
 
+    def adversal_validation(self):
+        pass
+
     def get_model_name_v(self):
         if self.model_version is None:
             import datetime
@@ -351,15 +365,16 @@ class BaseClassif(object):
 
     def make_model_file(self, check=True):
         model_name_v = self.get_model_name_v()
+        check_point = os.path.join(self.check_point_path, self.__class__.__name__)
         if check is True:
-            if not os.path.exists(self.check_point):
-                os.makedirs(self.check_point)
+            if not os.path.exists(check_point):
+                os.makedirs(check_point)
 
-            destination = os.path.join(self.check_point, model_name_v)
+            destination = os.path.join(check_point, model_name_v)
             if not os.path.exists(destination):
                 os.makedirs(destination)
             
-        return os.path.join(self.check_point, model_name_v, model_name_v)
+        return os.path.join(check_point, model_name_v, model_name_v)
 
     def _metadata(self):
         return {"dataset_path": self.dataset.dataset_path,
@@ -370,15 +385,15 @@ class BaseClassif(object):
 
     def save_meta(self):
         from ml.ds import save_metadata
-        model_name_v = self.get_model_name_v()
-        path = os.path.join(self.check_point, model_name_v)
-        save_metadata(path, model_name_v+".xmeta", self._metadata())
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            save_metadata(path+".xmeta", self._metadata())
 
     def load_meta(self):
         from ml.ds import load_metadata
-        model_name_v = self.get_model_name_v()
-        path = os.path.join(self.check_point, model_name_v, model_name_v+".xmeta")
-        return load_metadata(path)
+        if self.check_point_path is not None:
+            path = self.make_model_file(check=False)
+            return load_metadata(path+".xmeta")
         
     def get_dataset(self):
         from ml.ds import DataSetBuilder
@@ -403,14 +418,16 @@ class SKL(BaseClassif):
 
     def save_model(self):
         from sklearn.externals import joblib
-        path = self.make_model_file()
-        joblib.dump(self.model, '{}.pkl'.format(path))
-        self.save_meta()
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            joblib.dump(self.model, '{}.pkl'.format(path))
+            self.save_meta()
 
     def load_model(self):
         from sklearn.externals import joblib
-        path = self.make_model_file(check=False)
-        self.model = joblib.load('{}.pkl'.format(path))
+        if self.check_point_path is not None:
+            path = self.make_model_file(check=False)
+            self.model = joblib.load('{}.pkl'.format(path))
 
     def _predict(self, data, raw=False):
         for prediction in self.model.predict(data):
@@ -439,15 +456,17 @@ class TFL(BaseClassif):
         return data, labels_m
 
     def save_model(self):
-        path = self.make_model_file()
-        self.model.save('{}.ckpt'.format(path))
-        self.save_meta()
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            self.model.save('{}.ckpt'.format(path))
+            self.save_meta()
 
     def load_model(self):
         import tflearn
         self.prepare_model()
-        path = self.make_model_file()
-        self.model.load('{}.ckpt'.format(path))
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            self.model.load('{}.ckpt'.format(path))
 
     def predict(self, data, raw=False, transform=True):
         with tf.Graph().as_default():

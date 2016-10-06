@@ -9,10 +9,8 @@ import random
 from ml.processing import PreprocessingImage, Preprocessing, Transforms
 
 
-def save_metadata(path, file_path, data):
-    if not os.path.exists(path):
-        os.makedirs(path)
-    with open(os.path.join(path, file_path), 'wb') as f:
+def save_metadata(file_path, data):
+    with open(file_path, 'wb') as f:
         pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
 
 def load_metadata(path):
@@ -51,8 +49,8 @@ class DataSetBuilder(object):
                 transforms_apply=True,
                 processing_class=Preprocessing,
                 train_size=.7,
-                valid_size=.1):
-        self.labels = None
+                valid_size=.1,
+                validator='cross'):
         self.test_folder_path = test_folder_path
         self.train_folder_path = train_folder_path
         self.dataset_path = dataset_path
@@ -68,6 +66,7 @@ class DataSetBuilder(object):
         self.train_size = train_size
         self.transforms_apply = transforms_apply
         self._cached_md5 = None
+        self.validator = validator
 
         if transforms is None:
             self.transforms = Transforms([("global", [("scale", None)])])
@@ -93,7 +92,8 @@ class DataSetBuilder(object):
 
     def labels_info(self):
         from collections import Counter
-        return Counter(self.labels)
+        _, labels = self.desfragment()
+        return Counter(labels)
 
     def only_labels(self, base_labels):
         data, labels = self.desfragment()
@@ -163,14 +163,18 @@ class DataSetBuilder(object):
         self.train_data, self.valid_data, self.test_data, self.train_labels, self.valid_labels, self.test_labels = self.cross_validators(data, labels)
         self.save()
 
+    def adversarial_validator_and_save(self, train_data, test_data, train_labels, test_labels):
+        self.save()
+
     def save(self):
-        try:
-            with open(self.dataset_path+self.name, 'wb') as f:
-                pickle.dump(self.to_raw(), f, pickle.HIGHEST_PROTOCOL)
-            self.info()
-        except Exception as e:
-            print('Unable to save data to: ', self.dataset_path+self.name, e)
-            raise
+        if self.dataset_path is not None:
+            try:
+                with open(self.dataset_path+self.name, 'wb') as f:
+                    pickle.dump(self.to_raw(), f, pickle.HIGHEST_PROTOCOL)
+                self.info()
+            except Exception as e:
+                print('Unable to save data to: ', self.dataset_path+self.name, e)
+                raise
 
     @classmethod
     def load_dataset_raw(self, name, dataset_path=None):
@@ -203,7 +207,7 @@ class DataSetBuilder(object):
         data, labels = self.desfragment()
         return self.to_DF(data, labels)
 
-    def build_from_data_labels(self, data, labels):
+    def build_dataset(self, data, labels):
         data = self.processing(data, 'global')
         self.shuffle_and_save(data, labels)
 
@@ -247,6 +251,18 @@ class DataSetBuilder(object):
         self._cached_md5 = h.hexdigest()
         return self._cached_md5
 
+    def score_train_test(self):
+        from ml.clf.extended import RandomForest
+        train_labels = np.ones(self.train_data.shape[0])
+        test_labels = np.zeros(self.test_data.shape[0])
+        data = np.concatenate((self.train_data, self.test_data), axis=0)
+        labels = np.concatenate((train_labels, test_labels), axis=0)
+        dataset = DataSetBuilder(None)
+        dataset.build_dataset(data, labels)
+        classif = RandomForest(dataset=dataset)
+        classif.train()
+        classif.scores(measures="auc")
+
 
 class DataSetBuilderImage(DataSetBuilder):
     def __init__(self, name, image_size=None, channels=None, **kwargs):
@@ -280,19 +296,21 @@ class DataSetBuilderImage(DataSetBuilder):
         images = self.images_from_directories(folder_base)
         max_num_images = len(images)
         if self.channels is None:
-            self.data = np.ndarray(
+            data = np.ndarray(
                 shape=(max_num_images, self.image_size, self.image_size), dtype=np.float32)
             dim = (self.image_size, self.image_size)
         else:
-            self.data = np.ndarray(
+            data = np.ndarray(
                 shape=(max_num_images, self.image_size, self.image_size, self.channels), dtype=np.float32)
             dim = (self.image_size, self.image_size, self.channels)
-        self.labels = np.ndarray(shape=(max_num_images,), dtype='|S1')
+        labels = np.ndarray(shape=(max_num_images,), dtype='|S1')
         for image_index, (number_id, image_file) in enumerate(images):
             image_data = io.imread(image_file)
             image_data = image_data.astype(float)
-            self.data[image_index] = self.processing(image_data, 'global')
-            self.labels[image_index] = number_id
+            data[image_index] = self.processing(image_data, 'global')
+            labels[image_index] = number_id
+
+        return data, labels
 
     @classmethod
     def save_images(self, url, number_id, images, rewrite=False):
@@ -325,8 +343,8 @@ class DataSetBuilderImage(DataSetBuilder):
             self.save_images(self.test_folder_path, number_id, images)
 
     def build_dataset(self):
-        self.images_to_dataset(self.train_folder_path, self.processing_class)
-        self.shuffle_and_save()
+        data, labels = self.images_to_dataset(self.train_folder_path, self.processing_class)
+        self.shuffle_and_save(data, labels)
         #self.clean_directory(self.train_folder_path)
 
     def build_train_test(self, process_images, sample=True):
@@ -399,13 +417,10 @@ class DataSetBuilderImage(DataSetBuilder):
 
 
 class DataSetBuilderFile(DataSetBuilder):
-    def from_csv(self, label_column):
-        self.data, self.labels = self.csv2dataset(self.train_folder_path, label_column)
-        if self.test_folder_path is not None:
-            self.test_data, self.test_labels = self.csv2dataset(self.test_folder_path, label_column)
-            self.test_data = self.processing(self.test_data, 'global')
-
-        self.data = self.processing(self.data, 'global')
+    def from_csv(self, folder_path, label_column):
+        data, labels = self.csv2dataset(folder_path, label_column)
+        data = self.processing(data, 'global')
+        return data, labels
 
     @classmethod
     def csv2dataset(self, path, label_column):
@@ -415,8 +430,17 @@ class DataSetBuilderFile(DataSetBuilder):
         return dataset, labels
 
     def build_dataset(self, label_column=None):
-        self.from_csv(label_column)
-        self.shuffle_and_save()
+        data, labels = self.from_csv(self.train_folder_path, label_column)
+        if self.test_folder_path is not None:
+            test_data, test_labels = self.from_csv(self.test_folder_path, label_column)
+            if self.validator == 'cross':
+                data = np.concatenate((data, test_data), axis=0)
+                labels = np.concatenate((labels, test_labels), axis=0)
+
+        if self.validator == 'cross':
+            self.shuffle_and_save(data, labels)
+        else:
+            self.adversarial_validator_and_save(data, test_data, labels, test_labels)
 
     @classmethod
     def merge_data_labels(self, data_path, labels_path, column_id):
@@ -424,3 +448,5 @@ class DataSetBuilderFile(DataSetBuilder):
         data_df = pd.read_csv(data_path)
         labels_df = pd.read_csv(labels_path)
         return pd.merge(data_df, labels_df, on=column_id)
+
+

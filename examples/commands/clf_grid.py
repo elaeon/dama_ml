@@ -20,19 +20,19 @@ def train():
     dataset = ml.ds.DataSetBuilder(
         "gpc_test", dataset_path=settings["dataset_path"], 
         transforms=[("variance_threshold", 0.0), ('scale', None)])
-    dataset.build_from_data_labels(X, Y)
+    dataset.build_dataset(X, Y)
     classif = ml.clf.generic.Grid([
-        ml.clf.extended.ExtraTrees,
-        ml.clf.extended.MLP,
-        ml.clf.extended.RandomForest,
-        ml.clf.extended.SGDClassifier,
-        ml.clf.extended.SVC,
+        ml.clf.extended.ExtraTrees],
+    #    ml.clf.extended.MLP,
+    #    ml.clf.extended.RandomForest,
+    #    ml.clf.extended.SGDClassifier,
+    #    ml.clf.extended.SVC,
     #    ml.clf.extended.SVGPC,
     #    ml.clf.extended.GPC,
-        ml.clf.extended.LogisticRegression,
-        ml.clf.extended.AdaBoost,
-        ml.clf.extended.GradientBoost,
-        ml.clf.extended.Voting],
+    #    ml.clf.extended.LogisticRegression,
+    #    ml.clf.extended.AdaBoost,
+    #    ml.clf.extended.GradientBoost,
+    #    ml.clf.extended.Voting],
         dataset=dataset,
         model_version="1",
         check_point_path=settings["checkpoints_path"])

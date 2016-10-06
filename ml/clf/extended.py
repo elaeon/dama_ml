@@ -174,9 +174,10 @@ class GPC(SKLP):
         self.model.kern.white.fix()
 
     def save_model(self):
-        path = self.make_model_file()
-        self.save_meta()
-        np.save(path, self.model.param_array)
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            self.save_meta()
+            np.save(path, self.model.param_array)
 
     def _predict(self, data, raw=False):
         for prediction in self.model.predict(data)[0]:
@@ -187,12 +188,13 @@ class GPC(SKLP):
         import GPy
         self.model = GPy.models.GPClassification(self.dataset.train_data, 
             self.dataset.train_labels.reshape(-1, 1), kernel=self.k, initialize=False)
-        path = self.make_model_file(check=False)
-        r = np.load(path+".npy")
-        self.model.update_model(False) # do not call the underlying expensive algebra on load
-        self.model.initialize_parameter() # Initialize the parameters (connect the parameters up)
-        self.model[:] = r[:2]
-        self.model.update_model(True) # Call the algebra only once 
+        if self.check_point_path is not None:
+            path = self.make_model_file(check=False)
+            r = np.load(path+".npy")
+            self.model.update_model(False) # do not call the underlying expensive algebra on load
+            self.model.initialize_parameter() # Initialize the parameters (connect the parameters up)
+            self.model[:] = r[:2]
+            self.model.update_model(True) # Call the algebra only once 
 
 
 class SVGPC(GPC):
