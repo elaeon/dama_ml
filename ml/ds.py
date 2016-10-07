@@ -272,7 +272,30 @@ class DataSetBuilder(object):
         dataset.build_dataset(data, labels)
         classif = RandomForest(dataset=dataset)
         classif.train()
-        classif.scores(measures="auc")
+        #classif.scores(measures="auc")
+        predictions = [r[1] for r in classif.predict(classif.dataset.test_data, raw=True, transform=False)]
+        predictions = sorted(zip(
+            predictions, classif.dataset.test_labels, range(len(l))), key=lambda x: x[0], reverse=False)
+        false_test = []
+        others = []
+        for pred, target, index in predictions:
+            if pred < .5 and target == 1:
+                false_test.append(index)
+            else:
+                others.append(index)
+
+        train_data = classif.dataset.test_data[false_test]
+        train_labels = np.ones(train_data.shape[0])
+        train_data = np.concatenate((train_data, classif.dataset.train_data[:5000]), axis=0)
+        train_labels = np.concatenate((train_labels, classif.dataset.train_labels[:5000]), axis=0)
+        test_data = classif.dataset.test_data[others]
+        test_labels = classif.dataset.test_labels[others]
+
+        print(self.train_data.shape, train_data.shape)
+        #print(classif.calc_scores(measures="auc").measures)
+        #self.train_data = train_data
+        #self.test_data = test_data
+        #self.valid_data = valid_data
 
 
 class DataSetBuilderImage(DataSetBuilder):
