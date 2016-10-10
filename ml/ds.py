@@ -50,7 +50,8 @@ class DataSetBuilder(object):
                 processing_class=Preprocessing,
                 train_size=.7,
                 valid_size=.1,
-                validator='cross'):
+                validator='cross',
+                print_info=True):
         self.test_folder_path = test_folder_path
         self.train_folder_path = train_folder_path
         self.dataset_path = dataset_path
@@ -64,9 +65,11 @@ class DataSetBuilder(object):
         self.processing_class = processing_class
         self.valid_size = valid_size
         self.train_size = train_size
+        self.test_size = 1 - (train_size + valid_size)
         self.transforms_apply = transforms_apply
         self._cached_md5 = None
         self.validator = validator
+        self.print_info = print_info
 
         if transforms is None:
             self.transforms = Transforms([("global", [("scale", None)])])
@@ -102,24 +105,25 @@ class DataSetBuilder(object):
         return np.asarray(dataset), np.asarray(n_labels)
 
     def info(self):
-        from utils.order import order_table_print
-        print('       ')
-        print('Transforms: {}'.format(self.transforms.get_all_transforms()))
-        print('Preprocessing Class: {}'.format(self.processing_class.module_cls_name()))
-        print('MD5: {}'.format(self._cached_md5))
-        print('       ')
-        headers = ["Dataset", "Mean", "Std", "Shape", "dType", "Labels"]
-        table = []
-        table.append(["train set", self.train_data.mean(), self.train_data.std(), 
-            self.train_data.shape, self.train_data.dtype, self.train_labels.size])
+        if self.print_info:
+            from utils.order import order_table_print
+            print('       ')
+            print('Transforms: {}'.format(self.transforms.get_all_transforms()))
+            print('Preprocessing Class: {}'.format(self.processing_class.module_cls_name()))
+            print('MD5: {}'.format(self._cached_md5))
+            print('       ')
+            headers = ["Dataset", "Mean", "Std", "Shape", "dType", "Labels"]
+            table = []
+            table.append(["train set", self.train_data.mean(), self.train_data.std(), 
+                self.train_data.shape, self.train_data.dtype, self.train_labels.size])
 
-        if self.valid_data is not None:
-            table.append(["valid set", self.valid_data.mean(), self.valid_data.std(), 
-            self.valid_data.shape, self.valid_data.dtype, self.valid_labels.size])
+            if self.valid_data is not None:
+                table.append(["valid set", self.valid_data.mean(), self.valid_data.std(), 
+                self.valid_data.shape, self.valid_data.dtype, self.valid_labels.size])
 
-        table.append(["test set", self.test_data.mean(), self.test_data.std(), 
-            self.test_data.shape, self.test_data.dtype, self.test_labels.size])
-        order_table_print(headers, table, "shape")
+            table.append(["test set", self.test_data.mean(), self.test_data.std(), 
+                self.test_data.shape, self.test_data.dtype, self.test_labels.size])
+            order_table_print(headers, table, "shape")
 
     def cross_validators(self, data, labels):
         from sklearn import cross_validation
@@ -170,7 +174,52 @@ class DataSetBuilder(object):
         self.test_labels = test_labels
         self.valid_data = train_data[0:1]
         self.valid_labels = train_labels[0:1]
-        #self.save()
+
+        classif = self._clf()
+        classif.train()
+
+        predictions = [r[1] for r in classif.predict(classif.dataset.test_data, raw=True, transform=False)]
+        predictions = sorted(zip(
+            predictions, 
+            classif.dataset.test_labels, 
+            range(len(predictions))), key=lambda x: x[0], reverse=False)
+        false_test = []
+        others = []
+        for pred, target, index in predictions:
+            if pred < .5 and target == 1:
+                false_test.append(index)
+            else:
+                others.append(index)
+ 
+        train_data = classif.dataset.test_data[false_test]
+        train_size_index = classif.dataset.train_data.shape[0] - train_data.shape[0]
+        train_data = np.concatenate((
+            train_data, 
+            classif.dataset.train_data[:train_size_index],
+            classif.dataset.valid_data), 
+            axis=0)
+        train_labels = np.concatenate((
+            classif.dataset.test_labels[false_test], 
+            classif.dataset.train_labels[:train_size_index],
+            classif.dataset.valid_labels), 
+            axis=0)
+        test_data = np.concatenate((
+            classif.dataset.test_data[others], 
+            classif.dataset.train_data[train_size_index:]),
+            axis=0)
+        test_labels = np.concatenate((
+            classif.dataset.test_labels[others],
+            classif.dataset.train_labels[train_size_index:]),
+            axis=0)
+
+        valid_size_index = int(round(train_data.shape[0] * self.valid_size))
+        self.train_data = train_data[valid_size_index:]
+        self.test_data = test_data
+        self.train_labels = train_labels[valid_size_index:]
+        self.test_labels = test_labels
+        self.valid_data = train_data[0:valid_size_index]
+        self.valid_labels = train_labels[0:valid_size_index]
+        self.save()
 
     def save(self):
         if self.dataset_path is not None:
@@ -214,11 +263,14 @@ class DataSetBuilder(object):
         return self.to_DF(data, labels)
 
     def build_dataset(self, data, labels, test_data=None, test_labels=None):
-        data = self.processing(data, 'global')
+        data = self.processing(data, 'global')        
+        test_data = self.processing(test_data, 'global')
         if self.validator == 'cross':
+            if test_data is not None and labels is not None:
+                data = np.concatenate((data, test_data), axis=0)
+                labels = np.concatenate((labels, test_labels), axis=0)
             self.shuffle_and_save(data, labels)
         else:
-            test_data = self.processing(test_data, 'global')
             self.adversarial_validator_and_save(data, labels, test_data, test_labels)
 
     def copy(self, limit=None):
@@ -245,7 +297,7 @@ class DataSetBuilder(object):
         return dataset
 
     def processing(self, data, group):
-        if not self.transforms.empty() and self.transforms_apply:
+        if not self.transforms.empty() and self.transforms_apply and data is not None:
             preprocessing = self.processing_class(data, self.transforms.get_transforms(group))
             return preprocessing.pipeline()
         else:
@@ -261,41 +313,21 @@ class DataSetBuilder(object):
         self._cached_md5 = h.hexdigest()
         return self._cached_md5
 
-    def score_train_test(self):
+    def _clf(self):
         from ml.clf.extended import RandomForest
         train_labels = np.ones(self.train_data.shape[0])
         test_labels = np.zeros(self.test_data.shape[0])
         valid_labels = np.ones(self.valid_data.shape[0])
         data = np.concatenate((self.train_data, self.valid_data, self.test_data), axis=0)
         labels = np.concatenate((train_labels, valid_labels, test_labels), axis=0)
-        dataset = DataSetBuilder(None)
+        dataset = DataSetBuilder(None, transforms_apply=False, print_info=False)
         dataset.build_dataset(data, labels)
-        classif = RandomForest(dataset=dataset)
+        return RandomForest(dataset=dataset)
+
+    def score_train_test(self):
+        classif = self._clf()
         classif.train()
-        #classif.scores(measures="auc")
-        predictions = [r[1] for r in classif.predict(classif.dataset.test_data, raw=True, transform=False)]
-        predictions = sorted(zip(
-            predictions, classif.dataset.test_labels, range(len(l))), key=lambda x: x[0], reverse=False)
-        false_test = []
-        others = []
-        for pred, target, index in predictions:
-            if pred < .5 and target == 1:
-                false_test.append(index)
-            else:
-                others.append(index)
-
-        train_data = classif.dataset.test_data[false_test]
-        train_labels = np.ones(train_data.shape[0])
-        train_data = np.concatenate((train_data, classif.dataset.train_data[:5000]), axis=0)
-        train_labels = np.concatenate((train_labels, classif.dataset.train_labels[:5000]), axis=0)
-        test_data = classif.dataset.test_data[others]
-        test_labels = classif.dataset.test_labels[others]
-
-        print(self.train_data.shape, train_data.shape)
-        #print(classif.calc_scores(measures="auc").measures)
-        #self.train_data = train_data
-        #self.test_data = test_data
-        #self.valid_data = valid_data
+        return classif.calc_scores(measures="auc").measures
 
 
 class DataSetBuilderImage(DataSetBuilder):

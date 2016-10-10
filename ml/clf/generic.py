@@ -9,7 +9,8 @@ logging.basicConfig()
 log = logging.getLogger(__name__)
 #np.random.seed(133)
 
-class Measure(object):
+#Discrete measure
+class DMeasure(object):
     def __init__(self, predictions, labels):
         if len(predictions.shape) > 1:
             self.transform = lambda x: np.argmax(x, 1)
@@ -42,10 +43,6 @@ class Measure(object):
         return f1_score(self.labels, self.predictions, 
             average=self.average, pos_label=None)
 
-    def logloss(self):
-        from sklearn.metrics import log_loss
-        return log_loss(self.labels, self.predictions)
-
     def auc(self):
         from sklearn.metrics import roc_auc_score
         return roc_auc_score(self.labels, self.predictions, 
@@ -57,7 +54,8 @@ class Measure(object):
         return cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 
 
-class UDMeasure(object):
+#Continuos measure
+class CMeasure(object):
     def __init__(self, predictions, labels):
         self.labels = labels
         self.predictions = predictions
@@ -172,7 +170,7 @@ class BaseClassif(object):
     def calc_scores(self, measures=None):
         list_measure = ListMeasure()
         predictions = self.predict(self.dataset.test_data, raw=False, transform=False)
-        measure = Measure(np.asarray(list(predictions)), 
+        measure = DMeasure(np.asarray(list(predictions)), 
             np.asarray([self.convert_label(label, raw=False)
             for label in self.dataset.test_labels]))
         list_measure.add_measure("CLF", self.__class__.__name__)
@@ -192,8 +190,8 @@ class BaseClassif(object):
 
         if self.has_uncertain and "logloss" in measures:
             predictions = self.predict(self.dataset.test_data, raw=True, transform=False)
-            udmeasure = UDMeasure(np.asarray(list(predictions)), self.dataset.test_labels)
-            measure_class.append(("logloss", udmeasure))
+            cmeasure = CMeasure(np.asarray(list(predictions)), self.dataset.test_labels)
+            measure_class.append(("logloss", cmeasure))
 
         for measure_name, measure in measure_class:
             list_measure.add_measure(measure_name, getattr(measure, measure_name)())
@@ -203,7 +201,7 @@ class BaseClassif(object):
     def confusion_matrix(self):
         list_measure = ListMeasure()
         predictions = self.predict(self.dataset.test_data, raw=False, transform=False)
-        measure = Measure(np.asarray(list(predictions)), 
+        measure = DMeasure(np.asarray(list(predictions)), 
             np.asarray([self.convert_label(label, raw=False)
             for label in self.dataset.test_labels]))
         list_measure.add_measure("CLF", self.__class__.__name__)
@@ -351,9 +349,6 @@ class BaseClassif(object):
         dataset_v = self.rebuild_validation_from_errors(dataset, 
             valid_size=valid_size, test_data_labels=test_data_labels)
         self.retrain(dataset_v, batch_size=batch_size, num_steps=num_steps)
-
-    def adversal_validation(self):
-        pass
 
     def get_model_name_v(self):
         if self.model_version is None:
