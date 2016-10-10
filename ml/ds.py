@@ -178,10 +178,10 @@ class DataSetBuilder(object):
         classif = self._clf()
         classif.train()
 
-        predictions = [r[1] for r in classif.predict(classif.dataset.test_data, raw=True, transform=False)]
+        predictions = [r[1] for r in classif.predict(self.train_data, raw=True, transform=False)]
         predictions = sorted(zip(
             predictions, 
-            classif.dataset.test_labels, 
+            self.train_labels, 
             range(len(predictions))), key=lambda x: x[0], reverse=False)
         false_test = []
         others = []
@@ -191,34 +191,32 @@ class DataSetBuilder(object):
             else:
                 others.append(index)
  
-        train_data = classif.dataset.test_data[false_test]
-        train_size_index = classif.dataset.train_data.shape[0] - train_data.shape[0]
-        train_data = np.concatenate((
-            train_data, 
-            classif.dataset.train_data[:train_size_index],
-            classif.dataset.valid_data), 
-            axis=0)
-        train_labels = np.concatenate((
-            classif.dataset.test_labels[false_test], 
-            classif.dataset.train_labels[:train_size_index],
-            classif.dataset.valid_labels), 
-            axis=0)
-        test_data = np.concatenate((
-            classif.dataset.test_data[others], 
-            classif.dataset.train_data[train_size_index:]),
-            axis=0)
-        test_labels = np.concatenate((
-            classif.dataset.test_labels[others],
-            classif.dataset.train_labels[train_size_index:]),
-            axis=0)
-
-        valid_size_index = int(round(train_data.shape[0] * self.valid_size))
-        self.train_data = train_data[valid_size_index:]
-        self.test_data = test_data
-        self.train_labels = train_labels[valid_size_index:]
-        self.test_labels = test_labels
-        self.valid_data = train_data[0:valid_size_index]
-        self.valid_labels = train_labels[0:valid_size_index]
+        valid_data = self.train_data[false_test]
+        valid_labels = self.train_labels[false_test]
+        valid_size = int(round(self.train_data.shape[0] * self.valid_size))
+        if valid_data.shape[0] > valid_size:
+            valid_data = np.concatenate((
+                valid_data[:int(round(valid_size*.5))], 
+                self.train_data[others][:int(round(valid_size*.5))]), 
+                axis=0)
+            valid_labels = np.concatenate((
+                valid_labels[:int(round(valid_size*.5))], 
+                self.train_labels[others][:int(round(valid_size*.5))]), 
+                axis=0)
+        else:
+            valid_data = np.concatenate((
+                valid_data, 
+                self.train_data[others][:int(round(valid_size*.5))]), 
+                axis=0)
+            valid_labels = np.concatenate((
+                valid_labels, 
+                self.train_labels[others][:int(round(valid_size*.5))]), 
+                axis=0)    
+        
+        self.train_data = self.train_data[others][int(round(valid_size*.5)):]
+        self.train_labels = self.train_labels[others][int(round(valid_size*.5)):]
+        self.valid_data = valid_data
+        self.valid_labels = valid_labels
         self.save()
 
     def save(self):
@@ -506,7 +504,7 @@ class DataSetBuilderFile(DataSetBuilder):
         if self.validator == 'cross':
             self.shuffle_and_save(data, labels)
         else:
-            self.adversarial_validator_and_save(data, test_data, labels, test_labels)
+            self.adversarial_validator_and_save(data, labels, test_data, test_labels)
 
     @classmethod
     def merge_data_labels(self, data_path, labels_path, column_id):

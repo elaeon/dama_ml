@@ -358,11 +358,11 @@ class LSTM(TFL):
         else:
             self.dataset = dataset.copy()
             self.model_name = self.dataset.name
-        if len(self.dataset.data.shape) > 2:
+        if len(self.dataset.train_data.shape) > 2:
             raise ValueError("The data shape must be 2 dimensional")
-        elif self.dataset.data.shape[1] % self.timesteps > 0:
+        elif self.dataset.train_data.shape[1] % self.timesteps > 0:
             raise ValueError("The number of features is not divisible by {}".format(self.timesteps))
-        self.num_features_t = self.dataset.data.shape[1] / self.timesteps
+        self.num_features_t = self.dataset.train_data.shape[1] / self.timesteps
         self.reformat_all()
 
     def convert(self, data):

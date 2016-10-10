@@ -43,7 +43,7 @@ def build_dataset_easy():
 def train(dataset):
     classif = ml.clf.generic.Grid([
         ml.clf.extended.ExtraTrees,
-    #    ml.clf.extended.MLP,
+        ml.clf.extended.MLP,
         ml.clf.extended.RandomForest,
         ml.clf.extended.SGDClassifier,
         ml.clf.extended.SVC,
@@ -67,7 +67,7 @@ def test(model_name):
         ml.clf.extended.SVC,
         #ml.clf.extended.SVGPC,
         #ml.clf.extended.GPC,
-        #ml.clf.extended.MLP,
+        ml.clf.extended.MLP,
         ml.clf.extended.LogisticRegression,
         ml.clf.extended.ExtraTrees,
         ml.clf.extended.AdaBoost,
@@ -76,6 +76,7 @@ def test(model_name):
         model_name=model_name,
         model_version="1", 
         check_point_path=settings["checkpoints_path"])
+    #classif.confusion_matrix().print_matrix(classif.base_labels)
     classif.scores()
 
 
@@ -85,12 +86,14 @@ if __name__ == '__main__':
         help="evalua el predictor en base a los datos de prueba", 
         action="store_true")
     parser.add_argument("--train", help="inicia el entrenamiento", action="store_true")
-    #parser.add_argument("--epoch", type=int)
-    #parser.add_argument("--model-name", type=str)
+    parser.add_argument("--build-dataset", action="store_true")
+    parser.add_argument("--model-name", type=str)
     #parser.add_argument("--model-version", type=str)
     args = parser.parse_args()
-    if args.train:
+    if args.build_dataset:
         dataset = build_dataset_hard(validator="adversarial")
+    elif args.train:
+        dataset = ml.ds.DataSetBuilder.load_dataset(args.model_name, dataset_path=settings["dataset_path"])
         train(dataset)
     elif args.test:
-        test("gpc_test_easy")
+        test(args.model_name)
