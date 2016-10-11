@@ -175,18 +175,20 @@ class DataSetBuilder(object):
         self.valid_data = train_data[0:1]
         self.valid_labels = train_labels[0:1]
 
-        classif = self._clf()
-        classif.train()
-
-        predictions = [r[1] for r in classif.predict(self.train_data, raw=True, transform=False)]
+        # train class is labeled as 1 
+        train_test_data_clf = self._clf()
+        train_test_data_clf.train()
+        class_train = np.argmax(train_test_data_clf.model.classes_)
+        predictions = [p[class_train] 
+            for p in train_test_data_clf.predict(self.train_data, raw=True, transform=False)]
         predictions = sorted(zip(
             predictions, 
-            self.train_labels, 
             range(len(predictions))), key=lambda x: x[0], reverse=False)
         false_test = []
         others = []
-        for pred, target, index in predictions:
-            if pred < .5 and target == 1:
+        #because all targets are ones (train data) is not necessary compare it
+        for pred, index in predictions:
+            if pred < .5: # is a false test 
                 false_test.append(index)
             else:
                 others.append(index)
@@ -194,29 +196,16 @@ class DataSetBuilder(object):
         valid_data = self.train_data[false_test]
         valid_labels = self.train_labels[false_test]
         valid_size = int(round(self.train_data.shape[0] * self.valid_size))
-        if valid_data.shape[0] > valid_size:
-            valid_data = np.concatenate((
-                valid_data[:int(round(valid_size*.5))], 
-                self.train_data[others][:int(round(valid_size*.5))]), 
-                axis=0)
-            valid_labels = np.concatenate((
-                valid_labels[:int(round(valid_size*.5))], 
-                self.train_labels[others][:int(round(valid_size*.5))]), 
-                axis=0)
-        else:
-            valid_data = np.concatenate((
-                valid_data, 
-                self.train_data[others][:int(round(valid_size*.5))]), 
-                axis=0)
-            valid_labels = np.concatenate((
-                valid_labels, 
-                self.train_labels[others][:int(round(valid_size*.5))]), 
-                axis=0)    
-        
-        self.train_data = self.train_data[others][int(round(valid_size*.5)):]
-        self.train_labels = self.train_labels[others][int(round(valid_size*.5)):]
-        self.valid_data = valid_data
-        self.valid_labels = valid_labels
+        self.valid_data = valid_data[:int(round(valid_size))]
+        self.valid_labels = valid_labels[:int(round(valid_size))]
+        self.train_data = np.concatenate((
+            valid_data[int(round(valid_size)):], 
+            self.train_data[others]),
+            axis=0)
+        self.train_labels = np.concatenate((
+            valid_labels[int(round(valid_size)):],
+            self.train_labels[others]),
+            axis=0)
         self.save()
 
     def save(self):

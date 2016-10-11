@@ -76,7 +76,7 @@ def test(model_name):
         model_name=model_name,
         model_version="1", 
         check_point_path=settings["checkpoints_path"])
-    #classif.confusion_matrix().print_matrix(classif.base_labels)
+    classif.confusion_matrix()
     classif.scores()
 
 

@@ -149,6 +149,15 @@ class Grid(object):
         list_measure = reduce(add, (classif.calc_scores() for classif in self.classifs_reader))
         list_measure.print_scores(order_column=order_column)
 
+    def confusion_matrix(self):
+        from operator import add
+        if self.classifs_reader is None:
+            self.classifs_reader = self.load_models()
+        list_measure = reduce(add, (classif.confusion_matrix() for classif in self.classifs_reader))
+        self.classifs_reader = self.load_models()
+        classif = self.classifs_reader.next()
+        list_measure.print_matrix(classif.base_labels)
+
 
 class BaseClassif(object):
     def __init__(self, model_name=None, dataset=None, 
