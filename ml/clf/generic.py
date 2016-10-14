@@ -330,13 +330,16 @@ class BaseClassif(object):
         self._original_dataset_md5 = self.dataset.md5()
         self.reformat_all()
 
-    def predict(self, data, raw=False, transform=True):
+    def predict(self, data, raw=False, transform=True, block=False):
         if self.model is None:
             self.load_model()
 
-        if transform is True:
-            ndata = [self.dataset.processing(datum, 'global') for datum in data]
-            data = self.transform_shape(np.asarray(ndata))
+        if transform is True and block is False:
+            data = [self.dataset.processing(datum, 'global') for datum in data]
+            data = self.transform_shape(np.asarray(data))
+        elif transform is True and block is True:
+            data = self.dataset.processing(data, 'global')
+            data = self.transform_shape(np.asarray(data))
         return self._predict(data, raw=raw)
 
     def _pred_erros(self, predictions, test_data, test_labels, valid_size=.1):

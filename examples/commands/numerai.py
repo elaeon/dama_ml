@@ -21,7 +21,7 @@ def predict(classif, path, label_column):
 
     ids = df[label_column].as_matrix()
     predictions = []
-    for value, label in zip(list(classif.predict(data, raw=True)), ids):
+    for value, label in zip(list(classif.predict(data, raw=True, block=True)), ids):
         predictions.append([str(label), str(value[1])])
     
     with open(settings["predictions_file_path"], "w") as csvfile:
@@ -84,9 +84,9 @@ if __name__ == '__main__':
 
 
     if args.build_dataset:
-        transforms = None if args.transform else [("tsne", None), ("poly_features", None), ("scale", None)]
-        dataset = build(args.model_name, transforms=transforms)
-        #dataset = build2(args.model_name, transforms=transforms)
+        transforms = None if args.transform else [("tsne", None), ("scale", None)]
+        #dataset = build(args.model_name, transforms=transforms)
+        dataset = build2(args.model_name, transforms=transforms)
 
     if args.train:
         dataset = ml.ds.DataSetBuilderFile.load_dataset(

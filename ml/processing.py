@@ -93,8 +93,9 @@ class Preprocessing(object):
 
     def tsne(self):
         from bhtsne import tsne
-        data_reduction = tsne(self.data, perplexity=50)
-        self.data = np.concatenate((self.data, data_reduction), axis=0)
+        perplexity = 50
+        data_reduction = tsne(self.data, perplexity=perplexity)
+        self.data = np.concatenate((self.data, data_reduction), axis=1)
 
     def pipeline(self):
         if self.transforms is not None:

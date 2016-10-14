@@ -182,7 +182,7 @@ class DataSetBuilder(object):
         predictions = [p[class_train] 
             for p in train_test_data_clf.predict(self.train_data, raw=True, transform=False)]
         predictions = sorted(enumerate(predictions), key=lambda x: x[1], reverse=False)
-        print(for pred, index in predictions if pred < .5)
+        print((pred, index) for pred, index in predictions if pred < .5)
         #because all targets are ones (train data) is not necessary compare it
         false_test = [index for pred, index in predictions if pred < .5] # is a false test 
         ok_train = [index for pred, index in predictions if pred >= .5]
@@ -309,6 +309,9 @@ class DataSetBuilder(object):
         classif = self._clf()
         classif.train()
         return classif.calc_scores(measures="auc").measures
+
+    def visualize(self):
+        pass
 
 
 class DataSetBuilderImage(DataSetBuilder):
