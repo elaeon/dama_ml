@@ -77,11 +77,24 @@ class Preprocessing(object):
 
     def variance_threshold(self, threshold):
         from sklearn.feature_selection import VarianceThreshold
-        selector = VarianceThreshold(threshold=threshold)
-        self.data = selector.fit_transform(self.data)
+        if self.data.shape[0] > 1:
+            selector = VarianceThreshold(threshold=threshold)
+            self.data = selector.fit_transform(self.data)
         
     def scale(self):
         self.data = preprocessing.scale(self.data)
+
+    def poly_features(self):
+        if len(self.data.shape) == 1:
+            self.data = self.data.reshape(1, -1)
+        selector = preprocessing.PolynomialFeatures(
+            degree=2, interaction_only=False, include_bias=True)
+        self.data = selector.fit_transform(self.data)
+
+    def tsne(self):
+        from bhtsne import tsne
+        data_reduction = tsne(self.data, perplexity=50)
+        self.data = np.concatenate((self.data, data_reduction), axis=0)
 
     def pipeline(self):
         if self.transforms is not None:

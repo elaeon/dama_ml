@@ -181,17 +181,11 @@ class DataSetBuilder(object):
         class_train = np.argmax(train_test_data_clf.model.classes_)
         predictions = [p[class_train] 
             for p in train_test_data_clf.predict(self.train_data, raw=True, transform=False)]
-        predictions = sorted(zip(
-            predictions, 
-            range(len(predictions))), key=lambda x: x[0], reverse=False)
-        false_test = []
-        others = []
+        predictions = sorted(enumerate(predictions), key=lambda x: x[1], reverse=False)
+        print(for pred, index in predictions if pred < .5)
         #because all targets are ones (train data) is not necessary compare it
-        for pred, index in predictions:
-            if pred < .5: # is a false test 
-                false_test.append(index)
-            else:
-                others.append(index)
+        false_test = [index for pred, index in predictions if pred < .5] # is a false test 
+        ok_train = [index for pred, index in predictions if pred >= .5]
  
         valid_data = self.train_data[false_test]
         valid_labels = self.train_labels[false_test]
@@ -200,11 +194,11 @@ class DataSetBuilder(object):
         self.valid_labels = valid_labels[:int(round(valid_size))]
         self.train_data = np.concatenate((
             valid_data[int(round(valid_size)):], 
-            self.train_data[others]),
+            self.train_data[ok_train]),
             axis=0)
         self.train_labels = np.concatenate((
             valid_labels[int(round(valid_size)):],
-            self.train_labels[others]),
+            self.train_labels[ok_train]),
             axis=0)
         self.save()
 

@@ -363,6 +363,7 @@ class LSTM(TFL):
         elif self.dataset.train_data.shape[1] % self.timesteps > 0:
             raise ValueError("The number of features is not divisible by {}".format(self.timesteps))
         self.num_features_t = self.dataset.train_data.shape[1] / self.timesteps
+        self._original_dataset_md5 = self.dataset.md5()
         self.reformat_all()
 
     def convert(self, data):

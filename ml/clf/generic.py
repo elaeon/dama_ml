@@ -79,6 +79,15 @@ class ListMeasure(object):
         self.headers.append(name)
         self.measures[i].append(value)
 
+    def get_measure(self, name):
+        try:
+            i = self.headers.index(name)
+        except IndexError:
+            i = 0
+
+        for measure in self.measures:
+            yield measure[i]
+
     def print_scores(self, order_column="f1"):
         from utils.order import order_table_print
         order_table_print(self.headers, self.measures, order_column)
@@ -124,39 +133,58 @@ class Grid(object):
         self.model_version = model_version
         self.dataset = dataset
         self.classifs = classifs
+        self.params = {}
         self.classifs_reader = None
         
     def load_models(self):
         for index, classif in enumerate(self.classifs):
-            yield classif(dataset=self.dataset, 
+            yield self.load_model(classif, info=False)
+    
+    def load_model(self, model, info=True):
+        return model(dataset=self.dataset, 
                 model_name=self.model_name, 
                 model_version=self.model_version, 
                 check_point_path=self.check_point_path,
-                info=(index == 0))
-    
-    def _train(self, batch_size=128, num_steps=1):
-        for classif in self.load_models():
-            classif.train(batch_size=batch_size, num_steps=num_steps)
-            yield classif
+                info=info,
+                **self.get_params(model.cls_name_simple()))
 
     def train(self, batch_size=128, num_steps=1):
-        self.classifs_reader = self._train(batch_size=batch_size, num_steps=num_steps)
+        for classif in self.load_models():
+            classif.train(batch_size=batch_size, num_steps=num_steps)
     
-    def scores(self, order_column="f1"):
+    def scores(self):
         from operator import add
-        if self.classifs_reader is None:
-            self.classifs_reader = self.load_models()
-        list_measure = reduce(add, (classif.calc_scores() for classif in self.classifs_reader))
-        list_measure.print_scores(order_column=order_column)
+        list_measure = reduce(add, (classif.calc_scores() for classif in self.load_models()))
+        return list_measure
 
     def confusion_matrix(self):
         from operator import add
-        if self.classifs_reader is None:
-            self.classifs_reader = self.load_models()
-        list_measure = reduce(add, (classif.confusion_matrix() for classif in self.classifs_reader))
+        list_measure = reduce(add, (classif.confusion_matrix() for classif in self.load_models()))
         self.classifs_reader = self.load_models()
         classif = self.classifs_reader.next()
         list_measure.print_matrix(classif.base_labels)
+
+    def add_params(self, model_cls, **params):
+        self.params.setdefault(model_cls, params)
+        self.params[model_cls].update(params)
+
+    def get_params(self, model_cls):
+        return self.params.get(model_cls, {})
+
+    # select the best clf from the list of models
+    def best_predictor(self, measure_name="logloss", operator=None):
+        list_measure = self.scores()
+        column_measures = list_measure.get_measure(measure_name)
+        base_value = column_measures.next()
+        best = 0
+        for index, value in enumerate(column_measures, 1):
+            if base_value is None:
+                base_value = value
+            elif value is not None and operator(value, base_value):
+                base_value = value
+                best = index
+        
+        return self.load_model(self.classifs[best], info=True)
 
 
 class BaseClassif(object):
@@ -175,6 +203,17 @@ class BaseClassif(object):
         self.base_labels = None
         self._original_dataset_md5 = None
         self.load_dataset(dataset)
+
+    @classmethod
+    def cls_name(cls):
+        return cls.__name__
+
+    @classmethod
+    def cls_name_simple(cls):
+        try:
+            return cls.__name__.split(".").pop()
+        except IndexError:
+            return cls.__name__
 
     def calc_scores(self, measures=None):
         list_measure = ListMeasure()
@@ -383,7 +422,7 @@ class BaseClassif(object):
     def _metadata(self):
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
-                "md5": self._original_dataset_md5,
+                "md5": self._original_dataset_md5, #not reformated dataset
                 "transforms": self.dataset.transforms.get_all_transforms(),
                 "preprocessing_class": self.dataset.processing_class.module_cls_name()}
 
@@ -478,8 +517,8 @@ class TFL(BaseClassif):
                 self.load_model()
 
             if transform is True:
-                ndata = [self.dataset.processing(datum, 'global') for datum in data]
-                data = self.transform_shape(np.asarray(ndata))
+                data = [self.dataset.processing(datum, 'global') for datum in data]
+                data = self.transform_shape(np.asarray(data))
 
             return self._predict(data, raw=raw)
 
