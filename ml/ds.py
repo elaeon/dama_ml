@@ -182,10 +182,10 @@ class DataSetBuilder(object):
         predictions = [p[class_train] 
             for p in train_test_data_clf.predict(self.train_data, raw=True, transform=False)]
         predictions = sorted(enumerate(predictions), key=lambda x: x[1], reverse=False)
-        print((pred, index) for pred, index in predictions if pred < .5)
+        print((pred, index) for index, pred in predictions if pred < .5)
         #because all targets are ones (train data) is not necessary compare it
-        false_test = [index for pred, index in predictions if pred < .5] # is a false test 
-        ok_train = [index for pred, index in predictions if pred >= .5]
+        false_test = [index for index, pred in predictions if pred < .5] # is a false test 
+        ok_train = [index for index, pred in predictions if pred >= .5]
  
         valid_data = self.train_data[false_test]
         valid_labels = self.train_labels[false_test]
