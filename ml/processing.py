@@ -75,33 +75,35 @@ class Preprocessing(object):
         self.data = data
         self.transforms = transforms
 
-    def variance_threshold(self, threshold):
-        from sklearn.feature_selection import VarianceThreshold
-        if self.data.shape[0] > 1:
-            selector = VarianceThreshold(threshold=threshold)
-            self.data = selector.fit_transform(self.data)
+    #def variance_threshold(self, threshold):
+    #    from sklearn.feature_selection import VarianceThreshold
+    #    if self.data.shape[0] > 1:
+    #        selector = VarianceThreshold(threshold=threshold)
+    #        self.data = selector.fit_transform(self.data)
         
     def scale(self):
         self.data = preprocessing.scale(self.data)
 
-    def poly_features(self):
+    def poly_features(self, degree=2, interaction_only=False, include_bias=True):
         if len(self.data.shape) == 1:
             self.data = self.data.reshape(1, -1)
         selector = preprocessing.PolynomialFeatures(
-            degree=2, interaction_only=False, include_bias=True)
+            degree=degree, interaction_only=interaction_only, include_bias=include_bias)
         self.data = selector.fit_transform(self.data)
 
-    def tsne(self):
+    def tsne(self, perplexity=50, action='append'):
         from bhtsne import tsne
-        perplexity = 50
         data_reduction = tsne(self.data, perplexity=perplexity)
-        self.data = np.concatenate((self.data, data_reduction), axis=1)
+        if action == 'append':
+            self.data = np.concatenate((self.data, data_reduction), axis=1)
+        elif action == 'replace':
+            self.data = data_reduction
 
     def pipeline(self):
         if self.transforms is not None:
             for filter_, value in self.transforms:
-                if value is not None:
-                    getattr(self, filter_)(value)
+                if isinstance(value, dict):
+                    getattr(self, filter_)(**value)
                 else:
                     getattr(self, filter_)()
         return self.data

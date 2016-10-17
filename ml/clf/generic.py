@@ -134,7 +134,6 @@ class Grid(object):
         self.dataset = dataset
         self.classifs = classifs
         self.params = {}
-        self.classifs_reader = None
         
     def load_models(self):
         for index, classif in enumerate(self.classifs):
@@ -154,14 +153,14 @@ class Grid(object):
     
     def scores(self):
         from operator import add
-        list_measure = reduce(add, (classif.calc_scores() for classif in self.load_models()))
+        list_measure = reduce(add, (classif.scores() for classif in self.load_models()))
         return list_measure
 
-    def confusion_matrix(self):
+    def print_confusion_matrix(self):
         from operator import add
         list_measure = reduce(add, (classif.confusion_matrix() for classif in self.load_models()))
-        self.classifs_reader = self.load_models()
-        classif = self.classifs_reader.next()
+        classifs_reader = self.load_models()
+        classif = classifs_reader.next()
         list_measure.print_matrix(classif.base_labels)
 
     def add_params(self, model_cls, **params):
@@ -185,6 +184,10 @@ class Grid(object):
                 best = index
         
         return self.load_model(self.classifs[best], info=True)
+
+    def predict(self, data, raw=False, transform=True, block=False):
+        for classif in self.load_models():
+            yield classif.predict(data, raw=raw, transform=transform, block=block)
 
 
 class BaseClassif(object):
@@ -215,7 +218,7 @@ class BaseClassif(object):
         except IndexError:
             return cls.__name__
 
-    def calc_scores(self, measures=None):
+    def scores(self, measures=None, order_column="f1"):
         list_measure = ListMeasure()
         predictions = self.predict(self.dataset.test_data, raw=False, transform=False)
         measure = DMeasure(np.asarray(list(predictions)), 
@@ -255,10 +258,6 @@ class BaseClassif(object):
         list_measure.add_measure("CLF", self.__class__.__name__)
         list_measure.add_measure("CM", measure.confusion_matrix(base_labels=self.base_labels))
         return list_measure
-
-    def scores(self, measures=None, order_column="f1"):
-        list_measure = self.calc_scores(measures=measures)
-        list_measure.print_scores(order_column=order_column)
 
     def only_is(self, op):
         predictions = list(self.predict(self.dataset.test_data, raw=False, transform=False))
@@ -340,6 +339,7 @@ class BaseClassif(object):
         elif transform is True and block is True:
             data = self.dataset.processing(data, 'global')
             data = self.transform_shape(np.asarray(data))
+        
         return self._predict(data, raw=raw)
 
     def _pred_erros(self, predictions, test_data, test_labels, valid_size=.1):
@@ -514,13 +514,16 @@ class TFL(BaseClassif):
             path = self.make_model_file()
             self.model.load('{}.ckpt'.format(path))
 
-    def predict(self, data, raw=False, transform=True):
+    def predict(self, data, raw=False, transform=True, block=False):
         with tf.Graph().as_default():
             if self.model is None:
                 self.load_model()
 
-            if transform is True:
+            if transform is True and block is False:
                 data = [self.dataset.processing(datum, 'global') for datum in data]
+                data = self.transform_shape(np.asarray(data))
+            elif transform is True and block is True:
+                data = self.dataset.processing(data, 'global')
                 data = self.transform_shape(np.asarray(data))
 
             return self._predict(data, raw=raw)

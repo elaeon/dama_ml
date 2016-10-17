@@ -79,29 +79,38 @@ if __name__ == '__main__':
     parser.add_argument("--epoch", type=int)
     parser.add_argument("--predic", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--model-version", type=str)
-    parser.add_argument("--transform", action="store_true")
     args = parser.parse_args()
 
 
     if args.build_dataset:
-        transforms = None if args.transform else [("tsne", None), ("scale", None)]
-        #dataset = build(args.model_name, transforms=transforms)
-        dataset = build2(args.model_name, transforms=transforms)
+        #transforms = None if args.transform else [("tsne", None), ("scale", None)]
+        dataset_t = {
+            args.model_name+"-t1": 
+            [("scale", None)],
+            args.model_name+"-t2": 
+            [("poly_features", {"degree": 2, "interaction_only": True, "include_bias": True}),
+            ("scale", None)],
+            args.model_name+"-t3":
+            [("poly_features", {"degree": 2, "interaction_only": False, "include_bias": False}),
+            ("scale", None)]
+        }
+        for model_name, transforms in dataset_t.items():
+            dataset = build(model_name, transforms=transforms)
+        #dataset = build2(args.model_name, transforms=transforms)
 
     if args.train:
         dataset = ml.ds.DataSetBuilderFile.load_dataset(
             args.model_name, dataset_path=settings["dataset_path"])
         classif = ml.clf.generic.Grid([
-            ml.clf.extended.ExtraTrees,
-            ml.clf.extended.MLP,
-            ml.clf.extended.RandomForest,
-            ml.clf.extended.SGDClassifier,
-            ml.clf.extended.SVC,
-            ml.clf.extended.LogisticRegression,
-            ml.clf.extended.AdaBoost,
-            ml.clf.extended.GradientBoost,
-            #ml.clf.extended.LSTM,
-            ml.clf.extended.Voting],
+            #ml.clf.extended.ExtraTrees,
+            #ml.clf.extended.MLP,
+            #ml.clf.extended.RandomForest,
+            #ml.clf.extended.SGDClassifier,
+            #ml.clf.extended.SVC,
+            ml.clf.extended.LogisticRegression],
+            #ml.clf.extended.AdaBoost,
+            #ml.clf.extended.GradientBoost,
+            #ml.clf.extended.Voting],
             dataset=dataset,
             model_version=args.model_version,
             check_point_path=settings["checkpoints_path"])
@@ -111,16 +120,15 @@ if __name__ == '__main__':
 
     if args.predic:
         classif = ml.clf.generic.Grid([
-            ml.clf.extended.ExtraTrees,
-            ml.clf.extended.MLP,
-            ml.clf.extended.RandomForest,
-            ml.clf.extended.SGDClassifier,
-            ml.clf.extended.SVC,
-            ml.clf.extended.LogisticRegression,
-            ml.clf.extended.AdaBoost,
-            ml.clf.extended.GradientBoost,
-            #ml.clf.extended.LSTM,
-            ml.clf.extended.Voting],
+            #ml.clf.extended.ExtraTrees,
+            #ml.clf.extended.MLP,
+            #ml.clf.extended.RandomForest,
+            #ml.clf.extended.SGDClassifier,
+            #ml.clf.extended.SVC,
+            ml.clf.extended.LogisticRegression],
+            #ml.clf.extended.AdaBoost,
+            #ml.clf.extended.GradientBoost,
+            #ml.clf.extended.Voting],
             model_name=args.model_name,
             model_version=args.model_version,
             check_point_path=settings["checkpoints_path"])

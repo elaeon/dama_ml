@@ -108,6 +108,7 @@ class DataSetBuilder(object):
         if self.print_info:
             from utils.order import order_table_print
             print('       ')
+            print('DATASET NAME: {}'.format(self.name))
             print('Transforms: {}'.format(self.transforms.get_all_transforms()))
             print('Preprocessing Class: {}'.format(self.processing_class.module_cls_name()))
             print('MD5: {}'.format(self._cached_md5))
@@ -182,7 +183,7 @@ class DataSetBuilder(object):
         predictions = [p[class_train] 
             for p in train_test_data_clf.predict(self.train_data, raw=True, transform=False)]
         predictions = sorted(enumerate(predictions), key=lambda x: x[1], reverse=False)
-        print((pred, index) for index, pred in predictions if pred < .5)
+        #print([(pred, index) for index, pred in predictions if pred < .5])
         #because all targets are ones (train data) is not necessary compare it
         false_test = [index for index, pred in predictions if pred < .5] # is a false test 
         ok_train = [index for index, pred in predictions if pred >= .5]
@@ -310,8 +311,9 @@ class DataSetBuilder(object):
         classif.train()
         return classif.calc_scores(measures="auc").measures
 
-    def visualize(self):
-        pass
+    def graph(self):
+        data = ml.processing.Preprocessing(self.train_data, [("tsne", {"perplexity": 50})])
+        
 
 
 class DataSetBuilderImage(DataSetBuilder):
