@@ -79,11 +79,11 @@ if __name__ == '__main__':
     parser.add_argument("--epoch", type=int)
     parser.add_argument("--predic", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--model-version", type=str)
+    parser.add_argument("--plot", action="store_true")
     args = parser.parse_args()
 
 
     if args.build_dataset:
-        #transforms = None if args.transform else [("tsne", None), ("scale", None)]
         dataset_t = {
             args.model_name+"-t1": 
             [("scale", None)],
@@ -92,7 +92,10 @@ if __name__ == '__main__':
             ("scale", None)],
             args.model_name+"-t3":
             [("poly_features", {"degree": 2, "interaction_only": False, "include_bias": False}),
-            ("scale", None)]
+            ("scale", None)],
+            args.model_name+"-t4":
+            [("scale", None),
+            ("tsne", {"perplexity": 50, "action": 'concatenate'})]
         }
         for model_name, transforms in dataset_t.items():
             dataset = build(model_name, transforms=transforms)
@@ -102,38 +105,43 @@ if __name__ == '__main__':
         dataset = ml.ds.DataSetBuilderFile.load_dataset(
             args.model_name, dataset_path=settings["dataset_path"])
         classif = ml.clf.generic.Grid([
-            #ml.clf.extended.ExtraTrees,
-            #ml.clf.extended.MLP,
-            #ml.clf.extended.RandomForest,
-            #ml.clf.extended.SGDClassifier,
-            #ml.clf.extended.SVC,
-            ml.clf.extended.LogisticRegression],
-            #ml.clf.extended.AdaBoost,
-            #ml.clf.extended.GradientBoost,
-            #ml.clf.extended.Voting],
+            ml.clf.extended.ExtraTrees,
+            ml.clf.extended.MLP,
+            ml.clf.extended.RandomForest,
+            ml.clf.extended.SGDClassifier,
+            ml.clf.extended.SVC,
+            ml.clf.extended.LogisticRegression,
+            ml.clf.extended.AdaBoost,
+            ml.clf.extended.GradientBoost,
+            ml.clf.extended.Voting],
             dataset=dataset,
             model_version=args.model_version,
             check_point_path=settings["checkpoints_path"])
-        #classif.add_params('LSTM', timesteps=7)
         classif.train(batch_size=128, num_steps=args.epoch)
         classif.scores().print_scores(order_column="f1")
 
     if args.predic:
         classif = ml.clf.generic.Grid([
-            #ml.clf.extended.ExtraTrees,
-            #ml.clf.extended.MLP,
-            #ml.clf.extended.RandomForest,
-            #ml.clf.extended.SGDClassifier,
-            #ml.clf.extended.SVC,
-            ml.clf.extended.LogisticRegression],
-            #ml.clf.extended.AdaBoost,
-            #ml.clf.extended.GradientBoost,
-            #ml.clf.extended.Voting],
+            ml.clf.extended.ExtraTrees,
+            ml.clf.extended.MLP,
+            ml.clf.extended.RandomForest,
+            ml.clf.extended.SGDClassifier,
+            ml.clf.extended.SVC,
+            ml.clf.extended.LogisticRegression,
+            ml.clf.extended.AdaBoost,
+            ml.clf.extended.GradientBoost,
+            ml.clf.extended.Voting],
             model_name=args.model_name,
             model_version=args.model_version,
             check_point_path=settings["checkpoints_path"])
-        classif.confusion_matrix()
+        classif.print_confusion_matrix()
         classif.scores().print_scores(order_column="f1")
         classif_best = classif.best_predictor(measure_name="logloss", operator=le)
         print("BEST: {}".format(classif_best.cls_name_simple()))
         predict(classif_best, settings["numerai_test"], "t_id")
+
+    if args.plot:
+        dataset = ml.ds.DataSetBuilderFile.load_dataset(
+            args.model_name, dataset_path=settings["dataset_path"])
+        print("DENSITY: ", dataset.density())
+        dataset.plot()

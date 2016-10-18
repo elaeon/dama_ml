@@ -351,6 +351,15 @@ class DataSetBuilder(object):
         ax.legend(loc=2)
         plt.show()
 
+    def density(self, axis=0):
+        data = self.train_data.reshape(self.train_data.shape[0], -1)
+        if axis == 0:
+            columns = (data != 0).sum(axis=0) / np.asarray([data.shape[0]] * data.shape[1])
+            return columns.sum() / data.shape[1]
+        else:
+            rows = (data != 0).sum(axis=1) / np.asarray([data.shape[1]] * data.shape[0])
+            return rows.sum() / data.shape[0]
+
 
 class DataSetBuilderImage(DataSetBuilder):
     def __init__(self, name, image_size=None, channels=None, **kwargs):
