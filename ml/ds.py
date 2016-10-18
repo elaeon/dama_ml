@@ -311,9 +311,45 @@ class DataSetBuilder(object):
         classif.train()
         return classif.calc_scores(measures="auc").measures
 
-    def graph(self):
-        data = ml.processing.Preprocessing(self.train_data, [("tsne", {"perplexity": 50})])
-        
+    def plot(self):
+        import matplotlib.pyplot as plt
+        last_transform = self.transforms.get_transforms("global")[-1]
+        data, labels = self.desfragment()
+        if last_transform[0] == "tsne":
+            if last_transform[1]["action"] == "concatenate":                
+                dim = 2
+                features_tsne = data[:,-dim:]
+            else:
+                features_tsne = data
+        else:
+            features_tsne = ml.processing.Preprocessing(data, [("tsne", 
+                {"perplexity": 50, "action": "replace"})])
+
+        classes = self.labels_info().keys()
+        colors = ['b', 'r', 'y', 'm', 'c']
+        classes_colors = dict(zip(classes, colors))
+        fig, ax = plt.subplots(1, 1, figsize=(17.5, 17.5))
+
+        r_indexes = {}        
+        for index, target in enumerate(labels):
+            r_indexes.setdefault(target, [])
+            r_indexes[target].append(index)
+
+        for target, indexes in r_indexes.items():
+            features_index = features_tsne[indexes]
+            ax.scatter(
+                features_index[:,0], 
+                features_index[:,1], 
+                color=classes_colors[target], 
+                marker='o',
+                alpha=.4,
+                label=target)
+         
+        ax.set(xlabel='X',
+               ylabel='Y',
+               title=self.name)
+        ax.legend(loc=2)
+        plt.show()
 
 
 class DataSetBuilderImage(DataSetBuilder):

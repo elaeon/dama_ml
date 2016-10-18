@@ -91,10 +91,10 @@ class Preprocessing(object):
             degree=degree, interaction_only=interaction_only, include_bias=include_bias)
         self.data = selector.fit_transform(self.data)
 
-    def tsne(self, perplexity=50, action='append'):
+    def tsne(self, perplexity=50, action='concatenate'):
         from bhtsne import tsne
         data_reduction = tsne(self.data, perplexity=perplexity)
-        if action == 'append':
+        if action == 'concatenate':
             self.data = np.concatenate((self.data, data_reduction), axis=1)
         elif action == 'replace':
             self.data = data_reduction
