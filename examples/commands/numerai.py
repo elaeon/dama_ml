@@ -84,61 +84,66 @@ if __name__ == '__main__':
 
 
     if args.build_dataset:
-        dataset_t = {
-            args.model_name+"-t1": 
-            [("scale", None)],
-            args.model_name+"-t2": 
-            [("poly_features", {"degree": 2, "interaction_only": True, "include_bias": True}),
-            ("scale", None)],
-            args.model_name+"-t3":
-            [("poly_features", {"degree": 2, "interaction_only": False, "include_bias": False}),
-            ("scale", None)],
-            args.model_name+"-t4":
-            [("scale", None),
-            ("tsne", {"perplexity": 50, "action": 'concatenate'})]
-        }
-        for model_name, transforms in dataset_t.items():
-            dataset = build(model_name, transforms=transforms)
-        #dataset = build2(args.model_name, transforms=transforms)
+        #dataset_t = {
+        #    args.model_name+"-t1": 
+        #    [("scale", None)],
+        #    args.model_name+"-t2": 
+        #    [("poly_features", {"degree": 2, "interaction_only": True, "include_bias": True}),
+        #    ("scale", None)],
+        #    args.model_name+"-t3":
+        #    [("poly_features", {"degree": 2, "interaction_only": False, "include_bias": False}),
+        #    ("scale", None)],
+        #    args.model_name+"-t4":
+        #    [("scale", None),
+        #    ("tsne", {"perplexity": 50, "action": 'concatenate'})]
+        #}
+        transforms = [("scale", None)]
+        dataset = build(args.model_name, transforms=transforms)
+        #for model_name, transforms in dataset_t.items():
+        #    dataset = build(model_name, transforms=transforms)
+        #dataset = build2(args.model_name, transforms=[("scale", None),
+        #    ("tsne", {"perplexity": 50, "action": 'concatenate'})])
 
     if args.train:
         dataset = ml.ds.DataSetBuilderFile.load_dataset(
             args.model_name, dataset_path=settings["dataset_path"])
-        classif = ml.clf.generic.Grid([
-            ml.clf.extended.ExtraTrees,
-            ml.clf.extended.MLP,
-            ml.clf.extended.RandomForest,
+        classif = ml.clf.generic.Voting([
+            #ml.clf.extended.ExtraTrees,
+            #ml.clf.extended.MLP,
+            #ml.clf.extended.RandomForest,
             ml.clf.extended.SGDClassifier,
             ml.clf.extended.SVC,
             ml.clf.extended.LogisticRegression,
-            ml.clf.extended.AdaBoost,
-            ml.clf.extended.GradientBoost,
-            ml.clf.extended.Voting],
-            dataset=dataset,
+            #ml.clf.extended.AdaBoost,
+            ml.clf.extended.GradientBoost],
+            #dataset=dataset,
+            model_name=args.model_name,
             model_version=args.model_version,
+            weights=[3, 1, 1, 1],
+            election='best',
             check_point_path=settings["checkpoints_path"])
-        classif.train(batch_size=128, num_steps=args.epoch)
+        classif.predict(dataset.train_data, raw=True, block=False)
+        #classif.train(batch_size=128, num_steps=args.epoch)
         classif.scores().print_scores(order_column="f1")
 
     if args.predic:
         classif = ml.clf.generic.Grid([
-            ml.clf.extended.ExtraTrees,
-            ml.clf.extended.MLP,
-            ml.clf.extended.RandomForest,
+            #ml.clf.extended.ExtraTrees,
+            #ml.clf.extended.MLP,
+            #ml.clf.extended.RandomForest,
             ml.clf.extended.SGDClassifier,
             ml.clf.extended.SVC,
             ml.clf.extended.LogisticRegression,
-            ml.clf.extended.AdaBoost,
-            ml.clf.extended.GradientBoost,
-            ml.clf.extended.Voting],
+            #ml.clf.extended.AdaBoost,
+            ml.clf.extended.GradientBoost],
             model_name=args.model_name,
             model_version=args.model_version,
             check_point_path=settings["checkpoints_path"])
         classif.print_confusion_matrix()
-        classif.scores().print_scores(order_column="f1")
+        classif.all_clf_scores().print_scores(order_column="f1")
         classif_best = classif.best_predictor(measure_name="logloss", operator=le)
         print("BEST: {}".format(classif_best.cls_name_simple()))
-        predict(classif_best, settings["numerai_test"], "t_id")
+        #predict(classif_best, settings["numerai_test"], "t_id")
 
     if args.plot:
         dataset = ml.ds.DataSetBuilderFile.load_dataset(

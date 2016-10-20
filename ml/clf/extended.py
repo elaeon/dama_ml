@@ -107,29 +107,6 @@ class GradientBoost(SKLP):
         self.model = sig_clf
 
 
-class Voting(SKLP):
-    def prepare_model(self):
-        from sklearn.ensemble import VotingClassifier
-        from sklearn.linear_model import SGDClassifier
-        from sklearn.ensemble import RandomForestClassifier
-        from sklearn.ensemble import GradientBoostingClassifier
-        from sklearn.calibration import CalibratedClassifierCV
-
-        clf1 = CalibratedClassifierCV(
-            GradientBoostingClassifier(n_estimators=25, learning_rate=1.0), method="sigmoid")
-        clf2 = CalibratedClassifierCV(
-            RandomForestClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
-        clf3 = CalibratedClassifierCV(
-            SGDClassifier(loss='log', penalty='elasticnet', 
-            alpha=.0001, n_iter=100, n_jobs=-1), method="sigmoid")
-        eclf = VotingClassifier(estimators=[('ada', clf1), ('rf', clf2), ('sgd', clf3)], 
-            voting='soft', weights=[3,2,1])
-        eclf.fit(self.dataset.train_data, self.dataset.train_labels)
-        sig_clf = CalibratedClassifierCV(eclf, method="sigmoid", cv="prefit")
-        sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
-        self.model = sig_clf
-
-
 class GPC(SKLP):
     def __init__(self, kernel=None, optimizer='scg', 
                 k_params={"variance":7., "lengthscale":0.2}, **kwargs):

@@ -151,7 +151,7 @@ class Grid(object):
         for classif in self.load_models():
             classif.train(batch_size=batch_size, num_steps=num_steps)
     
-    def scores(self):
+    def all_clf_scores(self):
         from operator import add
         list_measure = reduce(add, (classif.scores() for classif in self.load_models()))
         return list_measure
@@ -171,23 +171,102 @@ class Grid(object):
         return self.params.get(model_cls, {})
 
     # select the best clf from the list of models
-    def best_predictor(self, measure_name="logloss", operator=None):
-        list_measure = self.scores()
+    def best_predictor_index(self, measure_name="logloss", operator=None):
+        list_measure = self.all_clf_scores()
         column_measures = list_measure.get_measure(measure_name)
         base_value = column_measures.next()
         best = 0
-        for index, value in enumerate(column_measures, 1):
+        index = 0
+        for index, value in enumerate(column_measures, 0):
             if base_value is None:
                 base_value = value
             elif value is not None and operator(value, base_value):
                 base_value = value
                 best = index
-        
+        return index
+
+    def best_predictor(self, measure_name="logloss", operator=None):
+        best = self.best_predictor_index(measure_name=measure_name, operator=operator)
         return self.load_model(self.classifs[best], info=True)
 
     def predict(self, data, raw=False, transform=True, block=False):
         for classif in self.load_models():
             yield classif.predict(data, raw=raw, transform=transform, block=block)
+
+
+class Voting(Grid):
+    def __init__(self, classifs, weights=None, election='best', **kwargs):
+        self.weights = weights
+        self.election = election
+        super(Voting, self).__init__(classifs, **kwargs)
+
+    def select_best_prediction(self, predictions):
+        counter = {}
+        for w, prediction in zip(self.weights, predictions):
+            counter.setdefault(prediction, 0)
+            counter[prediction] += w
+            #print(w)
+
+        #print(counter)
+        return max(counter.items(), key=lambda x:x[1])[0]
+
+    def scores(self, measures=None):
+        clf = self.load_models().next()
+        list_measure = ListMeasure()
+        predictions = self.predict(clf.dataset.test_data, raw=False, transform=False)
+        measure = DMeasure(np.asarray(list(predictions)), 
+            np.asarray([clf.convert_label(label, raw=False)
+            for label in clf.dataset.test_labels]))
+        list_measure.add_measure("CLF", self.__class__.__name__)
+
+        if measures is None:
+            measures = ["accuracy", "presicion", "recall", "f1", "auc", "logloss"]
+        elif isinstance(measures, str):
+            measures = measures.split(",")
+        else:
+            measures = []
+
+        measure_class = []
+        for measure_name in measures:
+            measure_name = measure_name.strip()
+            if hasattr(measure, measure_name):
+                measure_class.append((measure_name, measure))
+
+        #if self.has_uncertain and "logloss" in measures:
+        #    predictions = self.predict(self.dataset.test_data, raw=True, transform=False)
+        #    cmeasure = CMeasure(np.asarray(list(predictions)), self.dataset.test_labels)
+        #    measure_class.append(("logloss", cmeasure))
+
+        for measure_name, measure in measure_class:
+            list_measure.add_measure(measure_name, getattr(measure, measure_name)())
+
+        return list_measure
+
+    def predict(self, data, raw=False, transform=True, block=False):
+        if self.election == "best":
+            from operator import ge
+            best = self.best_predictor_index(measure_name="auc", operator=ge)
+            print(self.classifs[best])
+            max_value = max(self.weights)
+            weights = []
+            for c_index, clf in enumerate(self.classifs):
+                if c_index == best:
+                    weights.append(max_value)
+                else:
+                    weights.append(1)                
+            self.weights = weights
+        else:
+            pass
+
+        models = list(self.load_models())
+        for elem in data:
+            results = []
+            for classif in models:
+                prediction = list(classif.predict([elem], raw=False, transform=transform, block=block)).pop()
+                results.append(prediction)
+            yield self.select_best_prediction(results)
+            #print(self.select_best_prediction(results))
+            #break
 
 
 class BaseClassif(object):
@@ -218,7 +297,7 @@ class BaseClassif(object):
         except IndexError:
             return cls.__name__
 
-    def scores(self, measures=None, order_column="f1"):
+    def scores(self, measures=None):
         list_measure = ListMeasure()
         predictions = self.predict(self.dataset.test_data, raw=False, transform=False)
         measure = DMeasure(np.asarray(list(predictions)), 
@@ -419,7 +498,7 @@ class BaseClassif(object):
             destination = os.path.join(check_point, model_name_v)
             if not os.path.exists(destination):
                 os.makedirs(destination)
-            
+        
         return os.path.join(check_point, model_name_v, model_name_v)
 
     def _metadata(self):

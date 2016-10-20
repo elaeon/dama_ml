@@ -71,8 +71,7 @@ def test(model_name):
         ml.clf.extended.LogisticRegression,
         ml.clf.extended.ExtraTrees,
         ml.clf.extended.AdaBoost,
-        ml.clf.extended.GradientBoost,
-        ml.clf.extended.Voting],
+        ml.clf.extended.GradientBoost],
         model_name=model_name,
         model_version="1", 
         check_point_path=settings["checkpoints_path"])
@@ -95,8 +94,7 @@ def predict(model_name):
         ml.clf.extended.LogisticRegression,
         ml.clf.extended.ExtraTrees,
         ml.clf.extended.AdaBoost,
-        ml.clf.extended.GradientBoost,
-        ml.clf.extended.Voting],
+        ml.clf.extended.GradientBoost],
         model_name=model_name,
         model_version="1", 
         check_point_path=settings["checkpoints_path"])

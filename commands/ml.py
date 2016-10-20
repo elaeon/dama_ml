@@ -11,9 +11,20 @@ from utils.order import order_table_print
 
 settings = get_settings("ml")
 
+def rm(path):
+    import shutil
+    try:
+        shutil.rmtree(path)
+    except OSError:
+        print("{} not such file or directory".format(path))
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--models", action="store_true")
+    parser.add_argument("--dataset", action="store_true")
+    parser.add_argument("--rm", action="store_true")
+
     args = parser.parse_args()
 
     if args.models:
@@ -33,3 +44,7 @@ if __name__ == '__main__':
                 except ValueError:
                     pass
         order_table_print(headers, table, "classif", reverse=False)
+    elif args.rm:
+        if args.dataset:
+            rm(settings["dataset_path"])
+            rm(settings["checkpoints_path"])

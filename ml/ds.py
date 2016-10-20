@@ -127,8 +127,8 @@ class DataSetBuilder(object):
             order_table_print(headers, table, "shape")
 
     def cross_validators(self, data, labels):
-        from sklearn import cross_validation
-        X_train, X_test, y_train, y_test = cross_validation.train_test_split(
+        from sklearn.model_selection import train_test_split
+        X_train, X_test, y_train, y_test = train_test_split(
             data, labels, train_size=self.train_size+self.valid_size, random_state=0)
 
         valid_size_index = int(round(X_train.shape[0] * self.valid_size))
@@ -205,12 +205,14 @@ class DataSetBuilder(object):
 
     def save(self):
         if self.dataset_path is not None:
+            if not os.path.exists(self.dataset_path):
+                    os.makedirs(self.dataset_path)
+            destination = os.path.join(self.dataset_path, self.name)
             try:
-                with open(self.dataset_path+self.name, 'wb') as f:
+                with open(destination, 'wb') as f:
                     pickle.dump(self.to_raw(), f, pickle.HIGHEST_PROTOCOL)
-            except Exception as e:
-                print('Unable to save data to: ', self.dataset_path+self.name, e)
-                raise
+            except IOError as e:
+                print('Unable to save data to: ', destination, e)
         self.info()
 
     @classmethod
