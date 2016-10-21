@@ -231,7 +231,7 @@ class Voting(Grid):
 
         if "logloss" in measures:
             predictions = self.predict(clf.dataset.test_data, raw=True, transform=False, block=True)
-            cmeasure = CMeasure(np.asarray(list(predictions)), self.dataset.test_labels)
+            cmeasure = CMeasure(np.asarray(list(predictions)), clf.dataset.test_labels)
             measure_class.append(("logloss", cmeasure))
 
         for measure_name, measure in measure_class:
@@ -240,6 +240,7 @@ class Voting(Grid):
         return list_measure
 
     def predict(self, data, raw=False, transform=True, block=False):
+        import time
         if self.election == "best":
             from operator import ge
             best = self.best_predictor_index(measure_name="auc", operator=ge)
@@ -255,6 +256,7 @@ class Voting(Grid):
             pass
 
         models = list(self.load_models())
+        time1 = time.time()
         for elem in data:
             results = []
             for classif in models:
@@ -262,7 +264,9 @@ class Voting(Grid):
                 results.append(prediction)
             yield self.select_best_prediction(results)
             #print(self.select_best_prediction(results))
-            #break
+            break
+        time2 = time.time()
+        print((time2-time1)*1000.0)
 
 
 class BaseClassif(object):

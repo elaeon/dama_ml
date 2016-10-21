@@ -108,15 +108,15 @@ if __name__ == '__main__':
         dataset = ml.ds.DataSetBuilderFile.load_dataset(
             args.model_name, dataset_path=settings["dataset_path"])
         classif = ml.clf.generic.Voting([
-            #ml.clf.extended.ExtraTrees,
-            #ml.clf.extended.MLP,
-            #ml.clf.extended.RandomForest,
+            ml.clf.extended.ExtraTrees,
+            ml.clf.extended.MLP,
+            ml.clf.extended.RandomForest,
             ml.clf.extended.SGDClassifier,
             ml.clf.extended.SVC,
             ml.clf.extended.LogisticRegression,
-            #ml.clf.extended.AdaBoost,
+            ml.clf.extended.AdaBoost,
             ml.clf.extended.GradientBoost],
-            #dataset=dataset,
+            dataset=dataset,
             model_name=args.model_name,
             model_version=args.model_version,
             weights=[3, 1, 1, 1],
