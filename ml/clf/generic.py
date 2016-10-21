@@ -176,14 +176,14 @@ class Grid(object):
         column_measures = list_measure.get_measure(measure_name)
         base_value = column_measures.next()
         best = 0
-        index = 0
-        for index, value in enumerate(column_measures, 0):
+        # initial step is one because the above base_value  
+        for index, value in enumerate(column_measures, 1):
             if base_value is None:
                 base_value = value
             elif value is not None and operator(value, base_value):
                 base_value = value
                 best = index
-        return index
+        return best
 
     def best_predictor(self, measure_name="logloss", operator=None):
         best = self.best_predictor_index(measure_name=measure_name, operator=operator)
@@ -205,15 +205,12 @@ class Voting(Grid):
         for w, prediction in zip(self.weights, predictions):
             counter.setdefault(prediction, 0)
             counter[prediction] += w
-            #print(w)
-
-        #print(counter)
         return max(counter.items(), key=lambda x:x[1])[0]
 
     def scores(self, measures=None):
         clf = self.load_models().next()
         list_measure = ListMeasure()
-        predictions = self.predict(clf.dataset.test_data, raw=False, transform=False)
+        predictions = self.predict(clf.dataset.test_data, transform=False, block=True)
         measure = DMeasure(np.asarray(list(predictions)), 
             np.asarray([clf.convert_label(label, raw=False)
             for label in clf.dataset.test_labels]))
@@ -232,10 +229,10 @@ class Voting(Grid):
             if hasattr(measure, measure_name):
                 measure_class.append((measure_name, measure))
 
-        #if self.has_uncertain and "logloss" in measures:
-        #    predictions = self.predict(self.dataset.test_data, raw=True, transform=False)
-        #    cmeasure = CMeasure(np.asarray(list(predictions)), self.dataset.test_labels)
-        #    measure_class.append(("logloss", cmeasure))
+        if "logloss" in measures:
+            predictions = self.predict(clf.dataset.test_data, raw=True, transform=False, block=True)
+            cmeasure = CMeasure(np.asarray(list(predictions)), self.dataset.test_labels)
+            measure_class.append(("logloss", cmeasure))
 
         for measure_name, measure in measure_class:
             list_measure.add_measure(measure_name, getattr(measure, measure_name)())
@@ -246,14 +243,13 @@ class Voting(Grid):
         if self.election == "best":
             from operator import ge
             best = self.best_predictor_index(measure_name="auc", operator=ge)
-            print(self.classifs[best])
             max_value = max(self.weights)
             weights = []
             for c_index, clf in enumerate(self.classifs):
                 if c_index == best:
                     weights.append(max_value)
                 else:
-                    weights.append(1)                
+                    weights.append(1)          
             self.weights = weights
         else:
             pass

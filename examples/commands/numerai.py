@@ -122,27 +122,29 @@ if __name__ == '__main__':
             weights=[3, 1, 1, 1],
             election='best',
             check_point_path=settings["checkpoints_path"])
-        classif.predict(dataset.train_data, raw=True, block=False)
-        #classif.train(batch_size=128, num_steps=args.epoch)
-        classif.scores().print_scores(order_column="f1")
+        classif.train(batch_size=128, num_steps=args.epoch)
+        classif.all_clf_scores().print_scores(order_column="f1")
 
     if args.predic:
-        classif = ml.clf.generic.Grid([
-            #ml.clf.extended.ExtraTrees,
-            #ml.clf.extended.MLP,
-            #ml.clf.extended.RandomForest,
+        classif = ml.clf.generic.Voting([
+            ml.clf.extended.ExtraTrees,
+            ml.clf.extended.MLP,
+            ml.clf.extended.RandomForest,
             ml.clf.extended.SGDClassifier,
             ml.clf.extended.SVC,
             ml.clf.extended.LogisticRegression,
-            #ml.clf.extended.AdaBoost,
+            ml.clf.extended.AdaBoost,
             ml.clf.extended.GradientBoost],
             model_name=args.model_name,
             model_version=args.model_version,
+            weights=[3, 1, 1, 1],
+            election='best',
             check_point_path=settings["checkpoints_path"])
-        classif.print_confusion_matrix()
-        classif.all_clf_scores().print_scores(order_column="f1")
-        classif_best = classif.best_predictor(measure_name="logloss", operator=le)
-        print("BEST: {}".format(classif_best.cls_name_simple()))
+        #classif.print_confusion_matrix()
+        classif.scores().print_scores(order_column="f1")
+        #classif.all_clf_scores().print_scores(order_column="f1")
+        #classif_best = classif.best_predictor(measure_name="logloss", operator=le)
+        #print("BEST: {}".format(classif_best.cls_name_simple()))
         #predict(classif_best, settings["numerai_test"], "t_id")
 
     if args.plot:
