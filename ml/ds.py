@@ -13,10 +13,12 @@ def save_metadata(file_path, data):
     with open(file_path, 'wb') as f:
         pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
 
+
 def load_metadata(path):
     with open(path, 'rb') as f:
         data = pickle.load(f)
     return data
+
 
 def proximity_label(label_ref, labels, dataset):
     from sklearn import svm
@@ -29,6 +31,7 @@ def proximity_label(label_ref, labels, dataset):
         n_error_train = y_pred_train[y_pred_train == -1].size
         yield label, (1 - (n_error_train / float(y_pred_train.size)))
 
+
 def proximity_dataset(label_ref, labels, dataset):
     from sklearn import svm
     dataset_ref, _ = dataset.only_labels([label_ref])
@@ -38,6 +41,32 @@ def proximity_dataset(label_ref, labels, dataset):
         dataset_other_, _ = dataset.only_labels([label])
         y_pred_train = clf.predict(dataset_other_.reshape(dataset_other_.shape[0], -1))
         return filter(lambda x: x[1] == -1, zip(dataset_other_, y_pred_train))
+
+
+def grouper_chunk_filler(n, iterable, fillvalue=None):
+    from itertools import izip_longest
+    "grouper_chunk_filler(3, '[1,2,3,4,5,6,7]', '-') --> [1,2,3] [4,5,6] [7,-,-]"
+    if not hasattr(object, '__iter__'):
+        args = [iter(iterable)] * n
+    else:
+        args = [iterable] * n
+    return izip_longest(fillvalue=fillvalue, *args)
+
+
+def grouper_chunk(n, iterable):
+    from itertools import islice, chain
+    "grouper_chunk_filler(3, '[1,2,3,4,5,6,7]', '-') --> [1,2,3] [4,5,6] [7]"
+    if not hasattr(object, '__iter__'):
+        it = iter(iterable)
+    else:
+        it = iterable
+    while True:
+        chunk = islice(it, n)
+        try:
+            first_el = next(chunk)
+        except StopIteration:
+            return
+        yield chain((first_el,), chunk)
 
 
 class DataSetBuilder(object):

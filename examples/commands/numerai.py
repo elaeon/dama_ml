@@ -119,7 +119,7 @@ if __name__ == '__main__':
             dataset=dataset,
             model_name=args.model_name,
             model_version=args.model_version,
-            weights=[3, 1, 1, 1],
+            weights=[3, 1],
             election='best',
             check_point_path=settings["checkpoints_path"])
         classif.train(batch_size=128, num_steps=args.epoch)
@@ -137,7 +137,7 @@ if __name__ == '__main__':
             ml.clf.extended.GradientBoost],
             model_name=args.model_name,
             model_version=args.model_version,
-            weights=[3, 1, 1, 1],
+            weights=[3, 1],
             election='best',
             check_point_path=settings["checkpoints_path"])
         #classif.print_confusion_matrix()

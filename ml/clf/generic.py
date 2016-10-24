@@ -189,9 +189,9 @@ class Grid(object):
         best = self.best_predictor_index(measure_name=measure_name, operator=operator)
         return self.load_model(self.classifs[best], info=True)
 
-    def predict(self, data, raw=False, transform=True, block=False):
+    def predict(self, data, raw=False, transform=True, chunk_size=1):
         for classif in self.load_models():
-            yield classif.predict(data, raw=raw, transform=transform, block=block)
+            yield classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
 
 
 class Voting(Grid):
@@ -201,16 +201,19 @@ class Voting(Grid):
         super(Voting, self).__init__(classifs, **kwargs)
 
     def select_best_prediction(self, predictions):
-        counter = {}
-        for w, prediction in zip(self.weights, predictions):
-            counter.setdefault(prediction, 0)
-            counter[prediction] += w
-        return max(counter.items(), key=lambda x:x[1])[0]
+        from itertools import izip
+        for row_prediction in izip(*predictions):
+            counter = {}
+            print(row_prediction)
+            for w, prediction in izip(self.weights, row_prediction):
+                counter.setdefault(prediction, 0)
+                counter[prediction] += w
+            yield max(counter.items(), key=lambda x:x[1])[0]
 
     def scores(self, measures=None):
         clf = self.load_models().next()
         list_measure = ListMeasure()
-        predictions = self.predict(clf.dataset.test_data, transform=False, block=True)
+        predictions = self.predict(clf.dataset.test_data, transform=False, chunk_size=1)
         measure = DMeasure(np.asarray(list(predictions)), 
             np.asarray([clf.convert_label(label, raw=False)
             for label in clf.dataset.test_labels]))
@@ -230,7 +233,8 @@ class Voting(Grid):
                 measure_class.append((measure_name, measure))
 
         if "logloss" in measures:
-            predictions = self.predict(clf.dataset.test_data, raw=True, transform=False, block=True)
+            predictions = self.predict(
+                clf.dataset.test_data, raw=True, transform=False, chunk_size=1)
             cmeasure = CMeasure(np.asarray(list(predictions)), clf.dataset.test_labels)
             measure_class.append(("logloss", cmeasure))
 
@@ -239,34 +243,31 @@ class Voting(Grid):
 
         return list_measure
 
-    def predict(self, data, raw=False, transform=True, block=False):
+    def predict(self, data, raw=False, transform=True, chunk_size=1):
         import time
+        import ml
         if self.election == "best":
             from operator import ge
             best = self.best_predictor_index(measure_name="auc", operator=ge)
             max_value = max(self.weights)
+            min_value = min(self.weights)
             weights = []
             for c_index, clf in enumerate(self.classifs):
                 if c_index == best:
                     weights.append(max_value)
                 else:
-                    weights.append(1)          
+                    weights.append(min_value)          
             self.weights = weights
         else:
             pass
 
-        models = list(self.load_models())
         time1 = time.time()
-        for elem in data:
-            results = []
-            for classif in models:
-                prediction = list(classif.predict([elem], raw=False, transform=transform, block=block)).pop()
-                results.append(prediction)
-            yield self.select_best_prediction(results)
-            #print(self.select_best_prediction(results))
-            break
-        time2 = time.time()
-        print((time2-time1)*1000.0)
+        predictions = []
+        for classif in self.load_models():
+            predictions.append(classif.predict(data, raw=False, transform=transform, chunk_size=1))
+        #time2 = time.time()
+        #print((time2-time1)*1000.0)
+        return self.select_best_prediction(predictions)
 
 
 class BaseClassif(object):
@@ -408,14 +409,18 @@ class BaseClassif(object):
         self._original_dataset_md5 = self.dataset.md5()
         self.reformat_all()
 
-    def predict(self, data, raw=False, transform=True, block=False):
+    def predict(self, data, raw=False, transform=True, chunk_size=1):
         if self.model is None:
-            self.load_model()
+            self.load_model()        
 
-        if transform is True and block is False:
-            data = [self.dataset.processing(datum, 'global') for datum in data]
-            data = self.transform_shape(np.asarray(data))
-        elif transform is True and block is True:
+        if transform is True and chunk_size > 0:
+            data_it = ml.ds.grouper_chunk(chunk_size, data)
+            #data = []
+            data = self.transform_shape(
+                self.dataset.processing(np.asarray(datum), 'global') for datum in data_it)
+            print(data)
+            print("-----")
+        elif transform is True and chunk_size == 0:
             data = self.dataset.processing(data, 'global')
             data = self.transform_shape(np.asarray(data))
         
@@ -593,19 +598,21 @@ class TFL(BaseClassif):
             path = self.make_model_file()
             self.model.load('{}.ckpt'.format(path))
 
-    def predict(self, data, raw=False, transform=True, block=False):
+    def predict(self, data, raw=False, transform=True, chunk_size=1):
         with tf.Graph().as_default():
-            if self.model is None:
-                self.load_model()
+            return super(TFL, self).predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
+            #if self.model is None:
+            #    self.load_model()
 
-            if transform is True and block is False:
-                data = [self.dataset.processing(datum, 'global') for datum in data]
-                data = self.transform_shape(np.asarray(data))
-            elif transform is True and block is True:
-                data = self.dataset.processing(data, 'global')
-                data = self.transform_shape(np.asarray(data))
+            #if transform is True and chunk_size > 0:
+            #    data_it = ml.ds.grouper_chunk(chunk_size, data)
+            #    data = [self.dataset.processing(list(datum), 'global') for datum in data_it]
+            #    data = self.transform_shape(np.asarray(data))
+            #elif transform is True and chunk_size == 0:
+            #    data = self.dataset.processing(data, 'global')
+            #    data = self.transform_shape(np.asarray(data))
 
-            return self._predict(data, raw=raw)
+            #return self._predict(data, raw=raw)
 
     def _predict(self, data, raw=False):
         for prediction in self.model.predict(data):
