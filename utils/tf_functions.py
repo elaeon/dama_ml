@@ -1,4 +1,4 @@
-### this code is copied from http://stackoverflow.com/questions/39051451/ssim-ms-ssim-for-tensorflow
+### this code was copied from http://stackoverflow.com/questions/39051451/ssim-ms-ssim-for-tensorflow
 ### and veryfied with the code in http://mubeta06.github.io/python/sp/_modules/sp/ssim.html
 ###
 ###
