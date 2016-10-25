@@ -21,7 +21,7 @@ def predict(classif, path, label_column):
 
     ids = df[label_column].as_matrix()
     predictions = []
-    for value, label in zip(list(classif.predict(data, raw=True, block=True)), ids):
+    for value, label in zip(list(classif.predict(data, raw=True, chunk_size=1)), ids):
         predictions.append([str(label), str(value[1])])
     
     with open(settings["predictions_file_path"], "w") as csvfile:

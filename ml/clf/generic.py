@@ -200,20 +200,27 @@ class Voting(Grid):
         self.election = election
         super(Voting, self).__init__(classifs, **kwargs)
 
-    def select_best_prediction(self, predictions):
+    def select_best_prediction(self, predictions, continuos_predict=True):
         from itertools import izip
-        for row_prediction in izip(*predictions):
-            counter = {}
-            print(row_prediction)
-            for w, prediction in izip(self.weights, row_prediction):
-                counter.setdefault(prediction, 0)
-                counter[prediction] += w
-            yield max(counter.items(), key=lambda x:x[1])[0]
+        if continuos_predict is False:
+            for row_prediction in izip(*predictions):
+                counter = {}
+                #print(row_prediction)
+                for w, prediction in izip(self.weights, row_prediction):
+                    counter.setdefault(prediction, 0)
+                    counter[prediction] += w
+                yield max(counter.items(), key=lambda x:x[1])[0]
+        else:
+            for row_prediction in izip(*predictions):
+                best_prediction = 0
+                for w, prediction in izip(self.weights, row_prediction):
+                    best_prediction += prediction * w
+                yield best_prediction / sum(self.weights)
 
     def scores(self, measures=None):
         clf = self.load_models().next()
         list_measure = ListMeasure()
-        predictions = self.predict(clf.dataset.test_data, transform=False, chunk_size=1)
+        predictions = self.predict(clf.dataset.test_data, raw=False, transform=False, chunk_size=1)
         measure = DMeasure(np.asarray(list(predictions)), 
             np.asarray([clf.convert_label(label, raw=False)
             for label in clf.dataset.test_labels]))
@@ -244,7 +251,6 @@ class Voting(Grid):
         return list_measure
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        import time
         import ml
         if self.election == "best":
             from operator import ge
@@ -261,13 +267,10 @@ class Voting(Grid):
         else:
             pass
 
-        time1 = time.time()
-        predictions = []
-        for classif in self.load_models():
-            predictions.append(classif.predict(data, raw=False, transform=transform, chunk_size=1))
-        #time2 = time.time()
-        #print((time2-time1)*1000.0)
-        return self.select_best_prediction(predictions)
+        predictions = [
+            classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size) 
+            for classif in self.load_models()]
+        return self.select_best_prediction(predictions, continuos_predict=raw)
 
 
 class BaseClassif(object):
@@ -415,11 +418,8 @@ class BaseClassif(object):
 
         if transform is True and chunk_size > 0:
             data_it = ml.ds.grouper_chunk(chunk_size, data)
-            #data = []
             data = self.transform_shape(
                 self.dataset.processing(np.asarray(datum), 'global') for datum in data_it)
-            print(data)
-            print("-----")
         elif transform is True and chunk_size == 0:
             data = self.dataset.processing(data, 'global')
             data = self.transform_shape(np.asarray(data))
