@@ -151,10 +151,9 @@ class Grid(object):
         for classif in self.load_models():
             classif.train(batch_size=batch_size, num_steps=num_steps)
     
-    def all_clf_scores(self):
+    def all_clf_scores(self, measures=None):
         from operator import add
-        list_measure = reduce(add, (classif.scores() for classif in self.load_models()))
-        return list_measure
+        return reduce(add, (classif.scores(measures=measures) for classif in self.load_models()))
 
     def print_confusion_matrix(self):
         from operator import add
@@ -171,9 +170,9 @@ class Grid(object):
         return self.params.get(model_cls, {})
 
     # select the best clf from the list of models
-    def best_predictor_index(self, measure_name="logloss", operator=None):
-        list_measure = self.all_clf_scores()
-        column_measures = list_measure.get_measure(measure_name)
+    def best_predictor_index(self, measure="logloss", operator=None):
+        list_measure = self.all_clf_scores(measures=measure)
+        column_measures = list_measure.get_measure(measure)
         base_value = column_measures.next()
         best = 0
         # initial step is one because the above base_value  
@@ -185,8 +184,43 @@ class Grid(object):
                 best = index
         return best
 
-    def best_predictor(self, measure_name="logloss", operator=None):
-        best = self.best_predictor_index(measure_name=measure_name, operator=operator)
+    def ordered_best_predictors(self, measure="logloss", operator=None):
+        from functools import cmp_to_key
+        list_measure = self.all_clf_scores(measures=measure)
+        column_measures = list_measure.get_measure(measure)
+
+        class DTuple:
+            def __init__(self, counter, elem):
+                self.elem = elem
+                self.counter = counter
+            
+            def __sub__(self, other):
+                if self.elem is None or other is None:
+                    return 0
+                return self.elem - other.elem
+
+            def __str__(self):
+                return "({}, {})".format(self.counter, self.elem)
+
+            def __repr__(self):
+                return self.__str__()
+
+        def enum(seq, position=0):
+            counter = 0
+            for elem in seq:
+                yield DTuple(counter, elem)
+                counter += 1
+
+        return sorted(enum(column_measures), key=cmp_to_key(operator))
+
+    def best_predictor_threshold(self, threshold=2, measure="logloss", operator=None):
+        best = self.ordered_best_predictors(measure=measure, operator=operator)
+        base = best[0].elem
+        return filter(lambda x: x[1] < threshold, 
+            ((elem.counter, elem.elem/base) for elem in best if elem.elem is not None))[:3]
+
+    def best_predictor(self, measure="logloss", operator=None):
+        best = self.best_predictor_index(measure=measure, operator=operator)
         return self.load_model(self.classifs[best], info=True)
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
@@ -254,7 +288,7 @@ class Voting(Grid):
         import ml
         if self.election == "best":
             from operator import ge
-            best = self.best_predictor_index(measure_name="auc", operator=ge)
+            best = self.best_predictor_index(measure="auc", operator=ge)
             max_value = max(self.weights)
             min_value = min(self.weights)
             weights = []
@@ -271,6 +305,9 @@ class Voting(Grid):
             classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size) 
             for classif in self.load_models()]
         return self.select_best_prediction(predictions, continuos_predict=raw)
+
+#class Correlated(Grid):
+
 
 
 class BaseClassif(object):

@@ -5,8 +5,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'
 import ml
 import argparse
 from utils.config import get_settings
+from utils.numeric_functions import le
 from ml.processing import Preprocessing
-from operator import le, ge
+#from operator import le, ge
 
 settings = get_settings("ml")
 settings.update(get_settings("numerai"))
@@ -141,7 +142,9 @@ if __name__ == '__main__':
             election='best',
             check_point_path=settings["checkpoints_path"])
         #classif.print_confusion_matrix()
-        classif.scores().print_scores(order_column="f1")
+        #classif.scores().print_scores(order_column="f1")
+        #print(classif.ordered_best_predictors(operator=le))
+        print(classif.best_predictor_threshold(operator=le))
         #classif.all_clf_scores().print_scores(order_column="f1")
         #classif_best = classif.best_predictor(measure_name="logloss", operator=le)
         #print("BEST: {}".format(classif_best.cls_name_simple()))
