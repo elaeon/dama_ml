@@ -213,11 +213,11 @@ class Grid(object):
 
         return sorted(enum(column_measures), key=cmp_to_key(operator))
 
-    def best_predictor_threshold(self, threshold=2, measure="logloss", operator=None):
+    def best_predictor_threshold(self, threshold=2, limit=3, measure="logloss", operator=None):
         best = self.ordered_best_predictors(measure=measure, operator=operator)
         base = best[0].elem
         return filter(lambda x: x[1] < threshold, 
-            ((elem.counter, elem.elem/base) for elem in best if elem.elem is not None))[:3]
+            ((elem.counter, elem.elem/base) for elem in best if elem.elem is not None))[:limit]
 
     def best_predictor(self, measure="logloss", operator=None):
         best = self.best_predictor_index(measure=measure, operator=operator)
@@ -306,8 +306,51 @@ class Voting(Grid):
             for classif in self.load_models()]
         return self.select_best_prediction(predictions, continuos_predict=raw)
 
-#class Correlated(Grid):
+    def find_low_correlation(self):
+        from utils.numeric_functions import le, pearsoncc
+        from itertools import combinations
+        import networkx as nx
 
+        predictions = {}
+        for index, _ in self.best_predictor_threshold(operator=le, limit=5):
+            classif = self.load_model(self.classifs[index], info=False)
+            predictions[index] = np.asarray(list(classif.predict(
+                classif.dataset.test_data, raw=False, transform=False, chunk_size=1)))
+
+        correlations = []
+        for clf_index1, clf_index2 in combinations(predictions.keys(), 2):
+            correlation = pearsoncc(predictions[clf_index1], predictions[clf_index2]) 
+            correlations.append((clf_index1, clf_index2, correlation))
+
+        FG = nx.Graph()
+        FG.add_weighted_edges_from(correlations)
+        paths = list(self._all_simple_paths_graph(FG, correlations[0][0], 3))
+        for path in paths:
+            for i, v in zip(path, path[1:]):
+                print(FG[i][v])
+        #print(correlations[0], list(self._all_simple_paths_graph(FG, correlations[0][0], 3)))
+        #clf_index1, clf_index2
+        #print(sorted(correlations, key=lambda x:x[2]))
+
+    def _all_simple_paths_graph(self, G, source, cutoff):
+        if cutoff < 1:
+            return
+        visited = [source]
+        stack = [iter(G[source])]
+        while stack:
+            children = stack[-1]
+            child = next(children, None)
+            if child is None:
+                stack.pop()
+                visited.pop()
+            elif len(visited) < cutoff:
+                if child not in visited:
+                    visited.append(child)
+                    stack.append(iter(G[child]))
+            elif len(visited) == cutoff:
+                yield visited[:]
+                stack.pop()
+                visited.pop()
 
 
 class BaseClassif(object):

@@ -144,7 +144,7 @@ if __name__ == '__main__':
         #classif.print_confusion_matrix()
         #classif.scores().print_scores(order_column="f1")
         #print(classif.ordered_best_predictors(operator=le))
-        print(classif.best_predictor_threshold(operator=le))
+        print(classif.find_low_correlation())
         #classif.all_clf_scores().print_scores(order_column="f1")
         #classif_best = classif.best_predictor(measure_name="logloss", operator=le)
         #print("BEST: {}".format(classif_best.cls_name_simple()))
