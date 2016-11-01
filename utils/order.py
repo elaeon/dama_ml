@@ -42,3 +42,20 @@ def order_table_print(headers, table, order_column, reverse=True):
     print(tabulate(table, headers))
     print("")
     print("")
+
+def order_from_ordered(ordered, data):
+    """ build a ordered list from a desordered list with elems in ordered
+        ordered = [5, 3, 1, 6, 2] this elems are ordered acordenly to importance
+        data = [3, 2, 5]
+        result is [5, 3, 2]
+    """
+    index = {}
+    for i, elem in enumerate(ordered):
+        index[elem] = i
+    
+    order_index = {}
+    for elem in data:
+        order_index[index[elem]] = elem
+    
+    return [elem for i, elem in sorted(order_index.items(), key=lambda x:x[0])]
+        

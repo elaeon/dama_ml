@@ -139,12 +139,12 @@ if __name__ == '__main__':
             model_name=args.model_name,
             model_version=args.model_version,
             weights=[3, 1],
-            election='best',
+            election='best-c',
             check_point_path=settings["checkpoints_path"])
         #classif.print_confusion_matrix()
-        #classif.scores().print_scores(order_column="f1")
+        classif.scores().print_scores(order_column="f1")
         #print(classif.ordered_best_predictors(operator=le))
-        print(classif.find_low_correlation())
+        #print(classif.find_low_correlation())
         #classif.all_clf_scores().print_scores(order_column="f1")
         #classif_best = classif.best_predictor(measure_name="logloss", operator=le)
         #print("BEST: {}".format(classif_best.cls_name_simple()))

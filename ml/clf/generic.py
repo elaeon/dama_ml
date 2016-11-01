@@ -284,73 +284,69 @@ class Voting(Grid):
 
         return list_measure
 
+    def set_weights(self, best, classifs):
+        max_value = max(self.weights)
+        min_value = min(self.weights)
+        weights = []
+        for c_index, clf in enumerate(classifs):
+            if c_index == best:
+                weights.append(max_value)
+            else:
+                weights.append(min_value)
+        return weights
+
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         import ml
         if self.election == "best":
             from operator import ge
             best = self.best_predictor_index(measure="auc", operator=ge)
-            max_value = max(self.weights)
-            min_value = min(self.weights)
-            weights = []
-            for c_index, clf in enumerate(self.classifs):
-                if c_index == best:
-                    weights.append(max_value)
-                else:
-                    weights.append(min_value)          
-            self.weights = weights
-        else:
-            pass
+            self.weights = self.set_weights(best, self.classifs)
+            models = self.load_models()
+        elif self.election == "best-c":
+            bests = self.find_low_correlation(sort=True)
+            self.weights = self.set_weights(bests[0], self.classifs)
+            models = (self.load_model(self.classifs[index], info=False) for index in bests)
 
         predictions = [
             classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size) 
-            for classif in self.load_models()]
+            for classif in models]
         return self.select_best_prediction(predictions, continuos_predict=raw)
 
-    def find_low_correlation(self):
+    def find_low_correlation(self, sort=False):
         from utils.numeric_functions import le, pearsoncc
+        from utils.network import all_simple_paths_graph
         from itertools import combinations
+        from utils.order import order_from_ordered
         import networkx as nx
 
-        predictions = {}
-        for index, _ in self.best_predictor_threshold(operator=le, limit=5):
-            classif = self.load_model(self.classifs[index], info=False)
-            predictions[index] = np.asarray(list(classif.predict(
-                classif.dataset.test_data, raw=False, transform=False, chunk_size=1)))
+        best_predictors = []
+        def predictions_fn():
+            predictions = {}
+            for index, _ in self.best_predictor_threshold(operator=le, limit=5):
+                classif = self.load_model(self.classifs[index], info=False)
+                predictions[index] = np.asarray(list(classif.predict(
+                    classif.dataset.test_data, raw=False, transform=False, chunk_size=1)))
+                best_predictors.append(index)
+            return predictions
 
-        correlations = []
-        for clf_index1, clf_index2 in combinations(predictions.keys(), 2):
-            correlation = pearsoncc(predictions[clf_index1], predictions[clf_index2]) 
-            correlations.append((clf_index1, clf_index2, correlation))
+        def correlations_fn(predictions):
+            for clf_index1, clf_index2 in combinations(predictions.keys(), 2):
+                correlation = pearsoncc(predictions[clf_index1], predictions[clf_index2]) 
+                yield (clf_index1, clf_index2, correlation)
 
         FG = nx.Graph()
-        FG.add_weighted_edges_from(correlations)
-        paths = list(self._all_simple_paths_graph(FG, correlations[0][0], 3))
-        for path in paths:
-            for i, v in zip(path, path[1:]):
-                print(FG[i][v])
-        #print(correlations[0], list(self._all_simple_paths_graph(FG, correlations[0][0], 3)))
-        #clf_index1, clf_index2
-        #print(sorted(correlations, key=lambda x:x[2]))
+        FG.add_weighted_edges_from(correlations_fn(predictions_fn()))
+        classif_weight = []
+        for initial_node in FG.nodes():
+            for path in all_simple_paths_graph(FG, initial_node, 3):
+                total_weight = sum(FG[i][v]["weight"] for i, v in zip(path, path[1:]))
+                classif_weight.append((total_weight, path))
 
-    def _all_simple_paths_graph(self, G, source, cutoff):
-        if cutoff < 1:
-            return
-        visited = [source]
-        stack = [iter(G[source])]
-        while stack:
-            children = stack[-1]
-            child = next(children, None)
-            if child is None:
-                stack.pop()
-                visited.pop()
-            elif len(visited) < cutoff:
-                if child not in visited:
-                    visited.append(child)
-                    stack.append(iter(G[child]))
-            elif len(visited) == cutoff:
-                yield visited[:]
-                stack.pop()
-                visited.pop()
+        min_correlation = min(classif_weight, key=lambda x:x[0])[1]
+        if sort:
+            return order_from_ordered(best_predictors, min_correlation)
+        else:
+            return min_correlation
 
 
 class BaseClassif(object):
