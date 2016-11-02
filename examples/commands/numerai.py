@@ -78,7 +78,7 @@ if __name__ == '__main__':
     parser.add_argument("--build-dataset", help="crea el dataset", action="store_true")
     parser.add_argument("--train", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--epoch", type=int)
-    parser.add_argument("--predic", help="inicia el entrenamiento", action="store_true")
+    parser.add_argument("--predict", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--model-version", type=str)
     parser.add_argument("--plot", action="store_true")
     args = parser.parse_args()
@@ -126,7 +126,7 @@ if __name__ == '__main__':
         classif.train(batch_size=128, num_steps=args.epoch)
         classif.all_clf_scores().print_scores(order_column="f1")
 
-    if args.predic:
+    if args.predict:
         classif = ml.clf.generic.Voting([
             ml.clf.extended.ExtraTrees,
             ml.clf.extended.MLP,
@@ -139,15 +139,11 @@ if __name__ == '__main__':
             model_name=args.model_name,
             model_version=args.model_version,
             weights=[3, 1],
+            num_max_clfs=6,
             election='best-c',
             check_point_path=settings["checkpoints_path"])
         #classif.print_confusion_matrix()
         classif.scores().print_scores(order_column="f1")
-        #print(classif.ordered_best_predictors(operator=le))
-        #print(classif.find_low_correlation())
-        #classif.all_clf_scores().print_scores(order_column="f1")
-        #classif_best = classif.best_predictor(measure_name="logloss", operator=le)
-        #print("BEST: {}".format(classif_best.cls_name_simple()))
         #predict(classif_best, settings["numerai_test"], "t_id")
 
     if args.plot:

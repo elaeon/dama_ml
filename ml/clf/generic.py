@@ -136,7 +136,7 @@ class Grid(object):
         self.params = {}
         
     def load_models(self):
-        for index, classif in enumerate(self.classifs):
+        for classif in self.classifs:
             yield self.load_model(classif, info=False)
     
     def load_model(self, model, info=True):
@@ -229,27 +229,28 @@ class Grid(object):
 
 
 class Voting(Grid):
-    def __init__(self, classifs, weights=None, election='best', **kwargs):
-        self.weights = weights
+    def __init__(self, classifs, weights=None, election='best', num_max_clfs=1, **kwargs):
+        self.weights = self.set_weights(0, classifs, weights)
         self.election = election
+        self.num_max_clfs = num_max_clfs
         super(Voting, self).__init__(classifs, **kwargs)
 
-    def select_best_prediction(self, predictions, continuos_predict=True):
+    def select_best_prediction(self, predictions, models_index, continuos_predict=True):
         from itertools import izip
         if continuos_predict is False:
             for row_prediction in izip(*predictions):
                 counter = {}
-                #print(row_prediction)
-                for w, prediction in izip(self.weights, row_prediction):
+                for index, prediction in izip(models_index, row_prediction):
                     counter.setdefault(prediction, 0)
-                    counter[prediction] += w
+                    counter[prediction] += self.weights[index]
                 yield max(counter.items(), key=lambda x:x[1])[0]
         else:
             for row_prediction in izip(*predictions):
                 best_prediction = 0
-                for w, prediction in izip(self.weights, row_prediction):
-                    best_prediction += prediction * w
-                yield best_prediction / sum(self.weights)
+                for index, prediction in izip(models_index, row_prediction):
+                    #print(prediction, self.weights[index], self.classifs[index].cls_name())
+                    best_prediction += prediction * self.weights[index]
+                yield best_prediction / sum(self.weights.values())
 
     def scores(self, measures=None):
         clf = self.load_models().next()
@@ -284,15 +285,15 @@ class Voting(Grid):
 
         return list_measure
 
-    def set_weights(self, best, classifs):
-        max_value = max(self.weights)
-        min_value = min(self.weights)
-        weights = []
+    def set_weights(self, best, classifs, values):
+        max_value = max(values)
+        min_value = min(values)
+        weights = {} 
         for c_index, clf in enumerate(classifs):
             if c_index == best:
-                weights.append(max_value)
+                weights[c_index] = max_value
             else:
-                weights.append(min_value)
+                weights[c_index] = min_value
         return weights
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
@@ -300,17 +301,19 @@ class Voting(Grid):
         if self.election == "best":
             from operator import ge
             best = self.best_predictor_index(measure="auc", operator=ge)
-            self.weights = self.set_weights(best, self.classifs)
+            self.weights = self.set_weights(best, self.classifs, self.weights.values())
             models = self.load_models()
+            models_index = range(len(self.classifs))
         elif self.election == "best-c":
             bests = self.find_low_correlation(sort=True)
-            self.weights = self.set_weights(bests[0], self.classifs)
+            self.weights = self.set_weights(bests[0], self.classifs, self.weights.values())
             models = (self.load_model(self.classifs[index], info=False) for index in bests)
+            models_index = bests
 
-        predictions = [
-            classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size) 
-            for classif in models]
-        return self.select_best_prediction(predictions, continuos_predict=raw)
+        predictions = (
+            classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
+            for classif in models)
+        return self.select_best_prediction(predictions, models_index, continuos_predict=raw)
 
     def find_low_correlation(self, sort=False):
         from utils.numeric_functions import le, pearsoncc
@@ -322,7 +325,7 @@ class Voting(Grid):
         best_predictors = []
         def predictions_fn():
             predictions = {}
-            for index, _ in self.best_predictor_threshold(operator=le, limit=5):
+            for index, _ in self.best_predictor_threshold(operator=le, limit=self.num_max_clfs):
                 classif = self.load_model(self.classifs[index], info=False)
                 predictions[index] = np.asarray(list(classif.predict(
                     classif.dataset.test_data, raw=False, transform=False, chunk_size=1)))
@@ -338,8 +341,9 @@ class Voting(Grid):
         FG.add_weighted_edges_from(correlations_fn(predictions_fn()))
         classif_weight = []
         for initial_node in FG.nodes():
-            for path in all_simple_paths_graph(FG, initial_node, 3):
-                total_weight = sum(FG[i][v]["weight"] for i, v in zip(path, path[1:]))
+            for path in all_simple_paths_graph(FG, initial_node, self.num_max_clfs-2):
+                total_weight = sum(FG[v1][v2]["weight"] for v1, v2 in combinations(path, 2))
+                #total_weight = sum(FG[v1][v2]["weight"] for v1, v2 in zip(path, path[1:]))
                 classif_weight.append((total_weight, path))
 
         min_correlation = min(classif_weight, key=lambda x:x[0])[1]
@@ -677,20 +681,8 @@ class TFL(BaseClassif):
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         with tf.Graph().as_default():
             return super(TFL, self).predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
-            #if self.model is None:
-            #    self.load_model()
-
-            #if transform is True and chunk_size > 0:
-            #    data_it = ml.ds.grouper_chunk(chunk_size, data)
-            #    data = [self.dataset.processing(list(datum), 'global') for datum in data_it]
-            #    data = self.transform_shape(np.asarray(data))
-            #elif transform is True and chunk_size == 0:
-            #    data = self.dataset.processing(data, 'global')
-            #    data = self.transform_shape(np.asarray(data))
-
-            #return self._predict(data, raw=raw)
 
     def _predict(self, data, raw=False):
         for prediction in self.model.predict(data):
-            yield self.convert_label(prediction, raw=raw)
+            yield self.convert_label(np.asarray(prediction), raw=raw)
 
