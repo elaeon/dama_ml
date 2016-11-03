@@ -16,9 +16,9 @@ class OneClassSVM(SKL):
         self.model = reg
 
     def _predict(self, data, raw=False):
-        for prediction in self.model.predict(self.transform_shape(data)):
+        for prediction in self.model.predict(data):
             label = self.label_other if prediction == -1 else self.label_ref
-            yield self.convert_label(label)
+            yield self.convert_label(label, raw=raw)
 
 
 class SVC(SKL):

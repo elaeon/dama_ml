@@ -280,7 +280,6 @@ class Voting(Grid):
         return weights
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        import ml
         if self.election == "best":
             from utils.numeric_functions import le
             best = self.best_predictor(operator=le)
@@ -450,18 +449,21 @@ class BaseClassif(object):
         self.reformat_all()
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
+        from ml.ds import grouper_chunk
         if self.model is None:
             self.load_model()        
 
         if transform is True and chunk_size > 0:
-            data_it = ml.ds.grouper_chunk(chunk_size, data)
-            data = self.transform_shape(
-                self.dataset.processing(np.asarray(datum), 'global') for datum in data_it)
+            data_it = grouper_chunk(chunk_size, data)
+            p = []
+            for chunk in data_it:
+                data = self.transform_shape(self.dataset.processing(np.asarray(list(chunk)), 'global'))
+                p.append(list(self._predict(data, raw=raw)))
+            return p
         elif transform is True and chunk_size == 0:
             data = self.dataset.processing(data, 'global')
-            data = self.transform_shape(np.asarray(data))
-        
-        return self._predict(data, raw=raw)
+            data = self.transform_shape(data)
+            return self._predict(data, raw=raw)
 
     def _pred_erros(self, predictions, test_data, test_labels, valid_size=.1):
         validation_labels_d = {}
