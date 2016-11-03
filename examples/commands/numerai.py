@@ -138,13 +138,12 @@ if __name__ == '__main__':
             ml.clf.extended.GradientBoost],
             model_name=args.model_name,
             model_version=args.model_version,
-            weights=[3, 1],
-            num_max_clfs=6,
+            weights=[2, 1],
+            num_max_clfs=5,
             election='best-c',
             check_point_path=settings["checkpoints_path"])
         #classif.print_confusion_matrix()
-        #classif.all_clf_scores().print_scores(order_column="f1")
-        classif.scores().print_scores(order_column="f1")
+        classif.scores().print_scores(order_column="logloss")
         #predict(classif_best, settings["numerai_test"], "t_id")
 
     if args.plot:

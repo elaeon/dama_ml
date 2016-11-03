@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 #np.random.seed(133)
 
 #Discrete measure
-class DMeasure(object):
+class Measure(object):
     def __init__(self, predictions, labels):
         if len(predictions.shape) > 1:
             self.transform = lambda x: np.argmax(x, 1)
@@ -18,47 +18,40 @@ class DMeasure(object):
             self.transform = lambda x: x
         
         self.labels = labels
-        self.predictions = self.transform(predictions)
+        self.predictions = predictions
         self.average = "macro"
 
     def accuracy(self):
         from sklearn.metrics import accuracy_score
-        return accuracy_score(self.labels, self.predictions)
+        return accuracy_score(self.labels, self.transform(self.predictions))
 
     #false positives
     def precision(self):
         from sklearn.metrics import precision_score
-        return precision_score(self.labels, self.predictions, 
+        return precision_score(self.labels, self.transform(self.predictions), 
             average=self.average, pos_label=None)
 
     #false negatives
     def recall(self):
         from sklearn.metrics import recall_score
-        return recall_score(self.labels, self.predictions, 
+        return recall_score(self.labels, self.transform(self.predictions), 
             average=self.average, pos_label=None)
 
     #weighted avg presicion and recall
     def f1(self):
         from sklearn.metrics import f1_score
-        return f1_score(self.labels, self.predictions, 
+        return f1_score(self.labels, self.transform(self.predictions), 
             average=self.average, pos_label=None)
 
     def auc(self):
         from sklearn.metrics import roc_auc_score
-        return roc_auc_score(self.labels, self.predictions, 
+        return roc_auc_score(self.labels, self.transform(self.predictions), 
             average=self.average)
 
     def confusion_matrix(self, base_labels=None):
         from sklearn.metrics import confusion_matrix
-        cm = confusion_matrix(self.labels, self.predictions, labels=base_labels)
+        cm = confusion_matrix(self.labels, self.transform(self.predictions), labels=base_labels)
         return cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-
-
-#Continuos measure
-class CMeasure(object):
-    def __init__(self, predictions, labels):
-        self.labels = labels
-        self.predictions = predictions
 
     def logloss(self):
         from sklearn.metrics import log_loss
@@ -123,6 +116,30 @@ class ListMeasure(object):
             headers=headers, measures=this_measures+other_measures)
         return list_measure
 
+    def calc_scores(self, name, predict, clf, measures=None):
+        if measures is None:
+            measures = ["accuracy", "presicion", "recall", "f1", "auc", "logloss"]
+        elif isinstance(measures, str):
+            measures = measures.split(",")
+        else:
+            measures = []
+        uncertain = "logloss" in measures
+        predictions = np.asarray(list(
+            predict(clf.dataset.test_data, raw=uncertain, transform=False, chunk_size=1)))
+        measure = Measure(predictions, 
+            np.asarray([clf.convert_label(label, raw=False)
+            for label in clf.dataset.test_labels]))
+        self.add_measure("CLF", name)
+
+        measure_class = []
+        for measure_name in measures:
+            measure_name = measure_name.strip()
+            if hasattr(measure, measure_name):
+                measure_class.append((measure_name, measure))
+
+        for measure_name, measure in measure_class:
+            self.add_measure(measure_name, getattr(measure, measure_name)())
+
 
 class Grid(object):
     def __init__(self, classifs, model_name=None, dataset=None, 
@@ -154,6 +171,9 @@ class Grid(object):
     def all_clf_scores(self, measures=None):
         from operator import add
         return reduce(add, (classif.scores(measures=measures) for classif in self.load_models()))
+
+    def scores(self, measures=None):
+        return self.all_clf_scores(measures=measures)
 
     def print_confusion_matrix(self):
         from operator import add
@@ -205,8 +225,9 @@ class Grid(object):
             ((elem.counter, elem.elem/base) for elem in best if elem.elem is not None))[:limit]
 
     def best_predictor(self, measure="logloss", operator=None):
-        best = self.best_predictor_index(measure=measure, operator=operator)
-        return self.load_model(self.classifs[best], info=True)
+        best = self.ordered_best_predictors(measure=measure, operator=operator)[0].counter
+        #self.load_model(self.classifs[best], info=False)
+        return best
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         for classif in self.load_models():
@@ -220,9 +241,9 @@ class Voting(Grid):
         self.num_max_clfs = num_max_clfs
         super(Voting, self).__init__(classifs, **kwargs)
 
-    def select_best_prediction(self, predictions, models_index, continuos_predict=True):
+    def select_best_prediction(self, predictions, models_index, uncertain=True):
         from itertools import izip
-        if continuos_predict is False:
+        if uncertain is False:
             for row_prediction in izip(*predictions):
                 counter = {}
                 for index, prediction in izip(models_index, row_prediction):
@@ -230,43 +251,22 @@ class Voting(Grid):
                     counter[prediction] += self.weights[index]
                 yield max(counter.items(), key=lambda x:x[1])[0]
         else:
+            weights = [self.weights[index] for index in models_index]
+            total_weights = float(sum(weights))
             for row_prediction in izip(*predictions):
                 best_prediction = 0
-                for index, prediction in izip(models_index, row_prediction):
-                    best_prediction += prediction * self.weights[index]
-                yield best_prediction / float(sum(self.weights.values()))
+                for w, prediction in izip(weights, row_prediction):
+                    best_prediction += prediction * w
+                yield best_prediction / total_weights
 
-    def scores(self, measures=None):
+    def scores(self, measures=None, all_clf=True):
         clf = self.load_models().next()
         list_measure = ListMeasure()
-        if measures is None:
-            measures = ["accuracy", "presicion", "recall", "f1", "auc", "logloss"]
-        elif isinstance(measures, str):
-            measures = measures.split(",")
+        list_measure.calc_scores(self.__class__.__name__, self.predict, clf, measures=measures)
+        if all_clf is True:
+            return list_measure + self.all_clf_scores(measures=measures)
         else:
-            measures = []
-        raw = "logloss" in measures
-        predictions = np.asarray(list(
-            self.predict(clf.dataset.test_data, raw=raw, transform=False, chunk_size=1)))
-        measure = DMeasure(predictions, 
-            np.asarray([clf.convert_label(label, raw=False)
-            for label in clf.dataset.test_labels]))
-        list_measure.add_measure("CLF", self.__class__.__name__)
-
-        measure_class = []
-        for measure_name in measures:
-            measure_name = measure_name.strip()
-            if hasattr(measure, measure_name):
-                measure_class.append((measure_name, measure))
-
-        if "logloss" in measures and raw is True:
-            cmeasure = CMeasure(predictions, clf.dataset.test_labels)
-            measure_class.append(("logloss", cmeasure))
-
-        for measure_name, measure in measure_class:
-            list_measure.add_measure(measure_name, getattr(measure, measure_name)())
-
-        return list_measure
+            return list_measure
 
     def set_weights(self, best, classifs, values):
         max_value = max(values)
@@ -283,7 +283,7 @@ class Voting(Grid):
         import ml
         if self.election == "best":
             from utils.numeric_functions import le
-            best, _ = self.best_predictor_threshold(operator=le, limit=self.num_max_clfs)[0]
+            best = self.best_predictor(operator=le)
             self.weights = self.set_weights(best, self.classifs, self.weights.values())
             models = self.load_models()
             models_index = range(len(self.classifs))
@@ -296,7 +296,7 @@ class Voting(Grid):
         predictions = (
             classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
             for classif in models)
-        return self.select_best_prediction(predictions, models_index, continuos_predict=raw)
+        return self.select_best_prediction(predictions, models_index, uncertain=raw)
 
     def find_low_correlation(self, sort=False):
         from utils.numeric_functions import le, pearsoncc
@@ -317,7 +317,7 @@ class Voting(Grid):
 
         def correlations_fn(predictions):
             for clf_index1, clf_index2 in combinations(predictions.keys(), 2):
-                correlation = pearsoncc(predictions[clf_index1], predictions[clf_index2]) 
+                correlation = pearsoncc(predictions[clf_index1], predictions[clf_index2])
                 yield (clf_index1, clf_index2, correlation)
 
         FG = nx.Graph()
@@ -327,13 +327,13 @@ class Voting(Grid):
             for path in all_simple_paths_graph(FG, initial_node, self.num_max_clfs-2):
                 total_weight = sum(FG[v1][v2]["weight"] for v1, v2 in combinations(path, 2))
                 #total_weight = sum(FG[v1][v2]["weight"] for v1, v2 in zip(path, path[1:]))
-                classif_weight.append((total_weight, path))
+                classif_weight.append((total_weight/len(path), path))
 
-        min_correlation = min(classif_weight, key=lambda x:x[0])[1]
+        relation_clf = max(classif_weight, key=lambda x:x[0])[1]
         if sort:
-            return order_from_ordered(best_predictors, min_correlation)
+            return order_from_ordered(best_predictors, relation_clf)
         else:
-            return min_correlation
+            return relation_clf
 
 
 class BaseClassif(object):
@@ -366,39 +366,13 @@ class BaseClassif(object):
 
     def scores(self, measures=None):
         list_measure = ListMeasure()
-        predictions = np.asarray(list(
-            self.predict(self.dataset.test_data, raw=True, transform=False, chunk_size=1)))
-        measure = DMeasure(predictions, 
-            np.asarray([self.convert_label(label, raw=False)
-            for label in self.dataset.test_labels]))
-        list_measure.add_measure("CLF", self.__class__.__name__)
-
-        if measures is None:
-            measures = ["accuracy", "presicion", "recall", "f1", "auc", "logloss"]
-        elif isinstance(measures, str):
-            measures = measures.split(",")
-        else:
-            measures = []
-
-        measure_class = []
-        for measure_name in measures:
-            measure_name = measure_name.strip()
-            if hasattr(measure, measure_name):
-                measure_class.append((measure_name, measure))
-
-        if "logloss" in measures:
-            cmeasure = CMeasure(predictions, self.dataset.test_labels)
-            measure_class.append(("logloss", cmeasure))
-
-        for measure_name, measure in measure_class:
-            list_measure.add_measure(measure_name, getattr(measure, measure_name)())
-
+        list_measure.calc_scores(self.__class__.__name__, self.predict, self, measures=measures)
         return list_measure
 
     def confusion_matrix(self):
         list_measure = ListMeasure()
         predictions = self.predict(self.dataset.test_data, raw=False, transform=False)
-        measure = DMeasure(np.asarray(list(predictions)), 
+        measure = Measure(np.asarray(list(predictions)), 
             np.asarray([self.convert_label(label, raw=False)
             for label in self.dataset.test_labels]))
         list_measure.add_measure("CLF", self.__class__.__name__)
