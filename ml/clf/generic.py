@@ -169,21 +169,6 @@ class Grid(object):
     def get_params(self, model_cls):
         return self.params.get(model_cls, {})
 
-    # select the best clf from the list of models
-    def best_predictor_index(self, measure="logloss", operator=None):
-        list_measure = self.all_clf_scores(measures=measure)
-        column_measures = list_measure.get_measure(measure)
-        base_value = column_measures.next()
-        best = 0
-        # initial step is one because the above base_value  
-        for index, value in enumerate(column_measures, 1):
-            if base_value is None:
-                base_value = value
-            elif value is not None and operator(value, base_value):
-                base_value = value
-                best = index
-        return best
-
     def ordered_best_predictors(self, measure="logloss", operator=None):
         from functools import cmp_to_key
         list_measure = self.all_clf_scores(measures=measure)
@@ -248,25 +233,25 @@ class Voting(Grid):
             for row_prediction in izip(*predictions):
                 best_prediction = 0
                 for index, prediction in izip(models_index, row_prediction):
-                    #print(prediction, self.weights[index], self.classifs[index].cls_name())
                     best_prediction += prediction * self.weights[index]
-                yield best_prediction / sum(self.weights.values())
+                yield best_prediction / float(sum(self.weights.values()))
 
     def scores(self, measures=None):
         clf = self.load_models().next()
         list_measure = ListMeasure()
-        predictions = self.predict(clf.dataset.test_data, raw=False, transform=False, chunk_size=1)
-        measure = DMeasure(np.asarray(list(predictions)), 
-            np.asarray([clf.convert_label(label, raw=False)
-            for label in clf.dataset.test_labels]))
-        list_measure.add_measure("CLF", self.__class__.__name__)
-
         if measures is None:
             measures = ["accuracy", "presicion", "recall", "f1", "auc", "logloss"]
         elif isinstance(measures, str):
             measures = measures.split(",")
         else:
             measures = []
+        raw = "logloss" in measures
+        predictions = np.asarray(list(
+            self.predict(clf.dataset.test_data, raw=raw, transform=False, chunk_size=1)))
+        measure = DMeasure(predictions, 
+            np.asarray([clf.convert_label(label, raw=False)
+            for label in clf.dataset.test_labels]))
+        list_measure.add_measure("CLF", self.__class__.__name__)
 
         measure_class = []
         for measure_name in measures:
@@ -274,10 +259,8 @@ class Voting(Grid):
             if hasattr(measure, measure_name):
                 measure_class.append((measure_name, measure))
 
-        if "logloss" in measures:
-            predictions = self.predict(
-                clf.dataset.test_data, raw=True, transform=False, chunk_size=1)
-            cmeasure = CMeasure(np.asarray(list(predictions)), clf.dataset.test_labels)
+        if "logloss" in measures and raw is True:
+            cmeasure = CMeasure(predictions, clf.dataset.test_labels)
             measure_class.append(("logloss", cmeasure))
 
         for measure_name, measure in measure_class:
@@ -299,8 +282,8 @@ class Voting(Grid):
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         import ml
         if self.election == "best":
-            from operator import ge
-            best = self.best_predictor_index(measure="auc", operator=ge)
+            from utils.numeric_functions import le
+            best, _ = self.best_predictor_threshold(operator=le, limit=self.num_max_clfs)[0]
             self.weights = self.set_weights(best, self.classifs, self.weights.values())
             models = self.load_models()
             models_index = range(len(self.classifs))
@@ -363,7 +346,7 @@ class BaseClassif(object):
         self.le = LabelEncoder()
         self.check_point_path = check_point_path
         self.model_version = model_version
-        self.has_uncertain = False
+        #self.has_uncertain = False
         self.dataset_train_limit = dataset_train_limit
         self.print_info = info
         self.base_labels = None
@@ -383,8 +366,9 @@ class BaseClassif(object):
 
     def scores(self, measures=None):
         list_measure = ListMeasure()
-        predictions = self.predict(self.dataset.test_data, raw=False, transform=False)
-        measure = DMeasure(np.asarray(list(predictions)), 
+        predictions = np.asarray(list(
+            self.predict(self.dataset.test_data, raw=True, transform=False, chunk_size=1)))
+        measure = DMeasure(predictions, 
             np.asarray([self.convert_label(label, raw=False)
             for label in self.dataset.test_labels]))
         list_measure.add_measure("CLF", self.__class__.__name__)
@@ -402,9 +386,8 @@ class BaseClassif(object):
             if hasattr(measure, measure_name):
                 measure_class.append((measure_name, measure))
 
-        if self.has_uncertain and "logloss" in measures:
-            predictions = self.predict(self.dataset.test_data, raw=True, transform=False)
-            cmeasure = CMeasure(np.asarray(list(predictions)), self.dataset.test_labels)
+        if "logloss" in measures:
+            cmeasure = CMeasure(predictions, self.dataset.test_labels)
             measure_class.append(("logloss", cmeasure))
 
         for measure_name, measure in measure_class:
@@ -622,6 +605,12 @@ class BaseClassif(object):
 
 
 class SKL(BaseClassif):
+    def convert_label(self, label, raw=False):
+        if raw is True:
+            return (np.arange(self.num_labels) == label).astype(np.float32)
+        else:
+            return self.le.inverse_transform(self.position_index(label))
+
     def train(self, batch_size=0, num_steps=0):
         self.prepare_model()
         self.save_model()
@@ -641,13 +630,19 @@ class SKL(BaseClassif):
 
     def _predict(self, data, raw=False):
         for prediction in self.model.predict(data):
-            yield self.convert_label(prediction)
+            yield self.convert_label(prediction, raw=raw)
 
 
 class SKLP(SKL):
     def __init__(self, *args, **kwargs):
         super(SKLP, self).__init__(*args, **kwargs) 
-        self.has_uncertain = True
+        #self.has_uncertain = True
+
+    def convert_label(self, label, raw=False):
+        if raw is True:
+            return label
+        else:
+            return self.le.inverse_transform(self.position_index(label))
 
     def _predict(self, data, raw=False):
         for prediction in self.model.predict_proba(data):
@@ -657,7 +652,7 @@ class SKLP(SKL):
 class TFL(BaseClassif):
     def __init__(self, **kwargs):
         super(TFL, self).__init__(**kwargs)
-        self.has_uncertain = True
+        #self.has_uncertain = True
 
     def reformat(self, data, labels):
         data = self.transform_shape(data)

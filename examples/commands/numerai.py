@@ -143,6 +143,7 @@ if __name__ == '__main__':
             election='best-c',
             check_point_path=settings["checkpoints_path"])
         #classif.print_confusion_matrix()
+        #classif.all_clf_scores().print_scores(order_column="f1")
         classif.scores().print_scores(order_column="f1")
         #predict(classif_best, settings["numerai_test"], "t_id")
 
