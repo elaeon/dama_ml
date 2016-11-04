@@ -454,9 +454,12 @@ class BaseClassif(object):
         from ml.ds import grouper_chunk
         for chunk in grouper_chunk(chunk_size, data):
             data = np.asarray(list(chunk))
-            if data.shape[0] == 1:
+            size = data.shape[0]
+            if data.shape[0] == 1 and len(data.shape) > 1:
                 data = data[0]
-            data = self.transform_shape(self.dataset.processing(data, 'global'), size=chunk_size)
+            #else:
+            #    size = 1
+            data = self.transform_shape(self.dataset.processing(data, 'global'), size=size)
             for prediction in self._predict(data):
                 yield prediction
 

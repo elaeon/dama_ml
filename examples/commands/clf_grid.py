@@ -59,7 +59,7 @@ def test(model_name):
 def predict(model_name, chunk_size):
     np.random.seed(0)
     DIM = 21
-    SIZE = 3
+    SIZE = 11
     X = np.random.rand(SIZE, DIM)
     Y = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
     classif = ml.clf.extended.SVGPC(
@@ -67,7 +67,7 @@ def predict(model_name, chunk_size):
         model_version="1",
         check_point_path=settings["checkpoints_path"])
     print("TARGET", Y)
-    print("VALUE", X)
+    #print("VALUE", X)
     print("PREDICTED", list(classif.predict(X, chunk_size=chunk_size)))
 
 if __name__ == '__main__':
