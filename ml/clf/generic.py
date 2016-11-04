@@ -397,8 +397,10 @@ class BaseClassif(object):
         dataset = self.transform_shape(dataset)
         return dataset, labels
 
-    def transform_shape(self, data):
-        return data.reshape(data.shape[0], -1).astype(np.float32)
+    def transform_shape(self, data, size=None):
+        if size is None:
+            size = data.shape[0]
+        return data.reshape(size, -1).astype(np.float32)
 
     def labels_encode(self, labels):
         self.le.fit(labels)
@@ -448,21 +450,25 @@ class BaseClassif(object):
         self._original_dataset_md5 = self.dataset.md5()
         self.reformat_all()
 
+    def chunk_iter(self, data, chunk_size=1):
+        from ml.ds import grouper_chunk
+        for chunk in grouper_chunk(chunk_size, data):
+            data = np.asarray(list(chunk))
+            if data.shape[0] == 1:
+                data = data[0]
+            data = self.transform_shape(self.dataset.processing(data, 'global'), size=chunk_size)
+            for prediction in self._predict(data):
+                yield prediction
+
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         from ml.ds import grouper_chunk
         if self.model is None:
             self.load_model()        
 
         if transform is True and chunk_size > 0:
-            data_it = grouper_chunk(chunk_size, data)
-            p = []
-            for chunk in data_it:
-                data = self.transform_shape(self.dataset.processing(np.asarray(list(chunk)), 'global'))
-                p.append(list(self._predict(data, raw=raw)))
-            return p
+            return self.chunk_iter(data, chunk_size)
         elif transform is True and chunk_size == 0:
-            data = self.dataset.processing(data, 'global')
-            data = self.transform_shape(data)
+            data = self.transform_shape(self.dataset.processing(data, 'global'))
             return self._predict(data, raw=raw)
 
     def _pred_erros(self, predictions, test_data, test_labels, valid_size=.1):

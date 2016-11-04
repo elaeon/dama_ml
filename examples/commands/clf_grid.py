@@ -56,10 +56,10 @@ def test(model_name):
         check_point_path=settings["checkpoints_path"])
     classif.scores().print_scores(order_column="f1")
 
-def predict(model_name):
+def predict(model_name, chunk_size):
     np.random.seed(0)
     DIM = 21
-    SIZE = 2
+    SIZE = 3
     X = np.random.rand(SIZE, DIM)
     Y = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
     classif = ml.clf.extended.SVGPC(
@@ -68,7 +68,7 @@ def predict(model_name):
         check_point_path=settings["checkpoints_path"])
     print("TARGET", Y)
     print("VALUE", X)
-    print("PREDICTED", list(classif.predict(X, chunk_size=1)))
+    print("PREDICTED", list(classif.predict(X, chunk_size=chunk_size)))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -79,6 +79,7 @@ if __name__ == '__main__':
     parser.add_argument("--build-dataset", type=str, help="[cross] [adversarial]")
     parser.add_argument("--model-name", type=str)
     parser.add_argument("--predict", action="store_true")
+    parser.add_argument("--chunk-size", type=int)
     #parser.add_argument("--model-version", type=str)
     args = parser.parse_args()
     if args.build_dataset:
@@ -89,4 +90,4 @@ if __name__ == '__main__':
     elif args.test:
         test(args.model_name)
     elif args.predict:
-        predict(args.model_name)
+        predict(args.model_name, args.chunk_size)
