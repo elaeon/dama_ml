@@ -125,7 +125,7 @@ class ListMeasure(object):
             measures = []
         uncertain = "logloss" in measures
         predictions = np.asarray(list(
-            predict(clf.dataset.test_data, raw=uncertain, transform=False, chunk_size=1)))
+            predict(clf.dataset.test_data, raw=uncertain, transform=False, chunk_size=0)))
         measure = Measure(predictions, 
             np.asarray([clf.convert_label(label, raw=False)
             for label in clf.dataset.test_labels]))
@@ -139,7 +139,6 @@ class ListMeasure(object):
 
         for measure_name, measure in measure_class:
             self.add_measure(measure_name, getattr(measure, measure_name)())
-
 
 class Grid(object):
     def __init__(self, classifs, model_name=None, dataset=None, 
@@ -310,7 +309,7 @@ class Voting(Grid):
             for index, _ in self.best_predictor_threshold(operator=le, limit=self.num_max_clfs):
                 classif = self.load_model(self.classifs[index], info=False)
                 predictions[index] = np.asarray(list(classif.predict(
-                    classif.dataset.test_data, raw=False, transform=False, chunk_size=1)))
+                    classif.dataset.test_data, raw=False, transform=False, chunk_size=0)))
                 best_predictors.append(index)
             return predictions
 
@@ -364,6 +363,7 @@ class BaseClassif(object):
             return cls.__name__
 
     def scores(self, measures=None):
+        print(self.__class__.__name__)
         list_measure = ListMeasure()
         list_measure.calc_scores(self.__class__.__name__, self.predict, self, measures=measures)
         return list_measure
@@ -450,7 +450,7 @@ class BaseClassif(object):
         self._original_dataset_md5 = self.dataset.md5()
         self.reformat_all()
 
-    def chunk_iter(self, data, chunk_size=1):
+    def chunk_iter(self, data, chunk_size=1, transform_fn=None):
         from ml.ds import grouper_chunk
         for chunk in grouper_chunk(chunk_size, data):
             data = np.asarray(list(chunk))
@@ -459,19 +459,25 @@ class BaseClassif(object):
                 data = data[0]
             #else:
             #    size = 1
-            data = self.transform_shape(self.dataset.processing(data, 'global'), size=size)
-            for prediction in self._predict(data):
+            #data = self.transform_shape(self.dataset.processing(data, 'global'), size=size)
+            for prediction in self._predict(transform_fn(data, size)):
                 yield prediction
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         from ml.ds import grouper_chunk
         if self.model is None:
-            self.load_model()        
+            self.load_model()
 
         if transform is True and chunk_size > 0:
-            return self.chunk_iter(data, chunk_size)
+            fn = lambda x, s: self.transform_shape(self.dataset.processing(x, 'global'), size=s)
+            return self.chunk_iter(data, chunk_size, transform_fn=fn)
         elif transform is True and chunk_size == 0:
             data = self.transform_shape(self.dataset.processing(data, 'global'))
+            return self._predict(data, raw=raw)
+        elif transform is False and chunk_size > 0:
+            fn = lambda x, s: self.transform_shape(x, size=s)
+            return self.chunk_iter(data, chunk_size, transform_fn=fn)
+        else:
             return self._predict(data, raw=raw)
 
     def _pred_erros(self, predictions, test_data, test_labels, valid_size=.1):
