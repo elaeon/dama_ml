@@ -9,7 +9,6 @@ logging.basicConfig()
 log = logging.getLogger(__name__)
 #np.random.seed(133)
 
-#Discrete measure
 class Measure(object):
     def __init__(self, predictions, labels):
         if len(predictions.shape) > 1:
@@ -125,7 +124,7 @@ class ListMeasure(object):
             measures = []
         uncertain = "logloss" in measures
         predictions = np.asarray(list(
-            predict(clf.dataset.test_data, raw=uncertain, transform=False, chunk_size=0)))
+            predict(clf.dataset.test_data, raw=uncertain, transform=False, chunk_size=258)))
         measure = Measure(predictions, 
             np.asarray([clf.convert_label(label, raw=False)
             for label in clf.dataset.test_labels]))
@@ -242,15 +241,15 @@ class Voting(Grid):
 
     def select_best_prediction(self, predictions, models_index, uncertain=True):
         from itertools import izip
+        weights = [self.weights[index] for index in models_index]
         if uncertain is False:
             for row_prediction in izip(*predictions):
                 counter = {}
-                for index, prediction in izip(models_index, row_prediction):
+                for w, prediction in izip(weights, row_prediction):
                     counter.setdefault(prediction, 0)
-                    counter[prediction] += self.weights[index]
+                    counter[prediction] += w
                 yield max(counter.items(), key=lambda x:x[1])[0]
         else:
-            weights = [self.weights[index] for index in models_index]
             total_weights = float(sum(weights))
             for row_prediction in izip(*predictions):
                 best_prediction = 0
@@ -309,7 +308,7 @@ class Voting(Grid):
             for index, _ in self.best_predictor_threshold(operator=le, limit=self.num_max_clfs):
                 classif = self.load_model(self.classifs[index], info=False)
                 predictions[index] = np.asarray(list(classif.predict(
-                    classif.dataset.test_data, raw=False, transform=False, chunk_size=0)))
+                    classif.dataset.test_data, raw=False, transform=False, chunk_size=258)))
                 best_predictors.append(index)
             return predictions
 
@@ -344,7 +343,6 @@ class BaseClassif(object):
         self.le = LabelEncoder()
         self.check_point_path = check_point_path
         self.model_version = model_version
-        #self.has_uncertain = False
         self.dataset_train_limit = dataset_train_limit
         self.print_info = info
         self.base_labels = None
@@ -363,7 +361,6 @@ class BaseClassif(object):
             return cls.__name__
 
     def scores(self, measures=None):
-        print(self.__class__.__name__)
         list_measure = ListMeasure()
         list_measure.calc_scores(self.__class__.__name__, self.predict, self, measures=measures)
         return list_measure
@@ -450,7 +447,7 @@ class BaseClassif(object):
         self._original_dataset_md5 = self.dataset.md5()
         self.reformat_all()
 
-    def chunk_iter(self, data, chunk_size=1, transform_fn=None):
+    def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False):
         from ml.ds import grouper_chunk
         for chunk in grouper_chunk(chunk_size, data):
             data = np.asarray(list(chunk))
@@ -459,8 +456,7 @@ class BaseClassif(object):
                 data = data[0]
             #else:
             #    size = 1
-            #data = self.transform_shape(self.dataset.processing(data, 'global'), size=size)
-            for prediction in self._predict(transform_fn(data, size)):
+            for prediction in self._predict(transform_fn(data, size), raw=uncertain):
                 yield prediction
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
@@ -470,13 +466,13 @@ class BaseClassif(object):
 
         if transform is True and chunk_size > 0:
             fn = lambda x, s: self.transform_shape(self.dataset.processing(x, 'global'), size=s)
-            return self.chunk_iter(data, chunk_size, transform_fn=fn)
+            return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)
         elif transform is True and chunk_size == 0:
             data = self.transform_shape(self.dataset.processing(data, 'global'))
             return self._predict(data, raw=raw)
         elif transform is False and chunk_size > 0:
             fn = lambda x, s: self.transform_shape(x, size=s)
-            return self.chunk_iter(data, chunk_size, transform_fn=fn)
+            return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)
         else:
             return self._predict(data, raw=raw)
 
@@ -626,8 +622,7 @@ class SKL(BaseClassif):
 
 class SKLP(SKL):
     def __init__(self, *args, **kwargs):
-        super(SKLP, self).__init__(*args, **kwargs) 
-        #self.has_uncertain = True
+        super(SKLP, self).__init__(*args, **kwargs)
 
     def convert_label(self, label, raw=False):
         if raw is True:
@@ -643,7 +638,6 @@ class SKLP(SKL):
 class TFL(BaseClassif):
     def __init__(self, **kwargs):
         super(TFL, self).__init__(**kwargs)
-        #self.has_uncertain = True
 
     def reformat(self, data, labels):
         data = self.transform_shape(data)

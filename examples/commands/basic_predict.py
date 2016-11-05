@@ -40,23 +40,23 @@ def build_dataset_easy(dataset_name="gpc_test_easy",):
     return dataset
 
 
-def train(dataset):
+def train(dataset, model_version):
     classif = ml.clf.extended.SVGPC(
         dataset=dataset,
-        model_version="1",
+        model_version=model_version,
         check_point_path=settings["checkpoints_path"])
     classif.train(batch_size=128, num_steps=15)
     classif.scores()
 
 
-def test(model_name):
+def test(model_name, model_version):
     classif = ml.clf.extended.SVGPC(
         model_name=model_name,
-        model_version="1",
+        model_version=model_version,
         check_point_path=settings["checkpoints_path"])
     classif.scores().print_scores(order_column="f1")
 
-def predict(model_name, chunk_size):
+def predict(model_name, chunk_size, model_version):
     np.random.seed(0)
     DIM = 21
     SIZE = 11
@@ -64,7 +64,7 @@ def predict(model_name, chunk_size):
     Y = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
     classif = ml.clf.extended.SVGPC(
         model_name=model_name,
-        model_version="1",
+        model_version=model_version,
         check_point_path=settings["checkpoints_path"])
     print("TARGET", Y)
     #print("VALUE", X)
@@ -80,14 +80,14 @@ if __name__ == '__main__':
     parser.add_argument("--model-name", type=str)
     parser.add_argument("--predict", action="store_true")
     parser.add_argument("--chunk-size", type=int)
-    #parser.add_argument("--model-version", type=str)
+    parser.add_argument("--model-version", type=str)
     args = parser.parse_args()
     if args.build_dataset:
         dataset = build_dataset_hard(validator=args.build_dataset, dataset_name=args.model_name)
     elif args.train:
         dataset = ml.ds.DataSetBuilder.load_dataset(args.model_name, dataset_path=settings["dataset_path"])
-        train(dataset)
+        train(dataset, args.model_version)
     elif args.test:
-        test(args.model_name)
+        test(args.model_name, args.model_version)
     elif args.predict:
-        predict(args.model_name, args.chunk_size)
+        predict(args.model_name, args.chunk_size, args.model_version)

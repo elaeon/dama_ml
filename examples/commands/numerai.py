@@ -7,7 +7,6 @@ import argparse
 from utils.config import get_settings
 from utils.numeric_functions import le
 from ml.processing import Preprocessing
-#from operator import le, ge
 
 settings = get_settings("ml")
 settings.update(get_settings("numerai"))
@@ -100,10 +99,6 @@ if __name__ == '__main__':
         #}
         transforms = [("scale", None)]
         dataset = build(args.model_name, transforms=transforms)
-        #for model_name, transforms in dataset_t.items():
-        #    dataset = build(model_name, transforms=transforms)
-        #dataset = build2(args.model_name, transforms=[("scale", None),
-        #    ("tsne", {"perplexity": 50, "action": 'concatenate'})])
 
     if args.train:
         dataset = ml.ds.DataSetBuilderFile.load_dataset(
