@@ -110,13 +110,8 @@ class Preprocessing(object):
 
 
 class PreprocessingImage(Preprocessing):
-    def resize(self, image_size):
-        if isinstance(image_size, int):
-            type_ = "sym"
-        elif isinstance(image_size, tuple):
-            image_size, type_ = image_size
-
-        if type_ == "asym":
+    def resize(self, image_size=90, type_r="asym"):
+        if type_r == "asym":
             dim = []
             for v in self.data.shape:
                 if v > image_size:
@@ -165,12 +160,7 @@ class PreprocessingImage(Preprocessing):
     def as_ubyte(self):
         self.data = img_as_ubyte(self.data)
 
-    def merge_offset(self, image_size):
-        if isinstance(image_size, int):
-            bg_color = 1
-        elif isinstance(image_size, tuple):
-            image_size, bg_color = image_size
-
+    def merge_offset(self, image_size=90, bg_color=1):
         bg = np.ones((image_size, image_size))
         offset = (int(round(abs(bg.shape[0] - self.data.shape[0]) / 2)), 
                 int(round(abs(bg.shape[1] - self.data.shape[1]) / 2)))
@@ -195,7 +185,7 @@ class PreprocessingImage(Preprocessing):
     def threshold(self, block_size=41):
         self.data = filters.threshold_adaptive(self.data, block_size, offset=0)
 
-    def pixelate(self, (pixel_width, pixel_height), mode='mean'):
+    def pixelate(self, pixel_width=None, pixel_height=None, mode='mean'):
         #import time
         #start_time = time.time()
         if len(self.data.shape) > 2:

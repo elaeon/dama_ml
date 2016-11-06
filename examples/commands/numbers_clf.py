@@ -14,9 +14,9 @@ if __name__ == '__main__':
     IMAGE_SIZE = int(settings["image_size"])
     transforms = [
             ("rgb2gray", None),
-            ("resize", (settings["image_size"], 'asym')), 
+            ("resize", {"image_size": IMAGE_SIZE, "type_r": "asym"}), 
             ("threshold", 91), 
-            ("merge_offset", (IMAGE_SIZE, 1)),
+            ("merge_offset", {"image_size": IMAGE_SIZE, "bg_color": 1}),
             ("scale", None)]
 
     parser = argparse.ArgumentParser()

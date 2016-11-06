@@ -101,7 +101,7 @@ if __name__ == '__main__':
     if args.transforms:
         transforms = ml.processing.Transforms([
             ("global", []), 
-            ("local", [("pixelate", (16, 16))])])
+            ("local", [("pixelate", {"pixel_width": 16, "pixel_height": 16})])])
     else:
         transforms = ml.processing.Transforms([
             ("global", []),
