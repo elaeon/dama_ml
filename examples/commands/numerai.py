@@ -122,6 +122,8 @@ if __name__ == '__main__':
         classif.all_clf_scores().print_scores(order_column="f1")
 
     if args.predict:
+        dataset = ml.ds.DataSetBuilderFile.load_dataset(
+            args.model_name, dataset_path=settings["dataset_path"])
         #classif = ml.clf.generic.Voting([
         #    ml.clf.extended.ExtraTrees,
         #    ml.clf.extended.MLP,
@@ -137,19 +139,32 @@ if __name__ == '__main__':
         #    num_max_clfs=5,
         #    election='best-c',
         #    check_point_path=settings["checkpoints_path"])
-        classif = ml.clf.generic.Stacking([
-            ml.clf.extended.ExtraTrees,
+        #classif = ml.clf.generic.Stacking([
+        #    ml.clf.extended.ExtraTrees,
+        #    ml.clf.extended.MLP,
+        #    ml.clf.extended.RandomForest,
+        #    ml.clf.extended.SGDClassifier,
+        #    ml.clf.extended.SVC,
+        #    ml.clf.extended.LogisticRegression,
+        #    ml.clf.extended.AdaBoost,
+        #    ml.clf.extended.GradientBoost],
+        #    model_name=args.model_name,
+        #    model_version=args.model_version,
+        #    check_point_path=settings["checkpoints_path"])
+        classif = ml.clf.generic.Bagging(ml.clf.extended.MLP, [
+        #    ml.clf.extended.ExtraTrees,
         #    ml.clf.extended.MLP,
             ml.clf.extended.RandomForest,
             ml.clf.extended.SGDClassifier,
-            ml.clf.extended.SVC,
-            ml.clf.extended.LogisticRegression,
-            ml.clf.extended.AdaBoost,
+        #    ml.clf.extended.SVC,
+        #    ml.clf.extended.LogisticRegression,
+        #    ml.clf.extended.AdaBoost,
             ml.clf.extended.GradientBoost],
+            dataset=dataset,
             model_name=args.model_name,
             model_version=args.model_version,
             check_point_path=settings["checkpoints_path"])
-        classif.train(batch_size=128, num_steps=10)
+        #classif.train(batch_size=128, num_steps=1)
         classif.scores().print_scores(order_column="logloss")
         #predict(classif_best, settings["numerai_test"], "t_id")
 
