@@ -333,6 +333,59 @@ class Voting(Grid):
             return relation_clf
 
 
+class Stacking(Grid):
+    def train(self, batch_size=128, num_steps=1):
+        from sklearn.model_selection import StratifiedKFold
+        clf_b = self.load_models().next()
+        num_classes = len(clf_b.dataset.labels_info().keys())
+        skf = StratifiedKFold(n_splits=num_classes)
+        data, labels = clf_b.dataset.desfragment()
+        size = data.shape[0]
+        self.dataset_blend_train = np.zeros((size, len(self.classifs), num_classes))
+        for j, clf in enumerate(self.load_models()):
+            print(j, clf.cls_name())
+            for i, (train, test) in enumerate(skf.split(data, labels)):
+                print("Fold", i)
+                clf.dataset.train_data = data[train]
+                clf.dataset.train_labels = labels[train]
+                clf.dataset.test_data = data[test]
+                clf.dataset.test_labels = labels[test]
+                clf.train(batch_size=batch_size, num_steps=num_steps)
+                y_submission = list(
+                    clf.predict(clf.dataset.test_data, raw=True, transform=False, chunk_size=0))
+                self.dataset_blend_train[test, j] = y_submission
+            self.i = i + 1
+
+    def predict(self, data, raw=False, transform=False, chunk_size=1):
+        from sklearn.linear_model import LogisticRegression
+        clf_b = self.load_models().next()
+        _, labels = clf_b.dataset.desfragment()
+        size = data.shape[0]
+        num_classes = len(clf_b.dataset.labels_info().keys())
+        dataset_blend_test = np.zeros((size, len(self.classifs), num_classes))
+        for j, clf in enumerate(self.load_models()):
+            dataset_blend_test_j = np.zeros((size, self.i, num_classes))
+            count = 0            
+            while count < self.i:
+                dataset_blend_test_j[:, count] = np.asarray(list(
+                    clf.predict(data, raw=True, transform=transform, chunk_size=0)))
+                count += 1
+            dataset_blend_test[:, j] = dataset_blend_test_j.mean(1)
+
+        clf = LogisticRegression()
+        clf.fit(self.dataset_blend_train.reshape(self.dataset_blend_train.shape[0], -1), labels)
+        return clf.predict_proba(dataset_blend_test.reshape(dataset_blend_test.shape[0], -1))
+
+    def scores(self, measures=None, all_clf=True):
+        clf = self.load_models().next()
+        list_measure = ListMeasure()
+        list_measure.calc_scores(self.__class__.__name__, self.predict, clf, measures=measures)
+        if all_clf is True:
+            return list_measure + self.all_clf_scores(measures=measures)
+        else:
+            return list_measure
+
+
 class BaseClassif(object):
     def __init__(self, model_name=None, dataset=None, 
             check_point_path=None, model_version=None,

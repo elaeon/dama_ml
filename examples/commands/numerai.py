@@ -122,9 +122,24 @@ if __name__ == '__main__':
         classif.all_clf_scores().print_scores(order_column="f1")
 
     if args.predict:
-        classif = ml.clf.generic.Voting([
+        #classif = ml.clf.generic.Voting([
+        #    ml.clf.extended.ExtraTrees,
+        #    ml.clf.extended.MLP,
+        #    ml.clf.extended.RandomForest,
+        #    ml.clf.extended.SGDClassifier,
+        #    ml.clf.extended.SVC,
+        #    ml.clf.extended.LogisticRegression,
+        #    ml.clf.extended.AdaBoost,
+        #    ml.clf.extended.GradientBoost],
+        #    model_name=args.model_name,
+        #    model_version=args.model_version,
+        #    weights=[2, 1],
+        #    num_max_clfs=5,
+        #    election='best-c',
+        #    check_point_path=settings["checkpoints_path"])
+        classif = ml.clf.generic.Stacking([
             ml.clf.extended.ExtraTrees,
-            ml.clf.extended.MLP,
+        #    ml.clf.extended.MLP,
             ml.clf.extended.RandomForest,
             ml.clf.extended.SGDClassifier,
             ml.clf.extended.SVC,
@@ -133,11 +148,8 @@ if __name__ == '__main__':
             ml.clf.extended.GradientBoost],
             model_name=args.model_name,
             model_version=args.model_version,
-            weights=[2, 1],
-            num_max_clfs=5,
-            election='best-c',
             check_point_path=settings["checkpoints_path"])
-        #classif.print_confusion_matrix()
+        classif.train(batch_size=128, num_steps=10)
         classif.scores().print_scores(order_column="logloss")
         #predict(classif_best, settings["numerai_test"], "t_id")
 
