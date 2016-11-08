@@ -418,23 +418,21 @@ class Bagging(Grid):
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         #print("TT", transform)
         model_base = self.load_model(self.classif, info=False)
-        X_train = self.prepare_data(model_base.dataset.train_data, transform=transform)
-        X_valid = self.prepare_data(model_base.dataset.valid_data, transform=transform)
-        model_base.dataset.train_data = X_train
-        model_base.dataset.valid_data = X_valid
+        X_train_b = model_base.dataset.train_data
+        X_valid_b = model_base.dataset.valid_data
+        model_base.dataset.train_data = self.prepare_data(model_base.dataset.train_data, transform=transform)
+        model_base.dataset.valid_data = self.prepare_data(model_base.dataset.valid_data, transform=transform)
         data_model_base = self.prepare_data(data, transform=transform)
         model_base.num_features = data_model_base.shape[1]
         y_prob = np.asarray(list(model_base.predict(data_model_base, raw=True, transform=False, chunk_size=0)))
         num_runs = 0
 
         for jj in xrange(num_runs):
-            X_train = self.prepare_data(data, transform=transform, chunk_size=0)
+            model_base.dataset.train_data = self.prepare_data(X_train_b, transform=transform, chunk_size=0)
+            model_base.dataset.valid_data = self.prepare_data(X_valid_b, transform=transform)
             X_test = self.prepare_data(data, transform=transform, chunk_size=0)
             print(jj)
-            #model_base.dataset.train_data = X_train
-            #model_base.dataset.valid_data = X_valid
-            #model_base.num_features = X_train.shape[1]
-            #model_base.train(batch_size=128, num_steps=1)
+            model_base.train(batch_size=128, num_steps=1)
             p = np.asarray(list(model_base.predict(X_test, raw=True, transform=False, chunk_size=0)))
             y_prob = y_prob + p
         y_prob = y_prob / (num_runs + 1.0)
