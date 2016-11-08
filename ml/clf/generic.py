@@ -404,41 +404,39 @@ class Bagging(Grid):
         model_base.num_features = X_train.shape[1]
         model_base.train(batch_size=batch_size, num_steps=num_steps)
 
-    def prepare_data(self, X, transform=True, chunk_size=1):
-        #rbm1 = SVC(C=100.0, gamma = 0.1, probability=True, verbose=1).fit(X[0:9999,:], y[0:9999])
-        #rbm2 = RandomForestClassifier(n_estimators=300, criterion='entropy', max_features='auto', bootstrap=False, oob_score=False, n_jobs=1, verbose=1).fit(X[0:9999,:], y[0:9999])
-        #rbm3 = GradientBoostingClassifier(n_estimators=50,max_depth=11,subsample=0.8,min_samples_leaf=5,verbose=1).fit(X[0:9999,:], y[0:9999])
+    def prepare_data(self, data, transform=True, chunk_size=1):
         clfs = self.load_models()
         clf_0 = clfs.next()
-        predictions = np.asarray(list(clf_0.predict(X, raw=True, transform=transform, chunk_size=0)))
+        predictions = np.asarray(list(clf_0.predict(data, raw=True, transform=transform, chunk_size=0)))
         #geometric avg
         for rbm in clfs:
-            predictions *= np.asarray(list(rbm.predict(X, raw=True, transform=transform, chunk_size=0)))
+            predictions *= np.asarray(list(rbm.predict(data, raw=True, transform=transform, chunk_size=0)))
         
         predictions = np.power(predictions, (1 / len(self.classifs)))
-        X = np.append(X, predictions, 1)
-        return X
+        return np.append(data, predictions, 1)
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
+        #print("TT", transform)
         model_base = self.load_model(self.classif, info=False)
-        X_train = self.prepare_data(model_base.dataset.train_data, transform=False)
-        X_valid = self.prepare_data(model_base.dataset.valid_data, transform=False)
+        X_train = self.prepare_data(model_base.dataset.train_data, transform=transform)
+        X_valid = self.prepare_data(model_base.dataset.valid_data, transform=transform)
         model_base.dataset.train_data = X_train
         model_base.dataset.valid_data = X_valid
-        data = self.prepare_data(data, transform=True)
-        y_prob = model_base.predict(data, transform=transform, chunk_size=0)
-        num_runs = 50
+        data_model_base = self.prepare_data(data, transform=transform)
+        model_base.num_features = data_model_base.shape[1]
+        y_prob = np.asarray(list(model_base.predict(data_model_base, raw=True, transform=False, chunk_size=0)))
+        num_runs = 0
 
         for jj in xrange(num_runs):
-            #X_train = self.prepare_data(data)
-            X_test = self.prepare_data(data, transform=transform, chunk_size=chunk_size)
+            X_train = self.prepare_data(data, transform=transform, chunk_size=0)
+            X_test = self.prepare_data(data, transform=transform, chunk_size=0)
             print(jj)
-            #X, y, encoder, scaler, rbm1, rbm2, rbm3 = load_train_data('/home/mikeskim/Desktop/kaggle/otto/data/train.csv')
-            #X_test, ids = load_test_data('/home/mikeskim/Desktop/kaggle/otto/data/test.csv', scaler, rbm1, rbm2, rbm3)
-            #num_classes = len(encoder.classes_)
-            #num_features = X.shape[1]
-            #net0.fit(X_train, y)
-            y_prob = y_prob + list(model_base.predict(X_test))
+            #model_base.dataset.train_data = X_train
+            #model_base.dataset.valid_data = X_valid
+            #model_base.num_features = X_train.shape[1]
+            #model_base.train(batch_size=128, num_steps=1)
+            p = np.asarray(list(model_base.predict(X_test, raw=True, transform=False, chunk_size=0)))
+            y_prob = y_prob + p
         y_prob = y_prob / (num_runs + 1.0)
         return y_prob
     
