@@ -151,8 +151,7 @@ if __name__ == '__main__':
         #    model_name=args.model_name,
         #    model_version=args.model_version,
         #    check_point_path=settings["checkpoints_path"])
-        classif = ml.clf.generic.Bagging(#ml.clf.extended.MLP, [
-            ml.clf.extended.LogisticRegression, [
+        classif = ml.clf.generic.Bagging(ml.clf.extended.MLP, [
         #    ml.clf.extended.ExtraTrees,
         #    ml.clf.extended.MLP,
             ml.clf.extended.RandomForest,

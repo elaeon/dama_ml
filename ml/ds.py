@@ -179,6 +179,15 @@ class DataSetBuilder(object):
             'preprocessing_class': self.processing_class.module_cls_name(),
             'md5': self.md5()}
 
+    @classmethod
+    def from_raw_to_ds(self, name, dataset_path, **kwargs):
+        ds = DataSetBuilder(name, 
+                dataset_path=dataset_path,
+                print_info=True)
+        ds.from_raw(kwargs)
+        ds.save()
+        return ds
+
     def from_raw(self, raw_data):
         from pydoc import locate
         self.train_data = raw_data['train_dataset']

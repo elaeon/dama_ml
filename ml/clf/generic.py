@@ -154,8 +154,9 @@ class Grid(object):
         for classif in self.classifs:
             yield self.load_model(classif, info=False)
     
-    def load_model(self, model, info=True):
-        return model(dataset=self.dataset, 
+    def load_model(self, model, info=True, dataset=None):
+        dataset = self.dataset if dataset is None else dataset
+        return model(dataset=dataset, 
                 model_name=self.model_name, 
                 model_version=self.model_version, 
                 check_point_path=self.check_point_path,
@@ -391,52 +392,54 @@ class Bagging(Grid):
     def __init__(self, classif, classifs_rbm, **kwargs):
         self.classif = classif
         super(Bagging, self).__init__(classifs_rbm, **kwargs)
+        self.name_sufix = "-bagging"
 
     def train(self, batch_size=128, num_steps=1):
+        import ml
         for classif in self.load_models():
             classif.train(batch_size=batch_size, num_steps=num_steps)
 
         model_base = self.load_model(self.classif, info=False)
-        X_train = self.prepare_data(model_base.dataset.train_data, transform=False)
-        X_valid = self.prepare_data(model_base.dataset.valid_data, transform=False)
-        model_base.dataset.train_data = X_train
-        model_base.dataset.valid_data = X_valid
-        model_base.num_features = X_train.shape[1]
+        params = model_base.dataset.to_raw()
+        params["train_dataset"] = self.prepare_data(params["train_dataset"], transform=False)
+        params["test_dataset"] = self.prepare_data(params["test_dataset"], transform=False)
+        params["valid_dataset"] =  self.prepare_data(params["valid_dataset"], transform=False)
+        if params["train_labels"].shape[1] > 1:
+            transform_fn = lambda x: np.argmax(x, axis=1)
+            
+        params["train_labels"] = transform_fn(params["train_labels"])
+        params["test_labels"] = transform_fn(params["test_labels"])
+        params["valid_labels"] = transform_fn(params["valid_labels"])
+        params["md5"] = None
+        dataset = ml.ds.DataSetBuilder.from_raw_to_ds(
+            model_base.dataset.name+self.name_sufix,
+            model_base.dataset.dataset_path, 
+            **params)
+        model_base.set_dataset(dataset)
+        model_base.model_name = model_base.model_name+self.name_sufix
         model_base.train(batch_size=batch_size, num_steps=num_steps)
 
     def prepare_data(self, data, transform=True, chunk_size=1):
         clfs = self.load_models()
         clf_0 = clfs.next()
-        predictions = np.asarray(list(clf_0.predict(data, raw=True, transform=transform, chunk_size=0)))
-        #geometric avg
+        predictions = np.asarray(list(
+            clf_0.predict(data, raw=True, transform=transform, chunk_size=chunk_size)))
+        #geometric mean
         for rbm in clfs:
-            predictions *= np.asarray(list(rbm.predict(data, raw=True, transform=transform, chunk_size=0)))
+            predictions *= np.asarray(list(
+                rbm.predict(data, raw=True, transform=transform, chunk_size=chunk_size)))
         
         predictions = np.power(predictions, (1 / len(self.classifs)))
-        return np.append(data, predictions, 1)
+        return clf_0.dataset.processing(np.append(data, predictions, axis=1), 'global')
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        #print("TT", transform)
-        model_base = self.load_model(self.classif, info=False)
-        X_train_b = model_base.dataset.train_data
-        X_valid_b = model_base.dataset.valid_data
-        model_base.dataset.train_data = self.prepare_data(model_base.dataset.train_data, transform=transform)
-        model_base.dataset.valid_data = self.prepare_data(model_base.dataset.valid_data, transform=transform)
-        data_model_base = self.prepare_data(data, transform=transform)
-        model_base.num_features = data_model_base.shape[1]
-        y_prob = np.asarray(list(model_base.predict(data_model_base, raw=True, transform=False, chunk_size=0)))
-        num_runs = 0
-
-        for jj in xrange(num_runs):
-            model_base.dataset.train_data = self.prepare_data(X_train_b, transform=transform, chunk_size=0)
-            model_base.dataset.valid_data = self.prepare_data(X_valid_b, transform=transform)
-            X_test = self.prepare_data(data, transform=transform, chunk_size=0)
-            print(jj)
-            model_base.train(batch_size=128, num_steps=1)
-            p = np.asarray(list(model_base.predict(X_test, raw=True, transform=False, chunk_size=0)))
-            y_prob = y_prob + p
-        y_prob = y_prob / (num_runs + 1.0)
-        return y_prob
+        import ml
+        dataset = ml.ds.DataSetBuilder.load_dataset(
+            self.dataset.name+self.name_sufix, 
+            dataset_path=self.dataset.dataset_path)
+        model_base = self.load_model(self.classif, info=False, dataset=dataset)
+        data_model_base = self.prepare_data(data, transform=transform, chunk_size=chunk_size)
+        return model_base.predict(data_model_base, raw=raw, transform=False, chunk_size=chunk_size)
     
     def scores(self, measures=None, all_clf=True):
         clf = self.load_model(self.classif, info=False)
@@ -514,6 +517,9 @@ class BaseClassif(object):
             size = data.shape[0]
         return data.reshape(size, -1).astype(np.float32)
 
+    def is_binary():
+        return self.num_labels == 2
+
     def labels_encode(self, labels):
         self.le.fit(labels)
         self.num_labels = self.le.classes_.shape[0]
@@ -560,6 +566,10 @@ class BaseClassif(object):
             self.dataset = dataset.copy()
             self.model_name = self.dataset.name
         self._original_dataset_md5 = self.dataset.md5()
+        self.reformat_all()
+
+    def set_dataset(self, dataset):
+        self.dataset = dataset
         self.reformat_all()
 
     def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False):
@@ -639,16 +649,12 @@ class BaseClassif(object):
         else:
             raise Exception
 
-    def retrain(self, dataset, batch_size=10, num_steps=1000):
-        self.dataset = dataset
-        self.reformat_all()
-        self.train(batch_size=batch_size, num_steps=num_steps)
-
     def train2steps(self, dataset, valid_size=.1, batch_size=10, num_steps=1000, test_data_labels=None):
         self.train(batch_size=batch_size, num_steps=num_steps)
         dataset_v = self.rebuild_validation_from_errors(dataset, 
             valid_size=valid_size, test_data_labels=test_data_labels)
-        self.retrain(dataset_v, batch_size=batch_size, num_steps=num_steps)
+        self.set_dataset(dataset)
+        self.train(batch_size=batch_size, num_steps=num_steps)
 
     def get_model_name_v(self):
         if self.model_version is None:
