@@ -304,7 +304,7 @@ class Voting(Grid):
 
     def train(self, batch_size=128, num_steps=1):
         for classif in self.load_models():
-            log.info("Training [{}]".format(self.__class__.__name__))
+            print("Training [{}]".format(classif.__class__.__name__))
             classif.train(batch_size=batch_size, num_steps=num_steps)
 
         if self.election == "best":
@@ -322,16 +322,25 @@ class Voting(Grid):
             models_index = bests
 
         weights = [self.weights[index] for index in models_index]
-        self.save()
+        self.save_model(models, weights)
 
     def _metadata(self):
-        
-    def save(self, models, models_index, weights):
-        self.election
-        self.num_max_clfs
-        models
-        
-        pass
+        return {"dataset_path": self.dataset.dataset_path,
+                "dataset_name": self.dataset.name,
+                "md5": self.dataset.md5(), #not reformated dataset
+                "transforms": self.dataset.transforms.get_all_transforms(),
+                "preprocessing_class": self.dataset.processing_class.module_cls_name(),
+                "models": self.clf_models,
+                "weights": self.clf_weights,
+                "election": self.election}
+
+    def save_model(self, models, weights):
+        self.clf_models = models
+        self.clf_weights = weights
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            #joblib.dump(self.model, '{}.pkl'.format(path))
+            self.save_meta()
 
     def scores(self, measures=None, all_clf=True):
         clf = self.load_models().next()
