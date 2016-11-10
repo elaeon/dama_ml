@@ -139,16 +139,67 @@ class ListMeasure(object):
         for measure_name, measure in measure_class:
             self.add_measure(measure_name, getattr(measure, measure_name)())
 
-class Grid(object):
+class DataDrive(object):
+    def __init__(self, check_point_path=None, model_version=None, model_name=None):
+        self.check_point_path = check_point_path
+        self.model_version = model_version
+        self.model_name = model_name
+
+    def _metadata(self):
+        pass
+        #return {"dataset_path": self.dataset.dataset_path,
+        #        "dataset_name": self.dataset.name,
+        #        "md5": self._original_dataset_md5, #not reformated dataset
+        #        "transforms": self.dataset.transforms.get_all_transforms(),
+        #        "preprocessing_class": self.dataset.processing_class.module_cls_name()}
+
+    def save_meta(self):
+        from ml.ds import save_metadata
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            save_metadata(path+".xmeta", self._metadata())
+
+    def load_meta(self):
+        from ml.ds import load_metadata
+        if self.check_point_path is not None:
+            path = self.make_model_file(check=False)
+            return load_metadata(path+".xmeta")
+
+    def get_model_name_v(self):
+        if self.model_version is None:
+            id_ = "123"
+        else:
+            id_ = self.model_version
+        return "{}.{}".format(self.model_name, id_)
+
+    def make_model_file(self, check=True):
+        model_name_v = self.get_model_name_v()
+        check_point = os.path.join(self.check_point_path, self.__class__.__name__)
+        if check is True:
+            if not os.path.exists(check_point):
+                os.makedirs(check_point)
+
+            destination = os.path.join(check_point, model_name_v)
+            if not os.path.exists(destination):
+                os.makedirs(destination)
+        
+        return os.path.join(check_point, model_name_v, model_name_v)
+
+
+class Grid(DataDrive):
     def __init__(self, classifs, model_name=None, dataset=None, 
             check_point_path=None, model_version=None):
         self.model = None
-        self.model_name = model_name
-        self.check_point_path = check_point_path
-        self.model_version = model_version
+        #self.model_name = model_name
+        #self.check_point_path = check_point_path
+        #self.model_version = model_version
         self.dataset = dataset
         self.classifs = classifs
         self.params = {}
+        super(Grid, self).__init__(
+            check_point_path=check_point_path,
+            model_version=model_version,
+            model_name=model_name)
         
     def load_models(self):
         for classif in self.classifs:
@@ -250,6 +301,37 @@ class Voting(Grid):
             predictions_iter = ((prediction * w for prediction in row_prediction)
                 for w, row_prediction in izip(weights, predictions))
             return arithmetic_mean(predictions_iter, float(sum(weights)))
+
+    def train(self, batch_size=128, num_steps=1):
+        for classif in self.load_models():
+            log.info("Training [{}]".format(self.__class__.__name__))
+            classif.train(batch_size=batch_size, num_steps=num_steps)
+
+        if self.election == "best":
+            from utils.numeric_functions import le
+            best = self.best_predictor(operator=le)
+            self.weights = self.set_weights(best, self.classifs, self.weights.values())
+            #models = self.load_models()
+            models = self.classifs
+            models_index = range(len(self.classifs))
+        elif self.election == "best-c":
+            bests = self.find_low_correlation(sort=True)
+            self.weights = self.set_weights(bests[0], self.classifs, self.weights.values())
+            #models = (self.load_model(self.classifs[index], info=False) for index in bests)
+            models = [self.classifs[index] for index in bests]
+            models_index = bests
+
+        weights = [self.weights[index] for index in models_index]
+        self.save()
+
+    def _metadata(self):
+        
+    def save(self, models, models_index, weights):
+        self.election
+        self.num_max_clfs
+        models
+        
+        pass
 
     def scores(self, measures=None, all_clf=True):
         clf = self.load_models().next()
@@ -440,20 +522,24 @@ class Bagging(Grid):
             return list_measure
 
 
-class BaseClassif(object):
+class BaseClassif(DataDrive):
     def __init__(self, model_name=None, dataset=None, 
             check_point_path=None, model_version=None,
             dataset_train_limit=None,
             info=True):
         self.model = None
-        self.model_name = model_name
+        #self.model_name = model_name
         self.le = LabelEncoder()
-        self.check_point_path = check_point_path
-        self.model_version = model_version
+        #self.check_point_path = check_point_path
+        #self.model_version = model_version
         self.dataset_train_limit = dataset_train_limit
         self.print_info = info
         self.base_labels = None
         self._original_dataset_md5 = None
+        super(BaseClassif, self).__init__(
+            check_point_path=check_point_path,
+            model_version=model_version,
+            model_name=model_name)
         self.load_dataset(dataset)
 
     @classmethod
@@ -645,26 +731,26 @@ class BaseClassif(object):
         self.set_dataset(dataset)
         self.train(batch_size=batch_size, num_steps=num_steps)
 
-    def get_model_name_v(self):
-        if self.model_version is None:
-            import datetime
-            id_ = datetime.datetime.today().strftime("%Y-%m-%d-%H:%M:%S")
-        else:
-            id_ = self.model_version
-        return "{}.{}".format(self.model_name, id_)
+    #def get_model_name_v(self):
+    #    if self.model_version is None:
+    #        import datetime
+    #        id_ = datetime.datetime.today().strftime("%Y-%m-%d-%H:%M:%S")
+    #    else:
+    #        id_ = self.model_version
+    #    return "{}.{}".format(self.model_name, id_)
 
-    def make_model_file(self, check=True):
-        model_name_v = self.get_model_name_v()
-        check_point = os.path.join(self.check_point_path, self.__class__.__name__)
-        if check is True:
-            if not os.path.exists(check_point):
-                os.makedirs(check_point)
+    #def make_model_file(self, check=True):
+    #    model_name_v = self.get_model_name_v()
+    #    check_point = os.path.join(self.check_point_path, self.__class__.__name__)
+    #    if check is True:
+    #        if not os.path.exists(check_point):
+    #            os.makedirs(check_point)
 
-            destination = os.path.join(check_point, model_name_v)
-            if not os.path.exists(destination):
-                os.makedirs(destination)
+    #        destination = os.path.join(check_point, model_name_v)
+    #        if not os.path.exists(destination):
+    #            os.makedirs(destination)
         
-        return os.path.join(check_point, model_name_v, model_name_v)
+    #    return os.path.join(check_point, model_name_v, model_name_v)
 
     def _metadata(self):
         return {"dataset_path": self.dataset.dataset_path,
@@ -673,17 +759,17 @@ class BaseClassif(object):
                 "transforms": self.dataset.transforms.get_all_transforms(),
                 "preprocessing_class": self.dataset.processing_class.module_cls_name()}
 
-    def save_meta(self):
-        from ml.ds import save_metadata
-        if self.check_point_path is not None:
-            path = self.make_model_file()
-            save_metadata(path+".xmeta", self._metadata())
+    #def save_meta(self):
+    #    from ml.ds import save_metadata
+    #    if self.check_point_path is not None:
+    #        path = self.make_model_file()
+    #        save_metadata(path+".xmeta", self._metadata())
 
-    def load_meta(self):
-        from ml.ds import load_metadata
-        if self.check_point_path is not None:
-            path = self.make_model_file(check=False)
-            return load_metadata(path+".xmeta")
+    #def load_meta(self):
+    #    from ml.ds import load_metadata
+    #    if self.check_point_path is not None:
+    #        path = self.make_model_file(check=False)
+    #        return load_metadata(path+".xmeta")
         
     def get_dataset(self):
         from ml.ds import DataSetBuilder
