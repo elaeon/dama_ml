@@ -240,23 +240,16 @@ class Voting(Grid):
         self.num_max_clfs = num_max_clfs
         super(Voting, self).__init__(classifs, **kwargs)
 
-    def select_best_prediction(self, predictions, models_index, uncertain=True):
+    def select_best_prediction(self, predictions, weights, uncertain=True):
         from itertools import izip
-        weights = [self.weights[index] for index in models_index]
         if uncertain is False:
-            for row_prediction in izip(*predictions):
-                counter = {}
-                for w, prediction in izip(weights, row_prediction):
-                    counter.setdefault(prediction, 0)
-                    counter[prediction] += w
-                yield max(counter.items(), key=lambda x:x[1])[0]
+            from utils.numeric_functions import discrete_weight
+            return discrete_weight(predictions, weights)
         else:
-            total_weights = float(sum(weights))
-            for row_prediction in izip(*predictions):
-                best_prediction = 0
-                for w, prediction in izip(weights, row_prediction):
-                    best_prediction += prediction * w
-                yield best_prediction / total_weights
+            from utils.numeric_functions import arithmetic_mean
+            predictions_iter = ((prediction * w for prediction in row_prediction)
+                for w, row_prediction in izip(weights, predictions))
+            return arithmetic_mean(predictions_iter, float(sum(weights)))
 
     def scores(self, measures=None, all_clf=True):
         clf = self.load_models().next()
@@ -291,10 +284,11 @@ class Voting(Grid):
             models = (self.load_model(self.classifs[index], info=False) for index in bests)
             models_index = bests
 
+        weights = [self.weights[index] for index in models_index]
         predictions = (
             classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
             for classif in models)
-        return self.select_best_prediction(predictions, models_index, uncertain=raw)
+        return self.select_best_prediction(predictions, weights, uncertain=raw)
 
     def find_low_correlation(self, sort=False):
         from utils.numeric_functions import le, pearsoncc
@@ -420,17 +414,12 @@ class Bagging(Grid):
         model_base.train(batch_size=batch_size, num_steps=num_steps)
 
     def prepare_data(self, data, transform=True, chunk_size=1):
-        clfs = self.load_models()
-        clf_0 = clfs.next()
-        predictions = np.asarray(list(
-            clf_0.predict(data, raw=True, transform=transform, chunk_size=chunk_size)))
-        #geometric mean
-        for rbm in clfs:
-            predictions *= np.asarray(list(
-                rbm.predict(data, raw=True, transform=transform, chunk_size=chunk_size)))
-        
-        predictions = np.power(predictions, (1 / len(self.classifs)))
-        return clf_0.dataset.processing(np.append(data, predictions, axis=1), 'global')
+        from utils.numeric_functions import geometric_mean
+        predictions = (
+            classif.predict(data, raw=True, transform=transform, chunk_size=chunk_size)
+            for classif in self.load_models())
+        predictions = np.asarray(list(geometric_mean(predictions, len(self.classifs))))
+        return self.dataset.processing(np.append(data, predictions, axis=1), 'global')
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         import ml
