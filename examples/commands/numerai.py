@@ -113,7 +113,7 @@ if __name__ == '__main__':
             ml.clf.extended.AdaBoost,
             ml.clf.extended.GradientBoost],
             dataset=dataset,
-            model_name=args.model_name,
+            model_name=args.model_name+"b",
             model_version=args.model_version,
             weights=[3, 1],
             election='best-c',

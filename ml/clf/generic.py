@@ -157,7 +157,7 @@ class DataDrive(object):
     def load_meta(self):
         from ml.ds import load_metadata
         if self.check_point_path is not None:
-            path = self.make_model_file(check=False)
+            path = self.make_model_file(check_existence=False)
             return load_metadata(path+".xmeta")
 
     def get_model_name_v(self):
@@ -167,10 +167,10 @@ class DataDrive(object):
             id_ = self.model_version
         return "{}.{}".format(self.model_name, id_)
 
-    def make_model_file(self, check=True):
+    def make_model_file(self, check_existence=True):
         model_name_v = self.get_model_name_v()
         check_point = os.path.join(self.check_point_path, self.__class__.__name__)
-        if check is True:
+        if check_existence is True:
             if not os.path.exists(check_point):
                 os.makedirs(check_point)
 
@@ -188,9 +188,6 @@ class Grid(DataDrive):
     def __init__(self, classifs, model_name=None, dataset=None, 
             check_point_path=None, model_version=None):
         self.model = None
-        #self.model_name = model_name
-        #self.check_point_path = check_point_path
-        #self.model_version = model_version
         self.dataset = dataset
         self.classifs = classifs
         self.params = {}
@@ -528,10 +525,7 @@ class BaseClassif(DataDrive):
             dataset_train_limit=None,
             info=True):
         self.model = None
-        #self.model_name = model_name
         self.le = LabelEncoder()
-        #self.check_point_path = check_point_path
-        #self.model_version = model_version
         self.dataset_train_limit = dataset_train_limit
         self.print_info = info
         self.base_labels = None
@@ -643,7 +637,6 @@ class BaseClassif(DataDrive):
             self.dataset = self.get_dataset()
         else:
             self.dataset = dataset.copy()
-            self.model_name = self.dataset.name
         self._original_dataset_md5 = self.dataset.md5()
         self.reformat_all()
 
@@ -735,45 +728,12 @@ class BaseClassif(DataDrive):
         self.set_dataset(dataset)
         self.train(batch_size=batch_size, num_steps=num_steps)
 
-    #def get_model_name_v(self):
-    #    if self.model_version is None:
-    #        import datetime
-    #        id_ = datetime.datetime.today().strftime("%Y-%m-%d-%H:%M:%S")
-    #    else:
-    #        id_ = self.model_version
-    #    return "{}.{}".format(self.model_name, id_)
-
-    #def make_model_file(self, check=True):
-    #    model_name_v = self.get_model_name_v()
-    #    check_point = os.path.join(self.check_point_path, self.__class__.__name__)
-    #    if check is True:
-    #        if not os.path.exists(check_point):
-    #            os.makedirs(check_point)
-
-    #        destination = os.path.join(check_point, model_name_v)
-    #        if not os.path.exists(destination):
-    #            os.makedirs(destination)
-        
-    #    return os.path.join(check_point, model_name_v, model_name_v)
-
     def _metadata(self):
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
                 "md5": self._original_dataset_md5, #not reformated dataset
                 "transforms": self.dataset.transforms.get_all_transforms(),
                 "preprocessing_class": self.dataset.processing_class.module_cls_name()}
-
-    #def save_meta(self):
-    #    from ml.ds import save_metadata
-    #    if self.check_point_path is not None:
-    #        path = self.make_model_file()
-    #        save_metadata(path+".xmeta", self._metadata())
-
-    #def load_meta(self):
-    #    from ml.ds import load_metadata
-    #    if self.check_point_path is not None:
-    #        path = self.make_model_file(check=False)
-    #        return load_metadata(path+".xmeta")
         
     def get_dataset(self):
         from ml.ds import DataSetBuilder
@@ -812,7 +772,7 @@ class SKL(BaseClassif):
     def load_model(self):
         from sklearn.externals import joblib
         if self.check_point_path is not None:
-            path = self.make_model_file(check=False)
+            path = self.make_model_file(check_existence=False)
             self.model = joblib.load('{}.pkl'.format(path))
 
     def _predict(self, data, raw=False):
