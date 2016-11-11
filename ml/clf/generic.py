@@ -307,10 +307,11 @@ class Voting(Grid):
                 for w, row_prediction in izip(weights, predictions))
             return arithmetic_mean(predictions_iter, float(sum(weights)))
 
-    def train(self, batch_size=128, num_steps=1):
-        for classif in self.load_models():
-            print("Training [{}]".format(classif.__class__.__name__))
-            classif.train(batch_size=batch_size, num_steps=num_steps)
+    def train(self, batch_size=128, num_steps=1, only_voting=False):
+        if only_voting is False:
+            for classif in self.load_models():
+                print("Training [{}]".format(classif.__class__.__name__))
+                classif.train(batch_size=batch_size, num_steps=num_steps)
 
         if self.election == "best":
             from utils.numeric_functions import le
@@ -319,7 +320,7 @@ class Voting(Grid):
             models = self.classifs
             models_index = range(len(self.classifs))
         elif self.election == "best-c":
-            bests = self.find_low_correlation(sort=True)
+            bests = self.correlation_between_models(sort=True)
             self.weights = self.set_weights(bests[0], self.classifs, self.weights.values())
             models = [self.classifs[index] for index in bests]
             models_index = bests
@@ -371,7 +372,7 @@ class Voting(Grid):
             for classif in models)
         return self.avg_prediction(predictions, weights, uncertain=raw)
 
-    def find_low_correlation(self, sort=False):
+    def correlation_between_models(self, sort=False):
         from utils.numeric_functions import le, pearsoncc
         from utils.network import all_simple_paths_graph
         from itertools import combinations

@@ -119,7 +119,7 @@ if __name__ == '__main__':
             election='best-c',
             num_max_clfs=5,
             check_point_path=settings["checkpoints_path"])
-        classif.train(batch_size=128, num_steps=args.epoch)
+        classif.train(batch_size=128, num_steps=args.epoch) # only_voting=True
         classif.all_clf_scores().print_scores(order_column="logloss")
 
     if args.predict:
