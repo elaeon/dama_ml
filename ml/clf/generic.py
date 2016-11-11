@@ -147,11 +147,6 @@ class DataDrive(object):
 
     def _metadata(self):
         pass
-        #return {"dataset_path": self.dataset.dataset_path,
-        #        "dataset_name": self.dataset.name,
-        #        "md5": self._original_dataset_md5, #not reformated dataset
-        #        "transforms": self.dataset.transforms.get_all_transforms(),
-        #        "preprocessing_class": self.dataset.processing_class.module_cls_name()}
 
     def save_meta(self):
         from ml.ds import save_metadata
@@ -185,6 +180,9 @@ class DataDrive(object):
         
         return os.path.join(check_point, model_name_v, model_name_v)
 
+    def print_meta(self):
+        print(self.load_meta())
+
 
 class Grid(DataDrive):
     def __init__(self, classifs, model_name=None, dataset=None, 
@@ -212,7 +210,7 @@ class Grid(DataDrive):
                 model_version=self.model_version, 
                 check_point_path=self.check_point_path,
                 info=info,
-                **self.get_params(model.cls_name_simple()))
+                **self.get_params(model.cls_name()))
 
     def train(self, batch_size=128, num_steps=1):
         for classif in self.load_models():
@@ -286,12 +284,19 @@ class Grid(DataDrive):
 
 class Voting(Grid):
     def __init__(self, classifs, weights=None, election='best', num_max_clfs=1, **kwargs):
-        self.weights = self.set_weights(0, classifs, weights)
-        self.election = election
-        self.num_max_clfs = num_max_clfs
         super(Voting, self).__init__(classifs, **kwargs)
+        if len(classifs) > 0:
+            self.weights = self.set_weights(0, classifs, weights)
+            self.election = election
+            self.num_max_clfs = num_max_clfs
+        else:
+            meta = self.load_meta()
+            from pydoc import locate
+            self.classifs = [locate(model) for model in meta.get('models', [])]
+            self.weights = {index: w for index, w in enumerate(meta['weights'])}
+            self.election = meta["election"]
 
-    def select_best_prediction(self, predictions, weights, uncertain=True):
+    def avg_prediction(self, predictions, weights, uncertain=True):
         from itertools import izip
         if uncertain is False:
             from utils.numeric_functions import discrete_weight
@@ -311,13 +316,11 @@ class Voting(Grid):
             from utils.numeric_functions import le
             best = self.best_predictor(operator=le)
             self.weights = self.set_weights(best, self.classifs, self.weights.values())
-            #models = self.load_models()
             models = self.classifs
             models_index = range(len(self.classifs))
         elif self.election == "best-c":
             bests = self.find_low_correlation(sort=True)
             self.weights = self.set_weights(bests[0], self.classifs, self.weights.values())
-            #models = (self.load_model(self.classifs[index], info=False) for index in bests)
             models = [self.classifs[index] for index in bests]
             models_index = bests
 
@@ -327,19 +330,15 @@ class Voting(Grid):
     def _metadata(self):
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
-                "md5": self.dataset.md5(), #not reformated dataset
-                "transforms": self.dataset.transforms.get_all_transforms(),
-                "preprocessing_class": self.dataset.processing_class.module_cls_name(),
-                "models": self.clf_models,
+                "models": self.clf_models_namespace,
                 "weights": self.clf_weights,
                 "election": self.election}
 
     def save_model(self, models, weights):
-        self.clf_models = models
+        self.clf_models_namespace = [model.module_cls_name() for model in models]
         self.clf_weights = weights
         if self.check_point_path is not None:
             path = self.make_model_file()
-            #joblib.dump(self.model, '{}.pkl'.format(path))
             self.save_meta()
 
     def scores(self, measures=None, all_clf=True):
@@ -352,6 +351,8 @@ class Voting(Grid):
             return list_measure
 
     def set_weights(self, best, classifs, values):
+        if values is None:
+            values = [1]
         max_value = max(values)
         min_value = min(values)
         weights = {} 
@@ -363,23 +364,12 @@ class Voting(Grid):
         return weights
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        if self.election == "best":
-            from utils.numeric_functions import le
-            best = self.best_predictor(operator=le)
-            self.weights = self.set_weights(best, self.classifs, self.weights.values())
-            models = self.load_models()
-            models_index = range(len(self.classifs))
-        elif self.election == "best-c":
-            bests = self.find_low_correlation(sort=True)
-            self.weights = self.set_weights(bests[0], self.classifs, self.weights.values())
-            models = (self.load_model(self.classifs[index], info=False) for index in bests)
-            models_index = bests
-
-        weights = [self.weights[index] for index in models_index]
+        models = (self.load_model(classif, info=False) for classif in self.classifs)
+        weights = [w for i, w in sorted(self.weights.items(), key=lambda x:x[0])]
         predictions = (
             classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
             for classif in models)
-        return self.select_best_prediction(predictions, weights, uncertain=raw)
+        return self.avg_prediction(predictions, weights, uncertain=raw)
 
     def find_low_correlation(self, sort=False):
         from utils.numeric_functions import le, pearsoncc
@@ -556,11 +546,15 @@ class BaseClassif(DataDrive):
         return cls.__name__
 
     @classmethod
-    def cls_name_simple(cls):
-        try:
-            return cls.__name__.split(".").pop()
-        except IndexError:
-            return cls.__name__
+    def module_cls_name(cls):
+        return "{}.{}".format(cls.__module__, cls.__name__)
+
+    #classmethod
+    #sef cls_name_simple(cls):
+    #   try:
+    #        return cls.__name__.split(".").pop()
+    #    except IndexError:
+    #        return cls.__name__
 
     def scores(self, measures=None):
         list_measure = ListMeasure()
