@@ -408,6 +408,37 @@ class Voting(Grid):
 
 
 class Stacking(Grid):
+    def __init__(self, classifs, **kwargs):
+        super(Stacking, self).__init__(classifs, **kwargs)
+        self.dataset_blend = None
+        if len(classifs) == 0:
+            meta = self.load_meta()
+            from pydoc import locate
+            self.classifs = [locate(model) for model in meta.get('models', [])]
+            self.iterations = meta["iterations"]
+        else:
+            self.iterations = 0
+
+    def load_blend(self):
+        from sklearn.externals import joblib
+        if self.check_point_path is not None:
+            path = self.make_model_file(check_existence=False)
+            self.dataset_blend = joblib.load('{}.pkl'.format(path))
+
+    def _metadata(self):
+        return {"dataset_path": self.dataset.dataset_path,
+                "dataset_name": self.dataset.name,
+                "models": self.clf_models_namespace,
+                "iterations": self.iterations}
+
+    def save_model(self, dataset_blend):
+        from sklearn.externals import joblib
+        self.clf_models_namespace = [model.module_cls_name() for model in self.classifs]
+        if self.check_point_path is not None:
+            path = self.make_model_file()            
+            joblib.dump(dataset_blend, '{}.pkl'.format(path))
+            self.save_meta()
+
     def train(self, batch_size=128, num_steps=1):
         from sklearn.model_selection import StratifiedKFold
         clf_b = self.load_models().next()
@@ -415,10 +446,9 @@ class Stacking(Grid):
         skf = StratifiedKFold(n_splits=num_classes)
         data, labels = clf_b.dataset.desfragment()
         size = data.shape[0]
-        self.dataset_blend_train = np.zeros((size, len(self.classifs), num_classes))
+        dataset_blend_train = np.zeros((size, len(self.classifs), num_classes))
         for j, clf in enumerate(self.load_models()):
-            print(j, clf.cls_name())
-            #clf.model_name = clf.dataset.name + "-s"
+            print("Training [{}]".format(clf.__class__.__name__))
             for i, (train, test) in enumerate(skf.split(data, labels)):
                 print("Fold", i)
                 clf.dataset.train_data = data[train]
@@ -428,27 +458,31 @@ class Stacking(Grid):
                 clf.train(batch_size=batch_size, num_steps=num_steps)
                 y_submission = list(
                     clf.predict(clf.dataset.test_data, raw=True, transform=False, chunk_size=0))
-                self.dataset_blend_train[test, j] = y_submission
-            self.i = i + 1
+                dataset_blend_train[test, j] = y_submission
+        self.iterations = i + 1
+        self.save_model(dataset_blend_train.reshape(dataset_blend_train.shape[0], -1))
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
+        if self.dataset_blend is None:
+            self.load_blend()
+
         from sklearn.linear_model import LogisticRegression
         clf_b = self.load_models().next()
         _, labels = clf_b.dataset.desfragment()
         size = data.shape[0]
-        num_classes = len(clf_b.dataset.labels_info().keys())
+        num_classes = clf_b.num_labels
         dataset_blend_test = np.zeros((size, len(self.classifs), num_classes))
         for j, clf in enumerate(self.load_models()):
-            dataset_blend_test_j = np.zeros((size, self.i, num_classes))
-            count = 0            
-            while count < self.i:
+            dataset_blend_test_j = np.zeros((size, self.iterations, num_classes))
+            count = 0     
+            while count < self.iterations:
                 dataset_blend_test_j[:, count] = np.asarray(list(
                     clf.predict(data, raw=True, transform=transform, chunk_size=0)))
                 count += 1
             dataset_blend_test[:, j] = dataset_blend_test_j.mean(1)
 
         clf = LogisticRegression()
-        clf.fit(self.dataset_blend_train.reshape(self.dataset_blend_train.shape[0], -1), labels)
+        clf.fit(self.dataset_blend, labels)
         return clf.predict_proba(dataset_blend_test.reshape(dataset_blend_test.shape[0], -1))
 
     def scores(self, measures=None, all_clf=True):
