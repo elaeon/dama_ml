@@ -180,12 +180,13 @@ class DataSetBuilder(object):
             'md5': self.md5()}
 
     @classmethod
-    def from_raw_to_ds(self, name, dataset_path, **kwargs):
+    def from_raw_to_ds(self, name, dataset_path, data, print_info=True, save=True):
         ds = DataSetBuilder(name, 
                 dataset_path=dataset_path,
-                print_info=True)
-        ds.from_raw(kwargs)
-        ds.save()
+                print_info=print_info)
+        ds.from_raw(data)
+        if save is True:
+            ds.save()
         return ds
 
     def from_raw(self, raw_data):

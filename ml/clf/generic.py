@@ -441,34 +441,38 @@ class Stacking(Grid):
 
     def train(self, batch_size=128, num_steps=1):
         from sklearn.model_selection import StratifiedKFold
-        clf_b = self.load_models().next()
-        num_classes = len(clf_b.dataset.labels_info().keys())
+        num_classes = len(self.dataset.labels_info().keys())
         skf = StratifiedKFold(n_splits=num_classes)
-        data, labels = clf_b.dataset.desfragment()
+        data, labels = self.dataset.desfragment()
         size = data.shape[0]
         dataset_blend_train = np.zeros((size, len(self.classifs), num_classes))
+        dataset_blend_labels = np.zeros((size, len(self.classifs), 1))
         for j, clf in enumerate(self.load_models()):
             print("Training [{}]".format(clf.__class__.__name__))
             for i, (train, test) in enumerate(skf.split(data, labels)):
                 print("Fold", i)
-                clf.dataset.train_data = data[train]
-                clf.dataset.train_labels = labels[train]
-                clf.dataset.test_data = data[test]
-                clf.dataset.test_labels = labels[test]
+                clf.set_dataset_from_raw(data[train], data[test], clf.dataset.valid_data, 
+                    labels[train], labels[test], clf.dataset.valid_labels)
                 clf.train(batch_size=batch_size, num_steps=num_steps)
-                y_submission = list(
-                    clf.predict(clf.dataset.test_data, raw=True, transform=False, chunk_size=0))
+                y_submission = np.asarray(list(
+                    clf.predict(clf.dataset.test_data, raw=True, transform=False, chunk_size=0)))
+                if len(clf.dataset.test_labels.shape) > 1:
+                    test_labels = np.argmax(clf.dataset.test_labels, axis=1)
+                else:
+                    test_labels = clf.dataset.test_labels
                 dataset_blend_train[test, j] = y_submission
+                dataset_blend_labels[test, j] = test_labels.reshape(-1, 1)
         self.iterations = i + 1
-        self.save_model(dataset_blend_train.reshape(dataset_blend_train.shape[0], -1))
+        dataset_blend_train = dataset_blend_train.reshape(dataset_blend_train.shape[0], -1)
+        dataset_blend_labels = dataset_blend_labels.reshape(dataset_blend_labels.shape[0], -1)
+        self.save_model(np.append(dataset_blend_train, dataset_blend_labels, axis=1))
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
+        from sklearn.linear_model import LogisticRegression
         if self.dataset_blend is None:
             self.load_blend()
 
-        from sklearn.linear_model import LogisticRegression
         clf_b = self.load_models().next()
-        _, labels = clf_b.dataset.desfragment()
         size = data.shape[0]
         num_classes = clf_b.num_labels
         dataset_blend_test = np.zeros((size, len(self.classifs), num_classes))
@@ -476,13 +480,15 @@ class Stacking(Grid):
             dataset_blend_test_j = np.zeros((size, self.iterations, num_classes))
             count = 0     
             while count < self.iterations:
-                dataset_blend_test_j[:, count] = np.asarray(list(
+                y_predict = np.asarray(list(
                     clf.predict(data, raw=True, transform=transform, chunk_size=0)))
+                dataset_blend_test_j[:, count] = y_predict
                 count += 1
             dataset_blend_test[:, j] = dataset_blend_test_j.mean(1)
 
         clf = LogisticRegression()
-        clf.fit(self.dataset_blend, labels)
+        columns = len(self.classifs) * num_classes
+        clf.fit(self.dataset_blend[:,:columns], self.dataset_blend[:,columns])
         return clf.predict_proba(dataset_blend_test.reshape(dataset_blend_test.shape[0], -1))
 
     def scores(self, measures=None, all_clf=True):
@@ -543,14 +549,14 @@ class Bagging(Grid):
         data_model_base = self.prepare_data(data, transform=transform, chunk_size=chunk_size)
         return model_base.predict(data_model_base, raw=raw, transform=False, chunk_size=chunk_size)
     
-    def scores(self, measures=None, all_clf=True):
-        clf = self.load_model(self.classif, info=False)
-        list_measure = ListMeasure()
-        list_measure.calc_scores(self.__class__.__name__, self.predict, clf, measures=measures)
-        if all_clf is True:
-            return list_measure + self.all_clf_scores(measures=measures)
-        else:
-            return list_measure
+    #def scores(self, measures=None, all_clf=True):
+    #    clf = self.load_model(self.classif, info=False)
+    #    list_measure = ListMeasure()
+    #    list_measure.calc_scores(self.__class__.__name__, self.predict, clf, measures=measures)
+    #    if all_clf is True:
+    #        return list_measure + self.all_clf_scores(measures=measures)
+    #    else:
+    #        return list_measure
 
 
 class BaseClassif(DataDrive):
@@ -678,6 +684,32 @@ class BaseClassif(DataDrive):
         self.dataset = dataset
         self.reformat_all()
 
+    def set_dataset_from_raw(self, train_data, test_data, valid_data, 
+                            train_labels, test_labels, valid_labels):
+        import ml
+        data = {}
+        data["train_dataset"] = train_data
+        data["test_dataset"] = test_data
+        data["valid_dataset"] = valid_data
+        if len(self.dataset.train_labels.shape) > 2 and self.dataset.train_labels.shape[1] > 1:
+            transform_fn = lambda x: np.argmax(x, axis=1)
+        else:
+            transform_fn = lambda x: x
+
+        data["train_labels"] = transform_fn(train_labels)
+        data["test_labels"] = transform_fn(test_labels)
+        data["valid_labels"] = transform_fn(valid_labels)
+        data['transforms'] = self.dataset.transforms.get_all_transforms()
+        data['preprocessing_class'] = self.dataset.processing_class.module_cls_name()
+        data["md5"] = None
+        dataset = ml.ds.DataSetBuilder.from_raw_to_ds(
+            self.dataset.name,
+            self.dataset.dataset_path,
+            data,
+            print_info=False,
+            save=False)
+        self.set_dataset(dataset)
+        
     def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False):
         from ml.ds import grouper_chunk
         for chunk in grouper_chunk(chunk_size, data):
