@@ -21,7 +21,7 @@ def predict(classif, path, label_column):
 
     ids = df[label_column].as_matrix()
     predictions = []
-    for value, label in zip(list(classif.predict(data, raw=True, chunk_size=1)), ids):
+    for value, label in zip(list(classif.predict(data, raw=True, chunk_size=258)), ids):
         predictions.append([str(label), str(value[1])])
     
     with open(settings["predictions_file_path"], "w") as csvfile:
@@ -119,14 +119,27 @@ if __name__ == '__main__':
         #    election='best-c',
         #    num_max_clfs=5,
         #    check_point_path=settings["checkpoints_path"])
-        classif = ml.clf.generic.Stacking([
+        #classif = ml.clf.generic.Stacking([
         #    ml.clf.extended.ExtraTrees,
         #    ml.clf.extended.MLP,
-            ml.clf.extended.RandomForest,
-            ml.clf.extended.SGDClassifier,
+        #    ml.clf.extended.RandomForest,
+        #    ml.clf.extended.SGDClassifier,
         #    ml.clf.extended.SVC,
         #    ml.clf.extended.LogisticRegression,
         #    ml.clf.extended.AdaBoost,
+        #    ml.clf.extended.GradientBoost],
+        #    dataset=dataset,
+        #    model_name=args.model_name,
+        #    model_version=args.model_version,
+        #    check_point_path=settings["checkpoints_path"])
+        classif = ml.clf.generic.Bagging(ml.clf.extended.MLP, [
+            #ml.clf.extended.ExtraTrees,
+            #ml.clf.extended.MLP,
+            #ml.clf.extended.RandomForest,
+            ml.clf.extended.SGDClassifier,
+            #ml.clf.extended.SVC,
+            ml.clf.extended.LogisticRegression,
+            #ml.clf.extended.AdaBoost,
             ml.clf.extended.GradientBoost],
             dataset=dataset,
             model_name=args.model_name,
@@ -140,27 +153,17 @@ if __name__ == '__main__':
         #    model_name=args.model_name,
         #    model_version=args.model_version,
         #    check_point_path=settings["checkpoints_path"])
-        classif = ml.clf.generic.Stacking([],
+        #classif = ml.clf.generic.Stacking([],
+        #    model_name=args.model_name,
+        #    model_version=args.model_version,
+        #    check_point_path=settings["checkpoints_path"])
+        classif = ml.clf.generic.Bagging(None, [],
             model_name=args.model_name,
             model_version=args.model_version,
             check_point_path=settings["checkpoints_path"])
         classif.print_meta()
-        #classif = ml.clf.generic.Bagging(ml.clf.extended.MLP, [
-        #    ml.clf.extended.ExtraTrees,
-        #    ml.clf.extended.MLP,
-        #    ml.clf.extended.RandomForest,
-        #    ml.clf.extended.SGDClassifier,
-        #    ml.clf.extended.SVC,
-        #    ml.clf.extended.LogisticRegression,
-        #    ml.clf.extended.AdaBoost,
-        #    ml.clf.extended.GradientBoost],
-        #    dataset=dataset,
-        #    model_name=args.model_name,
-        #    model_version=args.model_version,
-        #    check_point_path=settings["checkpoints_path"])
-        #classif.train(batch_size=128, num_steps=15)
         classif.scores().print_scores(order_column="logloss")
-        #predict(classif_best, settings["numerai_test"], "t_id")
+        #predict(classif, settings["numerai_test"], "t_id")
 
     if args.plot:
         dataset = ml.ds.DataSetBuilderFile.load_dataset(

@@ -125,9 +125,7 @@ class ListMeasure(object):
         uncertain = "logloss" in measures
         predictions = np.asarray(list(
             predict(clf.dataset.test_data, raw=uncertain, transform=False, chunk_size=258)))
-        measure = Measure(predictions, 
-            np.asarray([clf.convert_label(label, raw=False)
-            for label in clf.dataset.test_labels]))
+        measure = Measure(predictions, clf.numerical_labels2classes(clf.dataset.test_labels))
         self.add_measure("CLF", name)
 
         measure_class = []
@@ -196,14 +194,14 @@ class Grid(DataDrive):
             model_version=model_version,
             model_name=model_name)
         
-    def load_models(self):
+    def load_models(self, sufix=""):
         for classif in self.classifs:
-            yield self.load_model(classif, info=False)
+            yield self.load_model(classif, info=False, sufix=sufix)
     
-    def load_model(self, model, info=True, dataset=None):
+    def load_model(self, model, info=True, dataset=None, sufix=""):
         dataset = self.dataset if dataset is None else dataset
         return model(dataset=dataset, 
-                model_name=self.model_name, 
+                model_name=self.model_name+sufix, 
                 model_version=self.model_version, 
                 check_point_path=self.check_point_path,
                 info=info,
@@ -411,6 +409,7 @@ class Stacking(Grid):
     def __init__(self, classifs, **kwargs):
         super(Stacking, self).__init__(classifs, **kwargs)
         self.dataset_blend = None
+        self.n_splits = 10
         if len(classifs) == 0:
             meta = self.load_meta()
             from pydoc import locate
@@ -442,7 +441,8 @@ class Stacking(Grid):
     def train(self, batch_size=128, num_steps=1):
         from sklearn.model_selection import StratifiedKFold
         num_classes = len(self.dataset.labels_info().keys())
-        skf = StratifiedKFold(n_splits=num_classes)
+        n_splits = self.n_splits if num_classes < self.n_splits else num_classes
+        skf = StratifiedKFold(n_splits=n_splits)
         data, labels = self.dataset.desfragment()
         size = data.shape[0]
         dataset_blend_train = np.zeros((size, len(self.classifs), num_classes))
@@ -451,8 +451,11 @@ class Stacking(Grid):
             print("Training [{}]".format(clf.__class__.__name__))
             for i, (train, test) in enumerate(skf.split(data, labels)):
                 print("Fold", i)
-                clf.set_dataset_from_raw(data[train], data[test], clf.dataset.valid_data, 
-                    labels[train], labels[test], clf.dataset.valid_labels)
+                validation_index = int(train.shape[0]*.1)
+                validation = train[:validation_index]
+                train = train[validation_index:]
+                clf.set_dataset_from_raw(data[train], data[test], data[validation],
+                    labels[train], labels[test], labels[validation])
                 clf.train(batch_size=batch_size, num_steps=num_steps)
                 y_submission = np.asarray(list(
                     clf.predict(clf.dataset.test_data, raw=True, transform=False, chunk_size=0)))
@@ -503,34 +506,57 @@ class Stacking(Grid):
 
 class Bagging(Grid):
     def __init__(self, classif, classifs_rbm, **kwargs):
-        self.classif = classif
         super(Bagging, self).__init__(classifs_rbm, **kwargs)
         self.name_sufix = "-bagging"
+        if classif is None:
+            import ml
+            meta = self.load_meta()
+            from pydoc import locate
+            self.classifs = [locate(model) for model in meta.get('models', [])]
+            self.classif = locate(meta["model_base"])
+            self.model_base_name = meta["model_base_name"]
+            self.dataset = ml.ds.DataSetBuilder.load_dataset(
+                meta["dataset_name"], 
+                dataset_path=meta["dataset_path"])
+        else:
+            self.classif = classif
+            self.model_base_name = None
+
+    def _metadata(self):
+        return {"dataset_path": self.dataset.dataset_path,
+                "dataset_name": self.dataset.name,
+                "models": self.clf_models_namespace,
+                "model_base": self.classif.module_cls_name(),
+                "model_base_name": self.model_base_name,
+                "md5": self.dataset.md5()}
+
+    def save_model(self):
+        self.clf_models_namespace = [model.module_cls_name() for model in self.classifs]
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            self.save_meta()
 
     def train(self, batch_size=128, num_steps=1):
         import ml
-        for classif in self.load_models():
+        for classif in self.load_models(sufix=self.name_sufix):
+            print("Training [{}]".format(classif.__class__.__name__))
             classif.train(batch_size=batch_size, num_steps=num_steps)
 
         model_base = self.load_model(self.classif, info=False)
-        params = model_base.dataset.to_raw()
-        params["train_dataset"] = self.prepare_data(params["train_dataset"], transform=False)
-        params["test_dataset"] = self.prepare_data(params["test_dataset"], transform=False)
-        params["valid_dataset"] =  self.prepare_data(params["valid_dataset"], transform=False)
-        if params["train_labels"].shape[1] > 1:
-            transform_fn = lambda x: np.argmax(x, axis=1)
-            
-        params["train_labels"] = transform_fn(params["train_labels"])
-        params["test_labels"] = transform_fn(params["test_labels"])
-        params["valid_labels"] = transform_fn(params["valid_labels"])
-        params["md5"] = None
-        dataset = ml.ds.DataSetBuilder.from_raw_to_ds(
-            model_base.dataset.name+self.name_sufix,
-            model_base.dataset.dataset_path, 
-            **params)
-        model_base.set_dataset(dataset)
+        print("Building features...")
+        model_base.set_dataset_from_raw(
+            self.prepare_data(model_base.dataset.train_data, transform=False), 
+            self.prepare_data(model_base.dataset.test_data, transform=False), 
+            self.prepare_data(model_base.dataset.valid_data, transform=False),
+            model_base.numerical_labels2classes(model_base.dataset.train_labels), 
+            model_base.numerical_labels2classes(model_base.dataset.test_labels), 
+            model_base.numerical_labels2classes(model_base.dataset.valid_labels),
+            save=True,
+            dataset_name=model_base.dataset.name+self.name_sufix)
         model_base.model_name = model_base.model_name+self.name_sufix
         model_base.train(batch_size=batch_size, num_steps=num_steps)
+        self.model_base_name = model_base.model_name
+        self.save_model()
 
     def prepare_data(self, data, transform=True, chunk_size=1):
         from utils.numeric_functions import geometric_mean
@@ -543,20 +569,22 @@ class Bagging(Grid):
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         import ml
         dataset = ml.ds.DataSetBuilder.load_dataset(
-            self.dataset.name+self.name_sufix, 
-            dataset_path=self.dataset.dataset_path)
+                self.model_base_name, 
+                dataset_path="/home/sc/ml_data/dataset/")
         model_base = self.load_model(self.classif, info=False, dataset=dataset)
         data_model_base = self.prepare_data(data, transform=transform, chunk_size=chunk_size)
+        print(model_base.model_name)
+        model_base.model_name = self.model_base_name
         return model_base.predict(data_model_base, raw=raw, transform=False, chunk_size=chunk_size)
     
-    #def scores(self, measures=None, all_clf=True):
-    #    clf = self.load_model(self.classif, info=False)
-    #    list_measure = ListMeasure()
-    #    list_measure.calc_scores(self.__class__.__name__, self.predict, clf, measures=measures)
-    #    if all_clf is True:
-    #        return list_measure + self.all_clf_scores(measures=measures)
-    #    else:
-    #        return list_measure
+    def scores(self, measures=None, all_clf=True):
+        clf = self.load_model(self.classif, info=False)
+        list_measure = ListMeasure()
+        list_measure.calc_scores(self.__class__.__name__, self.predict, clf, measures=measures)
+        if all_clf is True:
+            return list_measure + self.all_clf_scores(measures=measures)
+        else:
+            return list_measure
 
 
 class BaseClassif(DataDrive):
@@ -583,13 +611,6 @@ class BaseClassif(DataDrive):
     @classmethod
     def module_cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
-
-    #classmethod
-    #sef cls_name_simple(cls):
-    #   try:
-    #        return cls.__name__.split(".").pop()
-    #    except IndexError:
-    #        return cls.__name__
 
     def scores(self, measures=None):
         list_measure = ListMeasure()
@@ -649,6 +670,12 @@ class BaseClassif(DataDrive):
         else:
             return self.le.inverse_transform(self.position_index(label))
 
+    def numerical_labels2classes(self, labels):
+        if len(labels.shape) > 1 and labels.shape[1] > 1:
+            return self.le.inverse_transform(np.argmax(labels, axis=1))
+        else:
+            return self.le.inverse_transform(labels)
+
     def reformat_all(self):
         all_ds = np.concatenate((self.dataset.train_labels, 
             self.dataset.valid_labels, self.dataset.test_labels), axis=0)
@@ -685,7 +712,8 @@ class BaseClassif(DataDrive):
         self.reformat_all()
 
     def set_dataset_from_raw(self, train_data, test_data, valid_data, 
-                            train_labels, test_labels, valid_labels):
+                            train_labels, test_labels, valid_labels, save=False, 
+                            dataset_name=None):
         import ml
         data = {}
         data["train_dataset"] = train_data
@@ -701,13 +729,14 @@ class BaseClassif(DataDrive):
         data["valid_labels"] = transform_fn(valid_labels)
         data['transforms'] = self.dataset.transforms.get_all_transforms()
         data['preprocessing_class'] = self.dataset.processing_class.module_cls_name()
-        data["md5"] = None
+        data["md5"] = self.dataset.md5()
+        dataset_name = self.dataset.name if dataset_name is None else dataset_name
         dataset = ml.ds.DataSetBuilder.from_raw_to_ds(
-            self.dataset.name,
+            dataset_name,
             self.dataset.dataset_path,
             data,
             print_info=False,
-            save=False)
+            save=save)
         self.set_dataset(dataset)
         
     def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False):
@@ -808,6 +837,8 @@ class BaseClassif(DataDrive):
             meta["dataset_name"],
             dataset_path=meta["dataset_path"],
             info=self.print_info)
+        #print(meta)
+        #print(dataset.md5(), meta.get('md5', None), meta["dataset_name"])
         if meta.get('md5', None) != dataset.md5():
             log.warning("The dataset md5 is not equal to the model '{}'".format(
                 self.__class__.__name__))

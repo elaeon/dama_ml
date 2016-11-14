@@ -210,6 +210,10 @@ class MLP(TFL):
     def train(self, batch_size=10, num_steps=1000):
         with tf.Graph().as_default():
             self.prepare_model()
+            print(self.dataset.train_data.shape)
+            print(self.dataset.train_labels.shape)
+            print(self.dataset.valid_data.shape)
+            print(self.dataset.valid_labels.shape)
             self.model.fit(self.dataset.train_data, 
                 self.dataset.train_labels, 
                 n_epoch=num_steps, 
