@@ -277,9 +277,9 @@ class Grid(DataDrive):
             yield classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
 
 
-class Voting(Grid):
+class Boosting(Grid):
     def __init__(self, classifs, weights=None, election='best', num_max_clfs=1, **kwargs):
-        super(Voting, self).__init__(classifs, **kwargs)
+        super(Boosting, self).__init__(classifs, **kwargs)
         if len(classifs) > 0:
             self.weights = self.set_weights(0, classifs, weights)
             self.election = election
@@ -521,6 +521,15 @@ class Bagging(Grid):
         else:
             self.classif = classif
 
+    #def load_model(self, model, info=True, dataset=None, sufix=""):
+    #    dataset = self.dataset if dataset is None else dataset
+    #    return model(dataset=dataset, 
+    #            model_name=self.model_name+sufix, 
+    #            model_version=self.model_version, 
+    #            check_point_path=self.check_point_path,
+    #            info=info,
+    #            **self.get_params(model.cls_name()))
+
     def _metadata(self):
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
@@ -541,7 +550,7 @@ class Bagging(Grid):
             print("Training [{}]".format(classif.__class__.__name__))
             classif.train(batch_size=batch_size, num_steps=num_steps)
 
-        model_base = self.load_model(self.classif, info=False)
+        model_base = self.load_model(self.classif, info=False, sufix=self.name_sufix)
         print("Building features...")
         model_base.set_dataset_from_raw(
             self.prepare_data(model_base.dataset.train_data, transform=False), 
@@ -567,13 +576,10 @@ class Bagging(Grid):
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         import ml
-        #dataset = ml.ds.DataSetBuilder.load_dataset(
-        #        self.model_base_name, 
-        #        dataset_path="/home/sc/ml_data/dataset/")
-        model_base = self.load_model(self.classif, info=False)
+        model_base = self.load_model(self.classif, info=True, sufix=self.name_sufix)
         data_model_base = self.prepare_data(data, transform=transform, chunk_size=chunk_size)
-        print(model_base.model_name)
-        #model_base.model_name = self.model_base_name
+        model_base.dataset.info()
+        model_base.print_meta()
         return model_base.predict(data_model_base, raw=raw, transform=False, chunk_size=chunk_size)
     
     def scores(self, measures=None, all_clf=True):

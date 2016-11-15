@@ -76,7 +76,7 @@ if __name__ == '__main__':
     parser.add_argument("--model-name", help="nombre del dataset a utilizar", type=str)
     parser.add_argument("--build-dataset", help="crea el dataset", action="store_true")
     parser.add_argument("--train", help="inicia el entrenamiento", action="store_true")
-    parser.add_argument("--epoch", type=int)
+    parser.add_argument("--epoch", type=int, default=1)
     parser.add_argument("--predict", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--model-version", type=str)
     parser.add_argument("--plot", action="store_true")
