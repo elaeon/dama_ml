@@ -189,6 +189,7 @@ class Grid(DataDrive):
         self.dataset = dataset
         self.classifs = classifs
         self.params = {}
+        self.name_sufix = ""
         super(Grid, self).__init__(
             check_point_path=check_point_path,
             model_version=model_version,
@@ -212,15 +213,15 @@ class Grid(DataDrive):
     
     def all_clf_scores(self, measures=None):
         from operator import add
-        return reduce(add, (classif.scores(measures=measures) for classif in self.load_models()))
+        return reduce(add, (classif.scores(measures=measures) for classif in self.load_models(sufix=self.name_sufix)))
 
     def scores(self, measures=None):
         return self.all_clf_scores(measures=measures)
 
     def print_confusion_matrix(self):
         from operator import add
-        list_measure = reduce(add, (classif.confusion_matrix() for classif in self.load_models()))
-        classifs_reader = self.load_models()
+        list_measure = reduce(add, (classif.confusion_matrix() for classif in self.load_models(sufix=self.name_sufix)))
+        classifs_reader = self.load_models(sufix=self.name_sufix)
         classif = classifs_reader.next()
         list_measure.print_matrix(classif.base_labels)
 
@@ -533,19 +534,20 @@ class Bagging(Embedding):
         for classif in self.load_models(sufix=self.name_sufix):
             print("Training [{}]".format(classif.__class__.__name__))
             classif.train(batch_size=batch_size, num_steps=num_steps)
-
+            classif.print_meta()
         model_base = self.load_model(self.classif, dataset=self.dataset, 
                                     info=False, sufix=self.name_sufix)
         print("Building features...")
         model_base.set_dataset_from_raw(
-            self.prepare_data(model_base.dataset.train_data, transform=False), 
-            self.prepare_data(model_base.dataset.test_data, transform=False), 
-            self.prepare_data(model_base.dataset.valid_data, transform=False),
+            self.prepare_data(model_base.dataset.train_data, transform=False, chunk_size=256), 
+            self.prepare_data(model_base.dataset.test_data, transform=False, chunk_size=256), 
+            self.prepare_data(model_base.dataset.valid_data, transform=False, chunk_size=256),
             model_base.numerical_labels2classes(model_base.dataset.train_labels), 
             model_base.numerical_labels2classes(model_base.dataset.test_labels), 
             model_base.numerical_labels2classes(model_base.dataset.valid_labels),
             save=True,
             dataset_name=model_base.dataset.name+self.name_sufix)
+        print("Done...")
         model_base.train(batch_size=batch_size, num_steps=num_steps)
         self.save_model()
 
@@ -553,14 +555,17 @@ class Bagging(Embedding):
         from utils.numeric_functions import geometric_mean
         predictions = (
             classif.predict(data, raw=True, transform=transform, chunk_size=chunk_size)
-            for classif in self.load_models())
+            for classif in self.load_models(sufix=self.name_sufix))
         predictions = np.asarray(list(geometric_mean(predictions, len(self.classifs))))
         return self.dataset.processing(np.append(data, predictions, axis=1), 'global')
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         import ml
+        print("***********---")
         model_base = self.load_model(self.classif, info=True, sufix=self.name_sufix)
+        print("***********")
         data_model_base = self.prepare_data(data, transform=transform, chunk_size=chunk_size)
+        print(data_model_base.shape)
         return model_base.predict(data_model_base, raw=raw, transform=False, chunk_size=chunk_size)
 
 
@@ -590,6 +595,7 @@ class BaseClassif(DataDrive):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
     def scores(self, measures=None):
+        print(self.dataset.test_data.shape)
         list_measure = ListMeasure()
         list_measure.calc_scores(self.__class__.__name__, self.predict, 
                                 self.dataset.test_data, 
@@ -816,6 +822,7 @@ class BaseClassif(DataDrive):
             meta["dataset_name"],
             dataset_path=meta["dataset_path"],
             info=self.print_info)
+        print(meta.get('md5', None), dataset.md5())
         if meta.get('md5', None) != dataset.md5():
             log.warning("The dataset md5 is not equal to the model '{}'".format(
                 self.__class__.__name__))
@@ -890,6 +897,7 @@ class TFL(BaseClassif):
         self.prepare_model()
         if self.check_point_path is not None:
             path = self.make_model_file()
+            print("+++++++", path)
             self.model.load('{}.ckpt'.format(path))
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
