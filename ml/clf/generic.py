@@ -276,7 +276,19 @@ class Grid(DataDrive):
             yield classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
 
 
-class Boosting(Grid):
+class Embedding(Grid):
+    def scores(self, measures=None, all_clf=True):
+        list_measure = ListMeasure()
+        list_measure.calc_scores(self.__class__.__name__, self.predict, 
+                                self.dataset.test_data, self.dataset.test_labels, 
+                                measures=measures)
+        if all_clf is True:
+            return list_measure + self.all_clf_scores(measures=measures)
+        else:
+            return list_measure
+
+
+class Boosting(Embedding):
     def __init__(self, classifs, weights=None, election='best', num_max_clfs=1, **kwargs):
         super(Boosting, self).__init__(classifs, **kwargs)
         if len(classifs) > 0:
@@ -335,15 +347,6 @@ class Boosting(Grid):
         if self.check_point_path is not None:
             path = self.make_model_file()
             self.save_meta()
-
-    def scores(self, measures=None, all_clf=True):
-        clf = self.load_models().next()
-        list_measure = ListMeasure()
-        list_measure.calc_scores(self.__class__.__name__, self.predict, clf, measures=measures)
-        if all_clf is True:
-            return list_measure + self.all_clf_scores(measures=measures)
-        else:
-            return list_measure
 
     def set_weights(self, best, classifs, values):
         if values is None:
@@ -404,7 +407,7 @@ class Boosting(Grid):
             return relation_clf
 
 
-class Stacking(Grid):
+class Stacking(Embedding):
     def __init__(self, classifs, **kwargs):
         super(Stacking, self).__init__(classifs, **kwargs)
         self.dataset_blend = None
@@ -493,17 +496,8 @@ class Stacking(Grid):
         clf.fit(self.dataset_blend[:,:columns], self.dataset_blend[:,columns])
         return clf.predict_proba(dataset_blend_test.reshape(dataset_blend_test.shape[0], -1))
 
-    def scores(self, measures=None, all_clf=True):
-        clf = self.load_models().next()
-        list_measure = ListMeasure()
-        list_measure.calc_scores(self.__class__.__name__, self.predict, clf, measures=measures)
-        if all_clf is True:
-            return list_measure + self.all_clf_scores(measures=measures)
-        else:
-            return list_measure
 
-
-class Bagging(Grid):
+class Bagging(Embedding):
     def __init__(self, classif, classifs_rbm, **kwargs):
         super(Bagging, self).__init__(classifs_rbm, **kwargs)
         self.name_sufix = "-bagging"
@@ -552,9 +546,7 @@ class Bagging(Grid):
             model_base.numerical_labels2classes(model_base.dataset.valid_labels),
             save=True,
             dataset_name=model_base.dataset.name+self.name_sufix)
-        #model_base.model_name = model_base.model_name+self.name_sufix
         model_base.train(batch_size=batch_size, num_steps=num_steps)
-        #self.model_name = model_base.model_name
         self.save_model()
 
     def prepare_data(self, data, transform=True, chunk_size=1):
@@ -569,19 +561,7 @@ class Bagging(Grid):
         import ml
         model_base = self.load_model(self.classif, info=True, sufix=self.name_sufix)
         data_model_base = self.prepare_data(data, transform=transform, chunk_size=chunk_size)
-        #model_base.print_meta()
         return model_base.predict(data_model_base, raw=raw, transform=False, chunk_size=chunk_size)
-    
-    def scores(self, measures=None, all_clf=True):
-        #clf = self.load_model(self.classif, info=False, sufix=self.name_sufix)
-        list_measure = ListMeasure()
-        list_measure.calc_scores(self.__class__.__name__, self.predict, 
-                                self.dataset.test_data, self.dataset.test_labels, 
-                                measures=measures)
-        if all_clf is True:
-            return list_measure + self.all_clf_scores(measures=measures)
-        else:
-            return list_measure
 
 
 class BaseClassif(DataDrive):

@@ -162,7 +162,6 @@ if __name__ == '__main__':
             model_name=args.model_name,
             model_version=args.model_version,
             check_point_path=settings["checkpoints_path"])
-        classif.print_meta()
         classif.scores().print_scores(order_column="logloss")
         #predict(classif, settings["numerai_test"], "t_id")
 
