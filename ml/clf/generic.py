@@ -115,17 +115,17 @@ class ListMeasure(object):
             headers=headers, measures=this_measures+other_measures)
         return list_measure
 
-    def calc_scores(self, name, predict, clf, measures=None):
+    def calc_scores(self, name, predict, data, labels, measures=None):
         if measures is None:
             measures = ["accuracy", "presicion", "recall", "f1", "auc", "logloss"]
         elif isinstance(measures, str):
             measures = measures.split(",")
         else:
-            measures = []
+            measures = ["logloss"]
         uncertain = "logloss" in measures
         predictions = np.asarray(list(
-            predict(clf.dataset.test_data, raw=uncertain, transform=False, chunk_size=258)))
-        measure = Measure(predictions, clf.numerical_labels2classes(clf.dataset.test_labels))
+            predict(data, raw=uncertain, transform=False, chunk_size=258)))
+        measure = Measure(predictions, labels)
         self.add_measure("CLF", name)
 
         measure_class = []
@@ -196,10 +196,9 @@ class Grid(DataDrive):
         
     def load_models(self, sufix=""):
         for classif in self.classifs:
-            yield self.load_model(classif, info=False, sufix=sufix)
+            yield self.load_model(classif, dataset=self.dataset, info=False, sufix=sufix)
     
     def load_model(self, model, info=True, dataset=None, sufix=""):
-        dataset = self.dataset if dataset is None else dataset
         return model(dataset=dataset, 
                 model_name=self.model_name+sufix, 
                 model_version=self.model_version, 
@@ -521,15 +520,6 @@ class Bagging(Grid):
         else:
             self.classif = classif
 
-    #def load_model(self, model, info=True, dataset=None, sufix=""):
-    #    dataset = self.dataset if dataset is None else dataset
-    #    return model(dataset=dataset, 
-    #            model_name=self.model_name+sufix, 
-    #            model_version=self.model_version, 
-    #            check_point_path=self.check_point_path,
-    #            info=info,
-    #            **self.get_params(model.cls_name()))
-
     def _metadata(self):
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
@@ -550,7 +540,8 @@ class Bagging(Grid):
             print("Training [{}]".format(classif.__class__.__name__))
             classif.train(batch_size=batch_size, num_steps=num_steps)
 
-        model_base = self.load_model(self.classif, info=False, sufix=self.name_sufix)
+        model_base = self.load_model(self.classif, dataset=self.dataset, 
+                                    info=False, sufix=self.name_sufix)
         print("Building features...")
         model_base.set_dataset_from_raw(
             self.prepare_data(model_base.dataset.train_data, transform=False), 
@@ -578,14 +569,15 @@ class Bagging(Grid):
         import ml
         model_base = self.load_model(self.classif, info=True, sufix=self.name_sufix)
         data_model_base = self.prepare_data(data, transform=transform, chunk_size=chunk_size)
-        model_base.dataset.info()
-        model_base.print_meta()
+        #model_base.print_meta()
         return model_base.predict(data_model_base, raw=raw, transform=False, chunk_size=chunk_size)
     
     def scores(self, measures=None, all_clf=True):
-        clf = self.load_model(self.classif, info=False)
+        #clf = self.load_model(self.classif, info=False, sufix=self.name_sufix)
         list_measure = ListMeasure()
-        list_measure.calc_scores(self.__class__.__name__, self.predict, clf, measures=measures)
+        list_measure.calc_scores(self.__class__.__name__, self.predict, 
+                                self.dataset.test_data, self.dataset.test_labels, 
+                                measures=measures)
         if all_clf is True:
             return list_measure + self.all_clf_scores(measures=measures)
         else:
@@ -619,7 +611,10 @@ class BaseClassif(DataDrive):
 
     def scores(self, measures=None):
         list_measure = ListMeasure()
-        list_measure.calc_scores(self.__class__.__name__, self.predict, self, measures=measures)
+        list_measure.calc_scores(self.__class__.__name__, self.predict, 
+                                self.dataset.test_data, 
+                                self.numerical_labels2classes(self.dataset.test_labels), 
+                                measures=measures)
         return list_measure
 
     def confusion_matrix(self):
