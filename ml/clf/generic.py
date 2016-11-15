@@ -514,20 +514,19 @@ class Bagging(Grid):
             from pydoc import locate
             self.classifs = [locate(model) for model in meta.get('models', [])]
             self.classif = locate(meta["model_base"])
-            self.model_base_name = meta["model_base_name"]
+            self.model_name = meta["model_name"]
             self.dataset = ml.ds.DataSetBuilder.load_dataset(
                 meta["dataset_name"], 
                 dataset_path=meta["dataset_path"])
         else:
             self.classif = classif
-            self.model_base_name = None
 
     def _metadata(self):
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
                 "models": self.clf_models_namespace,
                 "model_base": self.classif.module_cls_name(),
-                "model_base_name": self.model_base_name,
+                "model_name": self.model_name,
                 "md5": self.dataset.md5()}
 
     def save_model(self):
@@ -553,9 +552,9 @@ class Bagging(Grid):
             model_base.numerical_labels2classes(model_base.dataset.valid_labels),
             save=True,
             dataset_name=model_base.dataset.name+self.name_sufix)
-        model_base.model_name = model_base.model_name+self.name_sufix
+        #model_base.model_name = model_base.model_name+self.name_sufix
         model_base.train(batch_size=batch_size, num_steps=num_steps)
-        self.model_base_name = model_base.model_name
+        #self.model_name = model_base.model_name
         self.save_model()
 
     def prepare_data(self, data, transform=True, chunk_size=1):
@@ -568,13 +567,13 @@ class Bagging(Grid):
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         import ml
-        dataset = ml.ds.DataSetBuilder.load_dataset(
-                self.model_base_name, 
-                dataset_path="/home/sc/ml_data/dataset/")
-        model_base = self.load_model(self.classif, info=False, dataset=dataset)
+        #dataset = ml.ds.DataSetBuilder.load_dataset(
+        #        self.model_base_name, 
+        #        dataset_path="/home/sc/ml_data/dataset/")
+        model_base = self.load_model(self.classif, info=False)
         data_model_base = self.prepare_data(data, transform=transform, chunk_size=chunk_size)
         print(model_base.model_name)
-        model_base.model_name = self.model_base_name
+        #model_base.model_name = self.model_base_name
         return model_base.predict(data_model_base, raw=raw, transform=False, chunk_size=chunk_size)
     
     def scores(self, measures=None, all_clf=True):
@@ -701,14 +700,13 @@ class BaseClassif(DataDrive):
 
     def load_dataset(self, dataset):
         if dataset is None:
-            self.dataset = self.get_dataset()
+            self.set_dataset(self.get_dataset())
         else:
-            self.dataset = dataset.copy()
-        self._original_dataset_md5 = self.dataset.md5()
-        self.reformat_all()
+            self.set_dataset(dataset.copy())
 
     def set_dataset(self, dataset):
         self.dataset = dataset
+        self._original_dataset_md5 = self.dataset.md5()
         self.reformat_all()
 
     def set_dataset_from_raw(self, train_data, test_data, valid_data, 
@@ -837,8 +835,6 @@ class BaseClassif(DataDrive):
             meta["dataset_name"],
             dataset_path=meta["dataset_path"],
             info=self.print_info)
-        #print(meta)
-        #print(dataset.md5(), meta.get('md5', None), meta["dataset_name"])
         if meta.get('md5', None) != dataset.md5():
             log.warning("The dataset md5 is not equal to the model '{}'".format(
                 self.__class__.__name__))

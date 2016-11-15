@@ -103,7 +103,7 @@ if __name__ == '__main__':
     if args.train:
         dataset = ml.ds.DataSetBuilderFile.load_dataset(
             args.model_name, dataset_path=settings["dataset_path"])
-        #classif = ml.clf.generic.Voting([
+        #classif = ml.clf.generic.Boosting([
         #    ml.clf.extended.ExtraTrees,
         #    ml.clf.extended.MLP,
         #    ml.clf.extended.RandomForest,
@@ -136,9 +136,9 @@ if __name__ == '__main__':
             #ml.clf.extended.ExtraTrees,
             #ml.clf.extended.MLP,
             #ml.clf.extended.RandomForest,
-            ml.clf.extended.SGDClassifier,
+            #ml.clf.extended.SGDClassifier,
             #ml.clf.extended.SVC,
-            ml.clf.extended.LogisticRegression,
+            #ml.clf.extended.LogisticRegression,
             #ml.clf.extended.AdaBoost,
             ml.clf.extended.GradientBoost],
             dataset=dataset,
@@ -147,9 +147,10 @@ if __name__ == '__main__':
             check_point_path=settings["checkpoints_path"])
         classif.train(batch_size=128, num_steps=args.epoch) # only_voting=True
         classif.all_clf_scores().print_scores(order_column="logloss")
+        classif.print_meta()
 
     if args.predict:
-        #classif = ml.clf.generic.Voting([],
+        #classif = ml.clf.generic.Boosting([],
         #    model_name=args.model_name,
         #    model_version=args.model_version,
         #    check_point_path=settings["checkpoints_path"])
