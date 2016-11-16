@@ -194,16 +194,12 @@ class DataSetBuilder(object):
         if self.processing_class is None:
             self.processing_class = locate(raw_data["preprocessing_class"])
 
-	#return self.dataset.processing(np.append(data, predictions, axis=1), 'global')
         self.transforms = Transforms(raw_data["transforms"])
-        print(self.processing(raw_data['train_dataset'], 'global'))
-        print("_________")
-        print(raw_data['train_dataset'])
-        self.train_data = self.processing(raw_data['train_dataset'], 'global')
+        self.train_data = raw_data['train_dataset']
         self.train_labels = raw_data['train_labels']
-        self.valid_data = self.processing(raw_data['valid_dataset'], 'global')
+        self.valid_data = raw_data['valid_dataset']
         self.valid_labels = raw_data['valid_labels']
-        self.test_data = self.processing(raw_data['test_dataset'], 'global')
+        self.test_data = raw_data['test_dataset']
         self.test_labels = raw_data['test_labels']        
         self._cached_md5 = raw_data["md5"]
 
