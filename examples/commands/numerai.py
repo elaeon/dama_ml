@@ -103,7 +103,7 @@ if __name__ == '__main__':
     if args.train:
         dataset = ml.ds.DataSetBuilderFile.load_dataset(
             args.model_name, dataset_path=settings["dataset_path"])
-        #classif = ml.clf.generic.Boosting([
+        #classif = ml.clf.generic.Boosting({"0": [
         #    ml.clf.extended.ExtraTrees,
         #    ml.clf.extended.MLP,
         #    ml.clf.extended.RandomForest,
@@ -111,7 +111,7 @@ if __name__ == '__main__':
         #    ml.clf.extended.SVC,
         #    ml.clf.extended.LogisticRegression,
         #    ml.clf.extended.AdaBoost,
-        #    ml.clf.extended.GradientBoost],
+        #    ml.clf.extended.GradientBoost]},
         #    dataset=dataset,
         #    model_name=args.model_name,
         #    model_version=args.model_version,
@@ -119,7 +119,7 @@ if __name__ == '__main__':
         #    election='best-c',
         #    num_max_clfs=5,
         #    check_point_path=settings["checkpoints_path"])
-        #classif = ml.clf.generic.Stacking([
+        #classif = ml.clf.generic.Stacking({"0": [
         #    ml.clf.extended.ExtraTrees,
         #    ml.clf.extended.MLP,
         #    ml.clf.extended.RandomForest,
@@ -127,20 +127,20 @@ if __name__ == '__main__':
         #    ml.clf.extended.SVC,
         #    ml.clf.extended.LogisticRegression,
         #    ml.clf.extended.AdaBoost,
-        #    ml.clf.extended.GradientBoost],
+        #    ml.clf.extended.GradientBoost]},
         #    dataset=dataset,
         #    model_name=args.model_name,
         #    model_version=args.model_version,
         #    check_point_path=settings["checkpoints_path"])
-        classif = ml.clf.generic.Bagging(ml.clf.extended.MLP, {"0":[
-            #ml.clf.extended.ExtraTrees,
-            ml.clf.extended.MLP]},
-            #ml.clf.extended.RandomForest,
-            #ml.clf.extended.SGDClassifier,
-            #ml.clf.extended.SVC,
-            #ml.clf.extended.LogisticRegression,
-            #ml.clf.extended.AdaBoost,
-            #ml.clf.extended.GradientBoost],
+        classif = ml.clf.generic.Bagging(ml.clf.extended.MLP, {"0": [
+            ml.clf.extended.ExtraTrees,
+            ml.clf.extended.MLP,
+            ml.clf.extended.RandomForest,
+            ml.clf.extended.SGDClassifier,
+            ml.clf.extended.SVC,
+            ml.clf.extended.LogisticRegression,
+            ml.clf.extended.AdaBoost,
+            ml.clf.extended.GradientBoost]},
             dataset=dataset,
             model_name=args.model_name,
             model_version=args.model_version,

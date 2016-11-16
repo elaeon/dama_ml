@@ -561,7 +561,6 @@ class Bagging(Embedding):
         for classif in self.load_models():
             print("Training [{}]".format(classif.__class__.__name__))
             classif.train(batch_size=batch_size, num_steps=num_steps)
-            classif.print_meta()
         model_base = self.load_model(self.classif, dataset=self.dataset, 
                                     info=False, namespace=self.meta_name)
         print("Building features...")
@@ -589,7 +588,7 @@ class Bagging(Embedding):
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         import ml
         model_base = self.load_model(self.classif, info=True, namespace=self.meta_name)
-        model_base.print_meta()
+        #model_base.print_meta()
         data_model_base = self.prepare_data(data, transform=transform, chunk_size=chunk_size)
         return model_base.predict(data_model_base, raw=raw, transform=False, chunk_size=chunk_size)
 
