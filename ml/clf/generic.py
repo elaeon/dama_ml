@@ -388,7 +388,6 @@ class Boosting(Embedding):
             self.save_meta()
 
     def set_weights(self, best, classifs, values):
-        print(best, classifs, values)
         if values is None:
             values = [1]
         max_value = max(values)
@@ -402,7 +401,6 @@ class Boosting(Embedding):
         return weights
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        print(self.print_meta())
         models = (self.load_model(classif, info=False, namespace=self.meta_name+".0") for classif in self.classifs[self.meta_name+".0"])
         weights = [w for i, w in sorted(self.weights.items(), key=lambda x:x[0])]
         predictions = (
@@ -453,13 +451,18 @@ class Stacking(Embedding):
         kwargs["meta_name"] = "stacking"
         super(Stacking, self).__init__(classifs, **kwargs)
         self.dataset_blend = None
-        self.n_splits = 10
+        self.n_splits = 2#10
         if len(classifs) == 0:
+            import ml
             meta = self.load_meta()
             from pydoc import locate
             self.classifs = self.load_namespaces(
                 meta.get('models', {}), lambda x: locate(x))
             self.iterations = meta["iterations"]
+            self.model_name = meta["model_name"]
+            self.dataset = ml.ds.DataSetBuilder.load_dataset(
+                meta["dataset_name"], 
+                dataset_path=meta["dataset_path"])
         else:
             self.iterations = 0
 
@@ -473,6 +476,8 @@ class Stacking(Embedding):
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
                 "models": self.clf_models_namespace,
+                "model_name": self.model_name,
+                "md5": self.dataset.md5(),
                 "iterations": self.iterations}
 
     def save_model(self, dataset_blend):
@@ -604,7 +609,6 @@ class Bagging(Embedding):
             for classif in self.load_models())
         predictions = np.asarray(list(geometric_mean(predictions, len(self.classifs[self.meta_name+".0"]))))
         return np.append(data, predictions, axis=1)
-        #return self.dataset.processing(np.append(data, predictions, axis=1), 'global')
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         import ml

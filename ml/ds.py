@@ -195,7 +195,10 @@ class DataSetBuilder(object):
             self.processing_class = locate(raw_data["preprocessing_class"])
 
 	#return self.dataset.processing(np.append(data, predictions, axis=1), 'global')
-	self.transforms = Transforms(raw_data["transforms"])
+        self.transforms = Transforms(raw_data["transforms"])
+        print(self.processing(raw_data['train_dataset'], 'global'))
+        print("_________")
+        print(raw_data['train_dataset'])
         self.train_data = self.processing(raw_data['train_dataset'], 'global')
         self.train_labels = raw_data['train_labels']
         self.valid_data = self.processing(raw_data['valid_dataset'], 'global')
