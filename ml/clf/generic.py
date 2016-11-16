@@ -582,8 +582,12 @@ class Bagging(Embedding):
         predictions = (
             classif.predict(data, raw=True, transform=transform, chunk_size=chunk_size)
             for classif in self.load_models())
-        predictions = np.asarray(list(geometric_mean(predictions, len(self.classifs))))
-        return self.dataset.processing(np.append(data, predictions, axis=1), 'global')
+        predictions = np.asarray(list(geometric_mean(predictions, len(self.classifs["bagging.0"]))))
+        #print(self.dataset.processing(np.append(data, predictions, axis=1), 'global')[0])
+        #print("----------------")
+        #print(np.append(data, predictions, axis=1)[0])
+        return np.append(data, predictions, axis=1)#
+	#return self.dataset.processing(np.append(data, predictions, axis=1), 'global')
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         import ml
@@ -737,7 +741,7 @@ class BaseClassif(DataDrive):
         data["valid_labels"] = transform_fn(valid_labels)
         data['transforms'] = self.dataset.transforms.get_all_transforms()
         data['preprocessing_class'] = self.dataset.processing_class.module_cls_name()
-        data["md5"] = self.dataset.md5()
+        data["md5"] = None #self.dataset.md5()
         dataset_name = self.dataset.name if dataset_name is None else dataset_name
         dataset = ml.ds.DataSetBuilder.from_raw_to_ds(
             dataset_name,
