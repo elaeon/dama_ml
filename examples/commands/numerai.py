@@ -132,9 +132,9 @@ if __name__ == '__main__':
         #    model_name=args.model_name,
         #    model_version=args.model_version,
         #    check_point_path=settings["checkpoints_path"])
-        classif = ml.clf.generic.Bagging(ml.clf.extended.MLP, [
+        classif = ml.clf.generic.Bagging(ml.clf.extended.MLP, {"0":[
             #ml.clf.extended.ExtraTrees,
-            ml.clf.extended.MLP],
+            ml.clf.extended.MLP]},
             #ml.clf.extended.RandomForest,
             #ml.clf.extended.SGDClassifier,
             #ml.clf.extended.SVC,
@@ -157,7 +157,7 @@ if __name__ == '__main__':
         #    model_name=args.model_name,
         #    model_version=args.model_version,
         #    check_point_path=settings["checkpoints_path"])
-        classif = ml.clf.generic.Bagging(None, [],
+        classif = ml.clf.generic.Bagging(None, {},
             model_name=args.model_name,
             model_version=args.model_version,
             check_point_path=settings["checkpoints_path"])
