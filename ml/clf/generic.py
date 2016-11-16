@@ -184,15 +184,16 @@ class DataDrive(object):
 
 class Grid(DataDrive):
     def __init__(self, classifs, model_name=None, dataset=None, 
-            check_point_path=None, model_version=None):
-        self.model = None
-        self.dataset = dataset
-        self.classifs = classifs
-        self.params = {}
+            check_point_path=None, model_version=None, meta_name=""):
         super(Grid, self).__init__(
             check_point_path=check_point_path,
             model_version=model_version,
-            model_name=model_name)
+            model_name=model_name)        
+        self.model = None
+        self.dataset = dataset        
+        self.meta_name = meta_name
+        self.classifs = self.rename_namespaces(classifs)
+        self.params = {}
 
     def load_namespaces(self, classifs, fn):
         namespaces = {}
@@ -200,6 +201,13 @@ class Grid(DataDrive):
             for model in models:        
                 namespaces.setdefault(namespace, [])
                 namespaces[namespace].append(fn(model))
+        return namespaces
+
+    def rename_namespaces(self, classifs):
+        namespaces = {}
+        for namespace, models in classifs.items():
+            n_namespace = namespace if self.meta_name == "" else self.meta_name + "." + namespace                
+            namespaces[n_namespace] = models                
         return namespaces
 
     def model_namespace2str(self, namespace):
@@ -516,12 +524,12 @@ class Stacking(Embedding):
 
 class Bagging(Embedding):
     def __init__(self, classif, classifs_rbm, **kwargs):
+        kwargs["meta_name"] = "bagging"
         super(Bagging, self).__init__(classifs_rbm, **kwargs)
-        #self.namespaces = {"root": "", "bagging": "bagging"}
         if classif is None:
-            import ml
-            meta = self.load_meta()
+            import ml            
             from pydoc import locate
+            meta = self.load_meta()
             self.classifs = self.load_namespaces(
                 meta.get('models', {}), lambda x: locate(x))
             self.classif = locate(meta["model_base"])
@@ -555,7 +563,7 @@ class Bagging(Embedding):
             classif.train(batch_size=batch_size, num_steps=num_steps)
             classif.print_meta()
         model_base = self.load_model(self.classif, dataset=self.dataset, 
-                                    info=False, namespace="root")
+                                    info=False, namespace=self.meta_name)
         print("Building features...")
         model_base.set_dataset_from_raw(
             self.prepare_data(model_base.dataset.train_data, transform=False, chunk_size=256), 
@@ -565,7 +573,7 @@ class Bagging(Embedding):
             model_base.numerical_labels2classes(model_base.dataset.test_labels), 
             model_base.numerical_labels2classes(model_base.dataset.valid_labels),
             save=True,
-            dataset_name=model_base.dataset.name+".bagging")
+            dataset_name=model_base.dataset.name+"."+self.meta_name)
         print("Done...")
         model_base.train(batch_size=batch_size, num_steps=num_steps)
         self.save_model()
@@ -580,7 +588,8 @@ class Bagging(Embedding):
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         import ml
-        model_base = self.load_model(self.classif, info=True, namespace="root")
+        model_base = self.load_model(self.classif, info=True, namespace=self.meta_name)
+        model_base.print_meta()
         data_model_base = self.prepare_data(data, transform=transform, chunk_size=chunk_size)
         return model_base.predict(data_model_base, raw=raw, transform=False, chunk_size=chunk_size)
 
