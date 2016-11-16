@@ -536,7 +536,7 @@ class Bagging(Embedding):
             classif.train(batch_size=batch_size, num_steps=num_steps)
             classif.print_meta()
         model_base = self.load_model(self.classif, dataset=self.dataset, 
-                                    info=False, sufix=self.name_sufix)
+                                    info=False)
         print("Building features...")
         model_base.set_dataset_from_raw(
             self.prepare_data(model_base.dataset.train_data, transform=False, chunk_size=256), 
@@ -561,11 +561,8 @@ class Bagging(Embedding):
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         import ml
-        print("***********---")
-        model_base = self.load_model(self.classif, info=True, sufix=self.name_sufix)
-        print("***********")
+        model_base = self.load_model(self.classif, info=True)
         data_model_base = self.prepare_data(data, transform=transform, chunk_size=chunk_size)
-        print(data_model_base.shape)
         return model_base.predict(data_model_base, raw=raw, transform=False, chunk_size=chunk_size)
 
 
@@ -595,7 +592,7 @@ class BaseClassif(DataDrive):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
     def scores(self, measures=None):
-        print(self.dataset.test_data.shape)
+        print(self.model_name, self.cls_name(), self.dataset.test_data.shape)
         list_measure = ListMeasure()
         list_measure.calc_scores(self.__class__.__name__, self.predict, 
                                 self.dataset.test_data, 
