@@ -315,17 +315,24 @@ class Embedding(Grid):
 
 class Boosting(Embedding):
     def __init__(self, classifs, weights=None, election='best', num_max_clfs=1, **kwargs):
+        kwargs["meta_name"] = "boosting"
         super(Boosting, self).__init__(classifs, **kwargs)
         if len(classifs) > 0:
-            self.weights = self.set_weights(0, classifs, weights)
+            self.weights = self.set_weights(0, classifs["0"], weights)
             self.election = election
             self.num_max_clfs = num_max_clfs
         else:
+            import ml
             meta = self.load_meta()
             from pydoc import locate
-            self.classifs = [locate(model) for model in meta.get('models', [])]
+            self.classifs = self.load_namespaces(
+                meta.get('models', {}), lambda x: locate(x))
             self.weights = {index: w for index, w in enumerate(meta['weights'])}
             self.election = meta["election"]
+            self.model_name = meta["model_name"]
+            self.dataset = ml.ds.DataSetBuilder.load_dataset(
+                meta["dataset_name"], 
+                dataset_path=meta["dataset_path"])
 
     def avg_prediction(self, predictions, weights, uncertain=True):
         from itertools import izip
@@ -347,13 +354,16 @@ class Boosting(Embedding):
         if self.election == "best":
             from utils.numeric_functions import le
             best = self.best_predictor(operator=le)
-            self.weights = self.set_weights(best, self.classifs, self.weights.values())
+            self.weights = self.set_weights(best, self.classifs[self.meta_name+".0"], self.weights.values())
             models = self.classifs
-            models_index = range(len(self.classifs))
+            models_index = range(len(self.classifs[self.meta_name+".0"]))
         elif self.election == "best-c":
             bests = self.correlation_between_models(sort=True)
-            self.weights = self.set_weights(bests[0], self.classifs, self.weights.values())
-            models = [self.classifs[index] for index in bests]
+            self.weights = self.set_weights(bests[0], self.classifs[self.meta_name+".0"], self.weights.values())
+            key = self.meta_name + ".0"
+            models = {key: []}
+            for index in bests:
+                models[key].append(self.classifs[self.meta_name+".0"][index])
             models_index = bests
 
         weights = [self.weights[index] for index in models_index]
@@ -364,16 +374,21 @@ class Boosting(Embedding):
                 "dataset_name": self.dataset.name,
                 "models": self.clf_models_namespace,
                 "weights": self.clf_weights,
+                "model_name": self.model_name,
+                "md5": self.dataset.md5(),
                 "election": self.election}
 
     def save_model(self, models, weights):
-        self.clf_models_namespace = [model.module_cls_name() for model in models]
+        self.clf_models_namespace = self.load_namespaces(
+            models, 
+            lambda x: x.module_cls_name())
         self.clf_weights = weights
         if self.check_point_path is not None:
             path = self.make_model_file()
             self.save_meta()
 
     def set_weights(self, best, classifs, values):
+        print(best, classifs, values)
         if values is None:
             values = [1]
         max_value = max(values)
@@ -387,7 +402,8 @@ class Boosting(Embedding):
         return weights
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        models = (self.load_model(classif, info=False) for classif in self.classifs)
+        print(self.print_meta())
+        models = (self.load_model(classif, info=False, namespace=self.meta_name+".0") for classif in self.classifs[self.meta_name+".0"])
         weights = [w for i, w in sorted(self.weights.items(), key=lambda x:x[0])]
         predictions = (
             classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
@@ -405,7 +421,7 @@ class Boosting(Embedding):
         def predictions_fn():
             predictions = {}
             for index, _ in self.best_predictor_threshold(operator=le, limit=self.num_max_clfs):
-                classif = self.load_model(self.classifs[index], info=False)
+                classif = self.load_model(self.classifs[self.meta_name+".0"][index], info=False, namespace=self.meta_name+".0")
                 predictions[index] = np.asarray(list(classif.predict(
                     classif.dataset.test_data, raw=False, transform=False, chunk_size=258)))
                 best_predictors.append(index)
@@ -434,13 +450,15 @@ class Boosting(Embedding):
 
 class Stacking(Embedding):
     def __init__(self, classifs, **kwargs):
+        kwargs["meta_name"] = "stacking"
         super(Stacking, self).__init__(classifs, **kwargs)
         self.dataset_blend = None
         self.n_splits = 10
         if len(classifs) == 0:
             meta = self.load_meta()
             from pydoc import locate
-            self.classifs = [locate(model) for model in meta.get('models', [])]
+            self.classifs = self.load_namespaces(
+                meta.get('models', {}), lambda x: locate(x))
             self.iterations = meta["iterations"]
         else:
             self.iterations = 0
@@ -459,7 +477,9 @@ class Stacking(Embedding):
 
     def save_model(self, dataset_blend):
         from sklearn.externals import joblib
-        self.clf_models_namespace = [model.module_cls_name() for model in self.classifs]
+        self.clf_models_namespace = self.load_namespaces(
+            self.classifs, 
+            lambda x: x.module_cls_name())
         if self.check_point_path is not None:
             path = self.make_model_file()            
             joblib.dump(dataset_blend, '{}.pkl'.format(path))
@@ -472,8 +492,8 @@ class Stacking(Embedding):
         skf = StratifiedKFold(n_splits=n_splits)
         data, labels = self.dataset.desfragment()
         size = data.shape[0]
-        dataset_blend_train = np.zeros((size, len(self.classifs), num_classes))
-        dataset_blend_labels = np.zeros((size, len(self.classifs), 1))
+        dataset_blend_train = np.zeros((size, len(self.classifs[self.meta_name+".0"]), num_classes))
+        dataset_blend_labels = np.zeros((size, len(self.classifs[self.meta_name+".0"]), 1))
         for j, clf in enumerate(self.load_models()):
             print("Training [{}]".format(clf.__class__.__name__))
             for i, (train, test) in enumerate(skf.split(data, labels)):
@@ -505,7 +525,7 @@ class Stacking(Embedding):
         clf_b = self.load_models().next()
         size = data.shape[0]
         num_classes = clf_b.num_labels
-        dataset_blend_test = np.zeros((size, len(self.classifs), num_classes))
+        dataset_blend_test = np.zeros((size, len(self.classifs[self.meta_name+".0"]), num_classes))
         for j, clf in enumerate(self.load_models()):
             dataset_blend_test_j = np.zeros((size, self.iterations, num_classes))
             count = 0     
@@ -517,7 +537,7 @@ class Stacking(Embedding):
             dataset_blend_test[:, j] = dataset_blend_test_j.mean(1)
 
         clf = LogisticRegression()
-        columns = len(self.classifs) * num_classes
+        columns = len(self.classifs[self.meta_name+".0"]) * num_classes
         clf.fit(self.dataset_blend[:,:columns], self.dataset_blend[:,columns])
         return clf.predict_proba(dataset_blend_test.reshape(dataset_blend_test.shape[0], -1))
 
@@ -582,12 +602,9 @@ class Bagging(Embedding):
         predictions = (
             classif.predict(data, raw=True, transform=transform, chunk_size=chunk_size)
             for classif in self.load_models())
-        predictions = np.asarray(list(geometric_mean(predictions, len(self.classifs["bagging.0"]))))
-        #print(self.dataset.processing(np.append(data, predictions, axis=1), 'global')[0])
-        #print("----------------")
-        #print(np.append(data, predictions, axis=1)[0])
-        return np.append(data, predictions, axis=1)#
-	#return self.dataset.processing(np.append(data, predictions, axis=1), 'global')
+        predictions = np.asarray(list(geometric_mean(predictions, len(self.classifs[self.meta_name+".0"]))))
+        return np.append(data, predictions, axis=1)
+        #return self.dataset.processing(np.append(data, predictions, axis=1), 'global')
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         import ml
