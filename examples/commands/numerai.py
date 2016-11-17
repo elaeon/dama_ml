@@ -119,7 +119,21 @@ if __name__ == '__main__':
         #    election='best-c',
         #    num_max_clfs=5,
         #    check_point_path=settings["checkpoints_path"])
-        #classif = ml.clf.generic.Stacking({"0": [
+        classif = ml.clf.generic.Stacking({"0": [
+            ml.clf.extended.ExtraTrees,
+            ml.clf.extended.MLP,
+            ml.clf.extended.RandomForest,
+            ml.clf.extended.SGDClassifier,
+            ml.clf.extended.SVC,
+            ml.clf.extended.LogisticRegression,
+            ml.clf.extended.AdaBoost,
+            ml.clf.extended.GradientBoost]},
+            n_splits=3,
+            dataset=dataset,
+            model_name=args.model_name,
+            model_version=args.model_version,
+            check_point_path=settings["checkpoints_path"])
+        #classif = ml.clf.generic.Bagging(ml.clf.extended.MLP, {"0": [
         #    ml.clf.extended.ExtraTrees,
         #    ml.clf.extended.MLP,
         #    ml.clf.extended.RandomForest,
@@ -132,19 +146,6 @@ if __name__ == '__main__':
         #    model_name=args.model_name,
         #    model_version=args.model_version,
         #    check_point_path=settings["checkpoints_path"])
-        classif = ml.clf.generic.Bagging(ml.clf.extended.MLP, {"0": [
-            ml.clf.extended.ExtraTrees,
-            ml.clf.extended.MLP,
-            ml.clf.extended.RandomForest,
-            ml.clf.extended.SGDClassifier,
-            ml.clf.extended.SVC,
-            ml.clf.extended.LogisticRegression,
-            ml.clf.extended.AdaBoost,
-            ml.clf.extended.GradientBoost]},
-            dataset=dataset,
-            model_name=args.model_name,
-            model_version=args.model_version,
-            check_point_path=settings["checkpoints_path"])
         classif.train(batch_size=128, num_steps=args.epoch) # only_voting=True
         classif.all_clf_scores().print_scores(order_column="logloss")
 
@@ -153,14 +154,14 @@ if __name__ == '__main__':
         #    model_name=args.model_name,
         #    model_version=args.model_version,
         #    check_point_path=settings["checkpoints_path"])
-        #classif = ml.clf.generic.Stacking({},
-        #    model_name=args.model_name,
-        #    model_version=args.model_version,
-        #    check_point_path=settings["checkpoints_path"])
-        classif = ml.clf.generic.Bagging(None, {},
-           model_name=args.model_name,
+        classif = ml.clf.generic.Stacking({},
+            model_name=args.model_name,
             model_version=args.model_version,
             check_point_path=settings["checkpoints_path"])
+        #classif = ml.clf.generic.Bagging(None, {},
+        #   model_name=args.model_name,
+        #    model_version=args.model_version,
+        #    check_point_path=settings["checkpoints_path"])
         classif.scores().print_scores(order_column="logloss")
         #predict(classif, settings["numerai_test"], "t_id")
 

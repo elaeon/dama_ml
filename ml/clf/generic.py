@@ -447,11 +447,11 @@ class Boosting(Embedding):
 
 
 class Stacking(Embedding):
-    def __init__(self, classifs, **kwargs):
+    def __init__(self, classifs, n_splits=2, **kwargs):
         kwargs["meta_name"] = "stacking"
         super(Stacking, self).__init__(classifs, **kwargs)
         self.dataset_blend = None
-        self.n_splits = 2#10
+        self.n_splits = n_splits
         if len(classifs) == 0:
             import ml
             meta = self.load_meta()
@@ -944,7 +944,7 @@ class TFL(BaseClassif):
         self.prepare_model()
         if self.check_point_path is not None:
             path = self.make_model_file()
-            print("+++++++", path)
+            #print("+++++++", path)
             self.model.load('{}.ckpt'.format(path))
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
