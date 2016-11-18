@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'
 import argparse
 import ml
 import numpy as np
-from utils.config import get_settings
+from ml.utils.config import get_settings
 
 settings = get_settings("ml")
 

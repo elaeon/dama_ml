@@ -7,8 +7,8 @@ import argparse
 import ml
 
 from skimage import io
-from utils.config import get_settings
-from utils.files import filename_from_path
+from ml.utils.config import get_settings
+from ml.utils.files import filename_from_path
 
 settings = get_settings("ml")
 settings.update(get_settings("numbers"))

@@ -8,8 +8,8 @@ import os
 import glob
 
 from skimage import io
-from utils.files import build_tickets_processed, delete_tickets_processed
-from utils.config import get_settings
+from ml.utils.files import build_tickets_processed, delete_tickets_processed
+from ml.utils.config import get_settings
 
 settings = get_settings("ml")
 settings.update(get_settings("transcriptor"))

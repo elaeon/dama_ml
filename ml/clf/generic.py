@@ -81,7 +81,7 @@ class ListMeasure(object):
             yield measure[i]
 
     def print_scores(self, order_column="f1"):
-        from utils.order import order_table_print
+        from ml.utils.order import order_table_print
         order_table_print(self.headers, self.measures, order_column)
 
     def print_matrix(self, labels):
@@ -337,10 +337,10 @@ class Boosting(Embedding):
     def avg_prediction(self, predictions, weights, uncertain=True):
         from itertools import izip
         if uncertain is False:
-            from utils.numeric_functions import discrete_weight
+            from ml.utils.numeric_functions import discrete_weight
             return discrete_weight(predictions, weights)
         else:
-            from utils.numeric_functions import arithmetic_mean
+            from ml.utils.numeric_functions import arithmetic_mean
             predictions_iter = ((prediction * w for prediction in row_prediction)
                 for w, row_prediction in izip(weights, predictions))
             return arithmetic_mean(predictions_iter, float(sum(weights)))
@@ -352,7 +352,7 @@ class Boosting(Embedding):
                 classif.train(batch_size=batch_size, num_steps=num_steps)
 
         if self.election == "best":
-            from utils.numeric_functions import le
+            from ml.utils.numeric_functions import le
             best = self.best_predictor(operator=le)
             self.weights = self.set_weights(best, self.classifs[self.meta_name+".0"], self.weights.values())
             models = self.classifs
@@ -409,10 +409,10 @@ class Boosting(Embedding):
         return self.avg_prediction(predictions, weights, uncertain=raw)
 
     def correlation_between_models(self, sort=False):
-        from utils.numeric_functions import le, pearsoncc
-        from utils.network import all_simple_paths_graph
+        from ml.utils.numeric_functions import le, pearsoncc
+        from ml.utils.network import all_simple_paths_graph
         from itertools import combinations
-        from utils.order import order_from_ordered
+        from ml.utils.order import order_from_ordered
         import networkx as nx
 
         best_predictors = []
@@ -603,7 +603,7 @@ class Bagging(Embedding):
         self.save_model()
 
     def prepare_data(self, data, transform=True, chunk_size=1):
-        from utils.numeric_functions import geometric_mean
+        from ml.utils.numeric_functions import geometric_mean
         predictions = (
             classif.predict(data, raw=True, transform=transform, chunk_size=chunk_size)
             for classif in self.load_models())

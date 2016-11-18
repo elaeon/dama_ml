@@ -7,7 +7,7 @@ import ml
 import os
 
 from skimage import io
-from utils.config import get_settings
+from ml.utils.config import get_settings
 
 settings = get_settings("ml")
 settings.update(get_settings("transcriptor"))
@@ -27,7 +27,7 @@ PICTURES = ["DSC_0055.jpg", "DSC_0056.jpg",
 def transcriptor(classif, transforms, detector_path, url=None):
     import dlib
     from dlib import rectangle
-    from utils.order import order_2d
+    from ml.utils.order import order_2d
     from skimage import img_as_ubyte
 
     detector = dlib.simple_object_detector(detector_path)

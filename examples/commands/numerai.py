@@ -4,8 +4,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'
 
 import ml
 import argparse
-from utils.config import get_settings
-from utils.numeric_functions import le
+from ml.utils.config import get_settings
+from ml.utils.numeric_functions import le
 from ml.processing import Preprocessing
 
 settings = get_settings("ml")

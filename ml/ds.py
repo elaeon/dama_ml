@@ -135,7 +135,7 @@ class DataSetBuilder(object):
 
     def info(self):
         if self.print_info:
-            from utils.order import order_table_print
+            from ml.utils.order import order_table_print
             print('       ')
             print('DATASET NAME: {}'.format(self.name))
             print('Transforms: {}'.format(self.transforms.get_all_transforms()))
