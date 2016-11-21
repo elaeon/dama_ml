@@ -15,7 +15,9 @@ install_requires = [
     'tensorflow>=0.10.0',
     'tflearn>=0.2.1',
     'tqdm>=4.5.0',
-    'h5py>=2.6.0'
+    'h5py>=2.6.0',
+    'GPy>=1.5.6',
+    'climin>=0.1a1'
 ]
 
 docs_require = [

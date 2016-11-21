@@ -39,11 +39,12 @@ def build_dataset_easy(dataset_name="gpc_test_easy",):
 
 def train(dataset, model_version):
     classif = ml.clf.extended.SVGPC(
+        model_name=dataset.name
         dataset=dataset,
         model_version=model_version,
         check_point_path=settings["checkpoints_path"])
     classif.train(batch_size=128, num_steps=15)
-    classif.scores()
+    classif.scores().print_scores(order_column="f1")
 
 
 def test(model_name, model_version):
