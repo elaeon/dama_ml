@@ -1,15 +1,11 @@
-import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 import argparse
-import ml
-import os
+#import ml
 
-from utils.config import get_settings
-from utils.order import order_table_print
+from ml.utils.config import get_settings
+from ml.utils.order import order_table_print
 
-settings = get_settings("ml")
+settings = get_settings("ml", filepath=os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 def rm(path):
     import shutil

@@ -1,13 +1,10 @@
-import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-
 import argparse
 import ml
 import numpy as np
 from ml.utils.config import get_settings
 
-settings = get_settings("ml")
+settings = get_settings("ml", filepath=os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 np.random.seed(1)
 
@@ -77,13 +74,14 @@ if __name__ == '__main__':
         action="store_true")
     parser.add_argument("--train", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--build-dataset", type=str, help="[cross] [adversarial]")
+    parser.add_argument("--dataset-name", type=str, help="dataset name")
     parser.add_argument("--model-name", type=str)
     parser.add_argument("--predict", action="store_true")
     parser.add_argument("--chunk-size", type=int)
     parser.add_argument("--model-version", type=str)
     args = parser.parse_args()
     if args.build_dataset:
-        dataset = build_dataset_hard(validator=args.build_dataset, dataset_name=args.model_name)
+        dataset = build_dataset_hard(validator=args.build_dataset, dataset_name=args.dataset_name)
     elif args.train:
         dataset = ml.ds.DataSetBuilder.load_dataset(args.model_name, dataset_path=settings["dataset_path"])
         train(dataset, args.model_version)
