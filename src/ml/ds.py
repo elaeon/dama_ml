@@ -94,7 +94,7 @@ class DataSetBuilder(object):
         self.processing_class = processing_class
         self.valid_size = valid_size
         self.train_size = train_size
-        self.test_size = 1 - (train_size + valid_size)
+        self.test_size = round(1 - (train_size + valid_size), 2)
         self.transforms_apply = transforms_apply
         self._cached_md5 = None
         self.validator = validator
@@ -158,9 +158,9 @@ class DataSetBuilder(object):
     def cross_validators(self, data, labels):
         from sklearn.model_selection import train_test_split
         X_train, X_test, y_train, y_test = train_test_split(
-            data, labels, train_size=self.train_size+self.valid_size, random_state=0)
+            data, labels, train_size=round(self.train_size+self.valid_size, 2), random_state=0)
 
-        valid_size_index = int(round(X_train.shape[0] * self.valid_size))
+        valid_size_index = int(round(data.shape[0] * self.valid_size))
         X_validation = X_train[:valid_size_index]
         y_validation = y_train[:valid_size_index]
         X_train = X_train[valid_size_index:]
