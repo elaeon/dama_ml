@@ -60,7 +60,7 @@ class TestDatasetFile(unittest.TestCase):
         self.X = np.append(np.zeros((5, NUM_FEATURES)), np.ones((5, NUM_FEATURES)), axis=0)
         self.Y = (np.sum(self.X, axis=1) / 10).astype(int)
         dataset = np.c_[self.X, self.Y]
-        with open('test.csv', 'wb') as csvfile:
+        with open('/tmp/test.csv', 'wb') as csvfile:
             csv_writer = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
             csv_writer.writerow(map(str, range(10)) + ['target']) 
             for row in dataset:
@@ -72,7 +72,7 @@ class TestDatasetFile(unittest.TestCase):
             dataset_path="/tmp/", 
             transforms=[('scale', None)],
             validator="cross")
-        data, labels = dataset.from_csv('test.csv', 'target')
+        data, labels = dataset.from_csv('/tmp/test.csv', 'target')
         self.assertItemsEqual(self.Y, labels.astype(int))
 
 

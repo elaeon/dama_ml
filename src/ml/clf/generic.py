@@ -137,6 +137,7 @@ class ListMeasure(object):
         for measure_name, measure in measure_class:
             self.add_measure(measure_name, getattr(measure, measure_name)())
 
+
 class DataDrive(object):
     def __init__(self, check_point_path=None, model_version=None, model_name=None):
         self.check_point_path = check_point_path
