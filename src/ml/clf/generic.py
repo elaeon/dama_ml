@@ -773,7 +773,7 @@ class BaseClassif(DataDrive):
         self.set_dataset(dataset)
         
     def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False):
-        from ml.ds import grouper_chunk
+        from ml.utils.seq import grouper_chunk
         for chunk in grouper_chunk(chunk_size, data):
             data = np.asarray(list(chunk))
             size = data.shape[0]
@@ -785,7 +785,7 @@ class BaseClassif(DataDrive):
                 yield prediction
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        from ml.ds import grouper_chunk
+        from ml.utils.seq import grouper_chunk
         if self.model is None:
             self.load_model()
 

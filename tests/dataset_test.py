@@ -15,7 +15,8 @@ class TestDataset(unittest.TestCase):
             transforms=[('scale', None)],
             train_size=.5,
             valid_size=.2,
-            validator="cross")
+            validator="cross",
+            print_info=False)
         self.dataset.build_dataset(self.X, self.Y)
 
     def test_build_dataset_dim_7_1_2(self):
@@ -23,7 +24,8 @@ class TestDataset(unittest.TestCase):
             "test",
             dataset_path="/tmp/", 
             transforms=[('scale', None)],
-            validator="cross")
+            validator="cross",
+            print_info=False)
         dataset.build_dataset(self.X, self.Y)
         self.assertEqual(dataset.train_labels.shape, (7,))
         self.assertEqual(dataset.valid_labels.shape, (1,))
@@ -35,10 +37,10 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(self.dataset.test_labels.shape, (3,))
 
     def test_only_labels(self):
-        dataset0, label0 = dataset.only_labels([0])
+        dataset0, label0 = self.dataset.only_labels([0])
         self.assertTrue((dataset0 == (np.ones((5, 10))*-1)).all())
         self.assertItemsEqual(label0, np.zeros(5))
-        dataset1, label1 = dataset.only_labels([1])
+        dataset1, label1 = self.dataset.only_labels([1])
         self.assertTrue((dataset1 == np.ones((5, 10))).all())
         self.assertItemsEqual(label1, np.ones(5))
 
@@ -72,6 +74,7 @@ class TestDatasetFile(unittest.TestCase):
             validator="cross")
         data, labels = dataset.from_csv('test.csv', 'target')
         self.assertItemsEqual(self.Y, labels.astype(int))
+
 
 if __name__ == '__main__':
     unittest.main()
