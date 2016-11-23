@@ -1,6 +1,8 @@
 import unittest
 import ml
 import numpy as np
+import csv
+
 
 class TestDataset(unittest.TestCase):
     def setUp(self):
@@ -28,17 +30,9 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(dataset.test_labels.shape, (2,))
 
     def test_build_dataset_dim_5_2_3(self):
-        dataset = ml.ds.DataSetBuilder(
-            "test",
-            dataset_path="/tmp/", 
-            transforms=[('scale', None)],
-            train_size=.5,
-            valid_size=.2,
-            validator="cross")
-        dataset.build_dataset(self.X, self.Y)
-        self.assertEqual(dataset.train_labels.shape, (5,))
-        self.assertEqual(dataset.valid_labels.shape, (2,))
-        self.assertEqual(dataset.test_labels.shape, (3,))
+        self.assertEqual(self.dataset.train_labels.shape, (5,))
+        self.assertEqual(self.dataset.valid_labels.shape, (2,))
+        self.assertEqual(self.dataset.test_labels.shape, (3,))
 
     def test_only_labels(self):
         dataset0, label0 = dataset.only_labels([0])
@@ -56,6 +50,28 @@ class TestDataset(unittest.TestCase):
     def test_density(self):
         self.assertEqual(self.dataset.density(), 1)
         self.assertEqual(self.dataset.density(axis=1), 1)
+
+
+class TestDatasetFile(unittest.TestCase):
+    def setUp(self):
+        NUM_FEATURES = 10
+        self.X = np.append(np.zeros((5, NUM_FEATURES)), np.ones((5, NUM_FEATURES)), axis=0)
+        self.Y = (np.sum(self.X, axis=1) / 10).astype(int)
+        dataset = np.c_[self.X, self.Y]
+        with open('test.csv', 'wb') as csvfile:
+            csv_writer = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+            csv_writer.writerow(map(str, range(10)) + ['target']) 
+            for row in dataset:
+                csv_writer.writerow(row)
+
+    def test_load(self):
+        dataset = ml.ds.DataSetBuilderFile(
+            "test",
+            dataset_path="/tmp/", 
+            transforms=[('scale', None)],
+            validator="cross")
+        data, labels = dataset.from_csv('test.csv', 'target')
+        self.assertItemsEqual(self.Y, labels.astype(int))
 
 if __name__ == '__main__':
     unittest.main()
