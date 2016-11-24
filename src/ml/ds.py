@@ -75,7 +75,7 @@ class DataSetBuilder(object):
         self.print_info = print_info
 
         if transforms is None:
-            self.transforms = Transforms([("global", [("scale", None)])])
+            self.transforms = Transforms([("global", [])])
         else:
             self.transforms = Transforms([("global", transforms)])
 
@@ -407,7 +407,7 @@ class DataSetBuilderImage(DataSetBuilder):
                         images.append((number_id, os.path.join(files, image_file)))
         return images
 
-    def images_to_dataset(self, folder_base, processing_class):
+    def images_to_dataset(self, folder_base):
         images = self.images_from_directories(folder_base)
         max_num_images = len(images)
         if self.channels is None:
@@ -458,7 +458,7 @@ class DataSetBuilderImage(DataSetBuilder):
             self.save_images(self.test_folder_path, number_id, images)
 
     def build_dataset(self):
-        data, labels = self.images_to_dataset(self.train_folder_path, self.processing_class)
+        data, labels = self.images_to_dataset(self.train_folder_path)
         self.shuffle_and_save(data, labels)
         #self.clean_directory(self.train_folder_path)
 

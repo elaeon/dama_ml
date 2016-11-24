@@ -741,7 +741,9 @@ class BaseClassif(DataDrive):
             self.set_dataset(dataset.copy())
 
     def set_dataset(self, dataset):
-        self.dataset = dataset
+        from sklearn.preprocessing import StandardScaler
+        self.scaler = StandardScaler()
+        self.dataset = self.scaler.fit_transform(dataset)
         self._original_dataset_md5 = self.dataset.md5()
         self.reformat_all()
 
@@ -791,15 +793,15 @@ class BaseClassif(DataDrive):
             self.load_model()
 
         if transform is True and chunk_size > 0:
-            fn = lambda x, s: self.transform_shape(self.dataset.processing(x, 'global'), size=s)
+            fn = lambda x, s: self.transform_shape(self.scaler.transform(self.dataset.processing(x, 'global'), size=s))
             return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)
         elif transform is True and chunk_size == 0:
-            data = self.transform_shape(self.dataset.processing(data, 'global'))
+            data = self.transform_shape(self.scaler.transform(self.dataset.processing(data, 'global')))
             return self._predict(data, raw=raw)
         elif transform is False and chunk_size > 0:
             fn = lambda x, s: self.transform_shape(x, size=s)
             return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)
-        else:
+        elif transform is False:
             return self._predict(data, raw=raw)
 
     def _pred_erros(self, predictions, test_data, test_labels, valid_size=.1):

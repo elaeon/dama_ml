@@ -76,11 +76,14 @@ class Preprocessing(object):
     def module_cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
     
-    def scale(self, row_by_row=True):
-        if row_by_row is True:
-            self.data = np.asarray([preprocessing.scale(row) for row in self.data])
-        else:
-            self.data = preprocessing.scale(self.data)
+    #def scale(self):   
+        #if row_by_row is True and len(self.data.shape) > 1:
+        #    self.data = np.asarray([preprocessing.scale(row) for row in self.data])
+        #    print(self.data)
+        #else:
+        #    print("A", self.data)
+        #    self.data = preprocessing.scale(self.data)
+        #    print("D", self.data)
 
     def poly_features(self, degree=2, interaction_only=False, include_bias=True):
         if len(self.data.shape) == 1:
@@ -89,13 +92,13 @@ class Preprocessing(object):
             degree=degree, interaction_only=interaction_only, include_bias=include_bias)
         self.data = selector.fit_transform(self.data)
 
-    def tsne(self, perplexity=50, action='concatenate'):
-        from bhtsne import tsne
-        data_reduction = tsne(self.data, perplexity=perplexity)
-        if action == 'concatenate':
-            self.data = np.concatenate((self.data, data_reduction), axis=1)
-        elif action == 'replace':
-            self.data = data_reduction
+    #def tsne(self, perplexity=50, action='concatenate'):
+    #    from bhtsne import tsne
+    #    data_reduction = tsne(self.data, perplexity=perplexity)
+    #    if action == 'concatenate':
+    #        self.data = np.concatenate((self.data, data_reduction), axis=1)
+    #    elif action == 'replace':
+    #        self.data = data_reduction
 
     def pipeline(self):
         if self.transforms is not None:
