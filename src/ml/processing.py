@@ -67,22 +67,20 @@ class Transforms(object):
 
 
 class Preprocessing(object):
-    @classmethod
-    def module_cls_name(cls):
-        return "{}.{}".format(cls.__module__, cls.__name__)
-
+    
     def __init__(self, data, transforms):
         self.data = data
         self.transforms = transforms
-
-    #def variance_threshold(self, threshold):
-    #    from sklearn.feature_selection import VarianceThreshold
-    #    if self.data.shape[0] > 1:
-    #        selector = VarianceThreshold(threshold=threshold)
-    #        self.data = selector.fit_transform(self.data)
-        
-    def scale(self):
-        self.data = preprocessing.scale(self.data)
+    
+    @classmethod
+    def module_cls_name(cls):
+        return "{}.{}".format(cls.__module__, cls.__name__)
+    
+    def scale(self, row_by_row=True):
+        if row_by_row is True:
+            self.data = np.asarray([preprocessing.scale(row) for row in self.data])
+        else:
+            self.data = preprocessing.scale(self.data)
 
     def poly_features(self, degree=2, interaction_only=False, include_bias=True):
         if len(self.data.shape) == 1:

@@ -17,23 +17,9 @@ def build_dataset_hard(dataset_name="gpc_test_hard", validator="cross"):
     dataset = ml.ds.DataSetBuilder(
          dataset_name, 
         dataset_path=settings["dataset_path"], 
-        transforms=[('scale', None)],
+        transforms=[('scale', {"row_by_row": True})],
         validator=validator)
     dataset.build_dataset(X, Y, test_data=X, test_labels=Z)
-    return dataset
-
-
-def build_dataset_easy(dataset_name="gpc_test_easy",):
-    DIM = 21
-    SIZE = 100000
-    X = np.random.rand(SIZE, DIM)
-    Y = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
-    dataset = ml.ds.DataSetBuilder(
-        dataset_name,
-        dataset_path=settings["dataset_path"], 
-        transforms=[('scale', None)],
-        validator="cross")
-    dataset.build_dataset(X, Y)
     return dataset
 
 
@@ -54,19 +40,22 @@ def test(model_name, model_version):
         check_point_path=settings["checkpoints_path"])
     classif.scores().print_scores(order_column="f1")
 
+
 def predict(model_name, chunk_size, model_version):
+    from ml.clf.generic import Measure
+
     np.random.seed(0)
     DIM = 21
-    SIZE = 11
+    SIZE = 10000
     X = np.random.rand(SIZE, DIM)
     Y = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
     classif = ml.clf.extended.SVGPC(
         model_name=model_name,
         model_version=model_version,
         check_point_path=settings["checkpoints_path"])
-    print("TARGET", Y)
-    #print("VALUE", X)
-    print("PREDICTED", list(classif.predict(X, chunk_size=chunk_size)))
+    predictions = np.asarray(list(classif.predict(X, chunk_size=chunk_size)))
+    print("SCORE", Measure(predictions, Y).accuracy())
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
