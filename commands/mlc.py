@@ -19,6 +19,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--models", action="store_true")
     parser.add_argument("--dataset", action="store_true")
+    parser.add_argument("--info", type=str, help="name")
     parser.add_argument("--rm", action="store_true")
 
     args = parser.parse_args()
@@ -41,16 +42,22 @@ if __name__ == '__main__':
                     pass
         order_table_print(headers, table, "classif", reverse=False)
     elif args.dataset:
-        datasets = {}
-        for parent, childs, files in os.walk(settings["dataset_path"]):
-            datasets[parent] = files
-        
-        headers = ["dataset", "size"]
-        table = []
-        for path, files in datasets.items():
-            for filename in files:
-                table.append([filename, humanize_bytesize(os.stat(path+filename).st_size)])
-        order_table_print(headers, table, "dataset", reverse=False)
+        if args.info:
+            from ml.ds import DataSetBuilder
+            dataset = DataSetBuilder.load_dataset(args.info, 
+                dataset_path=settings["dataset_path"], info=False)
+            dataset.info(classes=True)
+        else:
+            datasets = {}
+            for parent, childs, files in os.walk(settings["dataset_path"]):
+                datasets[parent] = files
+            
+            headers = ["dataset", "size"]
+            table = []
+            for path, files in datasets.items():
+                for filename in files:
+                    table.append([filename, humanize_bytesize(os.stat(path+filename).st_size)])
+            order_table_print(headers, table, "dataset", reverse=False)
     elif args.rm:
         if args.dataset:
             rm(settings["dataset_path"])

@@ -107,7 +107,7 @@ class DataSetBuilder(object):
         dataset, n_labels = zip(*filter(lambda x: x[1] in s_labels, zip(data, labels)))
         return np.asarray(dataset), np.asarray(n_labels)
 
-    def info(self):
+    def info(self, classes=False):
         if self.print_info:
             from ml.utils.order import order_table_print
             print('       ')
@@ -128,6 +128,9 @@ class DataSetBuilder(object):
             table.append(["test set", self.test_data.mean(), self.test_data.std(), 
                 self.test_data.shape, self.test_data.dtype, self.test_labels.size])
             order_table_print(headers, table, "shape")
+            if classes is True:
+                headers = ["class", "# items"]
+                order_table_print(headers, self.labels_info().items(), "class")
 
     def cross_validators(self, data, labels):
         from sklearn.model_selection import train_test_split
