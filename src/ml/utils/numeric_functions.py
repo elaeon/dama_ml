@@ -31,3 +31,15 @@ def discrete_weight(predictions, weights):
             counter.setdefault(prediction, 0)
             counter[prediction] += w
         yield max(counter.items(), key=lambda x:x[1])[0]
+
+def logb(x, b):
+    return np.log(x) / np.log(b)
+
+def humanize_bytesize(size):
+    if size == 0:
+        return '0B'
+    size_name = ('B', "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+    i = int(np.floor(logb(size, 1024)))
+    p = np.power(1024, i)
+    s = round(size / float(p), 2)
+    return '{} {}'.format(s, size_name[i])

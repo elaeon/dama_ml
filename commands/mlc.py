@@ -1,9 +1,9 @@
 import os
 import argparse
-#import ml
 
 from ml.utils.config import get_settings
 from ml.utils.order import order_table_print
+from ml.utils.numeric_functions import humanize_bytesize
 
 settings = get_settings("ml", filepath=os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -40,6 +40,17 @@ if __name__ == '__main__':
                 except ValueError:
                     pass
         order_table_print(headers, table, "classif", reverse=False)
+    elif args.dataset:
+        datasets = {}
+        for parent, childs, files in os.walk(settings["dataset_path"]):
+            datasets[parent] = files
+        
+        headers = ["dataset", "size"]
+        table = []
+        for path, files in datasets.items():
+            for filename in files:
+                table.append([filename, humanize_bytesize(os.stat(path+filename).st_size)])
+        order_table_print(headers, table, "dataset", reverse=False)
     elif args.rm:
         if args.dataset:
             rm(settings["dataset_path"])
