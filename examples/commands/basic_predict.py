@@ -15,10 +15,9 @@ def build_dataset_hard(dataset_name="gpc_test_hard", validator="cross"):
     Y = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
     Z = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.7*np.random.randn(SIZE, 1)])
     dataset = ml.ds.DataSetBuilder(
-         dataset_name, 
+        dataset_name, 
         dataset_path=settings["dataset_path"], 
-        transforms_row=[('scale', None)],
-        #transforms=None,
+        #transforms_row=[('scale', None)],
         validator=validator)
     dataset.build_dataset(X, Y, test_data=None, test_labels=None)
     return dataset

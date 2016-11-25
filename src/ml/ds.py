@@ -282,30 +282,30 @@ class DataSetBuilder(object):
         return self.to_DF(data, labels)
 
     def processing_rows(self, data):
-        if len(data.shape) == 1:
-            data = data.reshape(1, -1)
-        pdata = np.ndarray(shape=data.shape, dtype=np.float32)
-        for index, row in enumerate(data):
-            pdata[index] = self.processing(row, 'row')
-        return pdata
+        if not self.transforms.empty() and self.transforms_apply and data is not None:
+            if len(data.shape) == 1:
+                data = data.reshape(1, -1)
+            pdata = np.ndarray(shape=data.shape, dtype=np.float32)
+            for index, row in enumerate(data):
+                preprocessing = self.processing_class(row, self.transforms.get_transforms('row'))
+                pdata[index] = preprocessing.pipeline()
+            return pdata
+        else:
+            return data
+
+    def processing_global(self, data):
+        pass
 
     def build_dataset(self, data, labels, test_data=None, test_labels=None, 
                         valid_data=None, valid_labels=None):
-        #from sklearn.preprocessing import StandardScaler
-        #scaler = StandardScaler()
-        #data = scaler.fit_transform(data)
         data = self.processing_rows(data)
-        if test_data is not None:
-            test_data = self.processing_rows(test_data)
-
-        if valid_data is not None:
-            valid_data = self.processing_rows(valid_data)
+        test_data = self.processing_rows(test_data)
+        valid_data = self.processing_rows(valid_data)
 
         if self.validator == 'cross':
             if test_data is not None and test_labels is not None:
                 data = np.concatenate((data, test_data), axis=0)
                 labels = np.concatenate((labels, test_labels), axis=0)
-            print(data.shape)
             self.shuffle_and_save(data, labels)
         elif self.validator == 'adversarial':
             self.adversarial_validator_and_save(data, labels, test_data, test_labels)
@@ -335,12 +335,12 @@ class DataSetBuilder(object):
         dataset.md5()
         return dataset
 
-    def processing(self, data, group):
-        if not self.transforms.empty() and self.transforms_apply and data is not None:
-            preprocessing = self.processing_class(data, self.transforms.get_transforms(group))
-            return preprocessing.pipeline()
-        else:
-            return data
+    #def processing(self, data, group):
+    #    if not self.transforms.empty() and self.transforms_apply and data is not None:
+    #        preprocessing = self.processing_class(data, self.transforms.get_transforms(group))
+    #        return preprocessing.pipeline()
+    #    else:
+    #        return data
 
     def subset(self, percentaje):
         return self.copy(percentaje)

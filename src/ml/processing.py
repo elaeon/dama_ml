@@ -104,6 +104,29 @@ class Preprocessing(object):
         return self.data
 
 
+class FiT(object):
+    def __init__(self, data):
+        self.t = None
+
+    @classmethod
+    def module_cls_name(cls):
+        return "{}.{}".format(cls.__module__, cls.__name__)
+
+    def fit(self, data):
+        pass
+
+    def transform(self, data):
+        return self.t.transform(data)
+
+
+class FiTScaler(FiT):
+    def fit(self, data):
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler()
+        scaler.fit(data)
+        self.t = scaler
+
+
 class PreprocessingImage(Preprocessing):
     def resize(self, image_size=90, type_r="asym"):
         if type_r == "asym":

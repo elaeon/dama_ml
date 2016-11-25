@@ -619,48 +619,6 @@ class Bagging(Embedding):
         return model_base.predict(data_model_base, raw=raw, transform=False, chunk_size=chunk_size)
 
 
-class T(object):
-    def __init__(self, data):
-        self.t = None
-
-    def fit(self, data):
-        from sklearn.preprocessing import StandardScaler
-        scaler = StandardScaler()
-        scaler.fit(data)
-        self.t = scaler
-
-    def transform(self, data):
-        return self.t.transform(data)
-
-
-class TFlow(object):
-    def __init__(self, dataset, t, model_base):
-        self.meta_name = "tflow"
-        dataset = ml.ds.DataSetBuilder(
-            dataset_name+"."+self.meta_name, 
-            dataset_path=settings["dataset_path"], 
-            #transforms=[('scale', {"row_by_row": True})],
-            transforms=None,
-            validator=None)
-        
-        dataset.build_dataset(
-            t.transform(dataset.train_data),
-            dataset.train_labels, 
-            test_data=t.transform(dataset.test_data), 
-            test_labels=dataset.test_labels, 
-            valid_data=t.transform(dataset.valid_data), 
-            valid_labels=dataset.valid_labels)
-
-        model = model_base(dataset=dataset, 
-            model_name=namespace, 
-            model_version=self.model_version, 
-            check_point_path=self.check_point_path,
-            info=info)
-        
-        #model_base.train(batch_size=batch_size, num_steps=num_steps)
-        #self.save_model()
-
-
 class BaseClassif(DataDrive):
     def __init__(self, model_name=None, dataset=None, 
             check_point_path=None, model_version=None,
