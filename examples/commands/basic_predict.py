@@ -17,8 +17,8 @@ def build_dataset_hard(dataset_name="gpc_test_hard", validator="cross"):
     dataset = ml.ds.DataSetBuilder(
          dataset_name, 
         dataset_path=settings["dataset_path"], 
-        #transforms=[('scale', {"row_by_row": True})],
-        transforms=None,
+        transforms_row=[('scale', None)],
+        #transforms=None,
         validator=validator)
     dataset.build_dataset(X, Y, test_data=None, test_labels=None)
     return dataset

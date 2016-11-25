@@ -48,9 +48,11 @@ class DataSetBuilder(object):
                 dataset_path=None, 
                 test_folder_path=None, 
                 train_folder_path=None,
-                transforms=None,
+                transforms_row=None,
+                transforms_global=None,
                 transforms_apply=True,
                 processing_class=Preprocessing,
+                fits=None,
                 train_size=.7,
                 valid_size=.1,
                 validator='cross',
@@ -74,10 +76,17 @@ class DataSetBuilder(object):
         self.validator = validator
         self.print_info = print_info
 
-        if transforms is None:
-            self.transforms = Transforms([("global", [])])
+        if transforms_row is None:
+            transforms_row = ('row', [])
         else:
-            self.transforms = Transforms([("global", transforms)])
+            transforms_row = ("row", transforms_row)
+
+        if transforms_global is None:
+            transforms_global = ("global", [])
+        else:
+            transforms_blobal = ("global", transforms_global)
+
+        self.transforms = Transforms([transforms_global, transforms_row])
 
     def url(self):
         return os.join.path(self.dataset_path, self.name)
@@ -277,7 +286,7 @@ class DataSetBuilder(object):
             data = data.reshape(1, -1)
         pdata = np.ndarray(shape=data.shape, dtype=np.float32)
         for index, row in enumerate(data):
-            pdata[index] = self.processing(row, 'global')
+            pdata[index] = self.processing(row, 'row')
         return pdata
 
     def build_dataset(self, data, labels, test_data=None, test_labels=None, 
@@ -361,7 +370,7 @@ class DataSetBuilder(object):
 
     def plot(self):
         import matplotlib.pyplot as plt
-        last_transform = self.transforms.get_transforms("global")[-1]
+        last_transform = self.transforms.get_transforms("row")[-1]
         data, labels = self.desfragment()
         if last_transform[0] == "tsne":
             if last_transform[1]["action"] == "concatenate":                
@@ -452,7 +461,7 @@ class DataSetBuilderImage(DataSetBuilder):
         for image_index, (number_id, image_file) in enumerate(images):
             image_data = io.imread(image_file)
             image_data = image_data.astype(float)
-            data[image_index] = self.processing(image_data, 'global')
+            data[image_index] = self.processing(image_data, 'row')
             labels[image_index] = number_id
 
         return data, labels
@@ -564,7 +573,7 @@ class DataSetBuilderImage(DataSetBuilder):
 class DataSetBuilderFile(DataSetBuilder):
     def from_csv(self, folder_path, label_column):
         data, labels = self.csv2dataset(folder_path, label_column)
-        data = self.processing(data, 'global')
+        data = self.processing(data, 'row')
         return data, labels
 
     @classmethod
