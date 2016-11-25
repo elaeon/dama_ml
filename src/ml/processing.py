@@ -62,9 +62,13 @@ class Transforms(object):
     def add_group_transforms(self, group, transforms):
         self.transforms[group] = OrderedDict(transforms)
 
-    def empty(self):
-        return len(self.transforms) == 0
-
+    def empty(self, group):
+        if len(self.transforms) == 0:
+            return True
+        elif len(self.transforms.get(group, [])) == 0:
+            return True
+        else:
+            return False
 
 class Preprocessing(object):
     

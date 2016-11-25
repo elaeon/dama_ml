@@ -742,10 +742,7 @@ class BaseClassif(DataDrive):
             self.set_dataset(dataset.copy())
 
     def set_dataset(self, dataset):
-        #from sklearn.preprocessing import StandardScaler
         self.dataset = dataset
-        #self.scaler = StandardScaler()
-        #self.scaler.fit(self.dataset.desfragment()[0])
         self._original_dataset_md5 = self.dataset.md5()
         self.reformat_all()
 

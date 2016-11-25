@@ -282,7 +282,7 @@ class DataSetBuilder(object):
         return self.to_DF(data, labels)
 
     def processing_rows(self, data):
-        if not self.transforms.empty() and self.transforms_apply and data is not None:
+        if not self.transforms.empty('row') and self.transforms_apply and data is not None:
             if len(data.shape) == 1:
                 data = data.reshape(1, -1)
             pdata = np.ndarray(shape=data.shape, dtype=np.float32)
@@ -294,7 +294,10 @@ class DataSetBuilder(object):
             return data
 
     def processing_global(self, data):
-        pass
+        if not self.transforms.empty('global') and self.transforms_apply and data is not None:
+            pass
+        else:
+            return data
 
     def build_dataset(self, data, labels, test_data=None, test_labels=None, 
                         valid_data=None, valid_labels=None):
