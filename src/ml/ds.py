@@ -263,6 +263,9 @@ class DataSetBuilder(object):
         return self.to_DF(data, labels)
 
     def build_dataset(self, data, labels, test_data=None, test_labels=None):
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler()
+        data = scaler.fit_transform(data)
         data = self.processing(data, 'global')        
         test_data = self.processing(test_data, 'global')
         if self.validator == 'cross':

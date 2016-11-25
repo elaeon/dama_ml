@@ -76,15 +76,9 @@ class Preprocessing(object):
     def module_cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
     
-    #def scale(self):   
-        #if row_by_row is True and len(self.data.shape) > 1:
-        #    self.data = np.asarray([preprocessing.scale(row) for row in self.data])
-        #    print(self.data)
-        #else:
-        #    print("A", self.data)
-        #    self.data = preprocessing.scale(self.data)
-        #    print("D", self.data)
-
+    def scale(self):   
+        self.data = preprocessing.scale(self.data)
+        
     def poly_features(self, degree=2, interaction_only=False, include_bias=True):
         if len(self.data.shape) == 1:
             self.data = self.data.reshape(1, -1)

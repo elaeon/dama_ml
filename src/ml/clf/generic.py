@@ -619,6 +619,36 @@ class Bagging(Embedding):
         return model_base.predict(data_model_base, raw=raw, transform=False, chunk_size=chunk_size)
 
 
+class T(object):
+    def __init__(self, data):
+        self.t = None
+
+    def fit(self, data):
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler()
+        scaler.fit(data)
+        self.t = scaler
+
+    def transform(self, data):
+        return self.t.transform(data)
+
+
+class TFlow(object):
+    def __init__(self, dataset, t, model_base):
+        self.meta_name = "tflow"
+        model_base.set_dataset_from_raw(
+            t.transform(dataset.train_data), 
+            t.transform(dataset.test_data), 
+            t.transform(dataset.valid_data),
+            dataset.train_labels, 
+            dataset.test_labels, 
+            dataset.valid_labels,
+            save=True,
+            dataset_name=model_base.dataset.name+"."+self.meta_name)
+        #model_base.train(batch_size=batch_size, num_steps=num_steps)
+        #self.save_model()
+
+
 class BaseClassif(DataDrive):
     def __init__(self, model_name=None, dataset=None, 
             check_point_path=None, model_version=None,
@@ -742,8 +772,9 @@ class BaseClassif(DataDrive):
 
     def set_dataset(self, dataset):
         from sklearn.preprocessing import StandardScaler
+        self.dataset = dataset
         self.scaler = StandardScaler()
-        self.dataset = self.scaler.fit_transform(dataset)
+        self.scaler.fit(self.dataset.desfragment()[0])
         self._original_dataset_md5 = self.dataset.md5()
         self.reformat_all()
 
@@ -793,7 +824,7 @@ class BaseClassif(DataDrive):
             self.load_model()
 
         if transform is True and chunk_size > 0:
-            fn = lambda x, s: self.transform_shape(self.scaler.transform(self.dataset.processing(x, 'global'), size=s))
+            fn = lambda x, s: self.transform_shape(self.scaler.transform(self.dataset.processing(x, 'global')), size=s)
             return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)
         elif transform is True and chunk_size == 0:
             data = self.transform_shape(self.scaler.transform(self.dataset.processing(data, 'global')))

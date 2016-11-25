@@ -9,7 +9,7 @@ settings = get_settings("ml", filepath=os.path.abspath(os.path.join(os.path.dirn
 np.random.seed(1)
 
 def build_dataset_hard(dataset_name="gpc_test_hard", validator="cross"):
-    DIM = 2
+    DIM = 21
     SIZE = 100000
     X = np.random.rand(SIZE, DIM)
     Y = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
@@ -20,7 +20,7 @@ def build_dataset_hard(dataset_name="gpc_test_hard", validator="cross"):
         #transforms=[('scale', {"row_by_row": True})],
         transforms=None,
         validator=validator)
-    dataset.build_dataset(X, Y, test_data=X, test_labels=Z)
+    dataset.build_dataset(X, Y, test_data=None, test_labels=None)
     return dataset
 
 
@@ -46,8 +46,8 @@ def predict(model_name, chunk_size, model_version):
     from ml.clf.generic import Measure
 
     np.random.seed(0)
-    DIM = 2
-    SIZE = 10
+    DIM = 21
+    SIZE = 10000
     X = np.random.rand(SIZE, DIM)
     Y = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
     classif = ml.clf.extended.SVGPC(
