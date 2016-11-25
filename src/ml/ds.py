@@ -219,6 +219,16 @@ class DataSetBuilder(object):
             axis=0)
         self.save()
 
+    def none_validator(self, train_data, train_labels, test_data, test_labels, 
+                        valid_data, valid_labels):
+        self.train_data = train_data
+        self.test_data = test_data
+        self.train_labels = train_labels
+        self.test_labels = test_labels
+        self.valid_data = valid_data
+        self.valid_labels = valid_labels
+
+
     def save(self):
         if self.dataset_path is not None:
             if not os.path.exists(self.dataset_path):
@@ -262,19 +272,36 @@ class DataSetBuilder(object):
         data, labels = self.desfragment()
         return self.to_DF(data, labels)
 
-    def build_dataset(self, data, labels, test_data=None, test_labels=None):
-        from sklearn.preprocessing import StandardScaler
-        scaler = StandardScaler()
-        data = scaler.fit_transform(data)
-        data = self.processing(data, 'global')        
-        test_data = self.processing(test_data, 'global')
+    def processing_rows(self, data):
+        if len(data.shape) == 1:
+            data = data.reshape(1, -1)
+        pdata = np.ndarray(shape=data.shape, dtype=np.float32)
+        for index, row in enumerate(data):
+            pdata[index] = self.processing(row, 'global')
+        return pdata
+
+    def build_dataset(self, data, labels, test_data=None, test_labels=None, 
+                        valid_data=None, valid_labels=None):
+        #from sklearn.preprocessing import StandardScaler
+        #scaler = StandardScaler()
+        #data = scaler.fit_transform(data)
+        data = self.processing_rows(data)
+        if test_data is not None:
+            test_data = self.processing_rows(test_data)
+
+        if valid_data is not None:
+            valid_data = self.processing_rows(valid_data)
+
         if self.validator == 'cross':
-            if test_data is not None and labels is not None:
+            if test_data is not None and test_labels is not None:
                 data = np.concatenate((data, test_data), axis=0)
                 labels = np.concatenate((labels, test_labels), axis=0)
+            print(data.shape)
             self.shuffle_and_save(data, labels)
-        else:
+        elif self.validator == 'adversarial':
             self.adversarial_validator_and_save(data, labels, test_data, test_labels)
+        elif self.validator is None:
+            self.none_validator(data, labels, test_data, test_labels, valid_data, valid_labels)
 
     def copy(self, limit=None):
         dataset = DataSetBuilder(self.name)

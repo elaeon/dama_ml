@@ -636,15 +636,27 @@ class T(object):
 class TFlow(object):
     def __init__(self, dataset, t, model_base):
         self.meta_name = "tflow"
-        model_base.set_dataset_from_raw(
-            t.transform(dataset.train_data), 
-            t.transform(dataset.test_data), 
-            t.transform(dataset.valid_data),
+        dataset = ml.ds.DataSetBuilder(
+            dataset_name+"."+self.meta_name, 
+            dataset_path=settings["dataset_path"], 
+            #transforms=[('scale', {"row_by_row": True})],
+            transforms=None,
+            validator=None)
+        
+        dataset.build_dataset(
+            t.transform(dataset.train_data),
             dataset.train_labels, 
-            dataset.test_labels, 
-            dataset.valid_labels,
-            save=True,
-            dataset_name=model_base.dataset.name+"."+self.meta_name)
+            test_data=t.transform(dataset.test_data), 
+            test_labels=dataset.test_labels, 
+            valid_data=t.transform(dataset.valid_data), 
+            valid_labels=dataset.valid_labels)
+
+        model = model_base(dataset=dataset, 
+            model_name=namespace, 
+            model_version=self.model_version, 
+            check_point_path=self.check_point_path,
+            info=info)
+        
         #model_base.train(batch_size=batch_size, num_steps=num_steps)
         #self.save_model()
 
@@ -653,7 +665,7 @@ class BaseClassif(DataDrive):
     def __init__(self, model_name=None, dataset=None, 
             check_point_path=None, model_version=None,
             dataset_train_limit=None,
-            info=True):
+            info=True, auto_load=True):
         self.model = None
         self.le = LabelEncoder()
         self.dataset_train_limit = dataset_train_limit
@@ -664,7 +676,8 @@ class BaseClassif(DataDrive):
             check_point_path=check_point_path,
             model_version=model_version,
             model_name=model_name)
-        self.load_dataset(dataset)
+        if auto_load is True:
+            self.load_dataset(dataset)
 
     @classmethod
     def cls_name(cls):
@@ -771,10 +784,10 @@ class BaseClassif(DataDrive):
             self.set_dataset(dataset.copy())
 
     def set_dataset(self, dataset):
-        from sklearn.preprocessing import StandardScaler
+        #from sklearn.preprocessing import StandardScaler
         self.dataset = dataset
-        self.scaler = StandardScaler()
-        self.scaler.fit(self.dataset.desfragment()[0])
+        #self.scaler = StandardScaler()
+        #self.scaler.fit(self.dataset.desfragment()[0])
         self._original_dataset_md5 = self.dataset.md5()
         self.reformat_all()
 
@@ -824,10 +837,10 @@ class BaseClassif(DataDrive):
             self.load_model()
 
         if transform is True and chunk_size > 0:
-            fn = lambda x, s: self.transform_shape(self.scaler.transform(self.dataset.processing(x, 'global')), size=s)
+            fn = lambda x, s: self.transform_shape(self.dataset.processing_rows(x), size=s)
             return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)
         elif transform is True and chunk_size == 0:
-            data = self.transform_shape(self.scaler.transform(self.dataset.processing(data, 'global')))
+            data = self.transform_shape(self.dataset.processing_rows(data))
             return self._predict(data, raw=raw)
         elif transform is False and chunk_size > 0:
             fn = lambda x, s: self.transform_shape(x, size=s)
