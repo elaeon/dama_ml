@@ -84,7 +84,7 @@ class DataSetBuilder(object):
         if transforms_global is None:
             transforms_global = ("global", [])
         else:
-            transforms_blobal = ("global", transforms_global)
+            transforms_global = ("global", transforms_global)
 
         self.transforms = Transforms([transforms_global, transforms_row])
 
@@ -295,7 +295,7 @@ class DataSetBuilder(object):
 
     def processing_global(self, data):
         if not self.transforms.empty('global') and self.transforms_apply and data is not None:
-            pass
+            print(self.transforms.get_transforms('global'))
         else:
             return data
 
