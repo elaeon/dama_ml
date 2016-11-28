@@ -90,7 +90,7 @@ class DataSetBuilder(object):
         self.transforms = Transforms([transforms_global, transforms_row])
 
     def url(self):
-        return os.join.path(self.dataset_path, self.name)
+        return os.path.join(self.dataset_path, self.name)
 
     def num_features(self):
         return self.train_data.shape[1]
@@ -590,7 +590,7 @@ class DataSetBuilderImage(DataSetBuilder):
 class DataSetBuilderFile(DataSetBuilder):
     def from_csv(self, folder_path, label_column):
         data, labels = self.csv2dataset(folder_path, label_column)
-        data = self.processing(data, 'row')
+        data = self.processing(data)
         return data, labels
 
     @classmethod
@@ -603,10 +603,11 @@ class DataSetBuilderFile(DataSetBuilder):
     def build_dataset(self, label_column=None):
         data, labels = self.from_csv(self.train_folder_path, label_column)
         if self.test_folder_path is not None:
-            test_data, test_labels = self.from_csv(self.test_folder_path, label_column)
-            if self.validator == 'cross':
-                data = np.concatenate((data, test_data), axis=0)
-                labels = np.concatenate((labels, test_labels), axis=0)
+            raise #NotImplemented
+            #test_data, test_labels = self.from_csv(self.test_folder_path, label_column)
+            #if self.validator == 'cross':
+            #    data = np.concatenate((data, test_data), axis=0)
+            #    labels = np.concatenate((labels, test_labels), axis=0)
 
         if self.validator == 'cross':
             self.shuffle_and_save(data, labels)

@@ -50,9 +50,9 @@ def build(dataset_name, transforms=None):
     dataset = ml.ds.DataSetBuilderFile(
         dataset_name, 
         dataset_path=settings["dataset_path"], 
-        processing_class=Preprocessing,
+        #processing_class=Preprocessing,
         train_folder_path=settings["numerai_train"],
-        transforms=transforms)
+        transforms_global=transforms)
     dataset.build_dataset(label_column="target")
     return dataset
 
@@ -62,11 +62,11 @@ def build2(dataset_name, transforms=None):
     dataset = ml.ds.DataSetBuilderFile(
         dataset_name, 
         dataset_path=settings["dataset_path"], 
-        processing_class=Preprocessing,
+        #processing_class=Preprocessing,
         train_folder_path=settings["numerai_train"],
         test_folder_path="/home/sc/test_data/t.csv",
         validator="adversarial",
-        transforms=transforms)
+        transforms_global=transforms)
     dataset.build_dataset(label_column="target")
     return dataset
 
@@ -75,7 +75,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-name", help="nombre del dataset a utilizar", type=str)
     parser.add_argument("--build-dataset", help="crea el dataset", action="store_true")
+    parser.add_argument("--dataset-name", help="crea el dataset", type=str)
     parser.add_argument("--train", help="inicia el entrenamiento", action="store_true")
+    parser.add_argument("--embedding", type=str)
     parser.add_argument("--epoch", type=int, default=1)
     parser.add_argument("--predict", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--model-version", type=str)
@@ -83,87 +85,83 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
 
-    if args.build_dataset:
-        #dataset_t = {
-        #    args.model_name+"-t1": 
-        #    [("scale", None)],
-        #    args.model_name+"-t2": 
-        #    [("poly_features", {"degree": 2, "interaction_only": True, "include_bias": True}),
-        #    ("scale", None)],
-        #    args.model_name+"-t3":
-        #    [("poly_features", {"degree": 2, "interaction_only": False, "include_bias": False}),
-        #    ("scale", None)],
-        #    args.model_name+"-t4":
-        #    [("scale", None),
-        #    ("tsne", {"perplexity": 50, "action": 'concatenate'})]
-        #}
-        transforms = [("scale", None)]
-        dataset = build(args.model_name, transforms=transforms)
+    if args.build_dataset and args.dataset_name:
+        transforms = [(ml.processing.FiTScaler.module_cls_name(), None)]
+        #transforms = None
+        dataset = build(args.dataset_name, transforms=transforms)
 
     if args.train:
         dataset = ml.ds.DataSetBuilderFile.load_dataset(
-            args.model_name, dataset_path=settings["dataset_path"])
-        #classif = ml.clf.generic.Boosting({"0": [
-        #    ml.clf.extended.ExtraTrees,
-        #    ml.clf.extended.MLP,
-        #    ml.clf.extended.RandomForest,
-        #    ml.clf.extended.SGDClassifier,
-        #    ml.clf.extended.SVC,
-        #    ml.clf.extended.LogisticRegression,
-        #    ml.clf.extended.AdaBoost,
-        #    ml.clf.extended.GradientBoost]},
-        #    dataset=dataset,
-        #    model_name=args.model_name,
-        #    model_version=args.model_version,
-        #    weights=[3, 1],
-        #    election='best-c',
-        #    num_max_clfs=5,
-        #    check_point_path=settings["checkpoints_path"])
-        classif = ml.clf.generic.Stacking({"0": [
-            ml.clf.extended.ExtraTrees,
-            ml.clf.extended.MLP,
-            ml.clf.extended.RandomForest,
-            ml.clf.extended.SGDClassifier,
-            ml.clf.extended.SVC,
-            ml.clf.extended.LogisticRegression,
-            ml.clf.extended.AdaBoost,
-            ml.clf.extended.GradientBoost]},
-            n_splits=3,
-            dataset=dataset,
-            model_name=args.model_name,
-            model_version=args.model_version,
-            check_point_path=settings["checkpoints_path"])
-        #classif = ml.clf.generic.Bagging(ml.clf.extended.MLP, {"0": [
-        #    ml.clf.extended.ExtraTrees,
-        #    ml.clf.extended.MLP,
-        #    ml.clf.extended.RandomForest,
-        #    ml.clf.extended.SGDClassifier,
-        #    ml.clf.extended.SVC,
-        #    ml.clf.extended.LogisticRegression,
-        #    ml.clf.extended.AdaBoost,
-        #    ml.clf.extended.GradientBoost]},
-        #    dataset=dataset,
-        #    model_name=args.model_name,
-        #    model_version=args.model_version,
-        #    check_point_path=settings["checkpoints_path"])
+            args.dataset_name, dataset_path=settings["dataset_path"])
+
+        if args.embedding == "boosting":
+            classif = ml.clf.generic.Boosting({"0": [
+                ml.clf.extended.ExtraTrees,
+                ml.clf.extended.MLP,
+                ml.clf.extended.RandomForest,
+                ml.clf.extended.SGDClassifier,
+                ml.clf.extended.SVC,
+                ml.clf.extended.LogisticRegression,
+                ml.clf.extended.AdaBoost,
+                ml.clf.extended.GradientBoost]},
+                dataset=dataset,
+                model_name=args.model_name,
+                model_version=args.model_version,
+                weights=[3, 1],
+                election='best-c',
+                num_max_clfs=5,
+                check_point_path=settings["checkpoints_path"])
+        elif args.embedding == "stacking":
+            classif = ml.clf.generic.Stacking({"0": [
+                ml.clf.extended.ExtraTrees,
+                ml.clf.extended.MLP,
+                ml.clf.extended.RandomForest,
+                ml.clf.extended.SGDClassifier,
+                ml.clf.extended.SVC,
+                ml.clf.extended.LogisticRegression,
+                ml.clf.extended.AdaBoost,
+                ml.clf.extended.GradientBoost]},
+                n_splits=3,
+                dataset=dataset,
+                model_name=args.model_name,
+                model_version=args.model_version,
+                check_point_path=settings["checkpoints_path"])
+        else:
+            classif = ml.clf.generic.Bagging(ml.clf.extended.MLP, {"0": [
+                ml.clf.extended.ExtraTrees,
+                ml.clf.extended.MLP,
+                ml.clf.extended.RandomForest,
+                ml.clf.extended.SGDClassifier,
+                ml.clf.extended.SVC,
+                ml.clf.extended.LogisticRegression,
+                ml.clf.extended.AdaBoost,
+                ml.clf.extended.GradientBoost]},
+                dataset=dataset,
+                model_name=args.model_name,
+                model_version=args.model_version,
+                check_point_path=settings["checkpoints_path"])
         classif.train(batch_size=128, num_steps=args.epoch) # only_voting=True
         classif.all_clf_scores().print_scores(order_column="logloss")
 
     if args.predict:
-        #classif = ml.clf.generic.Boosting({},
-        #    model_name=args.model_name,
-        #    model_version=args.model_version,
-        #    check_point_path=settings["checkpoints_path"])
-        classif = ml.clf.generic.Stacking({},
-            model_name=args.model_name,
-            model_version=args.model_version,
-            check_point_path=settings["checkpoints_path"])
-        #classif = ml.clf.generic.Bagging(None, {},
-        #   model_name=args.model_name,
-        #    model_version=args.model_version,
-        #    check_point_path=settings["checkpoints_path"])
+        if args.embedding == "boosting":
+            classif = ml.clf.generic.Boosting({},
+                model_name=args.model_name,
+                model_version=args.model_version,
+                check_point_path=settings["checkpoints_path"])
+        elif args.embedding == "stacking":
+            classif = ml.clf.generic.Stacking({},
+                model_name=args.model_name,
+                model_version=args.model_version,
+                check_point_path=settings["checkpoints_path"])
+        else:
+            classif = ml.clf.generic.Bagging(None, {},
+                model_name=args.model_name,
+                model_version=args.model_version,
+                check_point_path=settings["checkpoints_path"])
         classif.scores().print_scores(order_column="logloss")
-        #predict(classif, settings["numerai_test"], "t_id")
+        predict(classif, settings["numerai_test"], "t_id")
+        print("Predictions writed in {}".format(settings["predictions_file_path"]))
 
     if args.plot:
         dataset = ml.ds.DataSetBuilderFile.load_dataset(
