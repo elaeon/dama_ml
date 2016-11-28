@@ -1,5 +1,6 @@
 import os
 import argparse
+import datetime
 
 from ml.utils.config import get_settings
 from ml.utils.order import order_table_print
@@ -60,13 +61,14 @@ if __name__ == '__main__':
             for parent, childs, files in os.walk(settings["dataset_path"]):
                 datasets[parent] = files
             
-            headers = ["dataset", "size"]
+            headers = ["dataset", "size", "date"]
             table = []
             total_size = 0
             for path, files in datasets.items():
                 for filename in files:
                     size = os.stat(path+filename).st_size
-                    table.append([filename, humanize_bytesize(size)])
+                    date = datetime.datetime.utcfromtimestamp(os.path.getmtime(path+filename))
+                    table.append([filename, humanize_bytesize(size), date])
                     total_size += size
             print("Total size: {}".format(humanize_bytesize(total_size)))
             order_table_print(headers, table, "dataset", reverse=False)
