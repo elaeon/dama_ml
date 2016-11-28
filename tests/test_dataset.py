@@ -12,7 +12,7 @@ class TestDataset(unittest.TestCase):
         self.dataset = ml.ds.DataSetBuilder(
             "test",
             dataset_path="/tmp/", 
-            transforms=[('scale', None)],
+            transforms_row=[('scale', None)],
             train_size=.5,
             valid_size=.2,
             validator="cross",
@@ -23,7 +23,7 @@ class TestDataset(unittest.TestCase):
         dataset = ml.ds.DataSetBuilder(
             "test",
             dataset_path="/tmp/", 
-            transforms=[('scale', None)],
+            #transforms=[('scale', None)],
             validator="cross",
             print_info=False)
         dataset.build_dataset(self.X, self.Y)
@@ -38,10 +38,8 @@ class TestDataset(unittest.TestCase):
 
     def test_only_labels(self):
         dataset0, label0 = self.dataset.only_labels([0])
-        self.assertTrue((dataset0 == (np.ones((5, 10))*-1)).all())
         self.assertItemsEqual(label0, np.zeros(5))
         dataset1, label1 = self.dataset.only_labels([1])
-        self.assertTrue((dataset1 == np.ones((5, 10))).all())
         self.assertItemsEqual(label1, np.ones(5))
 
     def test_labels_info(self):
@@ -50,8 +48,8 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(labels_counter[1], 5)
 
     def test_density(self):
-        self.assertEqual(self.dataset.density(), 1)
-        self.assertEqual(self.dataset.density(axis=1), 1)
+        self.assertEqual(self.dataset.density(), 0)
+        self.assertEqual(self.dataset.density(axis=1), 0)
 
 
 class TestDatasetFile(unittest.TestCase):
@@ -70,7 +68,7 @@ class TestDatasetFile(unittest.TestCase):
         dataset = ml.ds.DataSetBuilderFile(
             "test",
             dataset_path="/tmp/", 
-            transforms=[('scale', None)],
+            transforms_row=[('scale', None)],
             validator="cross")
         data, labels = dataset.from_csv('/tmp/test.csv', 'target')
         self.assertItemsEqual(self.Y, labels.astype(int))

@@ -11,8 +11,11 @@ def rm(path):
     import shutil
     try:
         shutil.rmtree(path)
-    except OSError:
-        print("{} not such file or directory".format(path))
+    except OSError, e:
+        if e.errno == 20:
+            os.remove(path)
+        else:
+            print("{} not such file or directory".format(path))
 
 
 if __name__ == '__main__':
@@ -20,7 +23,7 @@ if __name__ == '__main__':
     parser.add_argument("--models", action="store_true")
     parser.add_argument("--dataset", action="store_true")
     parser.add_argument("--info", type=str, help="name")
-    parser.add_argument("--rm", action="store_true")
+    parser.add_argument("--rm", type=str, help="delete elements")
 
     args = parser.parse_args()
 
@@ -42,11 +45,16 @@ if __name__ == '__main__':
                     pass
         order_table_print(headers, table, "classif", reverse=False)
     elif args.dataset:
+        from ml.ds import DataSetBuilder
         if args.info:
-            from ml.ds import DataSetBuilder
             dataset = DataSetBuilder.load_dataset(args.info, 
                 dataset_path=settings["dataset_path"], info=False)
             dataset.info(classes=True)
+        elif args.rm:
+            dataset = DataSetBuilder.load_dataset(args.rm, 
+                dataset_path=settings["dataset_path"], info=False)
+            rm(dataset.url())
+            print("Done.")
         else:
             datasets = {}
             for parent, childs, files in os.walk(settings["dataset_path"]):
@@ -54,9 +62,13 @@ if __name__ == '__main__':
             
             headers = ["dataset", "size"]
             table = []
+            total_size = 0
             for path, files in datasets.items():
                 for filename in files:
-                    table.append([filename, humanize_bytesize(os.stat(path+filename).st_size)])
+                    size = os.stat(path+filename).st_size
+                    table.append([filename, humanize_bytesize(size)])
+                    total_size += size
+            print("Total size: {}".format(humanize_bytesize(total_size)))
             order_table_print(headers, table, "dataset", reverse=False)
     elif args.rm:
         if args.dataset:
