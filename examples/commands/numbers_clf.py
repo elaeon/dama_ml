@@ -20,7 +20,8 @@ if __name__ == '__main__':
             ("scale", None)]
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--build-dataset", help="crea el dataset", type=str)
+    parser.add_argument("--build-dataset", help="crea el dataset", action="store_true")
+    parser.add_argument("--dataset-name", help="crea el dataset", type=str)
     parser.add_argument("--test", 
         help="evalua el predictor en base a los datos de prueba", 
         action="store_true")
@@ -32,30 +33,30 @@ if __name__ == '__main__':
 
     if args.build_dataset:
         ds_builder = ml.ds.DataSetBuilderImage(
-            args.build_dataset, 
+            args.dataset_name, 
             image_size=int(settings["image_size"]), 
             dataset_path=settings["dataset_path"], 
             train_folder_path=[
-                settings["train_folder_path"]], 
-                #settings["numbers_detector"]],
-            transforms=transforms,
+                settings["train_folder_path"], 
+                settings["numbers_detector"]],
+            transforms_row=transforms,
+            #transforms_global=[(ml.processing.FiTScaler.module_cls_name(), None)],
             transforms_apply=True,
             processing_class=ml.processing.PreprocessingImage)
         ds_builder.build_dataset()
     elif args.train:
         dataset = ml.ds.DataSetBuilder.load_dataset(
-            args.model_name, 
+            args.dataset_name, 
             dataset_path=settings["dataset_path"])
         classif = ml.clf.extended.RandomForest(
-            dataset=dataset, 
+            dataset=dataset,
+            model_name=args.model_name, 
             check_point_path=settings["checkpoints_path"], 
             model_version=args.model_version)
-        classif.batch_size = 100
-        classif.train(num_steps=args.epoch)
+        classif.train(num_steps=args.epoch, batch_size=128)
     elif args.test:
         classif = ml.clf.extended.RandomForest(
             model_name=args.model_name, 
             check_point_path=settings["checkpoints_path"], 
             model_version=args.model_version)
-        classif.batch_size = 100
-        classif.scores()
+        classif.scores().print_scores(order_column="f1")

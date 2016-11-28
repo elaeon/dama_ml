@@ -477,8 +477,10 @@ class DataSetBuilderImage(DataSetBuilder):
         labels = np.ndarray(shape=(max_num_images,), dtype='|S1')
         for image_index, (number_id, image_file) in enumerate(images):
             image_data = io.imread(image_file)
+            new_shape = [dim for dim in [1]+list(image_data.shape)]
+            image_data = image_data.reshape(new_shape)
             image_data = image_data.astype(float)
-            data[image_index] = self.processing(image_data, 'row')
+            data[image_index] = self.processing(image_data)
             labels[image_index] = number_id
 
         return data, labels

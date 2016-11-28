@@ -10,42 +10,41 @@ log = logging.getLogger(__name__)
 #np.random.seed(133)
 
 class Measure(object):
-    def __init__(self, predictions, labels):
-        if len(predictions.shape) > 1:
-            self.transform = lambda x: np.argmax(x, 1)
-        else:
-            self.transform = lambda x: x
-        
-        self.labels = labels
+    def __init__(self, predictions, labels, labels2classes_fn):
+        self.labels = labels2classes_fn(labels)
         self.predictions = predictions
         self.average = "macro"
+        self.labels2classes = labels2classes_fn
 
     def accuracy(self):
         from sklearn.metrics import accuracy_score
-        return accuracy_score(self.labels, self.transform(self.predictions))
+        return accuracy_score(self.labels, self.labels2classes(self.predictions))
 
     #false positives
     def precision(self):
         from sklearn.metrics import precision_score
-        return precision_score(self.labels, self.transform(self.predictions), 
+        return precision_score(self.labels, self.labels2classes(self.predictions), 
             average=self.average, pos_label=None)
 
     #false negatives
     def recall(self):
         from sklearn.metrics import recall_score
-        return recall_score(self.labels, self.transform(self.predictions), 
+        return recall_score(self.labels, self.labels2classes(self.predictions), 
             average=self.average, pos_label=None)
 
     #weighted avg presicion and recall
     def f1(self):
         from sklearn.metrics import f1_score
-        return f1_score(self.labels, self.transform(self.predictions), 
+        return f1_score(self.labels, self.labels2classes(self.predictions), 
             average=self.average, pos_label=None)
 
     def auc(self):
         from sklearn.metrics import roc_auc_score
-        return roc_auc_score(self.labels, self.transform(self.predictions), 
-            average=self.average)
+        try:
+            return roc_auc_score(self.labels, self.labels2classes(self.predictions), 
+                average=self.average)
+        except ValueError:
+            return None
 
     def confusion_matrix(self, base_labels=None):
         from sklearn.metrics import confusion_matrix
@@ -115,7 +114,7 @@ class ListMeasure(object):
             headers=headers, measures=this_measures+other_measures)
         return list_measure
 
-    def calc_scores(self, name, predict, data, labels, measures=None):
+    def calc_scores(self, name, predict, data, labels, labels2classes_fn=None, measures=None):
         if measures is None:
             measures = ["accuracy", "presicion", "recall", "f1", "auc", "logloss"]
         elif isinstance(measures, str):
@@ -125,7 +124,7 @@ class ListMeasure(object):
         uncertain = "logloss" in measures
         predictions = np.asarray(list(
             predict(data, raw=uncertain, transform=False, chunk_size=258)))
-        measure = Measure(predictions, labels)
+        measure = Measure(predictions, labels, labels2classes_fn)
         self.add_measure("CLF", name)
 
         measure_class = []
@@ -647,9 +646,11 @@ class BaseClassif(DataDrive):
 
     def scores(self, measures=None):
         list_measure = ListMeasure()
-        list_measure.calc_scores(self.__class__.__name__, self.predict, 
+        list_measure.calc_scores(self.__class__.__name__, 
+                                self.predict, 
                                 self.dataset.test_data, 
-                                self.numerical_labels2classes(self.dataset.test_labels), 
+                                self.dataset.test_labels, 
+                                labels2classes_fn=self.numerical_labels2classes,
                                 measures=measures)
         return list_measure
 
