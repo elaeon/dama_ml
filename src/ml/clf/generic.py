@@ -792,10 +792,11 @@ class BaseClassif(DataDrive):
             self.load_model()
 
         if transform is True and chunk_size > 0:
-            fn = lambda x, s: self.transform_shape(self.dataset.processing_rows(x), size=s)
+            fn = lambda x, s: self.transform_shape(
+                self.dataset.processing(x, base_data=self.dataset.train_data), size=s)
             return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)
         elif transform is True and chunk_size == 0:
-            data = self.transform_shape(self.dataset.processing_rows(data))
+            data = self.transform_shape(self.dataset.processing(data, base_data=self.dataset.train_data))
             return self._predict(data, raw=raw)
         elif transform is False and chunk_size > 0:
             fn = lambda x, s: self.transform_shape(x, size=s)

@@ -109,8 +109,9 @@ class Preprocessing(object):
 
 
 class FiT(object):
-    def __init__(self, data):
+    def __init__(self, **kwargs):
         self.t = None
+        self.params = kwargs
 
     @classmethod
     def module_cls_name(cls):
@@ -126,7 +127,7 @@ class FiT(object):
 class FiTScaler(FiT):
     def fit(self, data):
         from sklearn.preprocessing import StandardScaler
-        scaler = StandardScaler()
+        scaler = StandardScaler(**self.params)
         scaler.fit(data)
         self.t = scaler
 

@@ -75,6 +75,7 @@ class DataSetBuilder(object):
         self._cached_md5 = None
         self.validator = validator
         self.print_info = print_info
+        self.fit = None
 
         if transforms_row is None:
             transforms_row = ('row', [])
@@ -293,15 +294,28 @@ class DataSetBuilder(object):
         else:
             return data
 
-    def processing_global(self, data):
+    def processing_global(self, data, base_data=None):
         if not self.transforms.empty('global') and self.transforms_apply and data is not None:
-            print(self.transforms.get_transforms('global'))
+            if self.fit is None:
+                #if base_data is None:
+                #    base_data = data
+                from pydoc import locate
+                fiter, params = self.transforms.get_transforms('global')[0]
+                fiter = locate(fiter)
+                if isinstance(params, dict):
+                    self.fit = fiter(**params)
+                else:
+                    self.fit = fiter()
+                self.fit.fit(base_data)
+                return self.fit.transform(data)
+            else:
+                return self.fit.transform(data)
         else:
             return data
 
     def build_dataset(self, data, labels, test_data=None, test_labels=None, 
                         valid_data=None, valid_labels=None):
-        data = self.processing_rows(data)
+        data = self.processing(data)
         test_data = self.processing_rows(test_data)
         valid_data = self.processing_rows(valid_data)
 
@@ -338,12 +352,12 @@ class DataSetBuilder(object):
         dataset.md5()
         return dataset
 
-    #def processing(self, data, group):
-    #    if not self.transforms.empty() and self.transforms_apply and data is not None:
-    #        preprocessing = self.processing_class(data, self.transforms.get_transforms(group))
-    #        return preprocessing.pipeline()
-    #    else:
-    #        return data
+    def processing(self, data, base_data=None):
+        data = self.processing_rows(data)
+        if base_data is None:
+            return self.processing_global(data, base_data=data)
+        else:
+            return self.processing_global(data, base_data=base_data)
 
     def subset(self, percentaje):
         return self.copy(percentaje)

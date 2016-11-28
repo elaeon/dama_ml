@@ -18,7 +18,7 @@ def build_dataset_hard(dataset_name="gpc_test_hard", validator="cross"):
         dataset_name, 
         dataset_path=settings["dataset_path"], 
         #transforms_row=[('scale', None)],
-        transforms_global=[(ml.processing.FiTScaler.module_cls_name(), None)],
+        #transforms_global=[(ml.processing.FiTScaler.module_cls_name(), None)],
         validator=validator)
     dataset.build_dataset(X, Y, test_data=None, test_labels=None)
     return dataset
