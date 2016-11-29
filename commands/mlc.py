@@ -68,10 +68,12 @@ def get_models_from_dataset(md5):
     models_md5 = defaultdict(list)
     for clf, dataset in models_path.items():
         for name_version in dataset:
-            model_path = os.path.join(
+            model_path_meta = os.path.join(
                 settings["checkpoints_path"], clf, name_version, name_version)
-            model_md5 = DataDrive.read_meta("md5", model_path)
-            models_md5[model_md5].append(model_path)
+            model_path = os.path.join(
+                settings["checkpoints_path"], clf, name_version)
+            model_md5 = DataDrive.read_meta("md5", model_path_meta)
+            models_md5[model_md5].append((model_path, model_path_meta))
     return models_md5.get(md5, None)
 
 
@@ -98,7 +100,10 @@ if __name__ == '__main__':
             delete_orphans()            
             print("Done.")
     elif args.models and args.dataset and args.info:
-        print("ok")
+        dataset = DataSetBuilder.load_dataset(args.info, 
+            dataset_path=settings["dataset_path"], info=False)
+        for _, model_path_meta in get_models_from_dataset(dataset.md5()):
+            print("Dataset used in model: {}".format(DataDrive.read_meta("model_module", model_path_meta)))
     elif args.models:
         models_path = get_models_path()
         if args.info:            
@@ -147,7 +152,7 @@ if __name__ == '__main__':
             models_path = get_models_from_dataset(dataset.md5())                     
             print("Dataset: {}".format(dataset.url()))
             rm(dataset.url())
-            for model_path in models_path:
+            for model_path, _ in models_path:
                 print("Model: {}".format(model_path))
                 rm(model_path)
             delete_orphans()

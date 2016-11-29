@@ -163,7 +163,9 @@ class DataDrive(object):
     @classmethod
     def read_meta(self, data_name, path):        
         from ml.ds import load_metadata
-        return load_metadata(path+".xmeta").get(data_name, None)
+        if data_name is not None:
+            return load_metadata(path+".xmeta").get(data_name, None)
+        return load_metadata(path+".xmeta")
 
     def get_model_name_v(self):
         if self.model_version is None:
@@ -406,6 +408,7 @@ class BaseClassif(DataDrive):
                 "dataset_name": self.dataset.name,
                 "md5": self._original_dataset_md5, #not reformated dataset
                 "group_name": self.group_name,
+                "model_module": self.module_cls_name(),
                 "score": score}
         
     def get_dataset(self):
