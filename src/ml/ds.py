@@ -51,7 +51,7 @@ class DataSetBuilder(object):
                 transforms_row=None,
                 transforms_global=None,
                 transforms_apply=True,
-                processing_class=Preprocessing,
+                processing_class=None,
                 fits=None,
                 train_size=.7,
                 valid_size=.1,

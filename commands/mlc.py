@@ -5,8 +5,10 @@ import datetime
 from ml.utils.config import get_settings
 from ml.utils.order import order_table_print
 from ml.utils.numeric_functions import humanize_bytesize
+from ml.clf.generic import DataDrive
 
 settings = get_settings("ml", filepath=os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 
 def rm(path):
     import shutil
@@ -34,17 +36,36 @@ if __name__ == '__main__':
             parent = parent.split("/").pop()
             if parent and len(childs) > 0:
                 classes[parent] = childs
-        
-        headers = ["classif", "dataset", "version"]
-        table = []
-        for clf, dataset in classes.items():
-            for name_version in dataset:
-                try:
-                    name, version = name_version.split(".")
-                    table.append([clf, name, version])
-                except ValueError:
-                    pass
-        order_table_print(headers, table, "classif", reverse=False)
+        if args.info:            
+            headers = ["classif", "dataset", "version", "group", "score"]
+            table = []
+            for clf, dataset in classes.items():
+                for name_version in dataset:
+                    model_path = os.path.join(
+                        settings["checkpoints_path"], clf, name_version, name_version)
+                    group_name = DataDrive.read_meta("group_name", model_path)
+                    score = DataDrive.read_meta("score", model_path)
+                    if args.info == group_name:
+                        try:
+                            name, version = name_version.split(".")
+                            table.append([clf, name, version, group_name, score])
+                        except ValueError:
+                            pass
+            order_table_print(headers, table, "score", reverse=True)
+        else:
+            headers = ["classif", "dataset", "version", "group"]
+            table = []
+            for clf, dataset in classes.items():
+                for name_version in dataset:
+                    group_name = DataDrive.read_meta(
+                        "group_name", os.path.join(
+                            settings["checkpoints_path"], clf, name_version, name_version))
+                    try:
+                        name, version = name_version.split(".")
+                        table.append([clf, name, version, group_name])
+                    except ValueError:
+                        pass
+            order_table_print(headers, table, "classif", reverse=False)
     elif args.dataset:
         from ml.ds import DataSetBuilder
         if args.info:

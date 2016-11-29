@@ -29,7 +29,8 @@ def train(dataset, model_version):
         model_name=dataset.name,
         dataset=dataset,
         model_version=model_version,
-        check_point_path=settings["checkpoints_path"])
+        check_point_path=settings["checkpoints_path"],
+        group_name="basic")
     classif.train(batch_size=128, num_steps=10)
     classif.scores().print_scores(order_column="f1")
 
