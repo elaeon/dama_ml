@@ -1,6 +1,4 @@
-from inspect import getmembers, isclass
 import argparse
-from pydoc import locate
 
 from ml import __version__
 from ml.commands import dataset, models
@@ -21,22 +19,8 @@ model_parser.add_argument("--info", type=str, help="list of datasets or dateset 
 model_parser.add_argument("--rm", type=str, help="delete elements")
 model_parser.set_defaults(func=models.run)
 
-#parser.add_argument("--models", action="store_true")
-#parser.add_argument("--dataset", action="store_true")
-#parser.add_argument("--info", type=str, help="name")
-#parser.add_argument("--rm", type=str, help="delete elements")
-
-
 
 def main():
     """Main CLI entrypoint."""
     args = parser.parse_args()
     args.func(args)
-    # Here we'll try to dynamically match the command the user is trying to run
-    #print(dir(args))
-    #for k, v in args._get_kwargs():
-    #    print(k, v)
-    #    if v is True:
-    #        pass
-            #command = locate('ml.commands.'+k)
-        #command.run(args)
