@@ -140,7 +140,7 @@ class DataSetBuilder(object):
             order_table_print(headers, table, "shape")
             if classes is True:
                 headers = ["class", "# items"]
-                order_table_print(headers, self.labels_info().items(), "class")
+                order_table_print(headers, self.labels_info().items(), "# items")
 
     def cross_validators(self, data, labels):
         from sklearn.model_selection import train_test_split

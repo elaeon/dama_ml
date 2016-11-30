@@ -1,8 +1,8 @@
-import re
+#import re
 from setuptools import find_packages, setup
+from os.path import abspath, dirname, join
 
 install_requires = [
-#    'GPy>=1.5.3',
     'matplotlib>=1.5.1',
     'networkx>=1.11',
     'numpy>=1.11.2',
@@ -20,6 +20,10 @@ install_requires = [
     'climin>=0.1a1'
 ]
 
+this_dir = abspath(dirname(__file__))
+with open(join(this_dir, 'README.rst')) as f:
+    long_description = f.read()
+
 docs_require = [
     'sphinx>=1.4.0',
 ]
@@ -32,7 +36,7 @@ setup(
     name='ml',
     version='0.1.0',
     description='A modern machine learning framework',
-    long_description='',
+    long_description=long_description,
     author="Alejandro G. Martínez Romero",
     author_email="mara80@gmail.com",
     url='https://github.com/elaeon/ML',
@@ -43,9 +47,13 @@ setup(
         'docs': docs_require,
         'test': tests_require,
     },
-    entry_points={},
+    entry_points={
+        'console_scripts': [
+            'ml=ml.cli:main'
+        ]
+    },
     package_dir={'': 'src'},
-    packages=find_packages('src'),
+    packages=find_packages('src', exclude=['docs', 'tests*']),
     include_package_data=True,
 
     license='Apache',
@@ -55,6 +63,7 @@ setup(
         'Programming Language :: Python :: 2.7',
     ],
     zip_safe=False,
+    keywords = 'ml dataset inference machine learning',
 )
 
 
