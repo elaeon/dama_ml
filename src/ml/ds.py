@@ -352,12 +352,15 @@ class DataSetBuilder(object):
         dataset.md5()
         return dataset
 
-    def processing(self, data, base_data=None):
+    def processing(self, data, init=True):
         data = self.processing_rows(data)
-        if base_data is None:
+        if init is True:
             return self.processing_global(data, base_data=data)
-        else:
+        elif init is False and not self.transforms.empty('global'):
+            base_data, _ = self.dataset.desfragment()
             return self.processing_global(data, base_data=base_data)
+        else:
+            return data
 
     def subset(self, percentaje):
         return self.copy(percentaje)
