@@ -13,7 +13,7 @@ Highlights:
  * Uses transformations for manipulate data (images).
 
 A simple pipeline example. A first step is build a dataset, and then pass it to a
-classification model for training, once the training was finnished you can predict some data.
+classification model for training, once the training was finished you can predict some data.
 Train data is always saved, therefore, steps 1, 2 are no needed for future predictions.
 
 
@@ -26,7 +26,8 @@ Train data is always saved, therefore, steps 1, 2 are no needed for future predi
     DIM = 21
     SIZE = 100000
     X = np.random.rand(SIZE, DIM)
-    Y = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
+    Y = np.asarray([1 if sum(row) > 0 else 0 
+        for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
     dataset_name = "test_dataset"
     dataset = ml.ds.DataSetBuilder(
         dataset_name, 
@@ -44,19 +45,20 @@ Train data is always saved, therefore, steps 1, 2 are no needed for future predi
     classif.train(batch_size=128, num_steps=10)
     classif.scores().print_scores(order_column="f1")
 
-    DIM = 21
-    SIZE = 10000
-    X = np.random.rand(SIZE, DIM)
-    Y = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
+    SIZE_T = 10000
+    X = np.random.rand(SIZE_T, DIM)
+    Y = np.asarray([1 if sum(row) > 0 else 0 
+        for row in np.sin(6*X) + 0.1*np.random.randn(SIZE_T, 1)])
     classif = ml.clf.extended.SVGPC(
         model_name="my_test_model",
         model_version="1",
         check_point_path="/home/ds/checkpoints/")
     predictions = np.asarray(list(classif.predict(X, chunk_size=1)))
-    print("{} elems SCORE".format(SIZE), Measure(predictions, Y, classif.numerical_labels2classes).accuracy()
+    print("{} elems SCORE".format(SIZE_T), 
+        Measure(predictions, Y, classif.numerical_labels2classes).accuracy()
 
 
-The classificacion model used in the example was a GaussianProcess with stochastic variational inference, more models are defined in the :doc:`models` section. You can extend the base model and create you own models.
+The classification model used in this example, was a Gaussian process with stochastic variational inference. You can extend the base model and create you own predictor. For more information about this, see the section :doc:`models`. 
 
 More information
 ================
