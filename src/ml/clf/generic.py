@@ -425,6 +425,7 @@ class BaseClassif(DataDrive):
             meta["dataset_name"],
             dataset_path=meta["dataset_path"],
             info=self.print_info)
+        self.group_name = meta.get('group_name', None)
         if meta.get('md5', None) != dataset.md5():
             log.warning("The dataset md5 is not equal to the model '{}'".format(
                 self.__class__.__name__))
