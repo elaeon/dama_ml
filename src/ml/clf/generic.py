@@ -4,6 +4,9 @@ import tensorflow as tf
 import logging
 
 from sklearn.preprocessing import LabelEncoder
+from ml.utils.config import get_settings
+settings = get_settings("ml", filepath=os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
+
 
 logging.basicConfig()
 log = logging.getLogger(__name__)
@@ -140,7 +143,10 @@ class ListMeasure(object):
 class DataDrive(object):
     def __init__(self, check_point_path=None, model_version=None, model_name=None,
                 group_name=None):
-        self.check_point_path = check_point_path
+        if check_point_path is None:
+            self.check_point_path = settings["checkpoints_path"]
+        else:
+            self.check_point_path = check_point_path
         self.model_version = model_version
         self.model_name = model_name
         self.group_name = group_name
@@ -326,16 +332,11 @@ class BaseClassif(DataDrive):
     def set_dataset_from_raw(self, train_data, test_data, valid_data, 
                             train_labels, test_labels, valid_labels, save=False, 
                             dataset_name=None):
-        import ml
+        from ml.ds import DataSetBuilder
         data = {}
         data["train_dataset"] = train_data
         data["test_dataset"] = test_data
         data["valid_dataset"] = valid_data
-        #if len(self.dataset.train_labels.shape) > 2 and self.dataset.train_labels.shape[1] > 1:
-        #    transform_fn = lambda x: np.argmax(x, axis=1)
-        #else:
-        #    transform_fn = lambda x: x
-
         data["train_labels"] = self.numerical_labels2classes(train_labels)
         data["test_labels"] = self.numerical_labels2classes(test_labels)
         data["valid_labels"] = self.numerical_labels2classes(valid_labels)
@@ -343,7 +344,7 @@ class BaseClassif(DataDrive):
         data['preprocessing_class'] = self.dataset.processing_class.module_cls_name()
         data["md5"] = None #self.dataset.md5()
         dataset_name = self.dataset.name if dataset_name is None else dataset_name
-        dataset = ml.ds.DataSetBuilder.from_raw_to_ds(
+        dataset = DataSetBuilder.from_raw_to_ds(
             dataset_name,
             self.dataset.dataset_path,
             data,
@@ -368,6 +369,11 @@ class BaseClassif(DataDrive):
         if self.model is None:
             self.load_model()
 
+        if not isinstance(chunk_size, int):
+            log.warning("The parameter chunk_size must be an integer.")            
+            log.warning("Chunk size is set to 1")
+            chunk_size = 1
+
         if transform is True and chunk_size > 0:
             fn = lambda x, s: self.transform_shape(
                 self.dataset.processing(x, init=False), size=s)
@@ -380,6 +386,7 @@ class BaseClassif(DataDrive):
             return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)
         elif transform is False:
             return self._predict(data, raw=raw)
+            
 
     def _pred_erros(self, predictions, test_data, test_labels, valid_size=.1):
         validation_labels_d = {}

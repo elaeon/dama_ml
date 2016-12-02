@@ -1,10 +1,8 @@
 import os
 import argparse
-import ml
 import numpy as np
-from ml.utils.config import get_settings
-
-settings = get_settings("ml", filepath=os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+from ml.ds import DataSetBuilder
+from ml.clf.extended import SVGPC
 
 np.random.seed(1)
 
@@ -13,33 +11,28 @@ def build_dataset_hard(dataset_name="gpc_test_hard", validator="cross"):
     SIZE = 100000
     X = np.random.rand(SIZE, DIM)
     Y = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
-    Z = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.7*np.random.randn(SIZE, 1)])
-    dataset = ml.ds.DataSetBuilder(
+    #Z = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.7*np.random.randn(SIZE, 1)])
+    dataset = DataSetBuilder(
         dataset_name, 
-        dataset_path=settings["dataset_path"], 
-        #transforms_row=[('scale', None)],
-        #transforms_global=[(ml.processing.FiTScaler.module_cls_name(), None)],
         validator=validator)
-    dataset.build_dataset(X, Y, test_data=None, test_labels=None)
+    dataset.build_dataset(X, Y)#, test_data=None, test_labels=None)
     return dataset
 
 
 def train(dataset, model_version):
-    classif = ml.clf.extended.SVGPC(
+    classif = SVGPC(
         model_name=dataset.name,
         dataset=dataset,
         model_version=model_version,
-        check_point_path=settings["checkpoints_path"],
         group_name="basic")
     classif.train(batch_size=128, num_steps=10)
     classif.scores().print_scores(order_column="f1")
 
 
 def test(model_name, model_version):
-    classif = ml.clf.extended.SVGPC(
+    classif = SVGPC(
         model_name=model_name,
-        model_version=model_version,
-        check_point_path=settings["checkpoints_path"])
+        model_version=model_version)
     classif.scores().print_scores(order_column="f1")
 
 
@@ -51,10 +44,9 @@ def predict(model_name, chunk_size, model_version):
     SIZE = 10000
     X = np.random.rand(SIZE, DIM)
     Y = np.asarray([1 if sum(row) > 0 else 0 for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
-    classif = ml.clf.extended.SVGPC(
+    classif = SVGPC(
         model_name=model_name,
-        model_version=model_version,
-        check_point_path=settings["checkpoints_path"])
+        model_version=model_version)
     predictions = np.asarray(list(classif.predict(X, chunk_size=chunk_size)))
     print("{} elems SCORE".format(SIZE), Measure(predictions, Y, classif.numerical_labels2classes).accuracy())
 
@@ -75,7 +67,7 @@ if __name__ == '__main__':
     if args.build_dataset:
         dataset = build_dataset_hard(validator=args.build_dataset, dataset_name=args.dataset_name)
     elif args.train:
-        dataset = ml.ds.DataSetBuilder.load_dataset(args.model_name, dataset_path=settings["dataset_path"])
+        dataset = DataSetBuilder.load_dataset(args.model_name)
         train(dataset, args.model_version)
     elif args.test:
         test(args.model_name, args.model_version)

@@ -1,5 +1,6 @@
 import numpy as np
 from ml.clf.generic import DataDrive
+from ml.ds import DataSetBuilder
 
 
 class Grid(DataDrive):
@@ -142,7 +143,6 @@ class Boosting(Embedding):
             self.election = election
             self.num_max_clfs = num_max_clfs
         else:
-            import ml
             meta = self.load_meta()
             from pydoc import locate
             self.classifs = self.load_namespaces(
@@ -150,7 +150,7 @@ class Boosting(Embedding):
             self.weights = {index: w for index, w in enumerate(meta['weights'])}
             self.election = meta["election"]
             self.model_name = meta["model_name"]
-            self.dataset = ml.ds.DataSetBuilder.load_dataset(
+            self.dataset = DataSetBuilder.load_dataset(
                 meta["dataset_name"], 
                 dataset_path=meta["dataset_path"])
 
@@ -273,14 +273,13 @@ class Stacking(Embedding):
         self.dataset_blend = None
         self.n_splits = n_splits
         if len(classifs) == 0:
-            import ml
             meta = self.load_meta()
             from pydoc import locate
             self.classifs = self.load_namespaces(
                 meta.get('models', {}), lambda x: locate(x))
             self.iterations = meta["iterations"]
             self.model_name = meta["model_name"]
-            self.dataset = ml.ds.DataSetBuilder.load_dataset(
+            self.dataset = DataSetBuilder.load_dataset(
                 meta["dataset_name"], 
                 dataset_path=meta["dataset_path"])
         else:
@@ -371,15 +370,14 @@ class Bagging(Embedding):
     def __init__(self, classif, classifs_rbm, **kwargs):
         kwargs["meta_name"] = "bagging"
         super(Bagging, self).__init__(classifs_rbm, **kwargs)
-        if classif is None:
-            import ml            
+        if classif is None:          
             from pydoc import locate
             meta = self.load_meta()
             self.classifs = self.load_namespaces(
                 meta.get('models', {}), lambda x: locate(x))
             self.classif = locate(meta["model_base"])
             self.model_name = meta["model_name"]
-            self.dataset = ml.ds.DataSetBuilder.load_dataset(
+            self.dataset = DataSetBuilder.load_dataset(
                 meta["dataset_name"], 
                 dataset_path=meta["dataset_path"])
         else:
@@ -402,7 +400,6 @@ class Bagging(Embedding):
             self.save_meta()
 
     def train(self, batch_size=128, num_steps=1):
-        import ml
         for classif in self.load_models():
             print("Training [{}]".format(classif.__class__.__name__))
             classif.train(batch_size=batch_size, num_steps=num_steps)
@@ -431,7 +428,6 @@ class Bagging(Embedding):
         return np.append(data, predictions, axis=1)
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        import ml
         model_base = self.load_model(self.classif, info=True, namespace=self.meta_name)
         #model_base.print_meta()
         data_model_base = self.prepare_data(data, transform=transform, chunk_size=chunk_size)

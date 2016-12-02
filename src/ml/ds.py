@@ -7,6 +7,9 @@ import cPickle as pickle
 import random
 
 from ml.processing import PreprocessingImage, Preprocessing, Transforms
+from ml.utils.config import get_settings
+
+settings = get_settings("ml", filepath=os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 
 def save_metadata(file_path, data):
@@ -59,7 +62,10 @@ class DataSetBuilder(object):
                 print_info=True):
         self.test_folder_path = test_folder_path
         self.train_folder_path = train_folder_path
-        self.dataset_path = dataset_path
+        if dataset_path is None:
+            self.dataset_path = settings["dataset_path"]
+        else:
+            self.dataset_path = dataset_path
         self.name = name
         self.train_data = None
         self.train_labels = None
@@ -123,7 +129,7 @@ class DataSetBuilder(object):
             print('       ')
             print('DATASET NAME: {}'.format(self.name))
             print('Transforms: {}'.format(self.transforms.get_all_transforms()))
-            print('Preprocessing Class: {}'.format(self.processing_class.module_cls_name()))
+            print('Preprocessing Class: {}'.format(self.get_processing_class_name()))
             print('MD5: {}'.format(self._cached_md5))
             print('       ')
             headers = ["Dataset", "Mean", "Std", "Shape", "dType", "Labels"]
@@ -154,6 +160,12 @@ class DataSetBuilder(object):
         y_train = y_train[valid_size_index:]
         return X_train, X_validation, X_test, y_train, y_validation, y_test
 
+    def get_processing_class_name(self):
+        if self.processing_class is None:
+            return None
+        else:
+            return self.processing_class.module_cls_name()
+
     def to_raw(self):
         return {
             'train_dataset': self.train_data,
@@ -163,7 +175,7 @@ class DataSetBuilder(object):
             'test_dataset': self.test_data,
             'test_labels': self.test_labels,
             'transforms': self.transforms.get_all_transforms(),
-            'preprocessing_class': self.processing_class.module_cls_name(),
+            'preprocessing_class': self.get_processing_class_name(),
             'md5': self.md5()}
 
     @classmethod
@@ -178,7 +190,8 @@ class DataSetBuilder(object):
 
     def from_raw(self, raw_data):
         from pydoc import locate
-        if self.processing_class is None:
+        #if self.processing_class is None:
+        if raw_data["preprocessing_class"] is not None:
             self.processing_class = locate(raw_data["preprocessing_class"])
 
         self.transforms = Transforms(raw_data["transforms"])
@@ -260,6 +273,8 @@ class DataSetBuilder(object):
     @classmethod
     def load_dataset(self, name, dataset_path=None, info=True, 
             processing_class=None):
+        if dataset_path is None:
+             dataset_path = settings["dataset_path"]
         data = self.load_dataset_raw(name, dataset_path=dataset_path)
         dataset = DataSetBuilder(name, dataset_path=dataset_path, 
             processing_class=processing_class)
@@ -471,21 +486,18 @@ class DataSetBuilderImage(DataSetBuilder):
         max_num_images = len(images)
         if self.channels is None:
             data = np.ndarray(
-                shape=(max_num_images, self.image_size, self.image_size), dtype=np.float32)
-            dim = (self.image_size, self.image_size)
+                shape=(max_num_images, self.image_size, self.image_size), dtype=np.int32)
         else:
             data = np.ndarray(
-                shape=(max_num_images, self.image_size, self.image_size, self.channels), dtype=np.float32)
-            dim = (self.image_size, self.image_size, self.channels)
+                shape=(max_num_images, self.image_size, self.image_size, self.channels), dtype=np.int32)
+
         labels = np.ndarray(shape=(max_num_images,), dtype='|S1')
         for image_index, (number_id, image_file) in enumerate(images):
             image_data = io.imread(image_file)
-            new_shape = [dim for dim in [1]+list(image_data.shape)]
-            image_data = image_data.reshape(new_shape)
-            image_data = image_data.astype(float)
-            data[image_index] = self.processing(image_data)
+            data[image_index] = image_data
             labels[image_index] = number_id
-
+        
+        data = self.processing(data)
         return data, labels
 
     @classmethod

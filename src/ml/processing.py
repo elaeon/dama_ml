@@ -120,15 +120,23 @@ class FiT(object):
     def fit(self, data):
         pass
 
+    def dim_rule(self, data):
+        return data
+
     def transform(self, data):
-        return self.t.transform(data)
+        return self.t.transform(self.dim_rule(data))
 
 
 class FiTScaler(FiT):
+    def dim_rule(self, data):
+        if len(data.shape) > 2:
+            data = data.reshape(data.shape[0], -1)
+        return data
+
     def fit(self, data):
         from sklearn.preprocessing import StandardScaler
         scaler = StandardScaler(**self.params)
-        scaler.fit(data)
+        scaler.fit(self.dim_rule(data))
         self.t = scaler
 
 
