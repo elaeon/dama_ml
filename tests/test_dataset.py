@@ -1,7 +1,9 @@
 import unittest
-import ml
 import numpy as np
 import csv
+
+from ml.ds import DataSetBuilder, DataSetBuilderFile
+from ml.processing import Preprocessing
 
 
 class TestDataset(unittest.TestCase):
@@ -9,18 +11,19 @@ class TestDataset(unittest.TestCase):
         NUM_FEATURES = 10
         self.X = np.append(np.zeros((5, NUM_FEATURES)), np.ones((5, NUM_FEATURES)), axis=0)
         self.Y = (np.sum(self.X, axis=1) / 10).astype(int)
-        self.dataset = ml.ds.DataSetBuilder(
+        self.dataset = DataSetBuilder(
             "test",
             dataset_path="/tmp/", 
             transforms_row=[('scale', None)],
             train_size=.5,
             valid_size=.2,
             validator="cross",
+            processing_class=Preprocessing,
             print_info=False)
         self.dataset.build_dataset(self.X, self.Y)
 
     def test_build_dataset_dim_7_1_2(self):
-        dataset = ml.ds.DataSetBuilder(
+        dataset = DataSetBuilder(
             "test",
             dataset_path="/tmp/", 
             #transforms=[('scale', None)],
@@ -65,10 +68,11 @@ class TestDatasetFile(unittest.TestCase):
                 csv_writer.writerow(row)
 
     def test_load(self):
-        dataset = ml.ds.DataSetBuilderFile(
+        dataset = DataSetBuilderFile(
             "test",
             dataset_path="/tmp/", 
             transforms_row=[('scale', None)],
+            processing_class=Preprocessing,
             validator="cross")
         data, labels = dataset.from_csv('/tmp/test.csv', 'target')
         self.assertItemsEqual(self.Y, labels.astype(int))
