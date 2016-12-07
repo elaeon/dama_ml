@@ -12,16 +12,17 @@ Highlights:
  * Convert csv files to datasets.
  * Uses transformations for manipulate data (images).
 
-A simple pipeline example. A first step is build a dataset, and then pass it to a
+A first step is build a dataset, and then pass it to a
 classification model for training, once the training was finished you can predict some data.
 Train data is always saved, therefore, steps 1, 2 are no needed for future predictions.
 
 
 .. code-block:: python
 
-    import ml
-    import numpy as np
+    from ml.ds import DataSetBuilder
     from ml.clf.generic import Measure
+    from ml.clf.extended import SVGPC
+    import numpy as np
 
     DIM = 21
     SIZE = 100000
@@ -29,18 +30,16 @@ Train data is always saved, therefore, steps 1, 2 are no needed for future predi
     Y = np.asarray([1 if sum(row) > 0 else 0 
         for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
     dataset_name = "test_dataset"
-    dataset = ml.ds.DataSetBuilder(
+    dataset = DataSetBuilder(
         dataset_name, 
-        dataset_path="/home/ds/datasets/", 
         transforms_global=[(ml.processing.FiTScaler.module_cls_name(), None)],
         validator="cross")
     dataset.build_dataset(X, Y)
 
-    classif = ml.clf.extended.SVGPC(
+    classif = SVGPC(
         model_name="my_test_model",
         dataset=dataset,
-        model_version="1",
-        check_point_path="/home/ds/checkpoints/",
+        model_version="1",,
         group_name="basic")
     classif.train(batch_size=128, num_steps=10)
     classif.scores().print_scores(order_column="f1")
@@ -51,8 +50,7 @@ Train data is always saved, therefore, steps 1, 2 are no needed for future predi
         for row in np.sin(6*X) + 0.1*np.random.randn(SIZE_T, 1)])
     classif = ml.clf.extended.SVGPC(
         model_name="my_test_model",
-        model_version="1",
-        check_point_path="/home/ds/checkpoints/")
+        model_version="1")
     predictions = np.asarray(list(classif.predict(X, chunk_size=1)))
     print("{} elems SCORE".format(SIZE_T), 
         Measure(predictions, Y, classif.numerical_labels2classes).accuracy()
@@ -67,6 +65,7 @@ More information
    :maxdepth: 2
    :name: mastertoc
 
+   index
    datasets
    transforms
    models

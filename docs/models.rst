@@ -30,17 +30,15 @@ Now we can use AdaBoost.
 .. code-block:: python
 
     dataset = ml.dataset = ml.ds.DataSetBuilder.load_dataset(
-        "cats_and_dogs_dataset", 
-        dataset_path="/home/ds/datasets/")
+        "cats_and_dogs_dataset")
 
     classif = AdaBoost(
         model_name="my_new_model",
         dataset=dataset,
         model_version="1",
-        check_point_path="/home/ds/checkpoints/",
         group_name="cats_and_dogs")
     classif.train(batch_size=128, num_steps=10)
-    #In automatic the train is save and now can predict data.
+    #Automaticly the train is saved and now can predict data.
 
 Predict data is like
     
@@ -49,8 +47,7 @@ Predict data is like
     data = ...
     classif = AdaBoost(
         model_name="my_new_model",
-        model_version="1",
-        check_point_path="/home/ds/checkpoints/")
+        model_version="1")
     predictions = classif.predict(data)
 
 If you want add a TensorFlow model i.e a multilayer perceptron
@@ -97,6 +94,16 @@ Prediction
     data = ...
     classif = MLP(
         model_name="my_perceptron_model",
-        model_version="1",
-        check_point_path="/home/ds/checkpoints/")
+        model_version="1")
     predictions = classif.predict(data)
+
+
+.. toctree::
+   :maxdepth: 2
+   :name: mastertoc
+
+   datasets
+   transforms
+   models
+   reporting_bugs
+   changes
