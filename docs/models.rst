@@ -97,13 +97,3 @@ Prediction
         model_version="1")
     predictions = classif.predict(data)
 
-
-.. toctree::
-   :maxdepth: 2
-   :name: mastertoc
-
-   datasets
-   transforms
-   models
-   reporting_bugs
-   changes

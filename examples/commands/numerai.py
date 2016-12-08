@@ -2,11 +2,15 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
-import ml
 import argparse
+
+from ml.ds import DataSetBuilderFile
 from ml.utils.config import get_settings
 from ml.utils.numeric_functions import le
-from ml.processing import Preprocessing
+from ml.processing import Preprocessing, FiTScaler
+from ml.clf import extended as clf_extended
+from ml.clf import generic as clf_generic
+
 
 settings = get_settings("ml")
 settings.update(get_settings("numerai"))
@@ -32,7 +36,7 @@ def predict(classif, path, label_column):
 
 
 def merge_data_labels(file_path=None):
-    df = ml.ds.DataSetBuilderFile.merge_data_labels(settings["numerai_test"], 
+    df = DataSetBuilderFile.merge_data_labels(settings["numerai_test"], 
         settings["numerai_example"], "t_id")
     df.loc[df.probability >= .5, 'probability'] = 1
     df.loc[df.probability < .5, 'probability'] = 0
@@ -47,10 +51,9 @@ def merge_data_labels(file_path=None):
 
 
 def build(dataset_name, transforms=None):
-    dataset = ml.ds.DataSetBuilderFile(
+    dataset = DataSetBuilderFile(
         dataset_name, 
-        dataset_path=settings["dataset_path"], 
-        #processing_class=Preprocessing,
+        processing_class=Preprocessing,
         train_folder_path=settings["numerai_train"],
         transforms_global=transforms)
     dataset.build_dataset(label_column="target")
@@ -59,10 +62,9 @@ def build(dataset_name, transforms=None):
 
 def build2(dataset_name, transforms=None):
     test_data, test_labels = merge_data_labels("/home/sc/test_data/t.csv")
-    dataset = ml.ds.DataSetBuilderFile(
+    dataset = DataSetBuilderFile(
         dataset_name, 
-        dataset_path=settings["dataset_path"], 
-        #processing_class=Preprocessing,
+        processing_class=Preprocessing,
         train_folder_path=settings["numerai_train"],
         test_folder_path="/home/sc/test_data/t.csv",
         validator="adversarial",
@@ -86,7 +88,7 @@ if __name__ == '__main__':
 
 
     if args.build_dataset and args.dataset_name:
-        transforms = [(ml.processing.FiTScaler.module_cls_name(), None)]
+        transforms = [(FiTScaler.module_cls_name(), None)]
         #transforms = None
         dataset = build(args.dataset_name, transforms=transforms)
 
@@ -95,15 +97,15 @@ if __name__ == '__main__':
             args.dataset_name, dataset_path=settings["dataset_path"])
 
         if args.embedding == "boosting":
-            classif = ml.clf.generic.Boosting({"0": [
-                ml.clf.extended.ExtraTrees,
-                ml.clf.extended.MLP,
-                ml.clf.extended.RandomForest,
-                ml.clf.extended.SGDClassifier,
-                ml.clf.extended.SVC,
-                ml.clf.extended.LogisticRegression,
-                ml.clf.extended.AdaBoost,
-                ml.clf.extended.GradientBoost]},
+            classif = clf_generic.Boosting({"0": [
+                clf_extended.ExtraTrees,
+                clf_extended.MLP,
+                clf_extended.RandomForest,
+                clf_extended.SGDClassifier,
+                clf_extended.SVC,
+                clf_extended.LogisticRegression,
+                clf_extended.AdaBoost,
+                clf_extended.GradientBoost]},
                 dataset=dataset,
                 model_name=args.model_name,
                 model_version=args.model_version,
@@ -112,30 +114,30 @@ if __name__ == '__main__':
                 num_max_clfs=5,
                 check_point_path=settings["checkpoints_path"])
         elif args.embedding == "stacking":
-            classif = ml.clf.generic.Stacking({"0": [
-                ml.clf.extended.ExtraTrees,
-                ml.clf.extended.MLP,
-                ml.clf.extended.RandomForest,
-                ml.clf.extended.SGDClassifier,
-                ml.clf.extended.SVC,
-                ml.clf.extended.LogisticRegression,
-                ml.clf.extended.AdaBoost,
-                ml.clf.extended.GradientBoost]},
+            classif = clf_generic.Stacking({"0": [
+                clf_extended.ExtraTrees,
+                clf_extended.MLP,
+                clf_extended.RandomForest,
+                clf_extended.SGDClassifier,
+                clf_extended.SVC,
+                clf_extended.LogisticRegression,
+                clf_extended.AdaBoost,
+                clf_extended.GradientBoost]},
                 n_splits=3,
                 dataset=dataset,
                 model_name=args.model_name,
                 model_version=args.model_version,
                 check_point_path=settings["checkpoints_path"])
         else:
-            classif = ml.clf.generic.Bagging(ml.clf.extended.MLP, {"0": [
-                ml.clf.extended.ExtraTrees,
-                ml.clf.extended.MLP,
-                ml.clf.extended.RandomForest,
-                ml.clf.extended.SGDClassifier,
-                ml.clf.extended.SVC,
-                ml.clf.extended.LogisticRegression,
-                ml.clf.extended.AdaBoost,
-                ml.clf.extended.GradientBoost]},
+            classif = clf_generic.Bagging(clf_extended.MLP, {"0": [
+                clf_extended.ExtraTrees,
+                clf_extended.MLP,
+                clf_extended.RandomForest,
+                clf_extended.SGDClassifier,
+                clf_extended.SVC,
+                clf_extended.LogisticRegression,
+                clf_extended.AdaBoost,
+                clf_extended.GradientBoost]},
                 dataset=dataset,
                 model_name=args.model_name,
                 model_version=args.model_version,
@@ -145,17 +147,17 @@ if __name__ == '__main__':
 
     if args.predict:
         if args.embedding == "boosting":
-            classif = ml.clf.generic.Boosting({},
+            classif = clf_generic.Boosting({},
                 model_name=args.model_name,
                 model_version=args.model_version,
                 check_point_path=settings["checkpoints_path"])
         elif args.embedding == "stacking":
-            classif = ml.clf.generic.Stacking({},
+            classif = clf_generic.Stacking({},
                 model_name=args.model_name,
                 model_version=args.model_version,
                 check_point_path=settings["checkpoints_path"])
         else:
-            classif = ml.clf.generic.Bagging(None, {},
+            classif = clf_generic.Bagging(None, {},
                 model_name=args.model_name,
                 model_version=args.model_version,
                 check_point_path=settings["checkpoints_path"])
@@ -164,7 +166,7 @@ if __name__ == '__main__':
         print("Predictions writed in {}".format(settings["predictions_file_path"]))
 
     if args.plot:
-        dataset = ml.ds.DataSetBuilderFile.load_dataset(
+        dataset = DataSetBuilderFile.load_dataset(
             args.model_name, dataset_path=settings["dataset_path"])
         print("DENSITY: ", dataset.density())
         dataset.plot()

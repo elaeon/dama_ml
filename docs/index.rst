@@ -65,7 +65,6 @@ More information
    :maxdepth: 2
    :name: mastertoc
 
-   index
    datasets
    transforms
    models

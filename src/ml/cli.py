@@ -17,6 +17,7 @@ dataset_parser.set_defaults(func=dataset.run)
 model_parser = subparsers.add_parser('models')
 model_parser.add_argument("--info", type=str, help="list of datasets or dateset info if a name is added")
 model_parser.add_argument("--rm", type=str, help="delete elements")
+model_parser.add_argument("--measure", type=str, help="select the metric")
 model_parser.set_defaults(func=models.run)
 
 

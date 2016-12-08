@@ -82,6 +82,9 @@ class ListMeasure(object):
         for measure in self.measures:
             yield measure[i]
 
+    def measures_to_dict(self):
+        return {header: measures for header, measures in zip(self.headers[1:], self.measures[0][1:])}
+            
     def print_scores(self, order_column="f1"):
         from ml.utils.order import order_table_print
         order_table_print(self.headers, self.measures, order_column)
@@ -231,7 +234,8 @@ class BaseClassif(DataDrive):
                                 self.dataset.test_labels, 
                                 labels2classes_fn=self.numerical_labels2classes,
                                 measures=measures)
-        self.save_meta(score=list(list_measure.get_measure("logloss")).pop())
+        #self.save_meta(score=list(list_measure.get_measure("logloss")).pop())
+        self.save_meta(score=list_measure.measures_to_dict())
         return list_measure
 
     def confusion_matrix(self):
@@ -449,6 +453,7 @@ class SKL(BaseClassif):
             path = self.make_model_file()
             joblib.dump(self.model, '{}.pkl'.format(path))
             self.save_meta()
+            self.scores()
 
     def load_model(self):
         from sklearn.externals import joblib
@@ -491,6 +496,7 @@ class TFL(BaseClassif):
             path = self.make_model_file()
             self.model.save('{}.ckpt'.format(path))
             self.save_meta()
+            self.scores()
 
     def load_model(self):
         import tflearn

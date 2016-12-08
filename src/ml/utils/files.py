@@ -4,6 +4,7 @@ import ntpath
 import datetime
 
 from skimage import io
+from ml.clf.generic import DataDrive
 
 
 def filename_from_path(path):
@@ -62,7 +63,7 @@ def get_models_from_dataset(md5, checkpoints_path):
         for name_version in dataset:
             model_path_meta = os.path.join(checkpoints_path, clf, name_version, name_version)
             model_path = os.path.join(checkpoints_path, clf, name_version)
-            model_md5 = ml.clf.generic.DataDrive.read_meta("md5", model_path_meta)
+            model_md5 = DataDrive.read_meta("md5", model_path_meta)
             models_md5[model_md5].append((model_path, model_path_meta))
     return models_md5.get(md5, None)
 
