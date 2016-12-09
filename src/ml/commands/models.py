@@ -18,7 +18,8 @@ def run(args):
                 model_path = os.path.join(
                     settings["checkpoints_path"], clf, name_version, name_version)
                 meta = DataDrive.read_meta(None, model_path)
-                if args.info == meta.get("group_name", None):
+                if args.info == meta.get("group_name", None) or\
+                    args.info == meta.get("model_name", None):
                     measure = "logloss" if not args.measure else args.measure
                     score = DataDrive.read_meta("score", model_path).get(measure, None)
                     try:

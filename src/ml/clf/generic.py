@@ -234,8 +234,6 @@ class BaseClassif(DataDrive):
                                 self.dataset.test_labels, 
                                 labels2classes_fn=self.numerical_labels2classes,
                                 measures=measures)
-        #self.save_meta(score=list(list_measure.get_measure("logloss")).pop())
-        self.save_meta(score=list_measure.measures_to_dict())
         return list_measure
 
     def confusion_matrix(self):
@@ -249,7 +247,6 @@ class BaseClassif(DataDrive):
 
     def only_is(self, op):
         predictions = list(self.predict(self.dataset.test_data, raw=False, transform=False))
-        #labels = [self.convert_label(label) for label in self.dataset.test_labels]
         data = zip(*filter(
                         lambda x: op(x[1], x[2]), 
                         zip(self.dataset.test_data, 
@@ -345,14 +342,16 @@ class BaseClassif(DataDrive):
         data["test_labels"] = self.numerical_labels2classes(test_labels)
         data["valid_labels"] = self.numerical_labels2classes(valid_labels)
         data['transforms'] = self.dataset.transforms.get_all_transforms()
-        data['preprocessing_class'] = self.dataset.processing_class.module_cls_name()
-        data["md5"] = None #self.dataset.md5()
+        if self.dataset.processing_class is not None:
+            data['preprocessing_class'] = self.dataset.processing_class.module_cls_name()
+        else:
+            data['preprocessing_class'] = None
+        data["md5"] = None
         dataset_name = self.dataset.name if dataset_name is None else dataset_name
         dataset = DataSetBuilder.from_raw_to_ds(
             dataset_name,
             self.dataset.dataset_path,
             data,
-            print_info=False,
             save=save)
         self.set_dataset(dataset)
         
@@ -427,8 +426,7 @@ class BaseClassif(DataDrive):
         meta = self.load_meta()
         dataset = DataSetBuilder.load_dataset(
             meta["dataset_name"],
-            dataset_path=meta["dataset_path"],
-            info=self.print_info)
+            dataset_path=meta["dataset_path"])
         self.group_name = meta.get('group_name', None)
         if meta.get('md5', None) != dataset.md5():
             log.warning("The dataset md5 is not equal to the model '{}'".format(
@@ -452,8 +450,8 @@ class SKL(BaseClassif):
         if self.check_point_path is not None:
             path = self.make_model_file()
             joblib.dump(self.model, '{}.pkl'.format(path))
-            self.save_meta()
-            self.scores()
+            list_measure = self.scores()
+            self.save_meta(score=list_measure.measures_to_dict())
 
     def load_model(self):
         from sklearn.externals import joblib
@@ -495,8 +493,8 @@ class TFL(BaseClassif):
         if self.check_point_path is not None:
             path = self.make_model_file()
             self.model.save('{}.ckpt'.format(path))
-            self.save_meta()
-            self.scores()
+            list_measure = self.scores()
+            self.save_meta(score=list_measure.measures_to_dict())
 
     def load_model(self):
         import tflearn

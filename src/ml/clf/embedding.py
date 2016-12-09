@@ -1,5 +1,5 @@
 import numpy as np
-from ml.clf.generic import DataDrive
+from ml.clf.generic import DataDrive, ListMeasure
 from ml.ds import DataSetBuilder
 
 
@@ -125,13 +125,22 @@ class Grid(DataDrive):
 class Embedding(Grid):
     def scores(self, measures=None, all_clf=True):
         list_measure = ListMeasure()
-        list_measure.calc_scores(self.__class__.__name__, self.predict, 
-                                self.dataset.test_data, self.dataset.test_labels, 
+        list_measure.calc_scores(self.__class__.__name__, 
+                                self.predict, 
+                                self.dataset.test_data, 
+                                self.dataset.test_labels,
+                                labels2classes_fn=self.numerical_labels2classes, 
                                 measures=measures)
         if all_clf is True:
             return list_measure + self.all_clf_scores(measures=measures)
         else:
             return list_measure
+
+    def numerical_labels2classes(self, labels):
+        if len(labels.shape) > 1 and labels.shape[1] > 1:
+            return self.le.inverse_transform(np.argmax(labels, axis=1))
+        else:
+            return self.le.inverse_transform(labels)
 
 
 class Boosting(Embedding):
@@ -153,6 +162,10 @@ class Boosting(Embedding):
             self.dataset = DataSetBuilder.load_dataset(
                 meta["dataset_name"], 
                 dataset_path=meta["dataset_path"])
+
+        for classif in self.load_models():
+            self.le = classif.le
+            break
 
     def avg_prediction(self, predictions, weights, uncertain=True):
         from itertools import izip
@@ -189,14 +202,15 @@ class Boosting(Embedding):
         weights = [self.weights[index] for index in models_index]
         self.save_model(models, weights)
 
-    def _metadata(self):
+    def _metadata(self, score=None):
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
                 "models": self.clf_models_namespace,
                 "weights": self.clf_weights,
                 "model_name": self.model_name,
                 "md5": self.dataset.md5(),
-                "election": self.election}
+                "election": self.election,
+                "score": score}
 
     def save_model(self, models, weights):
         self.clf_models_namespace = self.load_namespaces(
@@ -205,7 +219,8 @@ class Boosting(Embedding):
         self.clf_weights = weights
         if self.check_point_path is not None:
             path = self.make_model_file()
-            self.save_meta()
+            list_measure = self.scores()
+            self.save_meta(score=list_measure.measures_to_dict())
 
     def set_weights(self, best, classifs, values):
         if values is None:
@@ -291,13 +306,14 @@ class Stacking(Embedding):
             path = self.make_model_file(check_existence=False)
             self.dataset_blend = joblib.load('{}.pkl'.format(path))
 
-    def _metadata(self):
+    def _metadata(self, score=None):
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
                 "models": self.clf_models_namespace,
                 "model_name": self.model_name,
                 "md5": self.dataset.md5(),
-                "iterations": self.iterations}
+                "iterations": self.iterations,
+                "score": score}
 
     def save_model(self, dataset_blend):
         from sklearn.externals import joblib
@@ -307,7 +323,8 @@ class Stacking(Embedding):
         if self.check_point_path is not None:
             path = self.make_model_file()            
             joblib.dump(dataset_blend, '{}.pkl'.format(path))
-            self.save_meta()
+            list_measure = self.scores()
+            self.save_meta(score=list_measure.measures_to_dict())
 
     def train(self, batch_size=128, num_steps=1):
         from sklearn.model_selection import StratifiedKFold
@@ -383,13 +400,14 @@ class Bagging(Embedding):
         else:
             self.classif = classif
 
-    def _metadata(self):
+    def _metadata(self, score=None):
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
                 "models": self.clf_models_namespace,
                 "model_base": self.classif.module_cls_name(),
                 "model_name": self.model_name,
-                "md5": self.dataset.md5()}
+                "md5": self.dataset.md5(),
+                "score": score}
 
     def save_model(self):         
         self.clf_models_namespace = self.load_namespaces(
@@ -397,7 +415,8 @@ class Bagging(Embedding):
             lambda x: x.module_cls_name())
         if self.check_point_path is not None:
             path = self.make_model_file()
-            self.save_meta()
+            list_measure = self.scores()
+            self.save_meta(score=list_measure.measures_to_dict())
 
     def train(self, batch_size=128, num_steps=1):
         for classif in self.load_models():
@@ -405,6 +424,7 @@ class Bagging(Embedding):
             classif.train(batch_size=batch_size, num_steps=num_steps)
         model_base = self.load_model(self.classif, dataset=self.dataset, 
                                     info=False, namespace=self.meta_name)
+        self.le = model_base.le
         print("Building features...")
         model_base.set_dataset_from_raw(
             self.prepare_data(model_base.dataset.train_data, transform=False, chunk_size=256), 
@@ -429,6 +449,6 @@ class Bagging(Embedding):
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         model_base = self.load_model(self.classif, info=True, namespace=self.meta_name)
-        #model_base.print_meta()
+        self.le = model_base.le
         data_model_base = self.prepare_data(data, transform=transform, chunk_size=chunk_size)
         return model_base.predict(data_model_base, raw=raw, transform=False, chunk_size=chunk_size)

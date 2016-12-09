@@ -124,7 +124,7 @@ class FiT(object):
         return data
 
     def transform(self, data):
-        return self.t.transform(self.dim_rule(data))
+        return self.t(self.dim_rule(data))
 
 
 class FiTScaler(FiT):
@@ -137,7 +137,7 @@ class FiTScaler(FiT):
         from sklearn.preprocessing import StandardScaler
         scaler = StandardScaler(**self.params)
         scaler.fit(self.dim_rule(data))
-        self.t = scaler
+        self.t = scaler.transform
 
 
 class PreprocessingImage(Preprocessing):

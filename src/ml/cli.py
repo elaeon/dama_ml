@@ -7,7 +7,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--version', action='version', version=__version__)
 subparsers = parser.add_subparsers()
 
-dataset_parser = subparsers.add_parser('dataset')
+dataset_parser = subparsers.add_parser('datasets')
 dataset_parser.add_argument("--info", type=str, help="list of datasets or dateset info if a name is added")
 dataset_parser.add_argument("--rm", type=str, help="delete elements")
 dataset_parser.add_argument("--clean", action="store_true", help="clean orphans elements")

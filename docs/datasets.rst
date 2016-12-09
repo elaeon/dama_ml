@@ -1,7 +1,7 @@
 Datasets
 =====================================
 
-The datasets are files in pickle format with data divided in train, test and validation. If this data was transformed, information about it is added.
+The datasets are files in pickle format with data divided in train, test and validation. If this data was preprocessed, information about it is added.
 
 For example.
 
@@ -39,8 +39,10 @@ There are two more DataSetBuilder class, a dataset builder for images, and anoth
 .. code-block:: python
 
     dataset = DataSetBuilderFile(
-        dataset_name, 
-        processing_class=Preprocessing,
+        dataset_name,
         train_folder_path="/home/ds/my_file.csv",
         transforms_global=transforms)
     dataset.build_dataset(label_column="target")
+
+Preprocessing class is a way to add transformations to the data. There are predefined functions, 
+but, you can add your own functions. For more info about it, check :doc:`preprocessing`.

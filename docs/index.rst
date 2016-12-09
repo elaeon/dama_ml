@@ -66,7 +66,7 @@ More information
    :name: mastertoc
 
    datasets
-   transforms
+   preprocessing
    models
    reporting_bugs
    changes
@@ -79,10 +79,4 @@ for information how best report them.
 
 .. _let me know: https://github.com/elaeon/ML/issues
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
 

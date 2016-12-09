@@ -10,6 +10,7 @@ from ml.utils.numeric_functions import le
 from ml.processing import Preprocessing, FiTScaler
 from ml.clf import extended as clf_extended
 from ml.clf import generic as clf_generic
+from ml.clf import embedding as clf_embedding
 
 
 settings = get_settings("ml")
@@ -53,7 +54,6 @@ def merge_data_labels(file_path=None):
 def build(dataset_name, transforms=None):
     dataset = DataSetBuilderFile(
         dataset_name, 
-        processing_class=Preprocessing,
         train_folder_path=settings["numerai_train"],
         transforms_global=transforms)
     dataset.build_dataset(label_column="target")
@@ -93,11 +93,11 @@ if __name__ == '__main__':
         dataset = build(args.dataset_name, transforms=transforms)
 
     if args.train:
-        dataset = ml.ds.DataSetBuilderFile.load_dataset(
+        dataset = DataSetBuilderFile.load_dataset(
             args.dataset_name, dataset_path=settings["dataset_path"])
 
         if args.embedding == "boosting":
-            classif = clf_generic.Boosting({"0": [
+            classif = clf_embedding.Boosting({"0": [
                 clf_extended.ExtraTrees,
                 clf_extended.MLP,
                 clf_extended.RandomForest,
@@ -114,7 +114,7 @@ if __name__ == '__main__':
                 num_max_clfs=5,
                 check_point_path=settings["checkpoints_path"])
         elif args.embedding == "stacking":
-            classif = clf_generic.Stacking({"0": [
+            classif = clf_embedding.Stacking({"0": [
                 clf_extended.ExtraTrees,
                 clf_extended.MLP,
                 clf_extended.RandomForest,
@@ -129,7 +129,7 @@ if __name__ == '__main__':
                 model_version=args.model_version,
                 check_point_path=settings["checkpoints_path"])
         else:
-            classif = clf_generic.Bagging(clf_extended.MLP, {"0": [
+            classif = clf_embedding.Bagging(clf_extended.MLP, {"0": [
                 clf_extended.ExtraTrees,
                 clf_extended.MLP,
                 clf_extended.RandomForest,
@@ -147,7 +147,7 @@ if __name__ == '__main__':
 
     if args.predict:
         if args.embedding == "boosting":
-            classif = clf_generic.Boosting({},
+            classif = clf_embedding.Boosting({},
                 model_name=args.model_name,
                 model_version=args.model_version,
                 check_point_path=settings["checkpoints_path"])
@@ -157,7 +157,7 @@ if __name__ == '__main__':
                 model_version=args.model_version,
                 check_point_path=settings["checkpoints_path"])
         else:
-            classif = clf_generic.Bagging(None, {},
+            classif = clf_embedding.Bagging(None, {},
                 model_name=args.model_name,
                 model_version=args.model_version,
                 check_point_path=settings["checkpoints_path"])
