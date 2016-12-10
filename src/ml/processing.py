@@ -169,7 +169,7 @@ class PreprocessingImage(Preprocessing):
     def rgb2gray(self):
         self.data = color.rgb2gray(self.data)
 
-    def blur(self, level):
+    def blur(self, level=.2):
         self.data = filters.gaussian(self.data, level)
 
     def align_face(self):
@@ -184,7 +184,7 @@ class PreprocessingImage(Preprocessing):
         align = DetectorDlib(dlibFacePredictor)
         self.data = align.process_img(self.data)
 
-    def cut(self, rectangle):
+    def cut(self, rectangle=None):
         top, bottom, left, right = rectangle
         self.data = self.data[top:bottom, left:right]
 

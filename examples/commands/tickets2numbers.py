@@ -1,25 +1,23 @@
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-
 import os
 import argparse
-import ml
 
 from skimage import io
 from ml.utils.config import get_settings
 from ml.utils.files import filename_from_path
+from ml.ds import DataSetBuilderImage
+from ml.processing import PreprocessingImage
+from ml.clf.extended import RandomForest
 
 settings = get_settings("ml")
 settings.update(get_settings("numbers"))
 settings.update(get_settings("tickets"))
 
 
-def tickets2numbers_from_xml(url, transforms):
+def tickets2numbers_from_xml(url, local=None, general=None):
     import xmltodict
     from tqdm import tqdm
 
-    ds_builder = ml.ds.DataSetBuilderImage("", image_size=settings["image_size"])
+    ds_builder = DataSetBuilderImage("", image_size=settings["image_size"])
     labels_images = {}
     for filename in ['tickets.xml', 'tickets_test.xml']:
         with open(os.path.join(settings["xml"], filename)) as fd:
@@ -30,15 +28,13 @@ def tickets2numbers_from_xml(url, transforms):
                 filepath = filepath[2:] if filepath.startswith("../") else filepath
                 filename = filename_from_path(filepath)
                 image = io.imread(settings["tickets"]+filename)
-                image = ml.ds.PreprocessingImage(image, transforms.get_transforms("global")).pipeline()
+                image = PreprocessingImage(image, general).pipeline()
                 for box in numbers["box"]:
                     rectangle = (int(box["@top"]), 
                         int(box["@top"])+int(box["@height"]), 
                         int(box["@left"]), 
                         int(box["@left"])+int(box["@width"]))
-                    transforms.add_first_transform("local", "cut", rectangle)
-                    #print(transforms.get_transforms("local"), rectangle)
-                    thumb_bg = ml.ds.PreprocessingImage(image, transforms.get_transforms("local")).pipeline()
+                    thumb_bg = PreprocessingImage(image, local+[("cut", {"rectangle": rectangle})]).pipeline()
                     #ds_builder.save_images(url, box["label"], [thumb_bg])
                     labels_images.setdefault(box["label"], [])
                     labels_images[box["label"]].append(thumb_bg)
@@ -49,7 +45,7 @@ def tickets2numbers_from_xml(url, transforms):
         ds_builder.save_images(url, label, images, rewrite=True)
 
 
-def tickets2numbers_from_detector(url, classif, transforms):
+def tickets2numbers_from_detector(url, classif, local=None, general=None):
     from tqdm import tqdm
     from skimage import img_as_ubyte
     from ml.detector import HOG
@@ -64,15 +60,14 @@ def tickets2numbers_from_detector(url, classif, transforms):
     for path in [os.path.join(settings["tickets"], f) for f in tickets]:
         img = io.imread(path)
         img = img_as_ubyte(
-            ml.ds.PreprocessingImage(img, transforms.get_transforms("global")).pipeline()) 
+            PreprocessingImage(img, general).pipeline()) 
         dets = detector(img)
         print(path)
         print("Numbers detected: {}".format(len(dets)))        
         for r in dets:
             m_rectangle = (r.top(), r.top() + r.height()-2, 
                 r.left() - 5, r.left() + r.width())
-            transforms.add_transform("local", "cut", m_rectangle)
-            thumb_bg = ml.ds.PreprocessingImage(img, transforms.get_transforms("local")).pipeline()
+            thumb_bg = PreprocessingImage(img, local+[("cut", {"rectangle": m_rectangle})]).pipeline()
             numbers.append(thumb_bg)
     numbers_predicted = list(classif.predict(numbers))
     labels_numbers = zip(numbers_predicted, numbers)
@@ -83,7 +78,7 @@ def tickets2numbers_from_detector(url, classif, transforms):
         numbers_g[label].append(number)
 
     pbar = tqdm(numbers_g.items())
-    ds_builder = ml.ds.DataSetBuilderImage("", image_size=settings["image_size"])
+    ds_builder = DataSetBuilderImage("", image_size=settings["image_size"])
     for label, images in pbar:
         pbar.set_description("Processing {}".format(label))
         ds_builder.save_images(url, label, images)
@@ -99,24 +94,18 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.transforms:
-        transforms = ml.processing.Transforms([
-            ("global", []), 
-            ("local", [("pixelate", {"pixel_width": 16, "pixel_height": 16})])])
+        general = [] 
+        local = [("pixelate", {"pixel_width": 16, "pixel_height": 16})]
     else:
-        transforms = ml.processing.Transforms([
-            ("global", []),
-            ("local", [])])
+        general = []
+        local = []
 
     if args.build_images == "xml":
-        tickets2numbers_from_xml(settings["numbers"], transforms)
+        tickets2numbers_from_xml(settings["numbers"], local=local, general=general)
     elif args.build_images == "detector":
-        transforms = ml.processing.Transforms([
-            ("global", 
-                [("rgb2gray", None), ("contrast", None)]),
-            ("local", 
-                [])])
+        general = [("rgb2gray", None), ("contrast", None)]
+        local =  []
         classif = ml.clf.extended.RandomForest(
             model_name=args.model_name,
-            check_point_path=settings["checkpoints_path"],
             model_version=args.model_version)
-        tickets2numbers_from_detector(settings["numbers_detector"], classif, transforms)
+        tickets2numbers_from_detector(settings["numbers_detector"], classif, local=local, general=general)
