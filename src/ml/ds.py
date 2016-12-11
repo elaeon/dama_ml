@@ -474,25 +474,28 @@ class DataSetBuilderImage(DataSetBuilder):
                         images.append((number_id, os.path.join(files, image_file)))
         return images
 
-    def images_to_dataset(self, folder_base):
-        from ml.processing import PreprocessingImage
+    def calc_img_shape(self, folder_base):
         images = self.images_from_directories(folder_base)
         max_num_images = len(images)
-        data = np.ndarray(
-            shape=(max_num_images, self.image_size, self.image_size), dtype=np.int32)
-        #else:
-        #data = np.ndarray(
-        #    shape=(max_num_images, self.image_size, self.image_size, 3), dtype=np.int32)
-
         labels = np.ndarray(shape=(max_num_images,), dtype='|S1')
+        data = []
+        dims = 0.
         for image_index, (number_id, image_file) in enumerate(images):
             img = io.imread(image_file)
             shape = [1] + list(img.shape)
             img_c = np.ndarray(shape=shape, dtype=np.int32)
             img_c[0] = img
-            data[image_index] = self.processing_rows(img_c)
+            img = self.processing_rows(img_c)
+            img = img[0]
+            dims += len(img.shape)
+            data.append(img) 
             labels[image_index] = number_id
-        
+        dims = dims / len(data)
+        return data, labels, dims
+
+    def images_to_dataset(self, folder_base):
+        data_l, labels, dims = self.calc_img_shape(folder_base)
+        data = np.asarray(data_l)
         data = self.processing_global(data, base_data=data)
         return data, labels
 
