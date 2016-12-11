@@ -360,10 +360,6 @@ class BaseClassif(DataDrive):
         for chunk in grouper_chunk(chunk_size, data):
             data = np.asarray(list(chunk))
             size = data.shape[0]
-            if data.shape[0] == 1 and len(data.shape) > 1:
-                data = data[0]
-            #else:
-            #    size = 1
             for prediction in self._predict(transform_fn(data, size), raw=uncertain):
                 yield prediction
 

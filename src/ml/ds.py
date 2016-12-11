@@ -247,7 +247,6 @@ class DataSetBuilder(object):
         self.valid_data = valid_data
         self.valid_labels = valid_labels
 
-
     def save(self):
         if self.dataset_path is not None:
             if not os.path.exists(self.dataset_path):
@@ -296,11 +295,11 @@ class DataSetBuilder(object):
         if not self.transforms.empty('row') and self.transforms_apply and data is not None:
             if len(data.shape) == 1:
                 data = data.reshape(1, -1)
-            pdata = np.ndarray(shape=data.shape, dtype=np.float32)
-            for index, row in enumerate(data):
+            pdata = []
+            for row in data:
                 preprocessing = self.processing_class(row, self.transforms.get_transforms('row'))
-                pdata[index] = preprocessing.pipeline()
-            return pdata
+                pdata.append(preprocessing.pipeline())
+            return np.asarray(pdata)
         else:
             return data
 
@@ -367,7 +366,7 @@ class DataSetBuilder(object):
         if init is True:
             return self.processing_global(data, base_data=data)
         elif init is False and not self.transforms.empty('global'):
-            base_data, _ = self.dataset.desfragment()
+            base_data, _ = self.desfragment()
             return self.processing_global(data, base_data=base_data)
         else:
             return data
@@ -449,10 +448,9 @@ class DataSetBuilder(object):
 
 
 class DataSetBuilderImage(DataSetBuilder):
-    def __init__(self, name, image_size=None, channels=None, **kwargs):
+    def __init__(self, name, image_size=None, **kwargs):
         super(DataSetBuilderImage, self).__init__(name, **kwargs)
         self.image_size = image_size
-        self.channels = channels
         self.images = []
 
     def add_img(self, img):
@@ -477,22 +475,25 @@ class DataSetBuilderImage(DataSetBuilder):
         return images
 
     def images_to_dataset(self, folder_base):
+        from ml.processing import PreprocessingImage
         images = self.images_from_directories(folder_base)
         max_num_images = len(images)
-        if self.channels is None:
-            data = np.ndarray(
-                shape=(max_num_images, self.image_size, self.image_size), dtype=np.int32)
-        else:
-            data = np.ndarray(
-                shape=(max_num_images, self.image_size, self.image_size, self.channels), dtype=np.int32)
+        data = np.ndarray(
+            shape=(max_num_images, self.image_size, self.image_size), dtype=np.int32)
+        #else:
+        #data = np.ndarray(
+        #    shape=(max_num_images, self.image_size, self.image_size, 3), dtype=np.int32)
 
         labels = np.ndarray(shape=(max_num_images,), dtype='|S1')
         for image_index, (number_id, image_file) in enumerate(images):
-            image_data = io.imread(image_file)
-            data[image_index] = image_data
+            img = io.imread(image_file)
+            shape = [1] + list(img.shape)
+            img_c = np.ndarray(shape=shape, dtype=np.int32)
+            img_c[0] = img
+            data[image_index] = self.processing_rows(img_c)
             labels[image_index] = number_id
         
-        data = self.processing(data)
+        data = self.processing_global(data, base_data=data)
         return data, labels
 
     @classmethod
@@ -528,7 +529,6 @@ class DataSetBuilderImage(DataSetBuilder):
     def build_dataset(self):
         data, labels = self.images_to_dataset(self.train_folder_path)
         self.shuffle_and_save(data, labels)
-        #self.clean_directory(self.train_folder_path)
 
     def build_train_test(self, process_images, sample=True):
         images = {}
@@ -579,7 +579,6 @@ class DataSetBuilderImage(DataSetBuilder):
         dataset = super(DataSetBuilderImage, self).copy()
         dataset.image_size = self.image_size
         dataset.images = []
-        dataset.channels = self.channels
         return dataset
 
     def to_raw(self):

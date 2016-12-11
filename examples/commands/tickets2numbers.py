@@ -105,7 +105,7 @@ if __name__ == '__main__':
     elif args.build_images == "detector":
         general = [("rgb2gray", None), ("contrast", None)]
         local =  []
-        classif = ml.clf.extended.RandomForest(
+        classif = RandomForest(
             model_name=args.model_name,
             model_version=args.model_version)
         tickets2numbers_from_detector(settings["numbers_detector"], classif, local=local, general=general)

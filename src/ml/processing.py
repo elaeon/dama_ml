@@ -201,8 +201,6 @@ class PreprocessingImage(Preprocessing):
         v_range2 = slice(max(0, -pos_v), min(-pos_v + bg.shape[0], self.data.shape[0]))
         h_range2 = slice(max(0, -pos_h), min(-pos_h + bg.shape[1], self.data.shape[1]))
         if bg_color is None:
-            #print(np.std(image))
-            #print(np.var(image))
             bg2 = bg - 1 + np.average(self.data) + random.uniform(-np.var(self.data), np.var(self.data))
         elif bg_color == 1:
             bg2 = bg
