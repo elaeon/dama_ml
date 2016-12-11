@@ -293,8 +293,8 @@ class DataSetBuilder(object):
 
     def processing_rows(self, data):
         if not self.transforms.empty('row') and self.transforms_apply and data is not None:
-            if len(data.shape) == 1:
-                data = data.reshape(1, -1)
+            #if len(data.shape) == 1:
+            #    data = data.reshape(1, -1)
             pdata = []
             for row in data:
                 preprocessing = self.processing_class(row, self.transforms.get_transforms('row'))
@@ -474,29 +474,15 @@ class DataSetBuilderImage(DataSetBuilder):
                         images.append((number_id, os.path.join(files, image_file)))
         return images
 
-    def calc_img_shape(self, folder_base):
+    def images_to_dataset(self, folder_base):
         images = self.images_from_directories(folder_base)
-        max_num_images = len(images)
-        labels = np.ndarray(shape=(max_num_images,), dtype='|S1')
+        labels = np.ndarray(shape=(len(images),), dtype='|S1')
         data = []
-        dims = 0.
         for image_index, (number_id, image_file) in enumerate(images):
             img = io.imread(image_file)
-            shape = [1] + list(img.shape)
-            img_c = np.ndarray(shape=shape, dtype=np.int32)
-            img_c[0] = img
-            img = self.processing_rows(img_c)
-            img = img[0]
-            dims += len(img.shape)
             data.append(img) 
             labels[image_index] = number_id
-        dims = dims / len(data)
-        return data, labels, dims
-
-    def images_to_dataset(self, folder_base):
-        data_l, labels, dims = self.calc_img_shape(folder_base)
-        data = np.asarray(data_l)
-        data = self.processing_global(data, base_data=data)
+        data = self.processing(data)
         return data, labels
 
     @classmethod
