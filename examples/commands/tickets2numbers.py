@@ -28,7 +28,7 @@ def tickets2numbers_from_xml(url, local=None, general=None):
                 filepath = image_file
                 filepath = filepath[2:] if filepath.startswith("../") else filepath
                 filename = filename_from_path(filepath)
-                image = io.imread(settings["tickets"]+filename)
+                image = io.imread(os.path.join(settings["tickets"], filename))
                 image = PreprocessingImage(image, general).pipeline()
                 for box in numbers["box"]:
                     rectangle = (int(box["@top"]), 
@@ -36,7 +36,7 @@ def tickets2numbers_from_xml(url, local=None, general=None):
                         int(box["@left"]), 
                         int(box["@left"])+int(box["@width"]))
                     thumb_bg = PreprocessingImage(image, local+[("cut", {"rectangle": rectangle})]).pipeline()
-                    #ds_builder.save_images(url, box["label"], [thumb_bg])
+                    ds_builder.save_images(url, box["label"], [thumb_bg])
                     labels_images.setdefault(box["label"], [])
                     labels_images[box["label"]].append(thumb_bg)
 
@@ -44,6 +44,7 @@ def tickets2numbers_from_xml(url, local=None, general=None):
     for label, images in pbar:
         pbar.set_description("Processing {}".format(label))
         ds_builder.save_images(url, label, images, rewrite=True)
+    print("Saved in: {}".format(url))
 
 
 def tickets2numbers_from_detector(url, classif, local=None, general=None):

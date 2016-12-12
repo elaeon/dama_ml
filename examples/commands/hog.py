@@ -1,15 +1,12 @@
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-
 import argparse
-import ml
 import os
 import glob
 
 from skimage import io
 from ml.utils.files import build_tickets_processed, delete_tickets_processed
 from ml.utils.config import get_settings
+from ml.ds import save_metadata, load_metadata
+from ml.detector import HOG
 
 settings = get_settings("ml")
 settings.update(get_settings("transcriptor"))
@@ -32,27 +29,23 @@ if __name__ == '__main__':
     parser.add_argument("--draw", action="store_true")
     args = parser.parse_args()
 
+    detector_path_meta = settings["checkpoints_path"]+"/HOG/"+"hog.xmeta"
     if args.train:
-        from ml.detector import HOG
         hog = HOG(name=settings["detector_name"], checkpoints_path=settings["checkpoints_path"])
-        transforms = ml.ds.Transforms([("detector", 
-            [("rgb2gray", None), ("contrast", None)])])
-        build_tickets_processed(transforms.get_transforms("detector"), settings, PICTURES)
-        ml.ds.save_metadata(detector_path, detector_path_meta,
-            {"d_filters": transforms.get_transforms("detector"), 
+        transforms = [("rgb2gray", None), ("contrast", None)]
+        build_tickets_processed(transforms, settings, PICTURES)
+        save_metadata(detector_path_meta,
+            {"filters": transforms, 
             "filename_training": args.train})
         hog.train(args.train)
         delete_tickets_processed(settings)
         print("Cleaned")
     elif args.test:
-        from ml.detector import HOG
         hog = HOG(name=settings["detector_name"], checkpoints_path=settings["checkpoints_path"])
         hog.test_set("f1", PICTURES)
     elif args.draw:
-        from ml.detector import HOG
-        transforms = ml.ds.Transforms([
-            ("detector", ml.ds.load_metadata(detector_path_meta)["d_filters"])])
-        print("HOG Filters:", transforms.get_transforms("detector"))
+        transforms = load_metadata(detector_path_meta)["filters"]
+        print("HOG Filters:", transforms)
         pictures = glob.glob(os.path.join(settings["tickets"], "*.jpg"))
         hog = HOG()
-        hog.draw_detections(transforms.get_transforms("detector"), sorted(pictures)[0:1])
+        hog.draw_detections(transforms, sorted(pictures)[0:1])

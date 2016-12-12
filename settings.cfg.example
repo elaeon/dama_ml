@@ -10,9 +10,10 @@
 
 [tickets]
 ;tickets = 
-;xml = 
-;numbers = 
+;xml = /home/.../xml
+;numbers = /home/.../numbers
 ;tickets_processed = 
+;train_folder_path = /home/.../numbers
 
 [numbers]
 image_size = 90
