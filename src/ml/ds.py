@@ -578,7 +578,7 @@ class DataSetBuilderImage(DataSetBuilder):
 
     def from_raw(self, raw_data):
         super(DataSetBuilderImage, self).from_raw(raw_data)
-        self.transforms.add_transforms("local", raw_data["local_filters"])
+        #self.transforms.add_transforms("local", raw_data["local_filters"])
         self.image_size = raw_data["array_length"]
         self.desfragment()
 

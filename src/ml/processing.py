@@ -192,6 +192,12 @@ class PreprocessingImage(Preprocessing):
         self.data = img_as_ubyte(self.data)
 
     def merge_offset(self, image_size=90, bg_color=1):
+        if len(self.data.shape) == 2:
+            self.merge_offset2(image_size=image_size, bg_color=bg_color)
+        elif len(self.data.shape) == 3:
+            self.merge_offset3(image_size=image_size, bg_color=bg_color)
+
+    def merge_offset2(self, image_size=90, bg_color=1):
         bg = np.ones((image_size, image_size))
         offset = (int(round(abs(bg.shape[0] - self.data.shape[0]) / 2)), 
                 int(round(abs(bg.shape[1] - self.data.shape[1]) / 2)))
@@ -209,6 +215,29 @@ class PreprocessingImage(Preprocessing):
         
         bg2[v_range1, h_range1] = bg[v_range1, h_range1] - 1
         bg2[v_range1, h_range1] = bg2[v_range1, h_range1] + self.data[v_range2, h_range2]
+        self.data = bg2
+
+    def merge_offset3(self, image_size=90, bg_color=1):
+        bg = np.ones((image_size, image_size, 3))
+        offset = (int(round(abs(bg.shape[0] - self.data.shape[0]) / 2)), 
+                int(round(abs(bg.shape[1] - self.data.shape[1]) / 2)),
+                 int(round(abs(bg.shape[2] - self.data.shape[2]) / 2)))
+        pos_v, pos_h, pos_w = offset
+        v_range1 = slice(max(0, pos_v), max(min(pos_v + self.data.shape[0], bg.shape[0]), 0))
+        h_range1 = slice(max(0, pos_h), max(min(pos_h + self.data.shape[1], bg.shape[1]), 0))
+        w_range1 = slice(max(0, pos_w), max(min(pos_w + self.data.shape[2], bg.shape[2]), 0))
+        v_range2 = slice(max(0, -pos_v), min(-pos_v + bg.shape[0], self.data.shape[0]))
+        h_range2 = slice(max(0, -pos_h), min(-pos_h + bg.shape[1], self.data.shape[1]))
+        w_range2 = slice(max(0, -pos_w), min(-pos_w + bg.shape[2], self.data.shape[2]))
+        if bg_color is None:
+            bg2 = bg - 1 + np.average(self.data) + random.uniform(-np.var(self.data), np.var(self.data))
+        elif bg_color == 1:
+            bg2 = bg
+        else:
+            bg2 = bg - 1
+        
+        bg2[v_range1, h_range1, w_range1] = bg[v_range1, h_range1, w_range1] - 1
+        bg2[v_range1, h_range1, w_range1] = bg2[v_range1, h_range1, w_range1] + self.data[v_range2, h_range2, w_range2]
         self.data = bg2
 
     def threshold(self, block_size=41):
