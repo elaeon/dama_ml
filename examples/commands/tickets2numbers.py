@@ -11,6 +11,7 @@ from ml.clf.extended import RandomForest
 settings = get_settings("ml")
 settings.update(get_settings("numbers"))
 settings.update(get_settings("tickets"))
+settings.update(get_settings("transcriptor"))
 
 
 def tickets2numbers_from_xml(url, local=None, general=None):
