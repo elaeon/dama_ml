@@ -4,7 +4,7 @@ import ml
 
 from ml.utils.config import get_settings
 from ml.utils.files import build_tickets_processed, delete_tickets_processed
-from ml.clf.generic import DataDrive
+from ml.clf.generic import DataDrive, ListMeasure
 
 settings = get_settings("ml")
 settings.update(get_settings("tickets"))
@@ -24,7 +24,7 @@ class HOG(DataDrive):
         self.options.C = .5
         self.options.num_threads = 4
         self.options.be_verbose = True
-        self.transforms = None
+        self.transforms = transforms
 
     @classmethod
     def module_cls_name(cls):
@@ -34,25 +34,41 @@ class HOG(DataDrive):
         return {"filters": self.transforms,
                 "model_module": self.module_cls_name(),
                 "data_training_path": self.data_training_path,
+                "model_name": self.model_name,
+                "model_version": self.model_version,
                 "score": score}
 
     def train(self, xml_filename):
         examples = os.path.join(os.path.dirname(__file__), '../../examples/xml')
-        training_xml_path = os.path.join(examples, xml_filename)
-        testing_xml_path = os.path.join(examples, "tickets_test.xml")
-        self.data_training_path = training_xml_path
+        self.data_training_path = os.path.join(examples, xml_filename)
         detector_path_svm = self.make_model_file()
-        dlib.train_simple_object_detector(training_xml_path, detector_path_svm, self.options)
-        score = dlib.test_simple_object_detector(testing_xml_path, detector_path_svm)
-        print("")
-        print("Test accuracy: {}".format(score))
+        #dlib.train_simple_object_detector(self.data_training_path, detector_path_svm, self.options)
+        
+        list_measure = self.scores()
+        self.save_meta(score=list_measure.measures_to_dict())
+        self.print_meta()
 
-        self.save_meta(score=score)
+    def scores(self, measures=None):
+        if measures is None:
+            measures = ["presicion", "recall", "f1"]
+        elif isinstance(measures, str):
+            measures = measures.split(",")
 
-    def test(self, detector_path):
+        list_measure = ListMeasure()
+        score = self.test()
+
+        list_measure.add_measure("CLF", self.__class__.__name__)
+        list_measure.add_measure("precision", score.precision)
+        list_measure.add_measure("recall", score.recall)
+        list_measure.add_measure("f1", score.average_precision)
+
+        return list_measure
+
+    def test(self):
+        detector_path_svm = self.make_model_file()
         examples = os.path.join(os.path.dirname(__file__), '../../examples/xml')
         testing_xml_path = os.path.join(examples, "tickets_test.xml")
-        return dlib.test_simple_object_detector(testing_xml_path, self.detector_path_svm)
+        return dlib.test_simple_object_detector(testing_xml_path, detector_path_svm)
 
     def draw_detections(self, transforms, pictures):
         from skimage import io

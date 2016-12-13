@@ -415,6 +415,8 @@ class BaseClassif(DataDrive):
                 "md5": self._original_dataset_md5, #not reformated dataset
                 "group_name": self.group_name,
                 "model_module": self.module_cls_name(),
+                "model_name": self.model_name,
+                "model_version": self.model_version,
                 "score": score}
         
     def get_dataset(self):

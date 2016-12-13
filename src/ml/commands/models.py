@@ -24,7 +24,7 @@ def run(args):
                     score = DataDrive.read_meta("score", model_path).get(measure, None)
                     try:
                         name, version = name_version.split(".")
-                        table.append([clf, name, version, meta["dataset_name"],
+                        table.append([clf, name, version, meta.get("dataset_name", None),
                                     meta.get("group_name", None), score])
                     except ValueError:
                         pass
@@ -43,7 +43,7 @@ def run(args):
                     settings["checkpoints_path"], clf, name_version, name_version))
                 try:
                     name, version = name_version.split(".")
-                    table.append([clf, name, version, meta["dataset_name"],
+                    table.append([clf, name, version, meta.get("dataset_name", None),
                                 meta.get("group_name", None)])
                 except ValueError:
                     pass
