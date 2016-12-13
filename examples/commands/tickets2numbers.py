@@ -47,7 +47,7 @@ def tickets2numbers_from_xml(url, local=None, general=None):
     print("Saved in: {}".format(url))
 
 
-def tickets2numbers_from_detector(url, classif, local=None, general=None):
+def tickets2numbers_from_detector(url, classif):
     from tqdm import tqdm
     from skimage import img_as_ubyte
     from ml.detector import HOG
@@ -57,21 +57,21 @@ def tickets2numbers_from_detector(url, classif, local=None, general=None):
     tickets = glob.glob(os.path.join(settings["tickets"], "*.jpg"))
     settings.update(get_settings("transcriptor"))
     numbers = []
-    hog = HOG(name="detector3", checkpoints_path=settings["checkpoints_path"])
+    hog = HOG(model_name="detector", model_version="0")
     detector = hog.detector()
     for path in [os.path.join(settings["tickets"], f) for f in tickets]:
         img = io.imread(path)
-        img = img_as_ubyte(
-            PreprocessingImage(img, general).pipeline()) 
-        dets = detector(img)
+        img_p = img_as_ubyte(
+            PreprocessingImage(img, hog.transforms).pipeline()) 
+        dets = detector(img_p)
         print(path)
         print("Numbers detected: {}".format(len(dets)))        
         for r in dets:
             m_rectangle = (r.top(), r.top() + r.height()-2, 
                 r.left() - 5, r.left() + r.width())
-            thumb_bg = PreprocessingImage(img, local+[("cut", {"rectangle": m_rectangle})]).pipeline()
+            thumb_bg = PreprocessingImage(img, [("cut", {"rectangle": m_rectangle})]).pipeline()
             numbers.append(thumb_bg)
-    numbers_predicted = list(classif.predict(numbers))
+    numbers_predicted = list(classif.predict(numbers, chunk_size=258))
     labels_numbers = zip(numbers_predicted, numbers)
 
     numbers_g = {}
@@ -105,9 +105,7 @@ if __name__ == '__main__':
     if args.build_images == "xml":
         tickets2numbers_from_xml(settings["numbers"], local=local, general=general)
     elif args.build_images == "detector":
-        general = [("rgb2gray", None), ("contrast", None)]
-        local =  []
         classif = RandomForest(
             model_name=args.model_name,
             model_version=args.model_version)
-        tickets2numbers_from_detector(settings["numbers_detector"], classif, local=local, general=general)
+        tickets2numbers_from_detector(settings["numbers_detector"], classif)

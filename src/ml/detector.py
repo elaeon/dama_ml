@@ -12,26 +12,34 @@ settings.update(get_settings("tickets"))
 
 class HOG(DataDrive):
     def __init__(self, model_name=None, check_point_path=None, 
-            detector_version=None, transforms=None):
-        #self.options.epsilon = 0.0005
-        #self.options.detection_window_size #60 pixels wide by 107 tall
+            model_version=None, transforms=None):
+        if check_point_path is None:
+            check_point_path = settings["checkpoints_path"]
         super(HOG, self).__init__(
             check_point_path=check_point_path,
-            model_version=detector_version,
+            model_version=model_version,
             model_name=model_name)
+        #self.options.epsilon = 0.0005
+        #self.options.detection_window_size #60 pixels wide by 107 tall
         self.options = dlib.simple_object_detector_training_options()
         self.options.add_left_right_image_flips = False
         self.options.C = .5
         self.options.num_threads = 4
         self.options.be_verbose = True
         self.transforms = transforms
+        self.load()
+
+    def load(self):
+        meta = self.load_meta()
+        self.transforms = meta["transforms"]
+        self.data_training_path = meta["data_training_path"]
 
     @classmethod
     def module_cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
     def _metadata(self, score=None):
-        return {"filters": self.transforms,
+        return {"transforms": self.transforms,
                 "model_module": self.module_cls_name(),
                 "data_training_path": self.data_training_path,
                 "model_name": self.model_name,
@@ -46,7 +54,6 @@ class HOG(DataDrive):
         
         list_measure = self.scores()
         self.save_meta(score=list_measure.measures_to_dict())
-        self.print_meta()
 
     def scores(self, measures=None):
         if measures is None:
@@ -70,7 +77,7 @@ class HOG(DataDrive):
         testing_xml_path = os.path.join(examples, "tickets_test.xml")
         return dlib.test_simple_object_detector(testing_xml_path, detector_path_svm)
 
-    def draw_detections(self, transforms, pictures):
+    def draw_detections(self, pictures):
         from skimage import io
         from skimage import img_as_ubyte
 
@@ -79,7 +86,7 @@ class HOG(DataDrive):
         for path in pictures:
             print("Processing file: {}".format(path))
             img = io.imread(path)
-            img = img_as_ubyte(ml.ds.PreprocessingImage(img, transforms).pipeline())
+            img = img_as_ubyte(ml.ds.PreprocessingImage(img, self.transforms).pipeline())
             dets = detector(img)
             print("Numbers detected: {}".format(len(dets)))
 
@@ -112,13 +119,13 @@ class HOG(DataDrive):
 
         table = []
         for name, type_ in files.items():
-            transforms = ml.ds.load_metadata(type_["meta"])["filters"]
+            transforms = self.load_metadata()["transforms"]
             build_tickets_processed(transforms, settings, PICTURES)
-            measure = self.test(type_["svm"])
+            measure = self.test()
             table.append((name, measure.precision, measure.recall, measure.average_precision))
             delete_tickets_processed(settings)
 
         order_table_print(headers, table, order_column)
 
     def detector(self):
-        return dlib.simple_object_detector(self.detector_path_svm)
+        return dlib.simple_object_detector(self.make_model_file())
