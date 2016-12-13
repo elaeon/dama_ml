@@ -4,40 +4,53 @@ import ml
 
 from ml.utils.config import get_settings
 from ml.utils.files import build_tickets_processed, delete_tickets_processed
+from ml.clf.generic import DataDrive
+
 settings = get_settings("ml")
 settings.update(get_settings("tickets"))
 
 
-class HOG(object):
-    def __init__(self, name=None, checkpoints_path=None, detector_version=None):
+class HOG(DataDrive):
+    def __init__(self, model_name=None, check_point_path=None, 
+            detector_version=None, transforms=None):
+        #self.options.epsilon = 0.0005
+        #self.options.detection_window_size #60 pixels wide by 107 tall
+        super(HOG, self).__init__(
+            check_point_path=check_point_path,
+            model_version=detector_version,
+            model_name=model_name)
         self.options = dlib.simple_object_detector_training_options()
-
         self.options.add_left_right_image_flips = False
         self.options.C = .5
         self.options.num_threads = 4
         self.options.be_verbose = True
-        #self.options.epsilon = 0.0005
-        #self.options.detection_window_size #60 pixels wide by 107 tall
-        self.name = name
-        self.checkpoints_path = checkpoints_path
-        self.detector_version = detector_version
-        self.detector_path_meta = os.path.join(
-            self.checkpoints_path, self.__class__.__name__, self.name, self.name+"_meta.pkl")
-        self.detector_path_svm = os.path.join(
-            self.checkpoints_path, self.__class__.__name__, self.name, self.name+".svm")
+        self.transforms = None
+
+    @classmethod
+    def module_cls_name(cls):
+        return "{}.{}".format(cls.__module__, cls.__name__)
+
+    def _metadata(self, score=None):
+        return {"filters": self.transforms,
+                "model_module": self.module_cls_name(),
+                "data_training_path": self.data_training_path,
+                "score": score}
 
     def train(self, xml_filename):
-        examples = os.path.join(os.path.dirname(__file__), '../examples/xml')
+        examples = os.path.join(os.path.dirname(__file__), '../../examples/xml')
         training_xml_path = os.path.join(examples, xml_filename)
         testing_xml_path = os.path.join(examples, "tickets_test.xml")
-        dlib.train_simple_object_detector(training_xml_path, self.detector_path_svm, self.options)
-
+        self.data_training_path = training_xml_path
+        detector_path_svm = self.make_model_file()
+        dlib.train_simple_object_detector(training_xml_path, detector_path_svm, self.options)
+        score = dlib.test_simple_object_detector(testing_xml_path, detector_path_svm)
         print("")
-        print("Test accuracy: {}".format(
-            dlib.test_simple_object_detector(testing_xml_path, self.detector_path_svm)))
+        print("Test accuracy: {}".format(score))
+
+        self.save_meta(score=score)
 
     def test(self, detector_path):
-        examples = os.path.join(os.path.dirname(__file__), '../examples/xml')
+        examples = os.path.join(os.path.dirname(__file__), '../../examples/xml')
         testing_xml_path = os.path.join(examples, "tickets_test.xml")
         return dlib.test_simple_object_detector(testing_xml_path, self.detector_path_svm)
 
@@ -73,7 +86,7 @@ class HOG(object):
         from utils.order import order_table_print
         headers = ["Detector", "Precision", "Recall", "F1"]
         files = {}
-        base_dir = os.path.join(settings["checkpoints_path"], self.__class__.__name__)
+        base_dir = os.path.join(self.check_point_path, self.__class__.__name__)
         for k, v in self.images_from_directories(base_dir):
             files.setdefault(k, {})
             if v.endswith(".svm"):
@@ -83,9 +96,8 @@ class HOG(object):
 
         table = []
         for name, type_ in files.items():
-            transforms = ml.ds.Transforms([
-                ("detector", ml.ds.load_metadata(type_["meta"])["d_filters"])])
-            build_tickets_processed(transforms.get_transforms("detector"), settings, PICTURES)
+            transforms = ml.ds.load_metadata(type_["meta"])["filters"]
+            build_tickets_processed(transforms, settings, PICTURES)
             measure = self.test(type_["svm"])
             table.append((name, measure.precision, measure.recall, measure.average_precision))
             delete_tickets_processed(settings)

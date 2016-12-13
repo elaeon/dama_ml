@@ -29,14 +29,13 @@ if __name__ == '__main__':
     parser.add_argument("--draw", action="store_true")
     args = parser.parse_args()
 
-    detector_path_meta = settings["checkpoints_path"]+"/HOG/"+"hog.xmeta"
+    #detector_path_meta = settings["checkpoints_path"]+"/HOG/"+"hog.xmeta"
     if args.train:
-        hog = HOG(name=settings["detector_name"], checkpoints_path=settings["checkpoints_path"])
         transforms = [("rgb2gray", None), ("contrast", None)]
+        hog = HOG(model_name=settings["detector_name"], 
+            check_point_path=settings["checkpoints_path"],
+            transforms=transforms)
         build_tickets_processed(transforms, settings, PICTURES)
-        save_metadata(detector_path_meta,
-            {"filters": transforms, 
-            "filename_training": args.train})
         hog.train(args.train)
         delete_tickets_processed(settings)
         print("Cleaned")
