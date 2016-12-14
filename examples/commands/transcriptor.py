@@ -1,13 +1,12 @@
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-
 import argparse
-import ml
 import os
+import dlib
 
 from skimage import io
 from ml.utils.config import get_settings
+from ml.processing import PreprocessingImage
+from ml.clf.extended import RandomForest
+from ml.detector import HOG
 
 settings = get_settings("ml")
 settings.update(get_settings("transcriptor"))
@@ -24,24 +23,24 @@ PICTURES = ["DSC_0055.jpg", "DSC_0056.jpg",
         "DSC_0065.jpg"]
 
 
-def transcriptor(classif, transforms, detector_path, url=None):
-    import dlib
+def transcriptor(classif, hog, url=None):
     from dlib import rectangle
     from ml.utils.order import order_2d
     from skimage import img_as_ubyte
 
-    detector = dlib.simple_object_detector(detector_path)
+    #detector = dlib.simple_object_detector(detector_path)
     if url is None:
         pictures = [os.path.join(settings["tickets"], f) for f in PICTURES[0:1]]
     else:
         pictures = [url]
     win = dlib.image_window()
+    detector = hog.detector()
     for f in pictures:
         print("Processing file: {}".format(f))
         img = io.imread(f)
         img = img_as_ubyte(
-            ml.ds.PreprocessingImage(img, 
-            transforms.get_transforms("detector")).pipeline())
+            PreprocessingImage(img, 
+            hog.transforms).pipeline())
         dets = detector(img)
         data = [(e.left(), e.top(), e.right(), e.bottom()) for e in dets]
         for block, coords in order_2d(data, index=(1, 0), block_size=20).items():
@@ -53,7 +52,7 @@ def transcriptor(classif, transforms, detector_path, url=None):
                 r = rectangle(*v)
                 m_rectangle = (r.top(), r.top() + r.height()-2, 
                     r.left() - 5, r.left() + r.width())
-                thumb_bg = ml.ds.PreprocessingImage(img, [("cut", m_rectangle)]).pipeline()
+                thumb_bg = PreprocessingImage(img, [("cut", {"rectangle":m_rectangle})]).pipeline()
                 win.add_overlay(r)
                 numbers.append(thumb_bg)
             numbers_predicted = list(classif.predict(numbers))
@@ -81,8 +80,8 @@ def transcriptor(classif, transforms, detector_path, url=None):
             #break
             yield results
 
-def transcriptor_test(classif, transforms, detector_path, url=None):
-    predictions = transcriptor(classif, transforms, detector_path, url=url)
+def transcriptor_test(classif, hog, url=None):
+    predictions = transcriptor(classif, hog, url=url)
     def flat_results():
         flat_p = [["".join(prediction) for prediction in row if len(prediction) > 0] 
             for row in predictions]
@@ -137,21 +136,13 @@ if __name__ == '__main__':
     parser.add_argument("--model-name", type=str)
     args = parser.parse_args()
 
-    checkpoints_path = settings["checkpoints_path"]
-    detector_path = checkpoints_path + "HOG/" + settings["detector_name"] + "/"
-    detector_path_meta = detector_path + settings["detector_name"] + "_meta.pkl"
-    detector_path_svm = detector_path + settings["detector_name"] + ".svm"
-
-    classif = ml.clf.extended.RandomForest(
+    classif = RandomForest(
         model_name=args.model_name,
-        check_point_path=settings["checkpoints_path"],
         model_version=args.model_version)
 
     if args.transcriptor_number_test:
         data = io.imread(args.transcriptor_number_test)
         print(list(classif.predict([data])))
     elif args.transcriptor_ticket_test:
-        transforms = ml.ds.Transforms([
-            ("detector", ml.ds.load_metadata(detector_path_meta)["d_filters"])])
-        print("HOG Filters:", transforms.get_transforms("detector"))
-        transcriptor_test(classif, transforms, detector_path_svm)
+        hog = HOG(model_name="detector")
+        transcriptor_test(classif, hog)

@@ -19,6 +19,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--build-dataset", help="[cross] [adversarial]", type=str)
+    parser.add_argument("--detector", action="store_true")
     parser.add_argument("--dataset-name", help="crea el dataset", type=str)
     parser.add_argument("--test", 
         help="evalua el predictor en base a los datos de prueba", 
@@ -31,11 +32,17 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.build_dataset:
+        if args.detector:
+            train_folder_path=[
+                settings["train_folder_path"],
+                settings["numbers_detector"]]
+        else:
+            train_folder_path = [settings["train_folder_path"]]
+
         ds_builder = DataSetBuilderImage(
             args.dataset_name, 
             image_size=int(settings["image_size"]), 
-            train_folder_path=[
-                settings["train_folder_path"]],
+            train_folder_path=train_folder_path,
             transforms_row=transforms,
             transforms_global=[(FiTScaler.module_cls_name(), None)],
             processing_class=PreprocessingImage)

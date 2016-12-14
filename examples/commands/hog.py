@@ -38,9 +38,9 @@ if __name__ == '__main__':
         delete_tickets_processed(settings)
         print("Cleaned")
     elif args.test:
-        hog = HOG(model_name="detector", checkpoints_path=settings["checkpoints_path"])
-        hog.test_set("f1", PICTURES)
+        hog = HOG(model_name="detector")
+        hog.test_set(settings, PICTURES)
     elif args.draw:
-        hog = HOG()
+        hog = HOG(model_name="detector")
         pictures = glob.glob(os.path.join(settings["tickets"], "*.jpg"))        
         hog.draw_detections(sorted(pictures)[0:1])

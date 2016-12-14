@@ -50,7 +50,7 @@ class HOG(DataDrive):
         examples = os.path.join(os.path.dirname(__file__), '../../examples/xml')
         self.data_training_path = os.path.join(examples, xml_filename)
         detector_path_svm = self.make_model_file()
-        #dlib.train_simple_object_detector(self.data_training_path, detector_path_svm, self.options)
+        dlib.train_simple_object_detector(self.data_training_path, detector_path_svm, self.options)
         
         list_measure = self.scores()
         self.save_meta(score=list_measure.measures_to_dict())
@@ -105,27 +105,11 @@ class HOG(DataDrive):
                     images.append((number_id, os.path.join(files, image_file)))
         return images
 
-    def test_set(self, order_column, PICTURES):
-        from utils.order import order_table_print
-        headers = ["Detector", "Precision", "Recall", "F1"]
-        files = {}
-        base_dir = os.path.join(self.check_point_path, self.__class__.__name__)
-        for k, v in self.images_from_directories(base_dir):
-            files.setdefault(k, {})
-            if v.endswith(".svm"):
-                files[k]["svm"] = v
-            else:
-                files[k]["meta"] = v
-
-        table = []
-        for name, type_ in files.items():
-            transforms = self.load_metadata()["transforms"]
-            build_tickets_processed(transforms, settings, PICTURES)
-            measure = self.test()
-            table.append((name, measure.precision, measure.recall, measure.average_precision))
+    def test_set(self, settings, PICTURES):
+            build_tickets_processed(self.transforms, settings, PICTURES)
+            score = self.test()
             delete_tickets_processed(settings)
-
-        order_table_print(headers, table, order_column)
+            print(score)
 
     def detector(self):
         return dlib.simple_object_detector(self.make_model_file())
