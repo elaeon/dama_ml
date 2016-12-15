@@ -431,6 +431,9 @@ class BaseClassif(DataDrive):
                 self.__class__.__name__))
         return dataset
 
+    def to_model(self):
+        pass
+
 
 class SKL(BaseClassif):
     def convert_label(self, label, raw=False):
@@ -478,8 +481,8 @@ class SKLP(SKL):
 
 
 class TFL(BaseClassif):
-    def __init__(self, **kwargs):
-        super(TFL, self).__init__(**kwargs)
+    #def __init__(self, **kwargs):
+    #    super(TFL, self).__init__(**kwargs)
 
     def reformat(self, data, labels):
         data = self.transform_shape(data)
@@ -495,7 +498,6 @@ class TFL(BaseClassif):
             self.save_meta(score=list_measure.measures_to_dict())
 
     def load_model(self):
-        import tflearn
         self.prepare_model()
         if self.check_point_path is not None:
             path = self.make_model_file()
@@ -510,3 +512,31 @@ class TFL(BaseClassif):
         for prediction in self.model.predict(data):
             yield self.convert_label(np.asarray(prediction), raw=raw)
 
+
+class Keras(BaseClassif):
+    def reformat(self, data, labels):
+        data = self.transform_shape(data)
+        # Map 0 to [1.0, 0.0, 0.0 ...], 1 to [0.0, 1.0, 0.0 ...]
+        labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
+        return data, labels_m
+
+    def save_model(self):
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            self.model.save('{}.ckpt'.format(path))
+            list_measure = self.scores()
+            self.save_meta(score=list_measure.measures_to_dict())
+
+    def load_model(self):
+        self.prepare_model()
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            #print("+++++++", path)
+            self.model.load('{}.ckpt'.format(path))
+
+    def predict(self, data, raw=False, transform=True, chunk_size=1):
+        return super(Keras, self).predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
+
+    def _predict(self, data, raw=False):
+        for prediction in self.model.predict(data):
+            yield self.convert_label(np.asarray(prediction), raw=raw)
