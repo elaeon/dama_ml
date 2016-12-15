@@ -481,8 +481,6 @@ class SKLP(SKL):
 
 
 class TFL(BaseClassif):
-    #def __init__(self, **kwargs):
-    #    super(TFL, self).__init__(**kwargs)
 
     def reformat(self, data, labels):
         data = self.transform_shape(data)
@@ -514,9 +512,9 @@ class TFL(BaseClassif):
 
 
 class Keras(BaseClassif):
+
     def reformat(self, data, labels):
         data = self.transform_shape(data)
-        # Map 0 to [1.0, 0.0, 0.0 ...], 1 to [0.0, 1.0, 0.0 ...]
         labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
         return data, labels_m
 
@@ -527,11 +525,10 @@ class Keras(BaseClassif):
             list_measure = self.scores()
             self.save_meta(score=list_measure.measures_to_dict())
 
-    def load_model(self):
-        self.prepare_model()
+    def load_model(self):        
+        self.preload_model()
         if self.check_point_path is not None:
             path = self.make_model_file()
-            #print("+++++++", path)
             self.model.load('{}.ckpt'.format(path))
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
