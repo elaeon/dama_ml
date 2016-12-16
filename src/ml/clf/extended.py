@@ -222,6 +222,7 @@ class MLP(TFL):
 
 class FCNet(Keras):
     def load_fn(self, path):
+        from ml.models import MLModel
         from keras.models import load_model
         self.net_model = load_model(path)
         self.model = MLModel(fit_fn=self.net_model.fit, 
@@ -233,6 +234,7 @@ class FCNet(Keras):
         self.net_model.save(path)
 
     def preload_model(self):
+        from ml.models import MLModel
         self.model = MLModel(fit_fn=None, 
                             predictors=None,
                             load_fn=self.load_fn,
@@ -241,6 +243,9 @@ class FCNet(Keras):
     def prepare_model(self):
         from keras.layers import Input, Dense
         from keras.models import Model
+        from keras import regularizers
+        from keras.layers import Dropout
+        from ml.models import MLModel
 
         self.layers = [128, 64]
         input_layer = Input(shape=(self.num_features,))
