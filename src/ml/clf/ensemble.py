@@ -122,7 +122,7 @@ class Grid(DataDrive):
             yield classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
 
 
-class Embedding(Grid):
+class Ensemble(Grid):
     def scores(self, measures=None, all_clf=True):
         list_measure = ListMeasure()
         list_measure.calc_scores(self.__class__.__name__, 
@@ -143,20 +143,21 @@ class Embedding(Grid):
             return self.le.inverse_transform(labels)
 
 
-class Boosting(Embedding):
+class Boosting(Ensemble):
     def __init__(self, classifs, weights=None, election='best', num_max_clfs=1, **kwargs):
         kwargs["meta_name"] = "boosting"
         super(Boosting, self).__init__(classifs, **kwargs)
         if len(classifs) > 0:
             self.weights = self.set_weights(0, classifs["0"], weights)
+            self.classifs_p = None
+            self.weights_p = None
             self.election = election
             self.num_max_clfs = num_max_clfs
         else:
             meta = self.load_meta()
-            from pydoc import locate
-            self.classifs = self.load_namespaces(
-                meta.get('models', {}), lambda x: locate(x))
-            self.weights = {index: w for index, w in enumerate(meta['weights'])}
+            self.set_boosting_values(meta.get('models', {}), meta['weights'])
+            self.classifs = self.classifs_p
+            self.weights = self.weights_p
             self.election = meta["election"]
             self.model_name = meta["model_name"]
             self.dataset = DataSetBuilder.load_dataset(
@@ -166,6 +167,11 @@ class Boosting(Embedding):
         for classif in self.load_models():
             self.le = classif.le
             break
+
+    def set_boosting_values(self, models, weights):
+        from pydoc import locate
+        self.classifs_p = self.load_namespaces(models, lambda x: locate(x))
+        self.weights_p = {index: w for index, w in enumerate(weights)}
 
     def avg_prediction(self, predictions, weights, uncertain=True):
         from itertools import izip
@@ -217,9 +223,10 @@ class Boosting(Embedding):
             models, 
             lambda x: x.module_cls_name())
         self.clf_weights = weights
+        self.set_boosting_values(self.clf_models_namespace, self.clf_weights)
         if self.check_point_path is not None:
             path = self.make_model_file()
-            list_measure = self.scores()
+            list_measure = self.scores(all_clf=False)
             self.save_meta(score=list_measure.measures_to_dict())
 
     def set_weights(self, best, classifs, values):
@@ -236,8 +243,8 @@ class Boosting(Embedding):
         return weights
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        models = (self.load_model(classif, info=False, namespace=self.meta_name+".0") for classif in self.classifs[self.meta_name+".0"])
-        weights = [w for i, w in sorted(self.weights.items(), key=lambda x:x[0])]
+        models = (self.load_model(classif, info=False, namespace=self.meta_name+".0") for classif in self.classifs_p[self.meta_name+".0"])
+        weights = [w for i, w in sorted(self.weights_p.items(), key=lambda x:x[0])]
         predictions = (
             classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
             for classif in models)
@@ -274,14 +281,14 @@ class Boosting(Embedding):
                 #total_weight = sum(FG[v1][v2]["weight"] for v1, v2 in zip(path, path[1:]))
                 classif_weight.append((total_weight/len(path), path))
 
-        relation_clf = max(classif_weight, key=lambda x:x[0])[1]
+        relation_clf = min(classif_weight, key=lambda x:x[0])[1]
         if sort:
             return order_from_ordered(best_predictors, relation_clf)
         else:
             return relation_clf
 
 
-class Stacking(Embedding):
+class Stacking(Ensemble):
     def __init__(self, classifs, n_splits=2, **kwargs):
         kwargs["meta_name"] = "stacking"
         super(Stacking, self).__init__(classifs, **kwargs)
@@ -323,7 +330,7 @@ class Stacking(Embedding):
         if self.check_point_path is not None:
             path = self.make_model_file()            
             joblib.dump(dataset_blend, '{}.pkl'.format(path))
-            list_measure = self.scores()
+            list_measure = self.scores(all_clf=False)
             self.save_meta(score=list_measure.measures_to_dict())
 
     def train(self, batch_size=128, num_steps=1):
@@ -383,7 +390,7 @@ class Stacking(Embedding):
         return clf.predict_proba(dataset_blend_test.reshape(dataset_blend_test.shape[0], -1))
 
 
-class Bagging(Embedding):
+class Bagging(Ensemble):
     def __init__(self, classif, classifs_rbm, **kwargs):
         kwargs["meta_name"] = "bagging"
         super(Bagging, self).__init__(classifs_rbm, **kwargs)

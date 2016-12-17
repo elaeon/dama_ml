@@ -1,6 +1,6 @@
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+#import sys
+#import os
+#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 import argparse
 
@@ -10,7 +10,7 @@ from ml.utils.numeric_functions import le
 from ml.processing import Preprocessing, FiTScaler
 from ml.clf import extended as clf_extended
 from ml.clf import generic as clf_generic
-from ml.clf import embedding as clf_embedding
+from ml.clf import ensemble as clf_ensemble
 
 
 settings = get_settings("ml")
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     parser.add_argument("--build-dataset", help="crea el dataset", action="store_true")
     parser.add_argument("--dataset-name", help="crea el dataset", type=str)
     parser.add_argument("--train", help="inicia el entrenamiento", action="store_true")
-    parser.add_argument("--embedding", type=str)
+    parser.add_argument("--ensemble", type=str)
     parser.add_argument("--epoch", type=int, default=1)
     parser.add_argument("--predict", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--model-version", type=str)
@@ -96,8 +96,8 @@ if __name__ == '__main__':
         dataset = DataSetBuilderFile.load_dataset(
             args.dataset_name, dataset_path=settings["dataset_path"])
 
-        if args.embedding == "boosting":
-            classif = clf_embedding.Boosting({"0": [
+        if args.ensemble == "boosting":
+            classif = clf_ensemble.Boosting({"0": [
                 clf_extended.ExtraTrees,
                 clf_extended.MLP,
                 clf_extended.RandomForest,
@@ -113,8 +113,8 @@ if __name__ == '__main__':
                 election='best-c',
                 num_max_clfs=5,
                 check_point_path=settings["checkpoints_path"])
-        elif args.embedding == "stacking":
-            classif = clf_embedding.Stacking({"0": [
+        elif args.ensemble == "stacking":
+            classif = clf_ensemble.Stacking({"0": [
                 clf_extended.ExtraTrees,
                 clf_extended.MLP,
                 clf_extended.RandomForest,
@@ -129,7 +129,7 @@ if __name__ == '__main__':
                 model_version=args.model_version,
                 check_point_path=settings["checkpoints_path"])
         else:
-            classif = clf_embedding.Bagging(clf_extended.MLP, {"0": [
+            classif = clf_ensemble.Bagging(clf_extended.MLP, {"0": [
                 clf_extended.ExtraTrees,
                 clf_extended.MLP,
                 clf_extended.RandomForest,
@@ -143,21 +143,21 @@ if __name__ == '__main__':
                 model_version=args.model_version,
                 check_point_path=settings["checkpoints_path"])
         classif.train(batch_size=128, num_steps=args.epoch) # only_voting=True
-        classif.all_clf_scores().print_scores(order_column="logloss")
+        classif.scores().print_scores(order_column="logloss")
 
     if args.predict:
-        if args.embedding == "boosting":
-            classif = clf_embedding.Boosting({},
+        if args.ensemble == "boosting":
+            classif = clf_ensemble.Boosting({},
                 model_name=args.model_name,
                 model_version=args.model_version,
                 check_point_path=settings["checkpoints_path"])
-        elif args.embedding == "stacking":
+        elif args.ensemble == "stacking":
             classif = clf_generic.Stacking({},
                 model_name=args.model_name,
                 model_version=args.model_version,
                 check_point_path=settings["checkpoints_path"])
         else:
-            classif = clf_embedding.Bagging(None, {},
+            classif = clf_ensemble.Bagging(None, {},
                 model_name=args.model_name,
                 model_version=args.model_version,
                 check_point_path=settings["checkpoints_path"])
