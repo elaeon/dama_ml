@@ -8,8 +8,8 @@ from ml.ds import DataSetBuilderFile
 from ml.utils.config import get_settings
 from ml.utils.numeric_functions import le
 from ml.processing import Preprocessing, FiTScaler
-from ml.clf.extended import sklearn as clf_sklearn
-from ml.clf.extended import tfl as clf_tfl
+from ml.clf.extended import w_sklearn
+from ml.clf.extended import w_tflearn
 from ml.clf import generic as clf_generic
 from ml.clf import ensemble as clf_ensemble
 
@@ -94,55 +94,51 @@ if __name__ == '__main__':
         dataset = build(args.dataset_name, transforms=transforms)
 
     if args.train:
-        dataset = DataSetBuilderFile.load_dataset(
-            args.dataset_name, dataset_path=settings["dataset_path"])
+        dataset = DataSetBuilderFile.load_dataset(args.dataset_name)
 
         if args.ensemble == "boosting":
             classif = clf_ensemble.Boosting({"0": [
-                clf_sklearn.ExtraTrees,
-                clf_tfl.MLP,
-                clf_sklearn.RandomForest,
-                clf_sklearn.SGDClassifier,
-                clf_sklearn.SVC,
-                clf_sklearn.LogisticRegression,
-                clf_sklearn.AdaBoost,
-                clf_sklearn.GradientBoost]},
+                w_sklearn.ExtraTrees,
+                w_tflearn.MLP,
+                w_sklearn.RandomForest,
+                w_sklearn.SGDClassifier,
+                w_sklearn.SVC,
+                w_sklearn.LogisticRegression,
+                w_sklearn.AdaBoost,
+                w_sklearn.GradientBoost]},
                 dataset=dataset,
                 model_name=args.model_name,
                 model_version=args.model_version,
                 weights=[3, 1],
                 election='best-c',
-                num_max_clfs=5,
-                check_point_path=settings["checkpoints_path"])
+                num_max_clfs=5)
         elif args.ensemble == "stacking":
             classif = clf_ensemble.Stacking({"0": [
-                clf_sklearn.ExtraTrees,
-                clf_tfl.MLP,
-                clf_sklearn.RandomForest,
-                clf_sklearn.SGDClassifier,
-                clf_sklearn.SVC,
-                clf_sklearn.LogisticRegression,
-                clf_sklearn.AdaBoost,
-                clf_sklearn.GradientBoost]},
+                w_sklearn.ExtraTrees,
+                w_tflearn.MLP,
+                w_sklearn.RandomForest,
+                w_sklearn.SGDClassifier,
+                w_sklearn.SVC,
+                w_sklearn.LogisticRegression,
+                w_sklearn.AdaBoost,
+                w_sklearn.GradientBoost]},
                 n_splits=3,
                 dataset=dataset,
                 model_name=args.model_name,
-                model_version=args.model_version,
-                check_point_path=settings["checkpoints_path"])
+                model_version=args.model_version)
         else:
-            classif = clf_ensemble.Bagging(clf_tfl.MLP, {"0": [
-                clf_sklearn.ExtraTrees,
-                clf_tfl.MLP,
-                clf_sklearn.RandomForest,
-                clf_sklearn.SGDClassifier,
-                clf_sklearn.SVC,
-                clf_sklearn.LogisticRegression,
-                clf_sklearn.AdaBoost,
-                clf_sklearn.GradientBoost]},
+            classif = clf_ensemble.Bagging(w_tflearn.MLP, {"0": [
+                w_sklearn.ExtraTrees,
+                w_tflearn.MLP,
+                w_sklearn.RandomForest,
+                w_sklearn.SGDClassifier,
+                w_sklearn.SVC,
+                w_sklearn.LogisticRegression,
+                w_sklearn.AdaBoost,
+                w_sklearn.GradientBoost]},
                 dataset=dataset,
                 model_name=args.model_name,
-                model_version=args.model_version,
-                check_point_path=settings["checkpoints_path"])
+                model_version=args.model_version)
         classif.train(batch_size=128, num_steps=args.epoch) # only_voting=True
         classif.scores().print_scores(order_column="logloss")
 
@@ -150,24 +146,20 @@ if __name__ == '__main__':
         if args.ensemble == "boosting":
             classif = clf_ensemble.Boosting({},
                 model_name=args.model_name,
-                model_version=args.model_version,
-                check_point_path=settings["checkpoints_path"])
+                model_version=args.model_version)
         elif args.ensemble == "stacking":
             classif = clf_generic.Stacking({},
                 model_name=args.model_name,
-                model_version=args.model_version,
-                check_point_path=settings["checkpoints_path"])
+                model_version=args.model_version)
         else:
             classif = clf_ensemble.Bagging(None, {},
                 model_name=args.model_name,
-                model_version=args.model_version,
-                check_point_path=settings["checkpoints_path"])
+                model_version=args.model_version)
         classif.scores().print_scores(order_column="logloss")
         predict(classif, settings["numerai_test"], "t_id")
         print("Predictions writed in {}".format(settings["predictions_file_path"]))
 
     if args.plot:
-        dataset = DataSetBuilderFile.load_dataset(
-            args.model_name, dataset_path=settings["dataset_path"])
+        dataset = DataSetBuilderFile.load_dataset(args.model_name)
         print("DENSITY: ", dataset.density())
         dataset.plot()

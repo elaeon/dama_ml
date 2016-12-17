@@ -1,5 +1,6 @@
 from ml.clf.generic import SKLP
 import GPy
+import numpy as np
 
 
 class GPC(SKLP):
