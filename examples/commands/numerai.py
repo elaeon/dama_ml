@@ -8,7 +8,8 @@ from ml.ds import DataSetBuilderFile
 from ml.utils.config import get_settings
 from ml.utils.numeric_functions import le
 from ml.processing import Preprocessing, FiTScaler
-from ml.clf import extended as clf_extended
+from ml.clf.extended import sklearn as clf_sklearn
+from ml.clf.extended import tfl as clf_tfl
 from ml.clf import generic as clf_generic
 from ml.clf import ensemble as clf_ensemble
 
@@ -98,14 +99,14 @@ if __name__ == '__main__':
 
         if args.ensemble == "boosting":
             classif = clf_ensemble.Boosting({"0": [
-                clf_extended.ExtraTrees,
-                clf_extended.MLP,
-                clf_extended.RandomForest,
-                clf_extended.SGDClassifier,
-                clf_extended.SVC,
-                clf_extended.LogisticRegression,
-                clf_extended.AdaBoost,
-                clf_extended.GradientBoost]},
+                clf_sklearn.ExtraTrees,
+                clf_tfl.MLP,
+                clf_sklearn.RandomForest,
+                clf_sklearn.SGDClassifier,
+                clf_sklearn.SVC,
+                clf_sklearn.LogisticRegression,
+                clf_sklearn.AdaBoost,
+                clf_sklearn.GradientBoost]},
                 dataset=dataset,
                 model_name=args.model_name,
                 model_version=args.model_version,
@@ -115,29 +116,29 @@ if __name__ == '__main__':
                 check_point_path=settings["checkpoints_path"])
         elif args.ensemble == "stacking":
             classif = clf_ensemble.Stacking({"0": [
-                clf_extended.ExtraTrees,
-                clf_extended.MLP,
-                clf_extended.RandomForest,
-                clf_extended.SGDClassifier,
-                clf_extended.SVC,
-                clf_extended.LogisticRegression,
-                clf_extended.AdaBoost,
-                clf_extended.GradientBoost]},
+                clf_sklearn.ExtraTrees,
+                clf_tfl.MLP,
+                clf_sklearn.RandomForest,
+                clf_sklearn.SGDClassifier,
+                clf_sklearn.SVC,
+                clf_sklearn.LogisticRegression,
+                clf_sklearn.AdaBoost,
+                clf_sklearn.GradientBoost]},
                 n_splits=3,
                 dataset=dataset,
                 model_name=args.model_name,
                 model_version=args.model_version,
                 check_point_path=settings["checkpoints_path"])
         else:
-            classif = clf_ensemble.Bagging(clf_extended.MLP, {"0": [
-                clf_extended.ExtraTrees,
-                clf_extended.MLP,
-                clf_extended.RandomForest,
-                clf_extended.SGDClassifier,
-                clf_extended.SVC,
-                clf_extended.LogisticRegression,
-                clf_extended.AdaBoost,
-                clf_extended.GradientBoost]},
+            classif = clf_ensemble.Bagging(clf_tfl.MLP, {"0": [
+                clf_sklearn.ExtraTrees,
+                clf_tfl.MLP,
+                clf_sklearn.RandomForest,
+                clf_sklearn.SGDClassifier,
+                clf_sklearn.SVC,
+                clf_sklearn.LogisticRegression,
+                clf_sklearn.AdaBoost,
+                clf_sklearn.GradientBoost]},
                 dataset=dataset,
                 model_name=args.model_name,
                 model_version=args.model_version,

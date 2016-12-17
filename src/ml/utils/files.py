@@ -65,7 +65,7 @@ def get_models_from_dataset(md5, checkpoints_path):
             model_path = os.path.join(checkpoints_path, clf, name_version)
             model_md5 = DataDrive.read_meta("md5", model_path_meta)
             models_md5[model_md5].append((model_path, model_path_meta))
-    return models_md5.get(md5, None)
+    return models_md5.get(md5, [])
 
 
 def get_date_from_file(file_path):

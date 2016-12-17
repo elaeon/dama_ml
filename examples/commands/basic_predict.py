@@ -2,7 +2,7 @@ import os
 import argparse
 import numpy as np
 from ml.ds import DataSetBuilder
-from ml.clf.extended import SVGPC
+from ml.clf.extended.gpy import SVGPC
 
 np.random.seed(1)
 

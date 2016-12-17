@@ -2,7 +2,7 @@ import argparse
 from ml.ds import DataSetBuilderImage
 from ml.utils.config import get_settings
 from ml.processing import PreprocessingImage, FiTScaler
-from ml.clf.extended import RandomForest
+from ml.clf.extended.sklearn import RandomForest
 from skimage import io
 
 settings = get_settings("ml")
