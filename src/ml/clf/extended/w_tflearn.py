@@ -1,4 +1,4 @@
-from ml.clf.generic import TFL
+from ml.clf.wrappers import TFL
 
 import tensorflow as tf
 import tflearn

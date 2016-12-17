@@ -2,7 +2,7 @@ import os
 
 from ml.utils.config import get_settings
 from ml.utils.order import order_table_print
-from ml.clf.generic import DataDrive
+from ml.clf.wrappers import DataDrive
 from ml.utils.files import get_models_path, delete_file_model
 
 settings = get_settings("ml", filepath=os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))

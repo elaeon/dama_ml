@@ -37,7 +37,7 @@ def test(model_name, model_version):
 
 
 def predict(model_name, chunk_size, model_version):
-    from ml.clf.generic import Measure
+    from ml.clf.wrappers import Measure
 
     np.random.seed(0)
     DIM = 21

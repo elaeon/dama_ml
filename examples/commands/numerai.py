@@ -10,7 +10,6 @@ from ml.utils.numeric_functions import le
 from ml.processing import Preprocessing, FiTScaler
 from ml.clf.extended import w_sklearn
 from ml.clf.extended import w_tflearn
-from ml.clf import generic as clf_generic
 from ml.clf import ensemble as clf_ensemble
 
 
@@ -148,7 +147,7 @@ if __name__ == '__main__':
                 model_name=args.model_name,
                 model_version=args.model_version)
         elif args.ensemble == "stacking":
-            classif = clf_generic.Stacking({},
+            classif = clf_ensemble.Stacking({},
                 model_name=args.model_name,
                 model_version=args.model_version)
         else:

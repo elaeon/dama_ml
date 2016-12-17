@@ -20,8 +20,8 @@ Train data is always saved, therefore, steps 1, 2 are no needed for future predi
 .. code-block:: python
 
     from ml.ds import DataSetBuilder
-    from ml.clf.generic import Measure
-    from ml.clf.extended import SVGPC
+    from ml.clf.wrappers import Measure
+    from ml.clf.extended.w_gpy import SVGPC
     import numpy as np
 
     DIM = 21

@@ -1,4 +1,4 @@
-from ml.clf.generic import SKL, SKLP
+from ml.clf.wrappers import SKL, SKLP
 from sklearn.calibration import CalibratedClassifierCV
 
 

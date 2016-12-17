@@ -4,7 +4,7 @@ import ntpath
 import datetime
 
 from skimage import io
-from ml.clf.generic import DataDrive
+from ml.clf.wrappers import DataDrive
 from ml.processing import PreprocessingImage
 
 def filename_from_path(path):

@@ -1,5 +1,5 @@
 import numpy as np
-from ml.clf.generic import DataDrive, ListMeasure
+from ml.clf.wrappers import DataDrive, ListMeasure
 from ml.ds import DataSetBuilder
 
 

@@ -1,4 +1,4 @@
-from ml.clf.generic import Keras
+from ml.clf.wrappers import Keras
 from ml.models import MLModel
 from keras.models import load_model
 

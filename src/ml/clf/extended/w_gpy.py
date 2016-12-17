@@ -1,4 +1,4 @@
-from ml.clf.generic import SKLP
+from ml.clf.wrappers import SKLP
 import GPy
 import numpy as np
 
