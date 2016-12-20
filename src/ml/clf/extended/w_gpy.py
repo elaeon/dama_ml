@@ -47,7 +47,8 @@ class GPC(SKLP):
     def save_model(self):
         if self.check_point_path is not None:
             path = self.make_model_file()
-            self.save_meta()
+            list_measure = self.scores()
+            self.save_meta(score=list_measure.measures_to_dict())
             np.save(path, self.model.param_array)
 
     def _predict(self, data, raw=False):

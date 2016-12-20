@@ -21,13 +21,19 @@ def run(args):
                 if args.info == meta.get("group_name", None) or\
                     args.info == meta.get("model_name", None):
                     measure = "logloss" if not args.measure else args.measure
-                    score = DataDrive.read_meta("score", model_path).get(measure, None)
+                    scores = DataDrive.read_meta("score", model_path)
+                    if scores is not None:
+                        score = scores.get(measure, None)
+                    else:
+                        score = None
                     try:
                         name, version = name_version.split(".")
                         table.append([clf, name, version, meta.get("dataset_name", None),
                                     meta.get("group_name", None), score])
                     except ValueError:
                         pass
+                    if args.meta:
+                        print(meta)
         order_table_print(headers, table, "score", reverse=False)
     elif args.rm:
         clf, model_name, version = args.rm.split(".")
