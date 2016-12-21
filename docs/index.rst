@@ -74,7 +74,39 @@ Using SVGPC for make predictions is like this:
     predictions = np.asarray(list(classif.predict(X, chunk_size=258)))
 
 
-You can use more predifined models and extend the base model and make you own predictor. For more information about this, see the section :doc:`models`. 
+You can use more predefined models (see :doc:`Predefined models`), by extended the base model and make you own predictors. For more information about this, see the section :doc:`models`. 
+
+CLI
+==============
+mlPyp has as CLI where you can admin your dataset and models.
+For example
+
+.. code-block:: bash
+
+    ml datasets
+
+Return this table
+
+.. code-block:: python
+
+    dataset    size       date
+    ---------  ---------  --------------------------
+    numbers    240.03 MB  2016-12-10 23:50:14.167061
+    test2      16.79 MB   2016-12-17 23:28:46.739531
+
+.. code-block:: bash
+
+    ml models
+
+.. code-block:: python
+
+    classif    model name      version  dataset    group
+    ---------  ------------  ---------  ---------  -------
+    Boosting   numerai               1  numerai
+    SVGPC      test2                 1  test2      basic
+
+You can use "--help" for view more options. 
+
 
 More information
 ================

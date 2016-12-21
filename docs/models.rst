@@ -9,8 +9,9 @@ For example, we add a model called AdaBoost.
 
 .. code-block:: python
 
-    # SKLP is the parent class for classificators with probabilistic 
+    # SKLP is the wrapper for classificators with probabilistic 
     # predictions in scikit-learn
+    from ml.clf.extended.w_sklearn import SKLP
     class AdaBoost(SKLP):
         def prepare_model(self):
             from sklearn.ensemble import AdaBoostClassifier
@@ -23,7 +24,6 @@ For example, we add a model called AdaBoost.
             #sig_clf must have operations like fit and predict i.e sig_clf.fit(X, y)
             #sig_clf.predict(X)
             self.model = sig_clf
-
 
 Now we can use AdaBoost.
 
@@ -54,7 +54,8 @@ If you want add a TensorFlow model i.e a multilayer perceptron
 
 .. code-block:: python
 
-    # TFL is the parent class for classificators in TensorFlow
+    # TFL is the wrapper for classificators in TensorFlow
+    from ml.clf.extended.w_tflearn import TFL
     class MLP(TFL):
         def __init__(self, *args, **kwargs):
         self.layers = [128, 64] #number of nodes in every layer
