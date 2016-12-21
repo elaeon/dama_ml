@@ -35,7 +35,7 @@ tests_require = [
 
 setup(
     name='ml',
-    version='0.1.0',
+    version='0.1.1',
     description='A modern machine learning framework',
     long_description=long_description,
     author="Alejandro G. Martínez Romero",

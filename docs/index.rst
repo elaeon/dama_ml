@@ -2,7 +2,7 @@
 Welcome to python-ml's documentation!
 =====================================
 
-A framework for machine learning pipeline.
+A framework for machine learning's pipelines.
 
 Highlights:
  * Build datasets with train, test, valid data and transformations applied.
@@ -12,16 +12,31 @@ Highlights:
  * Convert csv files to datasets.
  * Uses transformations for manipulate data (images).
 
-A first step is build a dataset, and then pass it to a
-classification model for training, once the training was finished you can predict some data.
-Train data is always saved, therefore, steps 1, 2 are no needed for future predictions.
+Instalation
+=====================
 
+.. code-block:: bash
+
+    git clone https://github.com/elaeon/ML.git
+
+
+You can install the python dependences with pip, but we strongly
+recommend install the dependences with conda and conda forge.
+
+.. code-block:: bash
+
+    conda config --add channels conda-forge
+    conda create -n new_environment --file requirements.txt
+    pip install ML/setup.py
+
+Quick start
+==================
+
+First, build a dataset
 
 .. code-block:: python
 
     from ml.ds import DataSetBuilder
-    from ml.clf.wrappers import Measure
-    from ml.clf.extended.w_gpy import SVGPC
     import numpy as np
 
     DIM = 21
@@ -31,32 +46,35 @@ Train data is always saved, therefore, steps 1, 2 are no needed for future predi
         for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
     dataset_name = "test_dataset"
     dataset = DataSetBuilder(
-        dataset_name, 
-        transforms_global=[(ml.processing.FiTScaler.module_cls_name(), None)],
+        dataset_name,
         validator="cross")
     dataset.build_dataset(X, Y)
+    
+
+Then, pass it to a classification model for training, in this case we used SVGC (was a Gaussian process with stochastic variational inference), once the training was finished you can predict some data.
+
+.. code-block:: python
+
+    from ml.clf.extended.w_gpy import SVGPC
 
     classif = SVGPC(
-        model_name="my_test_model",
         dataset=dataset,
-        model_version="1",,
-        group_name="basic")
+        model_name="my_test_model",
+        model_version="1")
     classif.train(batch_size=128, num_steps=10)
     classif.scores().print_scores(order_column="f1")
 
-    SIZE_T = 10000
-    X = np.random.rand(SIZE_T, DIM)
-    Y = np.asarray([1 if sum(row) > 0 else 0 
-        for row in np.sin(6*X) + 0.1*np.random.randn(SIZE_T, 1)])
+Using SVGPC for make predictions is like this:
+
+.. code-block:: python
+
     classif = ml.clf.extended.SVGPC(
         model_name="my_test_model",
         model_version="1")
-    predictions = np.asarray(list(classif.predict(X, chunk_size=1)))
-    print("{} elems SCORE".format(SIZE_T), 
-        Measure(predictions, Y, classif.numerical_labels2classes).accuracy()
+    predictions = np.asarray(list(classif.predict(X, chunk_size=258)))
 
 
-The classification model used in this example, was a Gaussian process with stochastic variational inference. You can extend the base model and create you own predictor. For more information about this, see the section :doc:`models`. 
+You can use more predifined models and extend the base model and make you own predictor. For more information about this, see the section :doc:`models`. 
 
 More information
 ================
