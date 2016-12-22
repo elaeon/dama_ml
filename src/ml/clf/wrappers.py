@@ -5,7 +5,7 @@ import logging
 
 from sklearn.preprocessing import LabelEncoder
 from ml.utils.config import get_settings
-settings = get_settings("ml", filepath=os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
+settings = get_settings("ml")
 
 
 logging.basicConfig()
@@ -183,17 +183,11 @@ class DataDrive(object):
             id_ = self.model_version
         return "{}.{}".format(self.model_name, id_)
 
-    def make_model_file(self, check_existence=True):
+    def make_model_file(self):
+        from ml.utils.files import check_or_create_path_dir
         model_name_v = self.get_model_name_v()
-        check_point = os.path.join(self.check_point_path, self.__class__.__name__)
-        if check_existence is True:
-            if not os.path.exists(check_point):
-                os.makedirs(check_point)
-
-            destination = os.path.join(check_point, model_name_v)
-            if not os.path.exists(destination):
-                os.makedirs(destination)
-        
+        check_point = check_or_create_path_dir(self.check_point_path, self.__class__.__name__)
+        destination = check_or_create_path_dir(check_point, model_name_v)
         return os.path.join(check_point, model_name_v, model_name_v)
 
     def print_meta(self):

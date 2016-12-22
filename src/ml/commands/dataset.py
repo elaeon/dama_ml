@@ -8,7 +8,7 @@ from ml.ds import DataSetBuilder
 from ml.utils.files import rm, get_models_path, delete_file_model
 from ml.utils.files import get_date_from_file, get_models_from_dataset
 
-settings = get_settings("ml", filepath=os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
+settings = get_settings("ml")
 
   
 def run(args):

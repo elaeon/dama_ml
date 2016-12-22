@@ -1,25 +1,25 @@
 [ml]
-;dataset_path = 
-;checkpoints_path = 
+dataset_path = {home}/ml_data/dataset/
+checkpoints_path = {home}/ml_data/checkpoints/
 
 [numerai]
-;predictions_file_path = /home/.../predictions.csv
-;numerai_test = /home/.../numerai_tournament_data.csv
-;numerai_example = /home/.../example_predictions.csv
-;numerai_train = /home/.../numerai_training_data.csv
+predictions_file_path = {home}/predictions.csv
+numerai_test = {home}/test_data/numerai_datasets/numerai_tournament_data.csv
+numerai_example = {home}/test_data/numerai_datasets/example_predictions.csv
+numerai_train = {home}/test_data/numerai_datasets/numerai_training_data.csv
 
 [tickets]
-;tickets = 
-;xml = /home/.../xml
-;numbers = /home/.../numbers
-;tickets_processed = 
-;train_folder_path = /home/.../numbers
+tickets = {base}/examples/Pictures/tickets/
+xml = {base}/examples/xml/
+numbers = {home}/ml_data/numbers_raw/
+tickets_processed = {base}/examples/Pictures/tickets_processed/
+numbers_pixelated = {home}/ml_data/numbers_raw_pixelated/
 
 [numbers]
 image_size = 90
-;train_folder_path = 
+train_folder_path = {home}/ml_data/numbers_raw/
 
 [transcriptor]
 detector_name = detector
-;numbers_detector = 
+numbers_detector = {home}/ml_data/numbers_raw_detector/
 

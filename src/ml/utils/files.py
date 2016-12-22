@@ -3,16 +3,34 @@ import shutil
 import ntpath
 import datetime
 
-from skimage import io
-from ml.clf.wrappers import DataDrive
-from ml.processing import PreprocessingImage
 
 def filename_from_path(path):
     head, tail = ntpath.split(path)
     return tail or ntpath.basename(head)
 
 
+def check_or_create_path_dir(path, dirname):
+    check_point = os.path.join(path, dirname)
+    if not os.path.exists(check_point):
+        os.makedirs(check_point)
+    return check_point
+
+
+def set_up_cfg(filepath):
+    base = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
+    home = os.path.expanduser("~")
+    setting_expl = os.path.join(base, "settings.cfg.example")
+    with open(setting_expl, 'rb') as f:
+        cfg = f.read()
+        cfg = cfg.format(home=home, base=base)
+    with open(filepath, 'wb') as f:
+        f.write(cfg)
+    return True
+
+
 def build_tickets_processed(transforms, settings, PICTURES):
+    from skimage import io
+    from ml.processing import PreprocessingImage
     tickets_processed_url = settings["tickets_processed"]
     if not os.path.exists(tickets_processed_url):
         os.makedirs(tickets_processed_url)
@@ -56,6 +74,7 @@ def delete_file_model(clf, model_name, version, checkpoints_path):
 
 
 def get_models_from_dataset(md5, checkpoints_path):
+    from ml.clf.wrappers import DataDrive
     from collections import defaultdict
     models_path = get_models_path(checkpoints_path)
     models_md5 = defaultdict(list)

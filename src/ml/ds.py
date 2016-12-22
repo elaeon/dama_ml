@@ -9,7 +9,7 @@ import random
 from ml.processing import PreprocessingImage, Preprocessing, Transforms
 from ml.utils.config import get_settings
 
-settings = get_settings("ml", filepath=os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+settings = get_settings("ml")
 
 
 def save_metadata(file_path, data):
