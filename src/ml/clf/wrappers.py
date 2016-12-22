@@ -246,13 +246,14 @@ class BaseClassif(DataDrive):
         return list_measure
 
     def only_is(self, op):
-        predictions = list(self.predict(self.dataset.test_data, raw=False, transform=False))
+        predictions = np.asarray(list(self.predict(self.dataset.test_data, raw=False, transform=False)))
         data = zip(*filter(
                         lambda x: op(x[1], x[2]), 
                         zip(self.dataset.test_data, 
                             self.numerical_labels2classes(predictions), 
                             self.numerical_labels2classes(self.dataset.test_labels))))
-        return np.array(data[0]), data[1], data[2]
+        if len(data) > 0:
+            return np.array(data[0]), data[1], data[2]
 
     def erroneous_clf(self):
         import operator

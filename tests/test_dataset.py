@@ -18,8 +18,7 @@ class TestDataset(unittest.TestCase):
             train_size=.5,
             valid_size=.2,
             validator="cross",
-            processing_class=Preprocessing,
-            print_info=False)
+            processing_class=Preprocessing)
         self.dataset.build_dataset(self.X, self.Y)
 
     def test_build_dataset_dim_7_1_2(self):
@@ -27,8 +26,7 @@ class TestDataset(unittest.TestCase):
             "test",
             dataset_path="/tmp/", 
             #transforms=[('scale', None)],
-            validator="cross",
-            print_info=False)
+            validator="cross")
         dataset.build_dataset(self.X, self.Y)
         self.assertEqual(dataset.train_labels.shape, (7,))
         self.assertEqual(dataset.valid_labels.shape, (1,))

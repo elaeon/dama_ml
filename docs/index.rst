@@ -78,14 +78,14 @@ You can use more predefined models (see :doc:`Predefined models`), by extended t
 
 CLI
 ==============
-mlPyp has as CLI where you can admin your dataset and models.
+mlPyp has a CLI where you can admin your dataset and models.
 For example
 
 .. code-block:: bash
 
     ml datasets
 
-Return this table
+Return this table of dataset previosly builded.
 
 .. code-block:: python
 
@@ -94,9 +94,13 @@ Return this table
     numbers    240.03 MB  2016-12-10 23:50:14.167061
     test2      16.79 MB   2016-12-17 23:28:46.739531
 
+Or
+
 .. code-block:: bash
 
     ml models
+
+Returns
 
 .. code-block:: python
 
