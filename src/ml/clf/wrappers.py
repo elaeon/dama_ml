@@ -166,7 +166,7 @@ class DataDrive(object):
     def load_meta(self):
         from ml.ds import load_metadata
         if self.check_point_path is not None:
-            path = self.make_model_file(check_existence=False)
+            path = self.make_model_file()
             return load_metadata(path+".xmeta")
 
     @classmethod
@@ -452,7 +452,7 @@ class SKL(BaseClassif):
     def load_model(self):
         from sklearn.externals import joblib
         if self.check_point_path is not None:
-            path = self.make_model_file(check_existence=False)
+            path = self.make_model_file()
             self.model = joblib.load('{}.pkl'.format(path))
 
     def _predict(self, data, raw=False):

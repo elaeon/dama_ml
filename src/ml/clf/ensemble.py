@@ -307,10 +307,14 @@ class Stacking(Ensemble):
         else:
             self.iterations = 0
 
+        for classif in self.load_models():
+            self.le = classif.le
+            break
+
     def load_blend(self):
         from sklearn.externals import joblib
         if self.check_point_path is not None:
-            path = self.make_model_file(check_existence=False)
+            path = self.make_model_file()
             self.dataset_blend = joblib.load('{}.pkl'.format(path))
 
     def _metadata(self, score=None):
