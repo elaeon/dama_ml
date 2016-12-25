@@ -5,6 +5,7 @@ import logging
 
 from sklearn.preprocessing import LabelEncoder
 from ml.utils.config import get_settings
+from ml.models import MLModel
 settings = get_settings("ml")
 
 
@@ -507,6 +508,19 @@ class TFL(BaseClassif):
 
 
 class Keras(BaseClassif):
+    def load_fn(self, path):
+        from keras.models import load_model
+        net_model = load_model(path)
+        self.model = MLModel(fit_fn=net_model.fit, 
+                            predictors=[net_model.predict],
+                            load_fn=self.load_fn,
+                            save_fn=net_model.save)
+
+    def preload_model(self):
+        self.model = MLModel(fit_fn=None, 
+                            predictors=None,
+                            load_fn=self.load_fn,
+                            save_fn=None)
 
     def reformat(self, data, labels):
         data = self.transform_shape(data)

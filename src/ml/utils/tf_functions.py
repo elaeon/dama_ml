@@ -49,7 +49,7 @@ def ssim(img1, img2, cs_map=False, size=11, sigma=1.5):
 
     return value
 
-
+#Multi scale structural similarity image
 def msssim(img1, img2, level=5, size=11):
     weight = tf.constant([0.0448, 0.2856, 0.3001, 0.2363, 0.1333], dtype=tf.float32)
     mssim = []
@@ -71,3 +71,170 @@ def msssim(img1, img2, level=5, size=11):
                             (mssim[level-1]**weight[level-1]))
 
 
+def Hbeta(D, beta):
+    P = np.exp(-D * beta)
+    sumP = np.sum(P)
+    H = np.log(sumP) + beta * np.sum(D * P) / sumP
+    P = P / sumP
+    return H, P
+
+
+def x2p_job(data):
+    i, Di, tol, logU = data
+    beta = 1.0
+    betamin = -np.inf
+    betamax = np.inf
+    H, thisP = Hbeta(Di, beta)
+    Hdiff = H - logU
+    tries = 0
+    while np.abs(Hdiff) > tol and tries < 50:
+        if Hdiff > 0:
+            betamin = beta
+            if np.isinf(betamax):
+                beta = beta * 2
+            else:
+                beta = (beta + betamax) / 2
+        else:
+            betamax = beta
+            if np.isinf(betamin):
+                beta = beta / 2
+            else:
+                beta = (beta + betamin) / 2
+
+        H, thisP = Hbeta(Di, beta)
+        Hdiff = H - logU
+        tries += 1
+
+    return i, thisP
+
+
+class TSNe:
+    def __init__(self, batch_size=258):
+        self.batch_size = batch_size
+        self.low_dim = 2
+        self.nb_epoch = 100
+        self.shuffle_interval = self.nb_epoch + 1
+        self.perplexity = 30.0
+
+
+    #def x2p(self, X):
+    #    tol = 1e-5
+    #    n = X.shape[0]
+    #    logU = np.log(self.perplexity)
+
+    #    sum_X = np.sum(np.square(X), axis=1)
+    #    D = sum_X + (sum_X.reshape([-1, 1]) - 2 * np.dot(X, X.T))
+
+    #    idx = (1 - np.eye(n)).astype(bool)
+    #    D = D[idx].reshape([n, -1])
+
+    #    def generator():
+    #        for i in xrange(n):
+    #            yield i, D[i], tol, logU
+
+    #    result = (x2p_job(data) for data in generator())
+    #    P = np.zeros([n, n])
+    #    for i, thisP in result:
+    #        print(thisP)
+    #        P[i, idx[i]] = thisP
+
+    #    return P
+
+    def x2p(self, X, tol=1e-4, print_iter=500, max_tries=50, verbose=0):
+        # Initialize some variables
+        n = X.shape[0]                     # number of instances
+        P = np.zeros([n, n])               # empty probability matrix
+        beta = np.ones(n)                  # empty precision vector
+        logU = np.log(self.perplexity)                   # log of perplexity (= entropy)
+        
+        # Compute pairwise distances
+        if verbose > 0: print('Computing pairwise distances...')
+        sum_X = np.sum(np.square(X), axis=1)
+        # note: translating sum_X' from matlab to numpy means using reshape to add a dimension
+        D = sum_X + sum_X[:,None] + -2 * X.dot(X.T)
+
+        # Run over all datapoints
+        if verbose > 0: print('Computing P-values...')
+        for i in range(n):
+            
+            if verbose > 1 and print_iter and i % print_iter == 0:
+                print('Computed P-values {} of {} datapoints...'.format(i, n))
+            
+            # Set minimum and maximum values for precision
+            #betamin = float('-inf')
+            #betamax = float('+inf')
+            betamin = -np.inf
+            betamax = np.inf
+
+            # Compute the Gaussian kernel and entropy for the current precision
+            indices = np.concatenate((np.arange(0, i), np.arange(i + 1, n)))
+            Di = D[i, indices]
+            H, thisP = Hbeta(Di, beta[i])
+            
+            # Evaluate whether the perplexity is within tolerance
+            Hdiff = H - logU
+            tries = 0
+            while abs(Hdiff) > tol and tries < max_tries:
+                
+                # If not, increase or decrease precision
+                if Hdiff > 0:
+                    betamin = beta[i]
+                    if np.isinf(betamax):
+                        beta[i] *= 2
+                    else:
+                        beta[i] = (beta[i] + betamax) / 2
+                else:
+                    betamax = beta[i]
+                    if np.isinf(betamin):
+                        beta[i] /= 2
+                    else:
+                        beta[i] = (beta[i] + betamin) / 2
+                
+                # Recompute the values
+                H, thisP = Hbeta(Di, beta[i])
+                Hdiff = H - logU
+                tries += 1
+            
+            # Set the final row of P
+            P[i, indices] = thisP
+            
+        if verbose > 0: 
+            print('Mean value of sigma: {}'.format(np.mean(np.sqrt(1 / beta))))
+            print('Minimum value of sigma: {}'.format(np.min(np.sqrt(1 / beta))))
+            print('Maximum value of sigma: {}'.format(np.max(np.sqrt(1 / beta))))
+        
+        return P
+
+    #joint_probabilities
+    def calculate_P(self, X):
+        from ml.utils.numeric_functions import expand_matrix_row
+        print "Computing pairwise distances..."
+        n = X.shape[0]
+        P = np.zeros([n, self.batch_size])
+        for i in xrange(0, n, self.batch_size):
+            P_batch = self.x2p(X[i:i + self.batch_size])
+            print(P_batch)
+            P_batch[np.isnan(P_batch)] = 0
+            #print(P_batch)
+            P_batch = P_batch + P_batch.T
+            P_batch = P_batch / P_batch.sum()
+            P_batch = np.maximum(P_batch, 1e-12)
+            P[i:i + self.batch_size] = P_batch
+            #print(P[i])
+        return P
+
+    def KLdivergence(self, P, Y):
+        with tf.Session() as sess:
+            alpha = self.low_dim - 1.
+            sum_Y = tf.reduce_sum(tf.square(Y), 1)
+            eps = tf.Variable(10e-15, dtype=tf.float64, name="eps").initialized_value()
+            Q = tf.reshape(sum_Y, [-1, 1]) + -2 * tf.matmul(Y, tf.transpose(Y))
+            Q = sum_Y + Q / alpha
+            Q = tf.pow(1 + Q, -(alpha + 1) / 2)
+            Q = Q * tf.Variable(1 - np.eye(self.batch_size), dtype=tf.float64, name="eye").initialized_value()
+            Q = Q / tf.reduce_sum(Q)
+            Q = tf.maximum(Q, eps)
+            C = tf.log((P + eps) / (Q + eps))
+            #C = tf.cast(tf.reduce_sum(P * C), tf.float64)
+            C = tf.reduce_sum(P * C)
+            return C

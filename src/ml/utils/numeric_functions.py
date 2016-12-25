@@ -43,3 +43,15 @@ def humanize_bytesize(size):
     p = np.power(1024, i)
     s = round(size / float(p), 2)
     return '{} {}'.format(s, size_name[i])
+
+def expand_matrix_row(matrix, max_size, actual_size):
+    return np.append(
+        matrix, 
+        np.zeros((max_size - actual_size, matrix.shape[1]), dtype=matrix.dtype),
+        axis=0)
+
+def expand_matrix_col(matrix, max_size, actual_size):
+    return np.append(
+        matrix, 
+        np.zeros((matrix.shape[0], max_size - actual_size), dtype=matrix.dtype),
+        axis=1)
