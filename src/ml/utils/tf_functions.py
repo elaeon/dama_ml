@@ -79,90 +79,25 @@ def Hbeta(D, beta):
     return H, P
 
 
-def x2p_job(data):
-    i, Di, tol, logU = data
-    beta = 1.0
-    betamin = -np.inf
-    betamax = np.inf
-    H, thisP = Hbeta(Di, beta)
-    Hdiff = H - logU
-    tries = 0
-    while np.abs(Hdiff) > tol and tries < 50:
-        if Hdiff > 0:
-            betamin = beta
-            if np.isinf(betamax):
-                beta = beta * 2
-            else:
-                beta = (beta + betamax) / 2
-        else:
-            betamax = beta
-            if np.isinf(betamin):
-                beta = beta / 2
-            else:
-                beta = (beta + betamin) / 2
-
-        H, thisP = Hbeta(Di, beta)
-        Hdiff = H - logU
-        tries += 1
-
-    return i, thisP
-
-
 class TSNe:
-    def __init__(self, batch_size=258):
+    def __init__(self, batch_size=258, perplexity=30.):
         self.batch_size = batch_size
         self.low_dim = 2
-        self.nb_epoch = 100
-        self.shuffle_interval = self.nb_epoch + 1
-        self.perplexity = 30.0
+        self.perplexity = perplexity
+        self.tol = 1e-4
 
-
-    #def x2p(self, X):
-    #    tol = 1e-5
-    #    n = X.shape[0]
-    #    logU = np.log(self.perplexity)
-
-    #    sum_X = np.sum(np.square(X), axis=1)
-    #    D = sum_X + (sum_X.reshape([-1, 1]) - 2 * np.dot(X, X.T))
-
-    #    idx = (1 - np.eye(n)).astype(bool)
-    #    D = D[idx].reshape([n, -1])
-
-    #    def generator():
-    #        for i in xrange(n):
-    #            yield i, D[i], tol, logU
-
-    #    result = (x2p_job(data) for data in generator())
-    #    P = np.zeros([n, n])
-    #    for i, thisP in result:
-    #        print(thisP)
-    #        P[i, idx[i]] = thisP
-
-    #    return P
-
-    def x2p(self, X, tol=1e-4, print_iter=500, max_tries=50, verbose=0):
-        # Initialize some variables
+    def x2p(self, X, max_tries=30):
         n = X.shape[0]                     # number of instances
         P = np.zeros([n, n])               # empty probability matrix
         beta = np.ones(n)                  # empty precision vector
-        logU = np.log(self.perplexity)                   # log of perplexity (= entropy)
+        logU = np.log(self.perplexity)     # log of perplexity (= entropy)
         
         # Compute pairwise distances
-        if verbose > 0: print('Computing pairwise distances...')
         sum_X = np.sum(np.square(X), axis=1)
-        # note: translating sum_X' from matlab to numpy means using reshape to add a dimension
         D = sum_X + sum_X[:,None] + -2 * X.dot(X.T)
 
-        # Run over all datapoints
-        if verbose > 0: print('Computing P-values...')
         for i in range(n):
-            
-            if verbose > 1 and print_iter and i % print_iter == 0:
-                print('Computed P-values {} of {} datapoints...'.format(i, n))
-            
             # Set minimum and maximum values for precision
-            #betamin = float('-inf')
-            #betamax = float('+inf')
             betamin = -np.inf
             betamax = np.inf
 
@@ -174,8 +109,7 @@ class TSNe:
             # Evaluate whether the perplexity is within tolerance
             Hdiff = H - logU
             tries = 0
-            while abs(Hdiff) > tol and tries < max_tries:
-                
+            while abs(Hdiff) > self.tol and tries < max_tries:
                 # If not, increase or decrease precision
                 if Hdiff > 0:
                     betamin = beta[i]
@@ -197,11 +131,6 @@ class TSNe:
             
             # Set the final row of P
             P[i, indices] = thisP
-            
-        if verbose > 0: 
-            print('Mean value of sigma: {}'.format(np.mean(np.sqrt(1 / beta))))
-            print('Minimum value of sigma: {}'.format(np.min(np.sqrt(1 / beta))))
-            print('Maximum value of sigma: {}'.format(np.max(np.sqrt(1 / beta))))
         
         return P
 
@@ -213,14 +142,11 @@ class TSNe:
         P = np.zeros([n, self.batch_size])
         for i in xrange(0, n, self.batch_size):
             P_batch = self.x2p(X[i:i + self.batch_size])
-            print(P_batch)
             P_batch[np.isnan(P_batch)] = 0
-            #print(P_batch)
-            P_batch = P_batch + P_batch.T
+            P_batch = (P_batch + P_batch.T) / 2.
             P_batch = P_batch / P_batch.sum()
             P_batch = np.maximum(P_batch, 1e-12)
             P[i:i + self.batch_size] = P_batch
-            #print(P[i])
         return P
 
     def KLdivergence(self, P, Y):
@@ -235,6 +161,5 @@ class TSNe:
             Q = Q / tf.reduce_sum(Q)
             Q = tf.maximum(Q, eps)
             C = tf.log((P + eps) / (Q + eps))
-            #C = tf.cast(tf.reduce_sum(P * C), tf.float64)
             C = tf.reduce_sum(P * C)
             return C

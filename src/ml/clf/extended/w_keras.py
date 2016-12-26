@@ -63,17 +63,19 @@ class easy(Keras):
         from ml.utils.tf_functions import TSNe
         from ml.utils.numeric_functions import expand_matrix_row
         import numpy as np
-        self.tsne = TSNe(batch_size=batch_size)
+        self.tsne = TSNe(batch_size=batch_size, perplexity=30.)
         diff = self.dataset.train_data.shape[0] % batch_size
-        #y = expand_matrix_row(self.dataset.train_labels, batch_size, diff)
-        #y = self.tsne.calculate_P(y)
+        diff2 = self.dataset.valid_data.shape[0] % batch_size
         X = expand_matrix_row(self.dataset.train_data, batch_size, diff)
+        Z = expand_matrix_row(self.dataset.valid_data, batch_size, diff2)
         y = self.tsne.calculate_P(X)
-        #self.prepare_model()
-        #self.model.fit(X, 
-        #    y,
-        #    nb_epoch=num_steps,
-        #    batch_size=batch_size,
-        #    shuffle=False)
-            #validation_data=(self.dataset.valid_data, v))
-        #self.save_model()
+        z = self.tsne.calculate_P(Z)
+        print(X.shape, y.shape)
+        self.prepare_model()
+        self.model.fit(X, 
+            y,
+            nb_epoch=num_steps,
+            batch_size=batch_size,
+            shuffle=False,
+            validation_data=(Z, z))
+        self.save_model()
