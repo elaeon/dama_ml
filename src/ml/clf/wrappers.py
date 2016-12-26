@@ -360,7 +360,6 @@ class BaseClassif(DataDrive):
                 yield prediction
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        from ml.utils.seq import grouper_chunk
         if self.model is None:
             self.load_model()
 

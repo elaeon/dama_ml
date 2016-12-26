@@ -23,27 +23,10 @@ def load_metadata(path):
     return data
 
 
-def proximity_label(label_ref, labels, dataset):
-    from sklearn import svm
-    dataset_ref, _ = dataset.only_labels([label_ref])
-    clf = svm.OneClassSVM(nu=.2, kernel="rbf", gamma=0.5)
-    clf.fit(dataset_ref.reshape(dataset_ref.shape[0], -1))
-    for label in labels:
-        dataset_other, _ = dataset.only_labels([label])
-        y_pred_train = clf.predict(dataset_other.reshape(dataset_other.shape[0], -1))
-        n_error_train = y_pred_train[y_pred_train == -1].size
-        yield label, (1 - (n_error_train / float(y_pred_train.size)))
-
-
-def proximity_dataset(label_ref, labels, dataset):
-    from sklearn import svm
-    dataset_ref, _ = dataset.only_labels([label_ref])
-    clf = svm.OneClassSVM(nu=0.1, kernel="rbf", gamma=0.1)
-    clf.fit(dataset_ref.reshape(dataset_ref.shape[0], -1))
-    for label in labels:
-        dataset_other_, _ = dataset.only_labels([label])
-        y_pred_train = clf.predict(dataset_other_.reshape(dataset_other_.shape[0], -1))
-        return filter(lambda x: x[1] == -1, zip(dataset_other_, y_pred_train))
+def dtype_c(dtype):
+    types = set(["float64", "float32", "int64", "int32"])
+    if hasattr(np, dtype) and dtype in types:
+        return getattr(np, dtype)
 
 
 class DataSetBuilder(object):
@@ -58,9 +41,12 @@ class DataSetBuilder(object):
                 fits=None,
                 train_size=.7,
                 valid_size=.1,
-                validator='cross'):
+                validator='cross',
+                dtype='float64'):
         self.test_folder_path = test_folder_path
         self.train_folder_path = train_folder_path
+        self.dtype = dtype
+
         if dataset_path is None:
             self.dataset_path = settings["dataset_path"]
         else:
@@ -163,13 +149,20 @@ class DataSetBuilder(object):
         else:
             return self.processing_class.module_cls_name()
 
+    def dtype_t(self, data):
+        dtype = dtype_c(self.dtype)
+        if data.dtype is not dtype:
+            return data.astype(dtype_c(self.dtype))
+        else:
+            return data
+
     def to_raw(self):
         return {
-            'train_dataset': self.train_data,
+            'train_dataset': self.dtype_t(self.train_data),
             'train_labels': self.train_labels,
-            'valid_dataset': self.valid_data,
+            'valid_dataset': self.dtype_t(self.valid_data),
             'valid_labels': self.valid_labels,
-            'test_dataset': self.test_data,
+            'test_dataset': self.dtype_t(self.test_data),
             'test_labels': self.test_labels,
             'transforms': self.transforms.get_all_transforms(),
             'preprocessing_class': self.get_processing_class_name(),
@@ -191,11 +184,11 @@ class DataSetBuilder(object):
             self.processing_class = locate(raw_data["preprocessing_class"])
 
         self.transforms = Transforms(raw_data["transforms"])
-        self.train_data = raw_data['train_dataset']
+        self.train_data = self.dtype_t(raw_data['train_dataset'])
         self.train_labels = raw_data['train_labels']
-        self.valid_data = raw_data['valid_dataset']
+        self.valid_data = self.dtype_t(raw_data['valid_dataset'])
         self.valid_labels = raw_data['valid_labels']
-        self.test_data = raw_data['test_dataset']
+        self.test_data = self.dtype_t(raw_data['test_dataset'])
         self.test_labels = raw_data['test_labels']        
         self._cached_md5 = raw_data["md5"]
 
@@ -266,12 +259,12 @@ class DataSetBuilder(object):
 
     @classmethod
     def load_dataset(self, name, dataset_path=None, info=True, 
-            processing_class=None):
+            processing_class=None, dtype='float64'):
         if dataset_path is None:
              dataset_path = settings["dataset_path"]
         data = self.load_dataset_raw(name, dataset_path=dataset_path)
         dataset = DataSetBuilder(name, dataset_path=dataset_path, 
-            processing_class=processing_class)
+            processing_class=processing_class, dtype=dtype)
         dataset.from_raw(data)
         if info:
             dataset.info()
