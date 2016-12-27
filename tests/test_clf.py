@@ -36,7 +36,7 @@ class TestSeq(unittest.TestCase):
         self.assertEqual(sizes(seq), [7, 3])
 
 
-class TestCLF(unittest.TestCase):
+class TestClf(unittest.TestCase):
     def setUp(self):
         from ml.ds import DataSetBuilder
         from ml.clf.extended.w_sklearn import RandomForest
@@ -52,10 +52,13 @@ class TestCLF(unittest.TestCase):
             check_point_path="/tmp/")
         self.classif.train()
 
-    def only_is(self):
+    def test_only_is(self):
         self.assertEqual(self.classif.erroneous_clf(), None)
         c, _ , _ = self.classif.correct_clf()
         self.assertEqual(list(c.reshape(-1, 1)), [1, 0, 0, 1])
+
+    def test_load_meta(self):
+        self.assertEqual(type(self.classif.load_meta()), type({}))
 
 
 if __name__ == '__main__':

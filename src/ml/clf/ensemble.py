@@ -209,6 +209,7 @@ class Boosting(Ensemble):
         self.save_model(models, weights)
 
     def _metadata(self, score=None):
+        list_measure = self.scores(all_clf=False)
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
                 "models": self.clf_models_namespace,
@@ -216,7 +217,7 @@ class Boosting(Ensemble):
                 "model_name": self.model_name,
                 "md5": self.dataset.md5(),
                 "election": self.election,
-                "score": score}
+                "score": list_measure.measures_to_dict()}
 
     def save_model(self, models, weights):
         self.clf_models_namespace = self.load_namespaces(
@@ -226,8 +227,7 @@ class Boosting(Ensemble):
         self.set_boosting_values(self.clf_models_namespace, self.clf_weights)
         if self.check_point_path is not None:
             path = self.make_model_file()
-            list_measure = self.scores(all_clf=False)
-            self.save_meta(score=list_measure.measures_to_dict())
+            self.save_meta()
 
     def set_weights(self, best, classifs, values):
         if values is None:
@@ -317,14 +317,15 @@ class Stacking(Ensemble):
             path = self.make_model_file()
             self.dataset_blend = joblib.load('{}.pkl'.format(path))
 
-    def _metadata(self, score=None):
+    def _metadata(self):
+        list_measure = self.scores(all_clf=False)
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
                 "models": self.clf_models_namespace,
                 "model_name": self.model_name,
                 "md5": self.dataset.md5(),
                 "iterations": self.iterations,
-                "score": score}
+                "score": list_measure.measures_to_dict()}
 
     def save_model(self, dataset_blend):
         from sklearn.externals import joblib
@@ -334,8 +335,7 @@ class Stacking(Ensemble):
         if self.check_point_path is not None:
             path = self.make_model_file()            
             joblib.dump(dataset_blend, '{}.pkl'.format(path))
-            list_measure = self.scores(all_clf=False)
-            self.save_meta(score=list_measure.measures_to_dict())
+            self.save_meta()
 
     def train(self, batch_size=128, num_steps=1):
         from sklearn.model_selection import StratifiedKFold
@@ -412,13 +412,14 @@ class Bagging(Ensemble):
             self.classif = classif
 
     def _metadata(self, score=None):
+        list_measure = self.scores()
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
                 "models": self.clf_models_namespace,
                 "model_base": self.classif.module_cls_name(),
                 "model_name": self.model_name,
                 "md5": self.dataset.md5(),
-                "score": score}
+                "score": list_measure.measures_to_dict()}
 
     def save_model(self):         
         self.clf_models_namespace = self.load_namespaces(
@@ -426,8 +427,7 @@ class Bagging(Ensemble):
             lambda x: x.module_cls_name())
         if self.check_point_path is not None:
             path = self.make_model_file()
-            list_measure = self.scores()
-            self.save_meta(score=list_measure.measures_to_dict())
+            self.save_meta()
 
     def train(self, batch_size=128, num_steps=1):
         for classif in self.load_models():

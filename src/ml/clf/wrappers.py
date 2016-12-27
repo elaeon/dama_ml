@@ -158,11 +158,11 @@ class DataDrive(object):
     def _metadata(self):
         pass
 
-    def save_meta(self, score=None):
+    def save_meta(self):
         from ml.ds import save_metadata
         if self.check_point_path is not None:
             path = self.make_model_file()
-            save_metadata(path+".xmeta", self._metadata(score=score))
+            save_metadata(path+".xmeta", self._metadata())
 
     def load_meta(self):
         from ml.ds import load_metadata
@@ -404,7 +404,8 @@ class BaseClassif(DataDrive):
             validation_labels[i] = validation_labels_d[j]
         return validation_data, validation_labels, pred_index
 
-    def _metadata(self, score=None):
+    def _metadata(self):
+        list_measure = self.scores()
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
                 "md5": self._original_dataset_md5, #not reformated dataset
@@ -412,7 +413,7 @@ class BaseClassif(DataDrive):
                 "model_module": self.module_cls_name(),
                 "model_name": self.model_name,
                 "model_version": self.model_version,
-                "score": score}
+                "score": list_measure.measures_to_dict()}
         
     def get_dataset(self):
         from ml.ds import DataSetBuilder
@@ -446,8 +447,7 @@ class SKL(BaseClassif):
         if self.check_point_path is not None:
             path = self.make_model_file()
             joblib.dump(self.model, '{}.pkl'.format(path))
-            list_measure = self.scores()
-            self.save_meta(score=list_measure.measures_to_dict())
+            self.save_meta()
 
     def load_model(self):
         from sklearn.externals import joblib
@@ -487,8 +487,7 @@ class TFL(BaseClassif):
         if self.check_point_path is not None:
             path = self.make_model_file()
             self.model.save('{}.ckpt'.format(path))
-            list_measure = self.scores()
-            self.save_meta(score=list_measure.measures_to_dict())
+            self.save_meta()
 
     def load_model(self):
         self.prepare_model()
@@ -509,11 +508,11 @@ class TFL(BaseClassif):
 class Keras(BaseClassif):
     def load_fn(self, path):
         from keras.models import load_model
-        net_model = load_model(path)
-        self.model = MLModel(fit_fn=net_model.fit, 
-                            predictors=[net_model.predict],
+        model = load_model(path)
+        self.model = MLModel(fit_fn=model.fit, 
+                            predictors=[model.predict],
                             load_fn=self.load_fn,
-                            save_fn=net_model.save)
+                            save_fn=model.save)
 
     def preload_model(self):
         self.model = MLModel(fit_fn=None, 
@@ -530,8 +529,7 @@ class Keras(BaseClassif):
         if self.check_point_path is not None:
             path = self.make_model_file()
             self.model.save('{}.ckpt'.format(path))
-            list_measure = self.scores()
-            self.save_meta(score=list_measure.measures_to_dict())
+            self.save_meta()
 
     def load_model(self):        
         self.preload_model()
