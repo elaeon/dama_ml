@@ -427,8 +427,23 @@ class BaseClassif(DataDrive):
                 self.__class__.__name__))
         return dataset
 
-    def to_model(self):
-        pass
+    def preload_model(self):
+        self.model = MLModel(fit_fn=None, 
+                            predictors=None,
+                            load_fn=self.load_fn,
+                            save_fn=None)
+
+    def save_model(self):
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            self.model.save('{}.ckpt'.format(path))
+            self.save_meta()
+
+    def load_model(self):        
+        self.preload_model()
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            self.model.load('{}.ckpt'.format(path))
 
 
 class SKL(BaseClassif):
@@ -439,21 +454,22 @@ class SKL(BaseClassif):
             return self.le.inverse_transform(self.position_index(label))
 
     def train(self, batch_size=0, num_steps=0):
-        self.prepare_model()
+        from sklearn.externals import joblib
+        model = self.prepare_model()
+        self.model = MLModel(fit_fn=model.fit, 
+                            predictors=[model.predict],
+                            load_fn=self.load_fn,
+                            save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
         self.save_model()
 
-    def save_model(self):
+    def load_fn(self, path):
         from sklearn.externals import joblib
-        if self.check_point_path is not None:
-            path = self.make_model_file()
-            joblib.dump(self.model, '{}.pkl'.format(path))
-            self.save_meta()
+        model = joblib.load('{}.pkl'.format(path))
+        self.model = MLModel(fit_fn=model.fit, 
+                            predictors=[model.predict],
+                            load_fn=self.load_fn,
+                            save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
 
-    def load_model(self):
-        from sklearn.externals import joblib
-        if self.check_point_path is not None:
-            path = self.make_model_file()
-            self.model = joblib.load('{}.pkl'.format(path))
 
     def _predict(self, data, raw=False):
         for prediction in self.model.predict(data):
@@ -470,8 +486,25 @@ class SKLP(SKL):
         else:
             return self.le.inverse_transform(self.position_index(label))
 
+    def train(self, batch_size=0, num_steps=0):
+        from sklearn.externals import joblib
+        model = self.prepare_model()
+        self.model = MLModel(fit_fn=model.fit, 
+                            predictors=[model.predict_proba],
+                            load_fn=self.load_fn,
+                            save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
+        self.save_model()
+
+    def load_fn(self, path):
+        from sklearn.externals import joblib
+        model = joblib.load('{}.pkl'.format(path))
+        self.model = MLModel(fit_fn=model.fit, 
+                            predictors=[model.predict_proba],
+                            load_fn=self.load_fn,
+                            save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
+
     def _predict(self, data, raw=False):
-        for prediction in self.model.predict_proba(data):
+        for prediction in self.model.predict(data):
             yield self.convert_label(prediction, raw=raw)
 
 
@@ -483,18 +516,12 @@ class TFL(BaseClassif):
         labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
         return data, labels_m
 
-    def save_model(self):
-        if self.check_point_path is not None:
-            path = self.make_model_file()
-            self.model.save('{}.ckpt'.format(path))
-            self.save_meta()
-
-    def load_model(self):
-        self.prepare_model()
-        if self.check_point_path is not None:
-            path = self.make_model_file()
-            #print("+++++++", path)
-            self.model.load('{}.ckpt'.format(path))
+    def load_fn(self, path):
+        model = self.prepare_model()
+        self.model = MLModel(fit_fn=model.fit, 
+                            predictors=[model.predict],
+                            load_fn=self.load_fn,
+                            save_fn=model.save)
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         with tf.Graph().as_default():
@@ -503,6 +530,22 @@ class TFL(BaseClassif):
     def _predict(self, data, raw=False):
         for prediction in self.model.predict(data):
             yield self.convert_label(np.asarray(prediction), raw=raw)
+
+    def train(self, batch_size=10, num_steps=1000):
+        with tf.Graph().as_default():
+            model = self.prepare_model()
+            self.model = MLModel(fit_fn=model.fit, 
+                            predictors=[model.predict],
+                            load_fn=self.load_fn,
+                            save_fn=model.save)
+            self.model.fit(self.dataset.train_data, 
+                self.dataset.train_labels, 
+                n_epoch=num_steps, 
+                validation_set=(self.dataset.valid_data, self.dataset.valid_labels),
+                show_metric=True, 
+                batch_size=batch_size,
+                run_id="tfl_model")
+            self.save_model()
 
 
 class Keras(BaseClassif):
@@ -514,31 +557,10 @@ class Keras(BaseClassif):
                             load_fn=self.load_fn,
                             save_fn=model.save)
 
-    def preload_model(self):
-        self.model = MLModel(fit_fn=None, 
-                            predictors=None,
-                            load_fn=self.load_fn,
-                            save_fn=None)
-
     def reformat(self, data, labels):
         data = self.transform_shape(data)
         labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
         return data, labels_m
-
-    def save_model(self):
-        if self.check_point_path is not None:
-            path = self.make_model_file()
-            self.model.save('{}.ckpt'.format(path))
-            self.save_meta()
-
-    def load_model(self):        
-        self.preload_model()
-        if self.check_point_path is not None:
-            path = self.make_model_file()
-            self.model.load('{}.ckpt'.format(path))
-
-    def predict(self, data, raw=False, transform=True, chunk_size=1):
-        return super(Keras, self).predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
 
     def _predict(self, data, raw=False):
         for prediction in self.model.predict(data):

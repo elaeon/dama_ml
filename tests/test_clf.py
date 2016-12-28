@@ -50,7 +50,7 @@ class TestClf(unittest.TestCase):
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
-        self.classif.train()
+        self.classif.train(num_steps=1)
 
     def test_only_is(self):
         self.assertEqual(self.classif.erroneous_clf(), None)
@@ -60,6 +60,28 @@ class TestClf(unittest.TestCase):
     def test_load_meta(self):
         self.assertEqual(type(self.classif.load_meta()), type({}))
 
+
+class TestGrid(unittest.TestCase):
+    def setUp(self):
+        from ml.ds import DataSetBuilder
+        from ml.clf.ensemble import Grid
+        from ml.clf.extended.w_sklearn import RandomForest
+        from ml.clf.extended.w_tflearn import MLP
+
+        X = np.asarray([1, 0]*10)
+        Y = X*1
+        self.dataset = DataSetBuilder("test", dataset_path="/tmp/")
+        self.dataset.build_dataset(X, Y)
+
+        self.classif = Grid({0: [RandomForest, MLP]},
+            dataset=self.dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        self.classif.train(num_steps=1)
+
+    def test_load_meta(self):
+        self.assertEqual(type(self.classif.load_meta()), type({}))
 
 if __name__ == '__main__':
     unittest.main()

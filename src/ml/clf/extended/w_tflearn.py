@@ -4,15 +4,16 @@ import tensorflow as tf
 import tflearn
 
 
-class MMLP(tflearn.DNN):
-    def __init__(self, num_features, layers, num_labels):
-        self.num_features = num_features
-        self.layers = layers
-        self.num_labels = num_labels
-        self.net = self.build()
-        super(MMLP, self).__init__(self.net, tensorboard_verbose=3)
+class MLP(TFL):
+    def __init__(self, *args, **kwargs):
+        if "layers" in kwargs:
+            self.layers = kwargs["layers"]
+            del kwargs["layers"]
+        else:
+            self.layers = [128, 64]
+        super(MLP, self).__init__(*args, **kwargs)
 
-    def build(self):
+    def prepare_model(self):
         input_layer = tflearn.input_data(shape=[None, self.num_features])
         layer_ = input_layer
         for layer_size in self.layers:
@@ -23,17 +24,25 @@ class MMLP(tflearn.DNN):
         softmax = tflearn.fully_connected(layer_, self.num_labels, activation='softmax')
         sgd = tflearn.SGD(learning_rate=0.1, lr_decay=0.96, decay_step=1000)
         acc = tflearn.metrics.Accuracy()
-        return tflearn.regression(softmax, optimizer=sgd, metric=acc,
+        net = tflearn.regression(softmax, optimizer=sgd, metric=acc,
                          loss='categorical_crossentropy')
+        return tflearn.DNN(net, tensorboard_verbose=3, max_checkpoints=10)
 
 
-class MConvNet(tflearn.DNN):
-    def __init__(self, num_features, layers, num_labels):
-        self.net = self.build()
-        super(MMLP, self).__init__(self.net, tensorboard_verbose=3)
+class ConvNet(TFL):
+    def __init__(self, *args, **kwargs):
+        self.num_channels = kwargs.get("num_channels", 1)
+        self.patch_size = 3
+        self.depth = 32
+        if "num_channels" in kwargs:
+            del kwargs["num_channels"]
+        super(ConvTensor, self).__init__(*args, **kwargs)
 
-    def build(self):
-        import tflearn
+    def transform_shape(self, img):
+        return img.reshape((-1, self.dataset.image_size, self.dataset.image_size,
+            self.num_channels)).astype(np.float32)
+
+    def prepare_model(self):
         network = tflearn.input_data(
             shape=[None, self.dataset.image_size, self.dataset.image_size, self.num_channels],
             name='input')
@@ -52,64 +61,9 @@ class MConvNet(tflearn.DNN):
         network = tflearn.fully_connected(network, self.num_labels, activation='softmax')
         #top_k = tflearn.metrics.Top_k(5)
         acc = tflearn.metrics.Accuracy()
-        return tflearn.regression(network, optimizer='adam', metric=acc, learning_rate=0.01,
+        net = tflearn.regression(network, optimizer='adam', metric=acc, learning_rate=0.01,
                                  loss='categorical_crossentropy', name='target')
-
-
-class MLP(TFL):
-    def __init__(self, *args, **kwargs):
-        if "layers" in kwargs:
-            self.layers = kwargs["layers"]
-            del kwargs["layers"]
-        else:
-            self.layers = [128, 64]
-        super(MLP, self).__init__(*args, **kwargs)
-
-    def prepare_model(self):
-        self.model = MMLP(self.num_features, self.layers, self.num_labels)
-
-    def train(self, batch_size=10, num_steps=1000):
-        with tf.Graph().as_default():
-            self.prepare_model()
-            self.model.fit(self.dataset.train_data, 
-                self.dataset.train_labels, 
-                n_epoch=num_steps, 
-                validation_set=(self.dataset.valid_data, self.dataset.valid_labels),
-                show_metric=True, 
-                batch_size=batch_size,
-                run_id="mlp_model")
-            self.save_model()
-
-
-class ConvNet(TFL):
-    def __init__(self, *args, **kwargs):
-        self.num_channels = kwargs.get("num_channels", 1)
-        self.patch_size = 3
-        self.depth = 32
-        if "num_channels" in kwargs:
-            del kwargs["num_channels"]
-        super(ConvTensor, self).__init__(*args, **kwargs)
-
-    def transform_shape(self, img):
-        return img.reshape((-1, self.dataset.image_size, self.dataset.image_size,
-            self.num_channels)).astype(np.float32)
-
-    def prepare_model(self):
-        from ml.models import MConvNet
-        self.model = MConvNet()
-
-    def train(self, batch_size=10, num_steps=1000):
-        with tf.Graph().as_default():
-            self.prepare_model()
-            self.model.fit(self.dataset.train_data, 
-                self.dataset.train_labels, 
-                n_epoch=num_steps, 
-                validation_set=(self.dataset.valid_data, self.dataset.valid_labels),
-                show_metric=True, 
-                batch_size=batch_size,
-                snapshot_step=100,
-                run_id="conv_model")
-            self.save_model()
+        return tflearn.DNN(net, tensorboard_verbose=3, max_checkpoints=10)
 
 
 class ResidualTensor(TFL):
@@ -161,28 +115,11 @@ class ResidualTensor(TFL):
         net = tflearn.fully_connected(net, self.num_labels, activation='softmax')
         sgd = tflearn.SGD(learning_rate=0.1, lr_decay=0.96, decay_step=300)
         acc = tflearn.metrics.Accuracy()
-        self.net = tflearn.regression(net, optimizer=sgd,
+        net = tflearn.regression(net, optimizer=sgd,
                                 metric=acc,
                                 loss='categorical_crossentropy',
                                 learning_rate=0.1)
-        self.model = tflearn.DNN(
-            self.net,
-            tensorboard_verbose=3,
-            max_checkpoints=10)
-
-    def train(self, num_steps=1000):
-        import tflearn
-        with tf.Graph().as_default():
-            self.prepare_model()
-            self.model.fit(self.train_data, 
-                self.train_labels, 
-                n_epoch=num_steps, 
-                validation_set=(self.valid_data, self.valid_labels),
-                show_metric=True, 
-                snapshot_step=100,
-                batch_size=self.batch_size,
-                run_id="resnet_mnist")
-            self.save_model()
+        return tflearn.DNN(net, tensorboard_verbose=3, max_checkpoints=10)
 
 
 class LSTM(TFL):
@@ -223,17 +160,4 @@ class LSTM(TFL):
         acc = tflearn.metrics.Accuracy()
         self.net = tflearn.regression(net, optimizer='adam', learning_rate=0.001, metric=acc,
             loss='categorical_crossentropy')
-        self.model = tflearn.DNN(self.net, tensorboard_verbose=3)
-
-    def train(self, batch_size=10, num_steps=1000):
-        import tflearn
-        with tf.Graph().as_default():
-            self.prepare_model()
-            self.model.fit(self.dataset.train_data, 
-                self.dataset.train_labels, 
-                n_epoch=num_steps, 
-                validation_set=(self.dataset.valid_data, self.dataset.valid_labels),
-                show_metric=True, 
-                batch_size=batch_size,
-                run_id="lstm_model")
-            self.save_model()
+        return tflearn.DNN(self.net, tensorboard_verbose=3)
