@@ -53,6 +53,7 @@ class Grid(DataDrive):
 
     def train(self, batch_size=128, num_steps=1):
         for classif in self.load_models():
+            print("Training [{}]".format(classif.__class__.__name__))
             classif.train(batch_size=batch_size, num_steps=num_steps)
     
     def all_clf_scores(self, measures=None):
@@ -61,7 +62,7 @@ class Grid(DataDrive):
             for classif in self.load_models()))
 
     def scores(self, measures=None, namespace=None):
-        return self.all_clf_scores(measures=measures, namespace=namespace)
+        return self.all_clf_scores(measures=measures)
 
     def print_confusion_matrix(self, namespace=None):
         from operator import add

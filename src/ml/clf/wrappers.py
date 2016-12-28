@@ -456,10 +456,13 @@ class SKL(BaseClassif):
     def train(self, batch_size=0, num_steps=0):
         from sklearn.externals import joblib
         model = self.prepare_model()
-        self.model = MLModel(fit_fn=model.fit, 
+        if not isinstance(model, MLModel):
+            self.model = MLModel(fit_fn=model.fit, 
                             predictors=[model.predict],
                             load_fn=self.load_fn,
                             save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
+        else:
+            self.model = model
         self.save_model()
 
     def load_fn(self, path):
@@ -489,10 +492,13 @@ class SKLP(SKL):
     def train(self, batch_size=0, num_steps=0):
         from sklearn.externals import joblib
         model = self.prepare_model()
-        self.model = MLModel(fit_fn=model.fit, 
-                            predictors=[model.predict_proba],
-                            load_fn=self.load_fn,
-                            save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
+        if not isinstance(model, MLModel):
+            self.model = MLModel(fit_fn=model.fit, 
+                                predictors=[model.predict_proba],
+                                load_fn=self.load_fn,
+                                save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
+        else:
+            self.model = model
         self.save_model()
 
     def load_fn(self, path):
@@ -534,10 +540,13 @@ class TFL(BaseClassif):
     def train(self, batch_size=10, num_steps=1000):
         with tf.Graph().as_default():
             model = self.prepare_model()
-            self.model = MLModel(fit_fn=model.fit, 
-                            predictors=[model.predict],
-                            load_fn=self.load_fn,
-                            save_fn=model.save)
+            if not isinstance(model, MLModel):
+                self.model = MLModel(fit_fn=model.fit, 
+                                predictors=[model.predict],
+                                load_fn=self.load_fn,
+                                save_fn=model.save)
+            else:
+                self.model = model
             self.model.fit(self.dataset.train_data, 
                 self.dataset.train_labels, 
                 n_epoch=num_steps, 
@@ -565,3 +574,20 @@ class Keras(BaseClassif):
     def _predict(self, data, raw=False):
         for prediction in self.model.predict(data):
             yield self.convert_label(np.asarray(prediction), raw=raw)
+
+    def train(self, batch_size=258, num_steps=50):
+        model = self.prepare_model()
+        if not isinstance(model, MLModel):
+            self.model = MLModel(fit_fn=model.fit, 
+                            predictors=[model.predict],
+                            load_fn=self.load_fn,
+                            save_fn=model.save)
+        else:
+            self.model = model
+        self.model.fit(self.dataset.train_data, 
+            self.dataset.train_labels,
+            nb_epoch=num_steps,
+            batch_size=batch_size,
+            shuffle=True,
+            validation_data=(self.dataset.valid_data, self.dataset.valid_labels))
+        self.save_model()
