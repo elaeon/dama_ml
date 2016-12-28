@@ -445,6 +445,12 @@ class BaseClassif(DataDrive):
             path = self.make_model_file()
             self.model.load('{}.ckpt'.format(path))
 
+    def _predict(self, data, raw=False):
+        for prediction in self.model.predict(data):
+            if not isinstance(prediction, np.ndarray):
+                prediction = np.asarray(prediction)
+            yield self.convert_label(prediction, raw=raw)
+
 
 class SKL(BaseClassif):
     def convert_label(self, label, raw=False):
@@ -472,11 +478,6 @@ class SKL(BaseClassif):
                             predictors=[model.predict],
                             load_fn=self.load_fn,
                             save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
-
-
-    def _predict(self, data, raw=False):
-        for prediction in self.model.predict(data):
-            yield self.convert_label(prediction, raw=raw)
 
 
 class SKLP(SKL):
@@ -509,10 +510,6 @@ class SKLP(SKL):
                             load_fn=self.load_fn,
                             save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
 
-    def _predict(self, data, raw=False):
-        for prediction in self.model.predict(data):
-            yield self.convert_label(prediction, raw=raw)
-
 
 class TFL(BaseClassif):
 
@@ -532,10 +529,6 @@ class TFL(BaseClassif):
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         with tf.Graph().as_default():
             return super(TFL, self).predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
-
-    def _predict(self, data, raw=False):
-        for prediction in self.model.predict(data):
-            yield self.convert_label(np.asarray(prediction), raw=raw)
 
     def train(self, batch_size=10, num_steps=1000):
         with tf.Graph().as_default():
@@ -571,9 +564,6 @@ class Keras(BaseClassif):
         labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
         return data, labels_m
 
-    def _predict(self, data, raw=False):
-        for prediction in self.model.predict(data):
-            yield self.convert_label(np.asarray(prediction), raw=raw)
 
     def train(self, batch_size=258, num_steps=50):
         model = self.prepare_model()

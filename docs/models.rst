@@ -1,9 +1,16 @@
 Models
 =====================================
 
-The models are classificators (from differents frameworks like tensorflow, keras, 
-scikit-learn, etc), with operations like fit and predict. Only this operations are
-needed for add new models to python-ml.
+The models are classificators with operations like fit and predict. Only this two operations are
+need for add models to python-ml.
+
+By default the supported frameworks are:
+    * tensorflow
+    * keras
+    * scikit-learn
+    * tflearn
+
+but you can define more, see: :doc:`wrappers`.
 
 For example, we add a model called AdaBoost.
 
@@ -21,9 +28,15 @@ For example, we add a model called AdaBoost.
             reg.fit(self.dataset.train_data, self.dataset.train_labels)
             sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
             sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
-            #sig_clf must have operations like fit and predict i.e sig_clf.fit(X, y)
-            #sig_clf.predict(X)
-            self.model = sig_clf
+            #sig_clf must have operations like fit and predict 
+            #i.e sig_clf.fit(X, y), sig_clf.predict(X)
+            #if not you can use MLModel as wrapper
+            #from ml.models import MLModel
+            #return MLModel(fit_fn=sig_clf.fit, 
+            #                predictors=[sig_clf.predict],
+            #                load_fn=self.load_fn, 
+            #                save_fn=save) you would define save
+            return sig_clf
 
 Now we can use AdaBoost.
 
@@ -58,8 +71,12 @@ If you want add a TensorFlow model i.e a multilayer perceptron
     from ml.clf.extended.w_tflearn import TFL
     class MLP(TFL):
         def __init__(self, *args, **kwargs):
-        self.layers = [128, 64] #number of nodes in every layer
-        super(MLP, self).__init__(*args, **kwargs)
+            if "layers" in kwargs:
+                self.layers = kwargs["layers"]
+                del kwargs["layers"]
+            else:
+                self.layers = [128, 64]
+            super(MLP, self).__init__(*args, **kwargs)
 
         def prepare_model(self):
             input_layer = tflearn.input_data(shape=[None, self.num_features])
@@ -74,19 +91,7 @@ If you want add a TensorFlow model i.e a multilayer perceptron
             acc = tflearn.metrics.Accuracy()
             net = tflearn.regression(softmax, optimizer=sgd, metric=acc,
                              loss='categorical_crossentropy')
-            self.model = tflearn.DNN(net, tensorboard_verbose=3)
-
-        def train(self, batch_size=10, num_steps=1000):
-            with tf.Graph().as_default():
-                self.prepare_model()
-                self.model.fit(self.dataset.train_data, 
-                    self.dataset.train_labels, 
-                    n_epoch=num_steps, 
-                    validation_set=(self.dataset.valid_data, self.dataset.valid_labels),
-                    show_metric=True, 
-                    batch_size=batch_size,
-                    run_id="mlp_model")
-                self.save_model()
+            return tflearn.DNN(net, tensorboard_verbose=3, max_checkpoints=10)
 
 Prediction
 
@@ -98,3 +103,4 @@ Prediction
         model_version="1")
     predictions = classif.predict(data)
 
+For more about it see :doc:`wrappers`.

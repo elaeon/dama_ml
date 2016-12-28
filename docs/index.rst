@@ -68,13 +68,13 @@ Using SVGPC for make predictions is like this:
 
 .. code-block:: python
 
-    classif = ml.clf.extended.SVGPC(
+    classif = SVGPC(
         model_name="my_test_model",
         model_version="1")
     predictions = np.asarray(list(classif.predict(X, chunk_size=258)))
 
 
-You can use more predefined models (see :doc:`Predefined models`), by extended the base model and make you own predictors. For more information about this, see the section :doc:`models`. 
+You can use more extra models (see :doc:`extra_models`). Extend the base model and make you own predictors! For more information about this, see the section :doc:`models`. 
 
 CLI
 ==============
@@ -122,6 +122,8 @@ More information
    datasets
    preprocessing
    models
+   extra_models
+   wrappers
    reporting_bugs
    changes
 
