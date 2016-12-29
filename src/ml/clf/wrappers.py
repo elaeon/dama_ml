@@ -56,6 +56,7 @@ class Measure(object):
         return cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 
     def logloss(self):
+        print("logloss")
         from sklearn.metrics import log_loss
         return log_loss(self.labels, self.predictions)
 
@@ -75,13 +76,7 @@ class ListMeasure(object):
         self.measures[i].append(value)
 
     def get_measure(self, name):
-        try:
-            i = self.headers.index(name)
-        except IndexError:
-            i = 0
-
-        for measure in self.measures:
-            yield measure[i]
+        return self.measures_to_dict().get(name, None)
 
     def measures_to_dict(self):
         return {header: measures for header, measures in zip(self.headers[1:], self.measures[0][1:])}
@@ -123,7 +118,7 @@ class ListMeasure(object):
 
     def calc_scores(self, name, predict, data, labels, labels2classes_fn=None, measures=None):
         if measures is None:
-            measures = ["accuracy", "presicion", "recall", "f1", "auc", "logloss"]
+            measures = ["accuracy", "precision", "recall", "f1", "auc", "logloss"]
         elif isinstance(measures, str):
             measures = measures.split(",")
         else:

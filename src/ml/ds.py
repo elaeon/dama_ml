@@ -388,20 +388,21 @@ class DataSetBuilder(object):
         return self._cached_md5
 
     def _clf(self):
-        from ml.clf.extended import RandomForest
-        train_labels = np.ones(self.train_data.shape[0])
-        test_labels = np.zeros(self.test_data.shape[0])
-        valid_labels = np.ones(self.valid_data.shape[0])
-        data = np.concatenate((self.train_data, self.valid_data, self.test_data), axis=0)
-        labels = np.concatenate((train_labels, valid_labels, test_labels), axis=0)
-        dataset = DataSetBuilder(None, transforms_apply=False)
+        from ml.clf.extended.w_sklearn import RandomForest
+        train_labels = np.ones(self.train_labels.shape[0], dtype=int)
+        test_labels = np.zeros(self.test_labels.shape[0], dtype=int)
+        data = np.concatenate((self.train_data, self.test_data), axis=0)
+        labels = np.concatenate((train_labels, test_labels), axis=0)
+        dataset = DataSetBuilder("test_train_separability", transforms_apply=False)
         dataset.build_dataset(data, labels)
         return RandomForest(dataset=dataset)
 
     def score_train_test(self):
         classif = self._clf()
         classif.train()
-        return classif.calc_scores(measures="auc").measures
+        measure = "auc"
+        return classif.load_meta().get("score", {measure, None}).get(measure, None) 
+        #classif.scores(measures="f1").get_measure("f1")
 
     def plot(self):
         import matplotlib.pyplot as plt
@@ -443,13 +444,36 @@ class DataSetBuilder(object):
         ax.legend(loc=2)
         plt.show()
 
-    def density(self):
+    def distinct_data(self):
+        """
+        return the radio of distincts elements with the total training data.
+        i.e 
+        [1,2,3,4,5] return 5/5
+        [2,2,2,2,2] return 1/5        
+        
+        """
         if not isinstance(self.train_data.dtype, object):
             data = self.train_data.reshape(self.train_data.shape[0], -1)
         else:
             data = np.asarray([row.reshape(1, -1)[0] for row in self.train_data])
         y = set((elem for row in data for elem in row))
         return float(len(y)) / data.size
+
+    def sparcity(self):
+        if not isinstance(self.train_data.dtype, object):
+            data = self.train_data.reshape(self.train_data.shape[0], -1)
+        else:
+            data = np.asarray([row.reshape(1, -1)[0] for row in self.train_data])
+
+        zero_counter = 0
+        total = 0
+        for row in data:
+            for elem in row:
+                if elem == 0:
+                    zero_counter += 1
+                total += 1
+    
+        return float(zero_counter) / total
 
 
 class DataSetBuilderImage(DataSetBuilder):
