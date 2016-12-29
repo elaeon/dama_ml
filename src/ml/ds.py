@@ -115,18 +115,33 @@ class DataSetBuilder(object):
         print('Preprocessing Class: {}'.format(self.get_processing_class_name()))
         print('MD5: {}'.format(self._cached_md5))
         print('       ')
-        headers = ["Dataset", "Mean", "Std", "Shape", "dType", "Labels"]
-        table = []
-        table.append(["train set", self.train_data.mean(), self.train_data.std(), 
-            self.train_data.shape, self.train_data.dtype, self.train_labels.size])
+        if not isinstance(self.train_data.dtype, object):
+            headers = ["Dataset", "Mean", "Std", "Shape", "dType", "Labels"]
+            table = []
+            table.append(["train set", self.train_data.mean(), self.train_data.std(), 
+                self.train_data.shape, self.train_data.dtype, self.train_labels.size])
 
-        if self.valid_data is not None:
-            table.append(["valid set", self.valid_data.mean(), self.valid_data.std(), 
-            self.valid_data.shape, self.valid_data.dtype, self.valid_labels.size])
+            if self.valid_data is not None:
+                table.append(["valid set", self.valid_data.mean(), self.valid_data.std(), 
+                self.valid_data.shape, self.valid_data.dtype, self.valid_labels.size])
 
-        table.append(["test set", self.test_data.mean(), self.test_data.std(), 
-            self.test_data.shape, self.test_data.dtype, self.test_labels.size])
-        order_table_print(headers, table, "shape")
+            table.append(["test set", self.test_data.mean(), self.test_data.std(), 
+                self.test_data.shape, self.test_data.dtype, self.test_labels.size])
+            order_table_print(headers, table, "shape")
+        else:
+            headers = ["Dataset", "Shape", "dType", "Labels"]
+            table = []
+            table.append(["train set", self.train_data.shape, self.train_data.dtype, 
+                self.train_labels.size])
+
+            if self.valid_data is not None:
+                table.append(["valid set", self.valid_data.shape, self.valid_data.dtype, 
+                self.valid_labels.size])
+
+            table.append(["test set", self.test_data.shape, self.test_data.dtype, 
+                self.test_labels.size])
+            order_table_print(headers, table, "shape")
+
         if classes is True:
             headers = ["class", "# items"]
             order_table_print(headers, self.labels_info().items(), "# items")
@@ -151,7 +166,7 @@ class DataSetBuilder(object):
 
     def dtype_t(self, data):
         dtype = dtype_c(self.dtype)
-        if data.dtype is not dtype:
+        if data.dtype is not dtype and not isinstance(data.dtype, object):
             return data.astype(dtype_c(self.dtype))
         else:
             return data
@@ -286,15 +301,13 @@ class DataSetBuilder(object):
 
     def processing_rows(self, data):
         if not self.transforms.empty('row') and self.transforms_apply and data is not None:
-            #if len(data.shape) == 1:
-            #    data = data.reshape(1, -1)
             pdata = []
             for row in data:
                 preprocessing = self.processing_class(row, self.transforms.get_transforms('row'))
                 pdata.append(preprocessing.pipeline())
             return np.asarray(pdata)
         else:
-            return data
+            return data if isinstance(data, np.ndarray) else np.asarray(data)
 
     def processing_global(self, data, base_data=None):
         if not self.transforms.empty('global') and self.transforms_apply and data is not None:
@@ -430,14 +443,13 @@ class DataSetBuilder(object):
         ax.legend(loc=2)
         plt.show()
 
-    def density(self, axis=0):
-        data = self.train_data.reshape(self.train_data.shape[0], -1)
-        if axis == 0:
-            columns = (data != 0).sum(axis=0) / np.asarray([data.shape[0]] * data.shape[1])
-            return columns.sum() / data.shape[1]
+    def density(self):
+        if not isinstance(self.train_data.dtype, object):
+            data = self.train_data.reshape(self.train_data.shape[0], -1)
         else:
-            rows = (data != 0).sum(axis=1) / np.asarray([data.shape[1]] * data.shape[0])
-            return rows.sum() / data.shape[0]
+            data = np.asarray([row.reshape(1, -1)[0] for row in self.train_data])
+        y = set((elem for row in data for elem in row))
+        return float(len(y)) / data.size
 
 
 class DataSetBuilderImage(DataSetBuilder):
