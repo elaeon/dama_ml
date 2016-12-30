@@ -89,7 +89,7 @@ class TestMsssiM(unittest.TestCase):
 
         image4d_1 = image_to_4d(image1)
         image4d_2 = image_to_4d(image2)
-        ssim_index = ssim(image4d_1, image4d_2)
+        #ssim_index = ssim(image4d_1, image4d_2)
         msssim_index = tf.reduce_mean(msssim(image4d_1, image4d_2, level=5, size=6))
 
         with tf.Session() as sess:

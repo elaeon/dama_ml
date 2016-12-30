@@ -70,6 +70,12 @@ class Transforms(object):
         else:
             return False
 
+    def __add__(self, o):
+        transforms_global = self.get_transforms("global") + o.get_transforms("global")
+        transforms_row = self.get_transforms("row") + o.get_transforms("row")
+        return Transforms([("global", transforms_global), ("row", transforms_row)])
+
+
 class Preprocessing(object):
     
     def __init__(self, data, transforms):

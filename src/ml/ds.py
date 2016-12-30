@@ -38,7 +38,6 @@ class DataSetBuilder(object):
                 transforms_global=None,
                 transforms_apply=True,
                 processing_class=None,
-                fits=None,
                 train_size=.7,
                 valid_size=.1,
                 validator='cross',
@@ -115,7 +114,7 @@ class DataSetBuilder(object):
         print('Preprocessing Class: {}'.format(self.get_processing_class_name()))
         print('MD5: {}'.format(self._cached_md5))
         print('       ')
-        if not isinstance(self.train_data.dtype, object):
+        if self.train_data.dtype != np.object:
             headers = ["Dataset", "Mean", "Std", "Shape", "dType", "Labels"]
             table = []
             table.append(["train set", self.train_data.mean(), self.train_data.std(), 
@@ -166,7 +165,7 @@ class DataSetBuilder(object):
 
     def dtype_t(self, data):
         dtype = dtype_c(self.dtype)
-        if data.dtype is not dtype and not isinstance(data.dtype, object):
+        if data.dtype is not dtype and data.dtype != np.object:
             return data.astype(dtype_c(self.dtype))
         else:
             return data
@@ -474,6 +473,28 @@ class DataSetBuilder(object):
                 total += 1
     
         return float(zero_counter) / total
+
+    def add_transforms(self, transforms_global=None, transforms_row=None, 
+                        processing_class=None, save=True):
+        dataset = self.copy()
+        if self.processing_class is None:
+            dataset.processing_class = processing_class
+
+        old_transforms = dataset.transforms
+        if old_transforms.empty("global") and transforms_global is not None:
+            dataset.transforms = Transforms([transforms_global, transforms_row])
+        else:
+            dataset.transforms = Transforms([("global", []), ("row", transforms_row)])
+            dataset.train_data = dataset.processing(dataset.train_data)
+            dataset.test_data = dataset.processing(dataset.test_data)
+            dataset.valid_data = dataset.processing(dataset.valid_data)
+            dataset.transforms = old_transforms + dataset.transforms
+
+        if save is True:
+            dataset.name = dataset.name + "."
+            dataset.save()
+
+        return dataset
 
 
 class DataSetBuilderImage(DataSetBuilder):

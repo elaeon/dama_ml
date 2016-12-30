@@ -48,9 +48,14 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(labels_counter[0], 5)
         self.assertEqual(labels_counter[1], 5)
 
-    def test_density(self):
-        self.assertEqual(self.dataset.density(), 0)
-        self.assertEqual(self.dataset.density(axis=1), 0)
+    def test_distinct_data(self):
+        self.assertEqual(self.dataset.distinct_data() > 0, True)
+
+    def test_sparcity(self):
+        self.assertEqual(self.dataset.sparcity() > .9, True)
+
+    def test_subset(self):
+        self.assertEqual(self.dataset.subset(.5).train_data.shape[0], 3)
 
 
 class TestDatasetFile(unittest.TestCase):
