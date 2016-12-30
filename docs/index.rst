@@ -1,5 +1,5 @@
 
-Welcome to python-ml's documentation!
+Welcome to mlPyp's documentation!
 =====================================
 
 A framework for machine learning's pipelines.
@@ -11,6 +11,10 @@ Highlights:
  * Models with scores and predictors.
  * Convert csv files to datasets.
  * Uses transformations for manipulate data (images).
+
+.. image:: pipeline.png
+    :align: center
+
 
 Instalation
 =====================
@@ -124,14 +128,12 @@ More information
    models
    extra_models
    wrappers
-   reporting_bugs
    changes
 
 
 Support
 =======
-If you encounter bugs then `let me know`_ . Please see :doc:`reporting_bugs`
-for information how best report them.
+If you encounter bugs then `let me know`_ .
 
 .. _let me know: https://github.com/elaeon/ML/issues
 
