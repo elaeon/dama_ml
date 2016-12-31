@@ -1,0 +1,2 @@
+.. automodule:: ds
+   :members: DataSetBuilder
