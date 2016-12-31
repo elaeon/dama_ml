@@ -6,9 +6,8 @@ import logging
 from sklearn.preprocessing import LabelEncoder
 from ml.utils.config import get_settings
 from ml.models import MLModel
+
 settings = get_settings("ml")
-
-
 logging.basicConfig()
 log = logging.getLogger(__name__)
 #np.random.seed(133)

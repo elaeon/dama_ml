@@ -8,12 +8,14 @@ import numpy as np
 import pandas as pd
 import cPickle as pickle
 import random
+import logging
 
 from ml.processing import PreprocessingImage, Preprocessing, Transforms
 from ml.utils.config import get_settings
 
 settings = get_settings("ml")
-
+logging.basicConfig()
+log = logging.getLogger(__name__)
 
 def save_metadata(file_path, data):
     with open(file_path, 'wb') as f:
@@ -48,6 +50,30 @@ class DataSetBuilder(object):
 
     :type test_folder_path: url
     :param test_folder_path: path to the test data. If None the test data is get from train_folder_path.
+
+    :type transforms_global: list
+    :param transforms_global: list of transforms for all row x column
+
+    :type transforms_row: list
+    :param transforms_row: list of transforms for each row
+
+    :type transforms_apply: bool
+    :param transforms_apply: apply transformations to the data
+
+    :type processing_class: class
+    :param processing_class: class where are defined the functions for preprocessing data.
+
+    :type train_size: float
+    :param train_size: value between [0, 1] who determine the size of the train data
+
+    :type valid_size: float
+    :param valid_size: value between [0, 1] who determine the size of the validation data
+
+    :type validator: string
+    :param validator: name of the method for extract from the data, the train data, test data and valid data
+
+    :type dtype: string
+    :param dtype: the type of the data to save
     """
     def __init__(self, name, 
                 dataset_path=None, 
@@ -98,16 +124,33 @@ class DataSetBuilder(object):
         self.transforms = Transforms([transforms_global, transforms_row])
 
     def url(self):
+        """
+        return the path where is saved the dataset
+        """
         return os.path.join(self.dataset_path, self.name)
 
     def num_features(self):
+        """
+        return the number of features of the dataset
+        """
         return self.train_data.shape[1]
 
     @property
     def shape(self):
-        return self.train_data.shape
+        "return the shape of the dataset"
+        rows = self.train_data.shape[0] + self.test_data.shape[0] +\
+            self.valid_data.shape[0]
+        if self.train_data.dtype != np.object:
+            return tuple([rows] + list(self.train_data.shape[1:]))
+        else:
+            return (rows,)
 
     def desfragment(self):
+        """
+        Concatenate the train, valid and test data in a data array.
+        Concatenate the train, valid, and test labels in another array.
+        return data, labels
+        """
         data = np.concatenate((
             self.train_data, self.valid_data, self.test_data), axis=0)
         labels = np.concatenate((
@@ -115,14 +158,27 @@ class DataSetBuilder(object):
         return data, labels
 
     def labels_info(self):
+        """
+        return a counter of labels
+        """
         from collections import Counter
         _, labels = self.desfragment()
         return Counter(labels)
 
-    def only_labels(self, base_labels):
-        data, labels = self.desfragment()
-        s_labels = set(base_labels)
-        dataset, n_labels = zip(*filter(lambda x: x[1] in s_labels, zip(data, labels)))
+    def only_labels(self, labels):
+        """
+        :type labels: list
+        :param labels: list of labels
+        return a tuple of arrays with data and labels, the returned data only have the labels selected.
+        """
+        data, all_labels = self.desfragment()
+        s_labels = set(labels)
+        try:
+            dataset, n_labels = zip(*filter(lambda x: x[1] in s_labels, zip(data, all_labels)))
+        except ValueError:
+            label = labels[0] if len(labels) > 0 else None
+            log.warning("label {} is not found in the labels set".format(label))
+            return np.asarray([]), np.asarray([])
         return np.asarray(dataset), np.asarray(n_labels)
 
     def info(self, classes=False):
