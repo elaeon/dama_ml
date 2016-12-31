@@ -1,3 +1,6 @@
+"""
+Module for create datasets from distinct sources of data.
+"""
 from skimage import io
 
 import os
@@ -30,6 +33,22 @@ def dtype_c(dtype):
 
 
 class DataSetBuilder(object):
+    """
+    Base class for dataset build. Get data from memory.
+    create the initial values for the dataset.
+
+    :type name: string
+    :param name: dataset's name
+
+    :type dataset_path: url
+    :param dataset_path: path where the datased is saved. This param is automaticly set by the settings.cfg file.
+
+    :type train_folder_path: url
+    :param train_folder_path: path to the data what you want to add to the dataset, automaticly split the data in train, test and validation. If you want manualy split the data in train and test, check test_folder_path.
+
+    :type test_folder_path: url
+    :param test_folder_path: path to the test data. If None the test data is get from train_folder_path.
+    """
     def __init__(self, name, 
                 dataset_path=None, 
                 test_folder_path=None, 
@@ -445,7 +464,7 @@ class DataSetBuilder(object):
 
     def distinct_data(self):
         """
-        return the radio of distincts elements with the total training data.
+        return the radio of distincts elements in the training data.
         i.e 
         [1,2,3,4,5] return 5/5
         [2,2,2,2,2] return 1/5        

@@ -131,6 +131,7 @@ More information
    changes
 
 
+
 Support
 =======
 If you encounter bugs then `let me know`_ .
@@ -138,3 +139,9 @@ If you encounter bugs then `let me know`_ .
 .. _let me know: https://github.com/elaeon/ML/issues
 
 
+Indices and tables
+==================
+ 
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`

@@ -34,14 +34,17 @@ Results in:
     valid set  0.499823  0.288698  (10000, 21)  float64     10000
 
 
-There are two more DataSetBuilder class, a dataset builder for images, and another for datasets in csv files. The next example is a DataSetBuilderFile
+There are two more DataSetBuilder class, a dataset builder for images, and another for files in csv format.
 
 .. code-block:: python
 
+    from ml.processing import Preprocessing
+    transforms = [("poly_features", {"degree":2, "interaction_only":False)]
     dataset = DataSetBuilderFile(
         dataset_name,
         train_folder_path="/home/ds/my_file.csv",
-        transforms_global=transforms)
+        processing_class=Preprocessing,
+        transforms_row=transforms)
     dataset.build_dataset(label_column="target")
 
 Preprocessing class is a way to add transformations to the data. There are predefined functions, 
