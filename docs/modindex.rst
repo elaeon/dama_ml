@@ -1,2 +1,2 @@
 .. automodule:: ds
-   :members: DataSetBuilder
+   :members: DataSetBuilder, DataSetBuilderImage

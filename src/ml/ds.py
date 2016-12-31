@@ -42,13 +42,13 @@ class DataSetBuilder(object):
     :type name: string
     :param name: dataset's name
 
-    :type dataset_path: url
+    :type dataset_path: string
     :param dataset_path: path where the datased is saved. This param is automaticly set by the settings.cfg file.
 
-    :type train_folder_path: url
+    :type train_folder_path: string
     :param train_folder_path: path to the data what you want to add to the dataset, automaticly split the data in train, test and validation. If you want manualy split the data in train and test, check test_folder_path.
 
-    :type test_folder_path: url
+    :type test_folder_path: string
     :param test_folder_path: path to the test data. If None the test data is get from train_folder_path.
 
     :type transforms_global: list
@@ -169,6 +169,7 @@ class DataSetBuilder(object):
         """
         :type labels: list
         :param labels: list of labels
+
         return a tuple of arrays with data and labels, the returned data only have the labels selected.
         """
         data, all_labels = self.desfragment()
@@ -182,6 +183,12 @@ class DataSetBuilder(object):
         return np.asarray(dataset), np.asarray(n_labels)
 
     def info(self, classes=False):
+        """
+        :type classes: bool
+        :param classes: if true, print the detail of the labels
+
+        This function print the details of the dataset.
+        """
         from ml.utils.order import order_table_print
         print('       ')
         print('DATASET NAME: {}'.format(self.name))
@@ -233,12 +240,21 @@ class DataSetBuilder(object):
         return X_train, X_validation, X_test, y_train, y_validation, y_test
 
     def get_processing_class_name(self):
+        """
+        return the name of the processing class
+        """
         if self.processing_class is None:
             return None
         else:
             return self.processing_class.module_cls_name()
 
     def dtype_t(self, data):
+        """
+        :type data: narray
+        :param data: narray to cast
+
+        cast the data to the predefined dataset dtype
+        """
         dtype = dtype_c(self.dtype)
         if data.dtype is not dtype and data.dtype != np.object:
             return data.astype(dtype_c(self.dtype))
@@ -330,6 +346,9 @@ class DataSetBuilder(object):
         self.valid_labels = valid_labels
 
     def save(self):
+        """
+        save the dataset in pickle format
+        """
         if self.dataset_path is not None:
             if not os.path.exists(self.dataset_path):
                     os.makedirs(self.dataset_path)
@@ -347,19 +366,32 @@ class DataSetBuilder(object):
             return save
 
     @classmethod
-    def load_dataset(self, name, dataset_path=None, info=True, 
-            processing_class=None, dtype='float64'):
+    def load_dataset(self, name, dataset_path=None, info=True, dtype='float64'):
+        """
+        :type name: string
+        :param name: name of the dataset to load
+
+        :type dataset_path: string
+        :param dataset_path: path where the dataset was saved
+
+        :type dtype: string
+        :param dtype: cast the data to the defined type
+
+        dataset_path is not necesary to especify, this info is obtained from settings.cfg
+        """
         if dataset_path is None:
              dataset_path = settings["dataset_path"]
         data = self.load_dataset_raw(name, dataset_path=dataset_path)
-        dataset = DataSetBuilder(name, dataset_path=dataset_path, 
-            processing_class=processing_class, dtype=dtype)
+        dataset = DataSetBuilder(name, dataset_path=dataset_path, dtype=dtype)
         dataset.from_raw(data)
         if info:
             dataset.info()
         return dataset        
 
     def is_binary(self):
+        """
+        return true if the labels only has two classes
+        """
         return len(self.labels_info()) == 2
 
     @classmethod
@@ -370,6 +402,9 @@ class DataSetBuilder(object):
         return pd.DataFrame(data=np.column_stack((dataset, labels)), columns=columns_name)
 
     def to_df(self):
+        """
+        convert the dataset to a dataframe
+        """
         data, labels = self.desfragment()
         return self.to_DF(data, labels)
 
@@ -452,9 +487,18 @@ class DataSetBuilder(object):
             return data
 
     def subset(self, percentaje):
-        return self.copy(percentaje)
+        """
+        :type percentaje: float
+        :param percentaje: value between [0, 1], this value represent the size of the dataset to copy.
+
+        i.e 1 copy all dataset, .5 copy half dataset
+        """
+        return self.copy(limit=percentaje)
 
     def md5(self):
+        """
+        return the signature of the dataset in hex md5
+        """
         import hashlib
         data, labels = self.desfragment()
         h = hashlib.md5(data)
@@ -472,6 +516,9 @@ class DataSetBuilder(object):
         return RandomForest(dataset=dataset)
 
     def score_train_test(self):
+        """
+        return the score of separability between the train data and the test data.
+        """
         classif = self._clf()
         classif.train()
         measure = "auc"
@@ -534,6 +581,10 @@ class DataSetBuilder(object):
         return float(len(y)) / data.size
 
     def sparcity(self):
+        """
+        return a value between [0, 1] of the sparcity of the dataset.
+        0 no zeros exists, 1 all data is zero.
+        """
         if not isinstance(self.train_data.dtype, object):
             data = self.train_data.reshape(self.train_data.shape[0], -1)
         else:
@@ -550,7 +601,20 @@ class DataSetBuilder(object):
         return float(zero_counter) / total
 
     def add_transforms(self, transforms_global=None, transforms_row=None, 
-                        processing_class=None, save=True):
+                        processing_class=None, save=False):
+        """
+        :type transforms_global: list
+        :param transforms_global: list of global transforms to apply
+
+        :type transforms_row: list
+        :param transforms_row: list of row transforms to apply
+
+        :type processing_class: class
+        :param processing_class: class of the row transforms
+
+        :type save: bool
+        :param save: if true the dataset with the transforms is saved
+        """
         dataset = self.copy()
         if self.processing_class is None:
             dataset.processing_class = processing_class
@@ -573,6 +637,14 @@ class DataSetBuilder(object):
 
 
 class DataSetBuilderImage(DataSetBuilder):
+    """
+    Class for images dataset build. Get the data from a directory where each directory's name is the label.
+    
+    :type image_size: int
+    :param image_size: define the image size to save in the dataset
+
+    kwargs are the same that DataSetBuilder's options
+    """
     def __init__(self, name, image_size=None, **kwargs):
         super(DataSetBuilderImage, self).__init__(name, **kwargs)
         self.image_size = image_size
