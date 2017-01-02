@@ -1,0 +1,212 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Models &#8212; mlPyp 0.1.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="top" title="mlPyp 0.1.1 documentation" href="index.html" />
+    <link rel="next" title="Wrappers" href="wrappers.html" />
+    <link rel="prev" title="Preprocessing" href="preprocessing.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="wrappers.html" title="Wrappers"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="preprocessing.html" title="Preprocessing"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.1.1 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="models">
+<h1>Models<a class="headerlink" href="#models" title="Permalink to this headline">¶</a></h1>
+<p>The models are classificators with operations like fit and predict. Only this two operations are
+need for add models to python-ml.</p>
+<dl class="docutils">
+<dt>By default the supported frameworks are:</dt>
+<dd><ul class="first last simple">
+<li>tensorflow</li>
+<li>keras</li>
+<li>scikit-learn</li>
+<li>tflearn</li>
+</ul>
+</dd>
+</dl>
+<p>but you can define more, see: <a class="reference internal" href="wrappers.html"><span class="doc">Wrappers</span></a>.</p>
+<p>For example, we add a model called AdaBoost.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># SKLP is the wrapper for classificators with probabilistic</span>
+<span class="c1"># predictions in scikit-learn</span>
+<span class="kn">from</span> <span class="nn">ml.clf.extended.w_sklearn</span> <span class="kn">import</span> <span class="n">SKLP</span>
+<span class="k">class</span> <span class="nc">AdaBoost</span><span class="p">(</span><span class="n">SKLP</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">prepare_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">AdaBoostClassifier</span>
+        <span class="kn">from</span> <span class="nn">sklearn.calibration</span> <span class="kn">import</span> <span class="n">CalibratedClassifierCV</span>
+        <span class="n">reg</span> <span class="o">=</span> <span class="n">CalibratedClassifierCV</span><span class="p">(</span>
+            <span class="n">AdaBoostClassifier</span><span class="p">(</span><span class="n">n_estimators</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;sigmoid&quot;</span><span class="p">)</span>
+        <span class="n">reg</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">train_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">train_labels</span><span class="p">)</span>
+        <span class="n">sig_clf</span> <span class="o">=</span> <span class="n">CalibratedClassifierCV</span><span class="p">(</span><span class="n">reg</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;sigmoid&quot;</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="s2">&quot;prefit&quot;</span><span class="p">)</span>
+        <span class="n">sig_clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">valid_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">valid_labels</span><span class="p">)</span>
+        <span class="c1">#sig_clf must have operations like fit and predict</span>
+        <span class="c1">#i.e sig_clf.fit(X, y), sig_clf.predict(X)</span>
+        <span class="c1">#if not you can use MLModel as wrapper</span>
+        <span class="c1">#from ml.models import MLModel</span>
+        <span class="c1">#return MLModel(fit_fn=sig_clf.fit,</span>
+        <span class="c1">#                predictors=[sig_clf.predict],</span>
+        <span class="c1">#                load_fn=self.load_fn,</span>
+        <span class="c1">#                save_fn=save) you would define save</span>
+        <span class="k">return</span> <span class="n">sig_clf</span>
+</pre></div>
+</div>
+<p>Now we can use AdaBoost.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">dataset</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">DataSetBuilder</span><span class="o">.</span><span class="n">load_dataset</span><span class="p">(</span>
+    <span class="s2">&quot;cats_and_dogs_dataset&quot;</span><span class="p">)</span>
+
+<span class="n">classif</span> <span class="o">=</span> <span class="n">AdaBoost</span><span class="p">(</span>
+    <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;my_new_model&quot;</span><span class="p">,</span>
+    <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
+    <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
+    <span class="n">group_name</span><span class="o">=</span><span class="s2">&quot;cats_and_dogs&quot;</span><span class="p">)</span>
+<span class="n">classif</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">num_steps</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="c1">#Automaticly the train is saved and now can predict data.</span>
+</pre></div>
+</div>
+<p>Predict data is like</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="o">...</span>
+<span class="n">classif</span> <span class="o">=</span> <span class="n">AdaBoost</span><span class="p">(</span>
+    <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;my_new_model&quot;</span><span class="p">,</span>
+    <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">)</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">classif</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If you want add a TensorFlow model i.e a multilayer perceptron</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># TFL is the wrapper for classificators in TensorFlow</span>
+<span class="kn">from</span> <span class="nn">ml.clf.extended.w_tflearn</span> <span class="kn">import</span> <span class="n">TFL</span>
+<span class="k">class</span> <span class="nc">MLP</span><span class="p">(</span><span class="n">TFL</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s2">&quot;layers&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;layers&quot;</span><span class="p">]</span>
+            <span class="k">del</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;layers&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="o">=</span> <span class="p">[</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">]</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">MLP</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">prepare_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">input_layer</span> <span class="o">=</span> <span class="n">tflearn</span><span class="o">.</span><span class="n">input_data</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="bp">None</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_features</span><span class="p">])</span>
+        <span class="n">layer_</span> <span class="o">=</span> <span class="n">input_layer</span>
+        <span class="k">for</span> <span class="n">layer_size</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
+            <span class="n">dense</span> <span class="o">=</span> <span class="n">tflearn</span><span class="o">.</span><span class="n">fully_connected</span><span class="p">(</span><span class="n">layer_</span><span class="p">,</span> <span class="n">layer_size</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;tanh&#39;</span><span class="p">,</span>
+                                             <span class="n">regularizer</span><span class="o">=</span><span class="s1">&#39;L2&#39;</span><span class="p">,</span> <span class="n">weight_decay</span><span class="o">=</span><span class="mf">0.001</span><span class="p">)</span>
+            <span class="n">layer_</span> <span class="o">=</span> <span class="n">tflearn</span><span class="o">.</span><span class="n">dropout</span><span class="p">(</span><span class="n">dense</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+
+        <span class="n">softmax</span> <span class="o">=</span> <span class="n">tflearn</span><span class="o">.</span><span class="n">fully_connected</span><span class="p">(</span><span class="n">layer_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_labels</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;softmax&#39;</span><span class="p">)</span>
+        <span class="n">sgd</span> <span class="o">=</span> <span class="n">tflearn</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">lr_decay</span><span class="o">=</span><span class="mf">0.96</span><span class="p">,</span> <span class="n">decay_step</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+        <span class="n">acc</span> <span class="o">=</span> <span class="n">tflearn</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">Accuracy</span><span class="p">()</span>
+        <span class="n">net</span> <span class="o">=</span> <span class="n">tflearn</span><span class="o">.</span><span class="n">regression</span><span class="p">(</span><span class="n">softmax</span><span class="p">,</span> <span class="n">optimizer</span><span class="o">=</span><span class="n">sgd</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="n">acc</span><span class="p">,</span>
+                         <span class="n">loss</span><span class="o">=</span><span class="s1">&#39;categorical_crossentropy&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">tflearn</span><span class="o">.</span><span class="n">DNN</span><span class="p">(</span><span class="n">net</span><span class="p">,</span> <span class="n">tensorboard_verbose</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">max_checkpoints</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Prediction</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="o">...</span>
+<span class="n">classif</span> <span class="o">=</span> <span class="n">MLP</span><span class="p">(</span>
+    <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;my_perceptron_model&quot;</span><span class="p">,</span>
+    <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">)</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">classif</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For more about it see <a class="reference internal" href="wrappers.html"><span class="doc">Wrappers</span></a>.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="preprocessing.html"
+                        title="previous chapter">Preprocessing</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="wrappers.html"
+                        title="next chapter">Wrappers</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/models.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="wrappers.html" title="Wrappers"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="preprocessing.html" title="Preprocessing"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.1.1 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Alejandro G. Martinez Romero.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,239 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Welcome to mlPyp’s documentation! &#8212; mlPyp 0.1.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="top" title="mlPyp 0.1.1 documentation" href="#" />
+    <link rel="next" title="Datasets" href="datasets.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="datasets.html" title="Datasets"
+             accesskey="N">next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">mlPyp 0.1.1 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="welcome-to-mlpyp-s-documentation">
+<h1>Welcome to mlPyp&#8217;s documentation!<a class="headerlink" href="#welcome-to-mlpyp-s-documentation" title="Permalink to this headline">¶</a></h1>
+<p>A framework for machine learning&#8217;s pipelines.</p>
+<dl class="docutils">
+<dt>Highlights:</dt>
+<dd><ul class="first last simple">
+<li>Build datasets with train, test, valid data and transformations applied.</li>
+<li>Build datasets with metadata for reproducible experiments.</li>
+<li>Easy way to add distincts machine learning algorithms from Keras, scikit-learn, etc.</li>
+<li>Models with scores and predictors.</li>
+<li>Convert csv files to datasets.</li>
+<li>Uses transformations for manipulate data (images).</li>
+</ul>
+</dd>
+</dl>
+<img alt="_images/pipeline.png" class="align-center" src="_images/pipeline.png" />
+</div>
+<div class="section" id="instalation">
+<h1>Instalation<a class="headerlink" href="#instalation" title="Permalink to this headline">¶</a></h1>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>git clone https://github.com/elaeon/ML.git
+</pre></div>
+</div>
+<p>You can install the python dependences with pip, but we strongly
+recommend install the dependences with conda and conda forge.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>conda config --add channels conda-forge
+conda create -n new_environment --file requirements.txt
+pip install ML/setup.py
+</pre></div>
+</div>
+</div>
+<div class="section" id="quick-start">
+<h1>Quick start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h1>
+<p>First, build a dataset</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ml.ds</span> <span class="kn">import</span> <span class="n">DataSetBuilder</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="n">DIM</span> <span class="o">=</span> <span class="mi">21</span>
+<span class="n">SIZE</span> <span class="o">=</span> <span class="mi">100000</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">SIZE</span><span class="p">,</span> <span class="n">DIM</span><span class="p">)</span>
+<span class="n">Y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">1</span> <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">6</span><span class="o">*</span><span class="n">X</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.1</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">SIZE</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
+<span class="n">dataset_name</span> <span class="o">=</span> <span class="s2">&quot;test_dataset&quot;</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">DataSetBuilder</span><span class="p">(</span>
+    <span class="n">dataset_name</span><span class="p">,</span>
+    <span class="n">validator</span><span class="o">=</span><span class="s2">&quot;cross&quot;</span><span class="p">)</span>
+<span class="n">dataset</span><span class="o">.</span><span class="n">build_dataset</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Then, pass it to a classification model for training, in this case we used SVGC (was a Gaussian process with stochastic variational inference), once the training was finished you can predict some data.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ml.clf.extended.w_gpy</span> <span class="kn">import</span> <span class="n">SVGPC</span>
+
+<span class="n">classif</span> <span class="o">=</span> <span class="n">SVGPC</span><span class="p">(</span>
+    <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
+    <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;my_test_model&quot;</span><span class="p">,</span>
+    <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">)</span>
+<span class="n">classif</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">num_steps</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">classif</span><span class="o">.</span><span class="n">scores</span><span class="p">()</span><span class="o">.</span><span class="n">print_scores</span><span class="p">(</span><span class="n">order_column</span><span class="o">=</span><span class="s2">&quot;f1&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Using SVGPC for make predictions is like this:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">classif</span> <span class="o">=</span> <span class="n">SVGPC</span><span class="p">(</span>
+    <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;my_test_model&quot;</span><span class="p">,</span>
+    <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">)</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">classif</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">258</span><span class="p">)))</span>
+</pre></div>
+</div>
+<p>You can use more extra models (see <span class="xref doc">extra_models</span>). Extend the base model and make you own predictors! For more information about this, see the section <a class="reference internal" href="models.html"><span class="doc">Models</span></a>.</p>
+</div>
+<div class="section" id="cli">
+<h1>CLI<a class="headerlink" href="#cli" title="Permalink to this headline">¶</a></h1>
+<p>mlPyp has a CLI where you can admin your datasets and models.
+For example</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>ml datasets
+</pre></div>
+</div>
+<p>Return a table of datasets previosly builded.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">dataset</span>    <span class="n">size</span>       <span class="n">date</span>
+<span class="o">---------</span>  <span class="o">---------</span>  <span class="o">--------------------------</span>
+<span class="n">numbers</span>    <span class="mf">240.03</span> <span class="n">MB</span>  <span class="mi">2016</span><span class="o">-</span><span class="mi">12</span><span class="o">-</span><span class="mi">10</span> <span class="mi">23</span><span class="p">:</span><span class="mi">50</span><span class="p">:</span><span class="mf">14.167061</span>
+<span class="n">test2</span>      <span class="mf">16.79</span> <span class="n">MB</span>   <span class="mi">2016</span><span class="o">-</span><span class="mi">12</span><span class="o">-</span><span class="mi">17</span> <span class="mi">23</span><span class="p">:</span><span class="mi">28</span><span class="p">:</span><span class="mf">46.739531</span>
+</pre></div>
+</div>
+<p>Or</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>ml models
+</pre></div>
+</div>
+<p>Returns</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">classif</span>    <span class="n">model</span> <span class="n">name</span>      <span class="n">version</span>  <span class="n">dataset</span>    <span class="n">group</span>
+<span class="o">---------</span>  <span class="o">------------</span>  <span class="o">---------</span>  <span class="o">---------</span>  <span class="o">-------</span>
+<span class="n">Boosting</span>   <span class="n">numerai</span>               <span class="mi">1</span>  <span class="n">numerai</span>
+<span class="n">SVGPC</span>      <span class="n">test2</span>                 <span class="mi">1</span>  <span class="n">test2</span>      <span class="n">basic</span>
+</pre></div>
+</div>
+<p>You can use &#8220;&#8211;help&#8221; for view more options.</p>
+</div>
+<div class="section" id="index">
+<h1>Index<a class="headerlink" href="#index" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound" id="mastertoc">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="preprocessing.html">Preprocessing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="wrappers.html">Wrappers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="changes.html#id1">0.1.1</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changes.html#id2">0.1.0</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modindex.html">Module index</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="support">
+<h1>Support<a class="headerlink" href="#support" title="Permalink to this headline">¶</a></h1>
+<p>If you encounter bugs then <a class="reference external" href="https://github.com/elaeon/ML/issues">let me know</a> .</p>
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
+<li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></li>
+<li><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Welcome to mlPyp&#8217;s documentation!</a></li>
+<li><a class="reference internal" href="#instalation">Instalation</a></li>
+<li><a class="reference internal" href="#quick-start">Quick start</a></li>
+<li><a class="reference internal" href="#cli">CLI</a></li>
+<li><a class="reference internal" href="#index">Index</a></li>
+<li><a class="reference internal" href="#support">Support</a></li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+
+  <h4>Next topic</h4>
+  <p class="topless"><a href="datasets.html"
+                        title="next chapter">Datasets</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="datasets.html" title="Datasets"
+             >next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">mlPyp 0.1.1 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Alejandro G. Martinez Romero.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

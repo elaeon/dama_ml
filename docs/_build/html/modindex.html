@@ -1,0 +1,389 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Module index &#8212; mlPyp 0.1.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="top" title="mlPyp 0.1.1 documentation" href="index.html" />
+    <link rel="prev" title="Changelog" href="changes.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="changes.html" title="Changelog"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.1.1 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ds">
+<span id="module-index"></span><h1>Module index<a class="headerlink" href="#module-ds" title="Permalink to this headline">¶</a></h1>
+<p>Module for create datasets from distinct sources of data.</p>
+<dl class="class">
+<dt id="ds.DataSetBuilder">
+<em class="property">class </em><code class="descclassname">ds.</code><code class="descname">DataSetBuilder</code><span class="sig-paren">(</span><em>name</em>, <em>dataset_path=None</em>, <em>test_folder_path=None</em>, <em>train_folder_path=None</em>, <em>transforms_row=None</em>, <em>transforms_global=None</em>, <em>transforms_apply=True</em>, <em>processing_class=None</em>, <em>train_size=0.7</em>, <em>valid_size=0.1</em>, <em>validator='cross'</em>, <em>dtype='float64'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base class for dataset build. Get data from memory.
+create the initial values for the dataset.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> (<em>string</em>) &#8211; dataset&#8217;s name</li>
+<li><strong>dataset_path</strong> (<em>string</em>) &#8211; path where the datased is saved. This param is automaticly set by the settings.cfg file.</li>
+<li><strong>train_folder_path</strong> (<em>string</em>) &#8211; path to the data what you want to add to the dataset, automaticly split the data in train, test and validation. If you want manualy split the data in train and test, check test_folder_path.</li>
+<li><strong>test_folder_path</strong> (<em>string</em>) &#8211; path to the test data. If None the test data is get from train_folder_path.</li>
+<li><strong>transforms_global</strong> (<em>list</em>) &#8211; list of transforms for all row x column</li>
+<li><strong>transforms_row</strong> (<em>list</em>) &#8211; list of transforms for each row</li>
+<li><strong>transforms_apply</strong> (<em>bool</em>) &#8211; apply transformations to the data</li>
+<li><strong>processing_class</strong> (<em>class</em>) &#8211; class where are defined the functions for preprocessing data.</li>
+<li><strong>train_size</strong> (<em>float</em>) &#8211; value between [0, 1] who determine the size of the train data</li>
+<li><strong>valid_size</strong> (<em>float</em>) &#8211; value between [0, 1] who determine the size of the validation data</li>
+<li><strong>validator</strong> (<em>string</em>) &#8211; name of the method for extract from the data, the train data, test data and valid data</li>
+<li><strong>dtype</strong> (<em>string</em>) &#8211; the type of the data to save</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ds.DataSetBuilder.add_transforms">
+<code class="descname">add_transforms</code><span class="sig-paren">(</span><em>transforms_global=None</em>, <em>transforms_row=None</em>, <em>processing_class=None</em>, <em>save=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.add_transforms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.add_transforms" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>transforms_global</strong> (<em>list</em>) &#8211; list of global transforms to apply</li>
+<li><strong>transforms_row</strong> (<em>list</em>) &#8211; list of row transforms to apply</li>
+<li><strong>processing_class</strong> (<em>class</em>) &#8211; class of the row transforms</li>
+<li><strong>save</strong> (<em>bool</em>) &#8211; if true the dataset with the transforms is saved</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilder.build_dataset">
+<code class="descname">build_dataset</code><span class="sig-paren">(</span><em>data</em>, <em>labels</em>, <em>test_data=None</em>, <em>test_labels=None</em>, <em>valid_data=None</em>, <em>valid_labels=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.build_dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.build_dataset" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>data</strong> (<em>ndarray</em>) &#8211; array of values to save in the dataset</li>
+<li><strong>labels</strong> (<em>ndarray</em>) &#8211; array of labels to save in the dataset</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilder.desfragment">
+<code class="descname">desfragment</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.desfragment"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.desfragment" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concatenate the train, valid and test data in a data array.
+Concatenate the train, valid, and test labels in another array.
+return data, labels</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilder.distinct_data">
+<code class="descname">distinct_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.distinct_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.distinct_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the radio of distincts elements in the training data.
+i.e 
+[1,2,3,4,5] return 5/5
+[2,2,2,2,2] return 1/5</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilder.dtype_t">
+<code class="descname">dtype_t</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.dtype_t"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.dtype_t" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> (<em>narray</em>) &#8211; narray to cast</td>
+</tr>
+</tbody>
+</table>
+<p>cast the data to the predefined dataset dtype</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilder.get_processing_class_name">
+<code class="descname">get_processing_class_name</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.get_processing_class_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.get_processing_class_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the name of the processing class</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilder.info">
+<code class="descname">info</code><span class="sig-paren">(</span><em>classes=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.info" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>classes</strong> (<em>bool</em>) &#8211; if true, print the detail of the labels</td>
+</tr>
+</tbody>
+</table>
+<p>This function print the details of the dataset.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilder.is_binary">
+<code class="descname">is_binary</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.is_binary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.is_binary" title="Permalink to this definition">¶</a></dt>
+<dd><p>return true if the labels only has two classes</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilder.labels_info">
+<code class="descname">labels_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.labels_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.labels_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>return a counter of labels</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="ds.DataSetBuilder.load_dataset">
+<em class="property">classmethod </em><code class="descname">load_dataset</code><span class="sig-paren">(</span><em>name</em>, <em>dataset_path=None</em>, <em>info=True</em>, <em>dtype='float64'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.load_dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.load_dataset" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> (<em>string</em>) &#8211; name of the dataset to load</li>
+<li><strong>dataset_path</strong> (<em>string</em>) &#8211; path where the dataset was saved</li>
+<li><strong>dtype</strong> (<em>string</em>) &#8211; cast the data to the defined type</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>dataset_path is not necesary to especify, this info is obtained from settings.cfg</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilder.md5">
+<code class="descname">md5</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.md5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.md5" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the signature of the dataset in hex md5</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilder.num_features">
+<code class="descname">num_features</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.num_features"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.num_features" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the number of features of the dataset</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilder.only_labels">
+<code class="descname">only_labels</code><span class="sig-paren">(</span><em>labels</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.only_labels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.only_labels" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>labels</strong> (<em>list</em>) &#8211; list of labels</td>
+</tr>
+</tbody>
+</table>
+<p>return a tuple of arrays with data and labels, the returned data only have the labels selected.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilder.save">
+<code class="descname">save</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>save the dataset in pickle format</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilder.score_train_test">
+<code class="descname">score_train_test</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.score_train_test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.score_train_test" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the score of separability between the train data and the test data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ds.DataSetBuilder.shape">
+<code class="descname">shape</code><a class="headerlink" href="#ds.DataSetBuilder.shape" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the shape of the dataset</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilder.sparcity">
+<code class="descname">sparcity</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.sparcity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.sparcity" title="Permalink to this definition">¶</a></dt>
+<dd><p>return a value between [0, 1] of the sparcity of the dataset.
+0 no zeros exists, 1 all data is zero.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilder.subset">
+<code class="descname">subset</code><span class="sig-paren">(</span><em>percentaje</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.subset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.subset" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>percentaje</strong> (<em>float</em>) &#8211; value between [0, 1], this value represent the size of the dataset to copy.</td>
+</tr>
+</tbody>
+</table>
+<p>i.e 1 copy all dataset, .5 copy half dataset</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilder.to_df">
+<code class="descname">to_df</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.to_df"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.to_df" title="Permalink to this definition">¶</a></dt>
+<dd><p>convert the dataset to a dataframe</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilder.url">
+<code class="descname">url</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.url"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.url" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the path where is saved the dataset</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ds.DataSetBuilderImage">
+<em class="property">class </em><code class="descclassname">ds.</code><code class="descname">DataSetBuilderImage</code><span class="sig-paren">(</span><em>name</em>, <em>image_size=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilderImage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilderImage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for images dataset build. Get the data from a directory where each directory&#8217;s name is the label.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>image_size</strong> (<em>int</em>) &#8211; define the image size to save in the dataset</td>
+</tr>
+</tbody>
+</table>
+<p>kwargs are the same that DataSetBuilder&#8217;s options</p>
+<dl class="method">
+<dt id="ds.DataSetBuilderImage.build_dataset">
+<code class="descname">build_dataset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilderImage.build_dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilderImage.build_dataset" title="Permalink to this definition">¶</a></dt>
+<dd><p>the data is extracted from the train_folder_path, and then saved.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ds.DataSetBuilderFile">
+<em class="property">class </em><code class="descclassname">ds.</code><code class="descname">DataSetBuilderFile</code><span class="sig-paren">(</span><em>name</em>, <em>dataset_path=None</em>, <em>test_folder_path=None</em>, <em>train_folder_path=None</em>, <em>transforms_row=None</em>, <em>transforms_global=None</em>, <em>transforms_apply=True</em>, <em>processing_class=None</em>, <em>train_size=0.7</em>, <em>valid_size=0.1</em>, <em>validator='cross'</em>, <em>dtype='float64'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilderFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilderFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for csv dataset build. Get the data from a csv&#8217;s file.</p>
+<dl class="method">
+<dt id="ds.DataSetBuilderFile.build_dataset">
+<code class="descname">build_dataset</code><span class="sig-paren">(</span><em>label_column=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilderFile.build_dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilderFile.build_dataset" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>label_column</strong> (<em>string</em>) &#8211; column&#8217;s name where are the labels</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilderFile.from_csv">
+<code class="descname">from_csv</code><span class="sig-paren">(</span><em>folder_path</em>, <em>label_column</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilderFile.from_csv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilderFile.from_csv" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>folder_path</strong> (<em>string</em>) &#8211; path to the csv.</li>
+<li><strong>label_column</strong> (<em>string</em>) &#8211; column&#8217;s name where are the labels</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="changes.html"
+                        title="previous chapter">Changelog</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/modindex.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="changes.html" title="Changelog"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.1.1 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Alejandro G. Martinez Romero.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

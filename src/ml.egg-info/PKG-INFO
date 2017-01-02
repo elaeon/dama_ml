@@ -1,0 +1,17 @@
+Metadata-Version: 1.1
+Name: ml
+Version: 0.1.0
+Summary: A modern machine learning framework
+Home-page: https://github.com/elaeon/ML
+Author: Alejandro G. Martínez Romero
+Author-email: mara80@gmail.com
+License: Apache
+Description: ========================
+        ML
+        ========================
+        
+Keywords: ml dataset inference machine learning
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: License :: OSI Approved :: Apache 2 License
+Classifier: Programming Language :: Python :: 2.7
