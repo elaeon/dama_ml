@@ -12,7 +12,7 @@ Highlights:
  * Convert csv files to datasets.
  * Uses transformations for manipulate data (images).
 
-.. image:: pipeline.png
+.. image:: docs/pipeline.png
     :align: center
 
 
@@ -78,8 +78,6 @@ Using SVGPC for make predictions is like this:
     predictions = np.asarray(list(classif.predict(X, chunk_size=258)))
 
 
-You can use more extra models (see :doc:`extra_models`). Extend the base model and make you own predictors! For more information about this, see the section :doc:`models`. 
-
 CLI
 ==============
 mlPyp has a CLI where you can admin your datasets and models.
@@ -114,18 +112,3 @@ Returns
     SVGPC      test2                 1  test2      basic
 
 You can use "--help" for view more options. 
-
-
-Support
-=======
-If you encounter bugs then `let me know`_ .
-
-.. _let me know: https://github.com/elaeon/ML/issues
-
-
-Indices and tables
-==================
- 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

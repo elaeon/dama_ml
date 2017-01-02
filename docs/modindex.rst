@@ -1,2 +1,5 @@
+Module index
+=====================
+
 .. automodule:: ds
-   :members: DataSetBuilder, DataSetBuilderImage
+   :members: DataSetBuilder, DataSetBuilderImage, DataSetBuilderFile

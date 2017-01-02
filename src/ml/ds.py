@@ -797,15 +797,15 @@ class DataSetBuilderImage(DataSetBuilder):
 class DataSetBuilderFile(DataSetBuilder):
     """
     Class for csv dataset build. Get the data from a csv's file.
-    
-    :type folder_path: string
-    :param folder_path: path to the csv.
-
-    :type label_column: string
-    :param label_column: column's name where are the labels
-    kwargs are the same that DataSetBuilder's options
     """
     def from_csv(self, folder_path, label_column):
+        """
+        :type folder_path: string
+        :param folder_path: path to the csv.
+
+        :type label_column: string
+        :param label_column: column's name where are the labels
+        """
         data, labels = self.csv2dataset(folder_path, label_column)
         data = self.processing(data)
         return data, labels
@@ -818,6 +818,10 @@ class DataSetBuilderFile(DataSetBuilder):
         return dataset, labels
 
     def build_dataset(self, label_column=None):
+        """
+         :type label_column: string
+         :param label_column: column's name where are the labels
+        """
         data, labels = self.from_csv(self.train_folder_path, label_column)
         if self.test_folder_path is not None:
             raise #NotImplemented
