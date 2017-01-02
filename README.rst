@@ -15,6 +15,9 @@ Highlights:
 .. image:: docs/pipeline.png
     :align: center
 
+For more detail read the docs_. 
+
+.. _docs: https://elaeon.github.io/ML/
 
 Instalation
 =====================
