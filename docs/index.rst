@@ -123,6 +123,7 @@ More information
    :maxdepth: 2
    :name: mastertoc
 
+   includeme
    datasets
    preprocessing
    models
