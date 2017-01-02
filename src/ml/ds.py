@@ -439,6 +439,13 @@ class DataSetBuilder(object):
 
     def build_dataset(self, data, labels, test_data=None, test_labels=None, 
                         valid_data=None, valid_labels=None):
+        """
+        :type data: ndarray
+        :param data: array of values to save in the dataset
+
+        :type labels: ndarray
+        :param labels: array of labels to save in the dataset
+        """
         data = self.processing(data)
         test_data = self.processing_rows(test_data)
         valid_data = self.processing_rows(valid_data)
@@ -713,6 +720,9 @@ class DataSetBuilderImage(DataSetBuilder):
             self.save_images(self.test_folder_path, number_id, images)
 
     def build_dataset(self):
+        """
+        the data is extracted from the train_folder_path, and then saved.
+        """
         data, labels = self.images_to_dataset(self.train_folder_path)
         self.shuffle_and_save(data, labels)
 
@@ -785,6 +795,16 @@ class DataSetBuilderImage(DataSetBuilder):
 
 
 class DataSetBuilderFile(DataSetBuilder):
+    """
+    Class for csv dataset build. Get the data from a csv's file.
+    
+    :type folder_path: string
+    :param folder_path: path to the csv.
+
+    :type label_column: string
+    :param label_column: column's name where are the labels
+    kwargs are the same that DataSetBuilder's options
+    """
     def from_csv(self, folder_path, label_column):
         data, labels = self.csv2dataset(folder_path, label_column)
         data = self.processing(data)
