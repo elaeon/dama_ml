@@ -19,9 +19,9 @@ def build_dataset_hard(dataset_name="gpc_test_hard", validator="cross"):
     return dataset
 
 
-def train(dataset, model_version):
+def train(dataset, model_name, model_version):
     classif = SVGPC(
-        model_name=dataset.name,
+        model_name=model_name,
         dataset=dataset,
         model_version=model_version,
         group_name="basic")
@@ -67,8 +67,8 @@ if __name__ == '__main__':
     if args.build_dataset:
         dataset = build_dataset_hard(validator=args.build_dataset, dataset_name=args.dataset_name)
     elif args.train:
-        dataset = DataSetBuilder.load_dataset(args.model_name)
-        train(dataset, args.model_version)
+        dataset = DataSetBuilder.load_dataset(args.dataset_name)
+        train(dataset, args.model_name, args.model_version)
     elif args.test:
         test(args.model_name, args.model_version)
     elif args.predict:
