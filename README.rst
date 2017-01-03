@@ -33,8 +33,9 @@ recommend install the dependences with conda and conda forge.
 .. code-block:: bash
 
     conda config --add channels conda-forge
-    conda create -n new_environment --file requirements.txt
-    pip install ML/setup.py
+    conda create -n new_environment --file ML/requirements.txt
+    source activate new_environment
+    pip install ML/
 
 Quick start
 ==================

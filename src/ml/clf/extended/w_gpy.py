@@ -59,7 +59,7 @@ class GPC(SKLP):
         self.model = GPy.models.GPClassification(self.dataset.train_data, 
             self.dataset.train_labels.reshape(-1, 1), kernel=self.k, initialize=False)
         if self.check_point_path is not None:
-            path = self.make_model_file(check_existence=False)
+            path = self.make_model_file()
             r = np.load(path+".npy")
             self.model.update_model(False) # do not call the underlying expensive algebra on load
             self.model.initialize_parameter() # Initialize the parameters (connect the parameters up)
