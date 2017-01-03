@@ -75,8 +75,9 @@
 <p>You can install the python dependences with pip, but we strongly
 recommend install the dependences with conda and conda forge.</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span>conda config --add channels conda-forge
-conda create -n new_environment --file requirements.txt
-pip install ML/setup.py
+conda create -n new_environment --file ML/requirements.txt
+<span class="nb">source</span> activate new_environment
+pip install ML/
 </pre></div>
 </div>
 </div>
