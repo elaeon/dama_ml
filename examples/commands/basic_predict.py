@@ -19,13 +19,13 @@ def build_dataset_hard(dataset_name="gpc_test_hard", validator="cross"):
     return dataset
 
 
-def train(dataset, model_name, model_version):
+def train(dataset, model_name, model_version, epoch):
     classif = SVGPC(
         model_name=model_name,
         dataset=dataset,
         model_version=model_version,
         group_name="basic")
-    classif.train(batch_size=128, num_steps=10)
+    classif.train(batch_size=128, num_steps=epoch)
     classif.scores().print_scores(order_column="f1")
 
 
@@ -63,12 +63,13 @@ if __name__ == '__main__':
     parser.add_argument("--predict", action="store_true")
     parser.add_argument("--chunk-size", type=int)
     parser.add_argument("--model-version", type=str)
+    parser.add_argument("--epoch", type=int, default=10)
     args = parser.parse_args()
     if args.build_dataset:
         dataset = build_dataset_hard(validator=args.build_dataset, dataset_name=args.dataset_name)
     elif args.train:
         dataset = DataSetBuilder.load_dataset(args.dataset_name)
-        train(dataset, args.model_name, args.model_version)
+        train(dataset, args.model_name, args.model_version, args.epoch)
     elif args.test:
         test(args.model_name, args.model_version)
     elif args.predict:

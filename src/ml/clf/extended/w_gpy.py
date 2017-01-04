@@ -18,26 +18,20 @@ class GPC(SKLP):
 
     def train(self, batch_size=128, num_steps=1):
         from tqdm import tqdm
-        self.prepare_model()
+        self.prepare_model(batch_size=batch_size)
         pbar = tqdm(range(1, num_steps + 1))
         for label in pbar:
             self.model.optimize(self.optimizer, max_iters=100, messages=False) 
             pbar.set_description("Processing {}".format(label))
         self.save_model()
         self.load_model()
+        self.save_model()
 
-    def transform_to_gpy_labels(self, labels):
-        t_labels = np.ndarray(
-            shape=(labels.shape[0], 1), dtype=np.float32)
-        for i, label in enumerate(labels):
-            t_labels[i] = self.convert_label(label, raw=False,)
-        return t_labels
-
-    def prepare_model(self):
+    def prepare_model(self, batch_size=128):
         self.model = GPy.core.GP(
                     X=self.dataset.train_data,
-                    Y=self.transform_to_gpy_labels(self.dataset.train_labels), 
-                    kernel=self.k + GPy.kern.White(1), 
+                    Y=self.dataset.train_labels.reshape(-1, 1), 
+                    kernel=self.k + GPy.kern.White(1),
                     inference_method=GPy.inference.latent_function_inference.expectation_propagation.EP(),
                     likelihood=GPy.likelihoods.Bernoulli())
 
@@ -73,14 +67,13 @@ class SVGPC(GPC):
         super(SVGPC, self).__init__(kernel=kernel, optimizer=optimizer, 
                                     k_params=k_params, **kwargs)
 
-    def prepare_model(self):
+    def prepare_model(self, batch_size=128):
         Z = np.random.rand(100, self.dataset.train_data.shape[1])
         self.model = GPy.core.SVGP(
             X=self.dataset.train_data, 
-            Y=self.transform_to_gpy_labels(self.dataset.train_labels), 
+            Y=self.dataset.train_labels.reshape(-1, 1),
             Z=Z, 
-            kernel=self.k + GPy.kern.White(1), 
+            kernel=self.k + GPy.kern.White(self.dataset.num_features(), variance=1e-5), 
             likelihood=GPy.likelihoods.Bernoulli(),
-            batchsize=100)
-        self.model.kern.white.variance = 1e-5
+            batchsize=batch_size)
         self.model.kern.white.fix()
