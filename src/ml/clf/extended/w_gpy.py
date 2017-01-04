@@ -21,7 +21,8 @@ class GPC(SKLP):
         self.prepare_model(batch_size=batch_size)
         pbar = tqdm(range(1, num_steps + 1))
         for label in pbar:
-            self.model.optimize(self.optimizer, max_iters=100, messages=False) 
+            self.model.optimize(self.optimizer, max_iters=100, messages=False)
+            #self.model.optimize_restarts(num_restarts=10) 
             pbar.set_description("Processing {}".format(label))
         self.save_model()
         self.load_model()
