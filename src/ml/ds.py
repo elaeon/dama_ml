@@ -86,7 +86,9 @@ class DataSetBuilder(object):
                 train_size=.7,
                 valid_size=.1,
                 validator='cross',
-                dtype='float64'):
+                dtype='float64',
+                description='',
+                author=''):
         self.test_folder_path = test_folder_path
         self.train_folder_path = train_folder_path
         self.dtype = dtype
@@ -109,7 +111,6 @@ class DataSetBuilder(object):
         self.transforms_apply = transforms_apply
         self._cached_md5 = None
         self.validator = validator
-        self.fit = None
 
         if transforms_row is None:
             transforms_row = ('row', [])
@@ -193,6 +194,7 @@ class DataSetBuilder(object):
         print('       ')
         print('DATASET NAME: {}'.format(self.name))
         print('Transforms: {}'.format(self.transforms.get_all_transforms()))
+        print('Applied transforms: {}'.format(self.transforms_apply))
         print('Preprocessing Class: {}'.format(self.get_processing_class_name()))
         print('MD5: {}'.format(self._cached_md5))
         print('       ')
@@ -271,6 +273,7 @@ class DataSetBuilder(object):
             'test_labels': self.test_labels,
             'transforms': self.transforms.get_all_transforms(),
             'preprocessing_class': self.get_processing_class_name(),
+            'applied_transforms': self.transforms_apply,
             'md5': self.md5()}
 
     @classmethod
@@ -366,7 +369,8 @@ class DataSetBuilder(object):
             return save
 
     @classmethod
-    def load_dataset(self, name, dataset_path=None, info=True, dtype='float64'):
+    def load_dataset(self, name, dataset_path=None, info=True, dtype='float64',
+                    transforms_apply=False):
         """
         :type name: string
         :param name: name of the dataset to load
@@ -382,7 +386,8 @@ class DataSetBuilder(object):
         if dataset_path is None:
              dataset_path = settings["dataset_path"]
         data = self.load_dataset_raw(name, dataset_path=dataset_path)
-        dataset = DataSetBuilder(name, dataset_path=dataset_path, dtype=dtype)
+        dataset = DataSetBuilder(name, dataset_path=dataset_path, dtype=dtype, 
+                                transforms_apply=transforms_apply)
         dataset.from_raw(data)
         if info:
             dataset.info()
@@ -418,24 +423,22 @@ class DataSetBuilder(object):
         else:
             return data if isinstance(data, np.ndarray) else np.asarray(data)
 
-    def processing_global(self, data, base_data=None):
-        if not self.transforms.empty('global') and self.transforms_apply and data is not None:
-            if self.fit is None:
-                #if base_data is None:
-                #    base_data = data
-                from pydoc import locate
-                fiter, params = self.transforms.get_transforms('global')[0]
-                fiter = locate(fiter)
-                if isinstance(params, dict):
-                    self.fit = fiter(**params)
-                else:
-                    self.fit = fiter()
-                self.fit.fit(base_data)
-                return self.fit.transform(data)
-            else:
-                return self.fit.transform(data)
-        else:
-            return data
+    #def processing_global(self, data, base_data=None):
+    #    if not self.transforms.empty('global') and self.transforms_apply and data is not None:
+    #        from pydoc import locate
+    #        fiter, params = self.transforms.get_transforms('global')[0]
+    #        fiter = locate(fiter)
+    #        if isinstance(params, dict):
+    #            self.fit = fiter(**params)
+    #        else:
+    #            self.fit = fiter()
+    #        print(base_data)
+    #        self.fit.fit(base_data)
+    #        return self.fit.transform(data)
+            #else:
+            #    return self.fit.transform(data)
+    #    else:
+    #        return data
 
     def build_dataset(self, data, labels, test_data=None, test_labels=None, 
                         valid_data=None, valid_labels=None):
@@ -485,13 +488,14 @@ class DataSetBuilder(object):
 
     def processing(self, data, init=True):
         data = self.processing_rows(data)
-        if init is True:
-            return self.processing_global(data, base_data=data)
-        elif init is False and not self.transforms.empty('global'):
-            base_data, _ = self.desfragment()
-            return self.processing_global(data, base_data=base_data)
-        else:
-            return data
+        #if init is True:
+        #    return self.processing_global(data, base_data=data)
+        #elif init is False and not self.transforms.empty('global'):
+        #    base_data, _ = self.desfragment()
+        #    return self.processing_global(data, base_data=base_data)
+        #else:
+        #    return data
+        return data
 
     def subset(self, percentaje):
         """
@@ -530,7 +534,6 @@ class DataSetBuilder(object):
         classif.train()
         measure = "auc"
         return classif.load_meta().get("score", {measure, None}).get(measure, None) 
-        #classif.scores(measures="f1").get_measure("f1")
 
     def plot(self):
         import matplotlib.pyplot as plt
@@ -807,7 +810,6 @@ class DataSetBuilderFile(DataSetBuilder):
         :param label_column: column's name where are the labels
         """
         data, labels = self.csv2dataset(folder_path, label_column)
-        data = self.processing(data)
         return data, labels
 
     @classmethod
@@ -823,6 +825,7 @@ class DataSetBuilderFile(DataSetBuilder):
          :param label_column: column's name where are the labels
         """
         data, labels = self.from_csv(self.train_folder_path, label_column)
+        data = self.processing(data)
         if self.test_folder_path is not None:
             raise #NotImplemented
             #test_data, test_labels = self.from_csv(self.test_folder_path, label_column)

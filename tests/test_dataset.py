@@ -81,5 +81,27 @@ class TestDatasetFile(unittest.TestCase):
         self.assertItemsEqual(self.Y, labels.astype(int))
 
 
+class TestDatasetNoTransforms(unittest.TestCase):
+    def setUp(self):
+        NUM_FEATURES = 10
+        self.X = np.append(np.zeros((5, NUM_FEATURES)), np.ones((5, NUM_FEATURES)), axis=0)
+        self.Y = (np.sum(self.X, axis=1) / 10).astype(int)
+        self.dataset = DataSetBuilder(
+            "test",
+            dataset_path="/tmp/", 
+            transforms_row=[('scale', None)],
+            train_size=.5,
+            valid_size=.2,
+            validator="cross",
+            processing_class=Preprocessing,
+            transforms_apply=False)
+        self.dataset.build_dataset(self.X, self.Y)
+
+    def test_no_transforms(self):
+        self.dataset.info()
+        self.assertEqual(DataSetBuilder.load_dataset_raw(
+            self.dataset.name, self.dataset.dataset_path)["applied_transforms"], False)
+
+
 if __name__ == '__main__':
     unittest.main()

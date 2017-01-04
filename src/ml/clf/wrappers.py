@@ -55,7 +55,6 @@ class Measure(object):
         return cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 
     def logloss(self):
-        print("logloss")
         from sklearn.metrics import log_loss
         return log_loss(self.labels, self.predictions)
 
@@ -191,12 +190,11 @@ class DataDrive(object):
 
 class BaseClassif(DataDrive):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
-                model_version=None, dataset_train_limit=None, info=True, 
+                model_version=None, dataset_train_limit=None, 
                 auto_load=True, group_name=None):
         self.model = None
         self.le = LabelEncoder()
         self.dataset_train_limit = dataset_train_limit
-        self.print_info = info
         self.base_labels = None
         self._original_dataset_md5 = None
         super(BaseClassif, self).__init__(
@@ -414,7 +412,8 @@ class BaseClassif(DataDrive):
         meta = self.load_meta()
         dataset = DataSetBuilder.load_dataset(
             meta["dataset_name"],
-            dataset_path=meta["dataset_path"])
+            dataset_path=meta["dataset_path"],
+            transforms_apply=True)
         self.group_name = meta.get('group_name', None)
         if meta.get('md5', None) != dataset.md5():
             log.warning("The dataset md5 is not equal to the model '{}'".format(

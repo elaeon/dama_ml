@@ -30,30 +30,32 @@ class HOG(DataDrive):
         self.load()
 
     def load(self):
-        meta = self.load_meta()
-        self.transforms = meta["transforms"]
-        self.data_training_path = meta["data_training_path"]
+        try:
+            meta = self.load_meta()
+            self.transforms = meta["transforms"]
+            self.data_training_path = meta["data_training_path"]
+        except IOError:
+            pass
 
     @classmethod
     def module_cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
     def _metadata(self, score=None):
+        list_measure = self.scores()
         return {"transforms": self.transforms,
                 "model_module": self.module_cls_name(),
                 "data_training_path": self.data_training_path,
                 "model_name": self.model_name,
                 "model_version": self.model_version,
-                "score": score}
+                "score": list_measure.measures_to_dict()}
 
     def train(self, xml_filename):
         examples = os.path.join(os.path.dirname(__file__), '../../examples/xml')
         self.data_training_path = os.path.join(examples, xml_filename)
         detector_path_svm = self.make_model_file()
-        dlib.train_simple_object_detector(self.data_training_path, detector_path_svm, self.options)
-        
-        list_measure = self.scores()
-        self.save_meta(score=list_measure.measures_to_dict())
+        dlib.train_simple_object_detector(self.data_training_path, detector_path_svm, self.options)        
+        self.save_meta()
 
     def scores(self, measures=None):
         if measures is None:

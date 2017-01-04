@@ -5,7 +5,7 @@ import dlib
 from skimage import io
 from ml.utils.config import get_settings
 from ml.processing import PreprocessingImage
-from ml.clf.extended import RandomForest
+from ml.clf.extended.w_sklearn import RandomForest
 from ml.detector import HOG
 
 settings = get_settings("ml")

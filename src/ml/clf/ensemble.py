@@ -40,15 +40,14 @@ class Grid(DataDrive):
     def load_models(self):
         for namespace, classifs in self.classifs.items():
             for classif in classifs:
-                yield self.load_model(classif, dataset=self.dataset, info=False, namespace=namespace)
+                yield self.load_model(classif, dataset=self.dataset, namespace=namespace)
     
-    def load_model(self, model, info=True, dataset=None, namespace=None):
+    def load_model(self, model, dataset=None, namespace=None):
         namespace = self.model_namespace2str("" if namespace is None else namespace)
         return model(dataset=dataset, 
                 model_name=namespace, 
                 model_version=self.model_version, 
                 check_point_path=self.check_point_path,
-                info=info,
                 **self.get_params(model.cls_name()))
 
     def train(self, batch_size=128, num_steps=1):
