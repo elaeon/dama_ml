@@ -21,59 +21,72 @@ def pixelate_mode(mode):
 
 
 class Transforms(object):
-    def __init__(self, transforms):        
-        self.transforms = {}
-        for group, transform in transforms:
-            self.add_group_transforms(group, transform)
+    def __init__(self, transforms=None):
+        self.transforms = OrderedDict({})
+        if transforms is not None:
+            for fn, params in transforms.items():
+                self.add_transform(fn, **params)
+        #for group, transform in transforms:
+        #    self.add_group_transforms(group, transform)
 
-    def add_first_transform(self, group, name, value):
-        tail = self.transforms[group]
-        if name in tail:
-            if name == tail.iterkeys().next():
-                self.add_transform(group, name, value)
-            else:
-                del tail[name]
-                self.transforms[group] = OrderedDict({name: value})                
-                self.transforms[group].update(tail)
-        else:
-            self.transforms[group] = OrderedDict({name: value})
-            self.transforms[group].update(tail)
+    #def add_first_transform(self, group, name, value):
+    #    tail = self.transforms[group]
+    #    if name in tail:
+    #        if name == tail.iterkeys().next():
+    #            self.add_transform(group, name, value)
+    #        else:
+    #            del tail[name]
+    #            self.transforms[group] = OrderedDict({name: value})                
+    #            self.transforms[group].update(tail)
+    #    else:
+    #        self.transforms[group] = OrderedDict({name: value})
+    #        self.transforms[group].update(tail)
 
-    def add_transform(self, group, name, value):
-        try:
-            self.transforms[group][name] = value
-        except KeyError:
-            self.transforms[group] = OrderedDict({name: value})
+    def add_transform(self, fn, **params):
+        fn_name = "{}.{}".format(fn.__module__, fn.__name__)
+        self.transforms[fn_name] = params
+        #try:
+        #    self.transforms[group][name] = value
+        #except KeyError:
+        #    self.transforms[group] = OrderedDict({name: value})
 
-    def add_transforms(self, group, transforms):
-        if not group in self.transforms:
-             self.add_group_transforms(group, transforms)
-        else:
-            for name, value in transforms.items():
-                self.transforms[group][name] = value
+    #def add_transforms(self, group, transforms):
+    #    if not group in self.transforms:
+    #         self.add_group_transforms(group, transforms)
+    #    else:
+    #        for name, value in transforms.items():
+    #            self.transforms[group][name] = value
 
-    def get_transforms(self, group):
-        return self.transforms[group].items()
+    #def get_transforms(self, group):
+    #    return self.transforms[group].items()
 
-    def get_all_transforms(self):
-        return [(key, list(self.transforms[key].items())) 
-            for key in self.transforms]
+    #def get_all_transforms(self):
+    #    return [(key, list(self.transforms[key].items())) 
+    #        for key in self.transforms]
 
-    def add_group_transforms(self, group, transforms):
-        self.transforms[group] = OrderedDict(transforms)
+    #def add_group_transforms(self, group, transforms):
+    #    self.transforms[group] = OrderedDict(transforms)
 
-    def empty(self, group):
-        if len(self.transforms) == 0:
-            return True
-        elif len(self.transforms.get(group, [])) == 0:
-            return True
-        else:
-            return False
+    def empty(self):
+        return len(self.transforms) == 0:
+        #    return True
+        #elif len(self.transforms.get(group, [])) == 0:
+        #    return True
+        #else:
+        #    return False
 
     def __add__(self, o):
-        transforms_global = self.get_transforms("global") + o.get_transforms("global")
-        transforms_row = self.get_transforms("row") + o.get_transforms("row")
-        return Transforms([("global", transforms_global), ("row", transforms_row)])
+        #transforms_global = self.get_transforms("global") + o.get_transforms("global")
+        #transforms_row = self.get_transforms("row") + o.get_transforms("row")
+        #return Transforms([("global", transforms_global), ("row", transforms_row)])
+        all_transforms = Transforms(self.transforms)
+        for fn, params in o.transforms.items():
+            all_transforms.add_transform(fn, **params)
+        return all_transforms
+
+    def to_json(self):
+        import json
+        return json.dumps({fn: params for fn, params in self.transforms})
 
 
 class Preprocessing(object):
