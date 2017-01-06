@@ -57,11 +57,14 @@ class ReadWriteData(object):
             key = '/data/' + name
             return f[key]
 
-    def write_chunks(name, data, chunks=128):
-
-        #self._set_space_data_shape("data", data_shape)
-        #self._set_space_data_shape("labels", labels_shape)
-        dbs.write_chunks("data", self.train_data, chunks=100)
+    def chunks_writer(name, data, chunks=128, init=0):
+        from ml.utils.seq import grouper_chunk
+        with h5py.File(self.url(), 'w') as f:
+            for i, row in enumerate(grouper_chunk(128, data), init+1):
+                seq = np.asarray(list(row))
+                end = i * seq.shape[0]
+                f[name][init:end] = seq
+                init = end
 
 
 class DataSetBuilder(ReadWriteData):
@@ -135,18 +138,11 @@ class DataSetBuilder(ReadWriteData):
         else:
             self.dataset_path = dataset_path
         self.name = name
-        #self.train_data = None
-        #self.train_labels = None
-        #self.valid_data = None
-        #self.valid_labels = None
-        #self.test_data = None
-        #self.test_labels = None
         self.processing_class = processing_class
         self.valid_size = valid_size
         self.train_size = train_size
         self.test_size = round(1 - (train_size + valid_size), 2)
         self.transforms_apply = transforms_apply
-        #self._cached_md5 = None
         self.validator = validator
         self.autor = author
         self.description = description
@@ -180,6 +176,38 @@ class DataSetBuilder(ReadWriteData):
     def train_labels(self, value):
         return self._set_data('train_labels', value)
 
+    @property
+    def test_data(self):
+        return self._get_data('test_data')
+
+    @test_data.setter
+    def test_data(self, value):
+        self._set_data('test_data', value)
+
+    @property
+    def test_labels(self):
+        return self._get_data('test_labels')
+
+    @test_labels.setter
+    def test_labels(self, value):
+        return self._set_data('test_labels', value)
+
+    @property
+    def validation_data(self):
+        return self._get_data('validation_data')
+
+    @validation_data.setter
+    def validation_data(self, value):
+        self._set_data('validation_data', value)
+
+    @property
+    def validation_labels(self):
+        return self._get_data('validation_labels')
+
+    @validation_labels.setter
+    def validation_labels(self, value):
+        return self._set_data('validation_labels', value)
+
     def url(self):
         """
         return the path where is saved the dataset
@@ -196,7 +224,7 @@ class DataSetBuilder(ReadWriteData):
     def shape(self):
         "return the shape of the dataset"
         rows = self.train_data.shape[0] + self.test_data.shape[0] +\
-            self.valid_data.shape[0]
+            self.validation_data.shape[0]
         if self.train_data.dtype != np.object:
             return tuple([rows] + list(self.train_data.shape[1:]))
         else:
@@ -218,14 +246,7 @@ class DataSetBuilder(ReadWriteData):
             description=self.description,
             author=self.author,
             compression_level=self.compression_level)
-        #self._set_space_data("data", data_shape)
-        #self._set_space_data("labels", labels_shape)
-        dbs.write_chunks("data", self.train_data, chunks=100)
-        dbs.write_chunks("data", self.test_data, chunks=100)
-        dbs.write_chunks("data", self.valid_data, chunks=100)
-        dbs.write_chunks("labels", self.train_labels, chunks=100)
-        dbs.write_chunks("labels", self.test_labels, chunks=100)
-        dbs.write_chunks("labels", self.valid_labels, chunks=100)
+        dsbb.to_block(self) 
         return dsb
 
     def labels_info(self):
@@ -744,11 +765,35 @@ class DataSetBuilder(ReadWriteData):
 
 class DataSetBuilderBlock(DataSetBuilder):
 
-    def write_chunks():
+    @property
+    def data(self):
+        return self._get_data('data')
 
+    @data.setter
+    def data(self, value):
+        self._set_data('data', value)
+
+    @property
+    def labels(self):
+        return self._get_data('labels')
+
+    @labels.setter
+    def labels(self, value):
+        return self._set_data('labels', value)
+
+    def to_block(self, dsb):
+        data_shape = dsb.shape
+        labels_shape = (data_shape[0], dsb.train_labels[1]) 
         self._set_space_data("data", data_shape)
         self._set_space_data("labels", labels_shape)
-        dbs.write_chunks("data", self.train_data, chunks=100)
+
+        self.chunks_writer("data", dsb.train_data, chunks=100)
+        self.chunks_writer("data", dsb.test_data, chunks=100, init=dsb.train_data.shape[0])
+        self.chunks_writer("data", dsb.validation_data, chunks=100, init=dsb.test_data.shape[0])
+
+        self.chunks_writer("labels", dsb.train_labels, chunks=100)
+        self.chunks_writer("labels", dsb.test_labels, chunks=100, init=dsb.train_labels.shape[0])
+        self.chunks_writer("labels", dsb.validation_labels, chunks=100, init=dsb.test_labels[0])
 
 
 class DataSetBuilderImage(DataSetBuilder):
