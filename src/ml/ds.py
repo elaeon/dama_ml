@@ -57,6 +57,14 @@ class ReadWriteData(object):
             key = '/data/' + name
             return f[key]
 
+    def _set_attr(self, name, value):
+        with h5py.File(self.url(), 'w') as f:
+            f.attrs[name] = value
+
+    def _get_attr(name):
+        with h5py.File(self.url(), 'r') as f:
+            return f.attrs[name]
+
     def chunks_writer(name, data, chunks=128, init=0):
         from ml.utils.seq import grouper_chunk
         with h5py.File(self.url(), 'w') as f:
@@ -67,7 +75,235 @@ class ReadWriteData(object):
                 init = end
 
 
-class DataSetBuilder(ReadWriteData):
+class DataLabel(ReadWriteData):
+    """
+    Base class for dataset build. Get data from memory.
+    create the initial values for the dataset.
+
+    :type name: string
+    :param name: dataset's name
+
+    :type dataset_path: string
+    :param dataset_path: path where the datased is saved. This param is automaticly set by the settings.cfg file.
+
+    :type data_folder_path: string
+    :param data_folder_path: path to the data what you want to add to the dataset, automaticly split the data in train, test and validation. If you want manualy split the data in train and test, check test_folder_path.
+
+    :type transforms: transform instance
+    :param transforms: list of transforms
+
+    :type transforms_apply: bool
+    :param transforms_apply: apply transformations to the data
+
+    :type dtype: string
+    :param dtype: the type of the data to save
+
+    :type description: string
+    :param description: an bref description of the dataset
+
+    :type author: string
+    :param author: Dataset Author's name
+    """
+    def __init__(self, name=name, 
+                dataset_path=None, 
+                data_folder_path=None, 
+                transforms=None,
+                transforms_apply=True,
+                dtype='float64',
+                description='',
+                author='',
+                compression_level=0):
+        self.data_folder_path = data_folder_path
+        self.dtype = dtype
+
+        if dataset_path is None:
+            self.dataset_path = settings["dataset_path"]
+        else:
+            self.dataset_path = dataset_path
+        self.name = name
+        self.transforms_apply = transforms_apply
+        self.autor = author
+        self.description = description
+        self.compression_level = compression_level
+
+        self.transforms = transforms#Transforms([transforms_global, transforms_row])
+
+    @property
+    def data(self):
+        return self._get_data('data')
+
+    @data.setter
+    def data(self, value):
+        self._set_data('data', value)
+
+    @property
+    def labels(self):
+        return self._get_data('labels')
+
+    @labels.setter
+    def labels(self, value):
+        return self._set_data('labels', value)
+
+    def url(self):
+        """
+        return the path where is saved the dataset
+        """
+        return os.path.join(self.dataset_path, self.name)
+
+    def num_features(self):
+        """
+        return the number of features of the dataset
+        """
+        return self.data.shape[1]
+
+    @property
+    def shape(self):
+        "return the shape of the dataset"
+        return self.data.shape
+
+    def labels_info(self):
+        """
+        return a counter of labels
+        """
+        from collections import Counter
+        dl = self.desfragment()
+        return Counter(dl.labels)
+
+    def only_labels(self, labels):
+        """
+        :type labels: list
+        :param labels: list of labels
+
+        return a tuple of arrays with data and labels, the returned data only have the labels selected.
+        """
+        dl = self.desfragment()
+        s_labels = set(dl.labels)
+        try:
+            dataset, n_labels = zip(*filter(lambda x: x[1] in s_labels, zip(dl.data, dl.labels)))
+        except ValueError:
+            label = labels[0] if len(labels) > 0 else None
+            log.warning("label {} is not found in the labels set".format(label))
+            return np.asarray([]), np.asarray([])
+        return np.asarray(dataset), np.asarray(n_labels)
+
+    def desfragment(self):
+        """
+        Concatenate the train, valid and test data in a data array.
+        Concatenate the train, valid, and test labels in another array.
+        return DataLabel
+        """
+        return self
+
+    def dtype_t(self, data):
+        """
+        :type data: narray
+        :param data: narray to cast
+
+        cast the data to the predefined dataset dtype
+        """
+        dtype = dtype_c(self.dtype)
+        if data.dtype is not dtype and data.dtype != np.object:
+            return data.astype(dtype_c(self.dtype))
+        else:
+            return data
+
+    def _set_attrs(self):
+         with h5py.File(self.url(),'w') as f:
+            f.attrs['path'] = self.url()
+            f.attrs['timestamp'] = datetime.datetime.utcnow().strftime("%Y-%M-%dT%H:%m UTC")
+            f.attrs['md5'] = ""
+            f.attrs['autor'] = self.author
+            f.attrs['transforms'] = self.transforms.to_json()
+            f.attrs['description'] = self.description
+
+            if 0 < self.compression_level <= 9:
+                params = {"compression": "gzip", "compression_opts": self.compression_level}
+            else:
+                params = {}
+
+            f.create_group("data", **params)
+
+    def info(self, classes=False):
+        """
+        :type classes: bool
+        :param classes: if true, print the detail of the labels
+
+        This function print the details of the dataset.
+        """
+        from ml.utils.order import order_table_print
+        print('       ')
+        print('DATASET NAME: {}'.format(self.name))
+        print('Author: {}'.format(self.author))
+        print('Transforms: {}'.format(self.transforms.to_json()))
+        print('Applied transforms: {}'.format(self.transforms_apply))
+        print('Preprocessing Class: {}'.format(self.get_processing_class_name()))
+        print('MD5: {}'.format(self.md5()))
+        print('Description: {}'.format(self.description))
+        print('       ')
+        headers = ["Dataset", "Mean", "Std", "Shape", "dType", "Labels"]
+        table = []
+        table.append(["dataset", self.data[:].mean(), self.data[:].std(), 
+            self.data.shape, self.data.dtype, self.labels.size])
+
+    def is_binary(self):
+        """
+        return true if the labels only has two classes
+        """
+        return len(self.labels_info()) == 2
+
+    def calc_md5(self):
+        import hashlib
+        dl = self.desfragment()
+        h = hashlib.md5(dl.data)
+        self._set_attr("md5", h.hexdigest())
+        return self._get_attr("md5")
+
+    def md5(self):
+        """
+        return the signature of the dataset in hex md5
+        """
+        md5 = self._get_attr("md5")
+        if md5 == "":
+            md5 = self.calc_md5()
+        return md5
+
+    def distinct_data(self):
+        """
+        return the radio of distincts elements in the training data.
+        i.e 
+        [1,2,3,4,5] return 5/5
+        [2,2,2,2,2] return 1/5        
+        
+        """
+        if not isinstance(self.data.dtype, object):
+            data = self.data[:].reshape(self.data.shape[0], -1)
+        else:
+            data = np.asarray([row.reshape(1, -1)[0] for row in self.data])
+        y = set((elem for row in data for elem in row))
+        return float(len(y)) / data.size
+
+    def sparcity(self):
+        """
+        return a value between [0, 1] of the sparcity of the dataset.
+        0 no zeros exists, 1 all data is zero.
+        """
+        if not isinstance(self.data.dtype, object):
+            data = self.data[:].reshape(self.data.shape[0], -1)
+        else:
+            data = np.asarray([row.reshape(1, -1)[0] for row in self.data])
+
+        zero_counter = 0
+        total = 0
+        for row in data:
+            for elem in row:
+                if elem == 0:
+                    zero_counter += 1
+                total += 1
+    
+        return float(zero_counter) / total
+
+
+class DataSetBuilder(DataLabel):
     """
     Base class for dataset build. Get data from memory.
     create the initial values for the dataset.
@@ -208,17 +444,13 @@ class DataSetBuilder(ReadWriteData):
     def validation_labels(self, value):
         return self._set_data('validation_labels', value)
 
-    def url(self):
-        """
-        return the path where is saved the dataset
-        """
-        return os.path.join(self.dataset_path, self.name)
-
-    def num_features(self):
-        """
-        return the number of features of the dataset
-        """
-        return self.train_data.shape[1]
+    @property
+    def data(self):
+        return self.train_data
+        
+    @data.setter
+    def data(self, value):
+        self.train_data = value
 
     @property
     def shape(self):
@@ -248,44 +480,6 @@ class DataSetBuilder(ReadWriteData):
             compression_level=self.compression_level)
         dsbb.to_block(self) 
         return dsb
-
-    def labels_info(self):
-        """
-        return a counter of labels
-        """
-        from collections import Counter
-        _, labels = self.desfragment()
-        return Counter(labels)
-
-    def only_labels(self, labels):
-        """
-        :type labels: list
-        :param labels: list of labels
-
-        return a tuple of arrays with data and labels, the returned data only have the labels selected.
-        """
-        data, all_labels = self.desfragment()
-        s_labels = set(labels)
-        try:
-            dataset, n_labels = zip(*filter(lambda x: x[1] in s_labels, zip(data, all_labels)))
-        except ValueError:
-            label = labels[0] if len(labels) > 0 else None
-            log.warning("label {} is not found in the labels set".format(label))
-            return np.asarray([]), np.asarray([])
-        return np.asarray(dataset), np.asarray(n_labels)
-
-    def _set_attrs(self):
-         with h5py.File(self.url(),'w') as f:
-            f.attrs['path'] = self.url()
-            f.attrs['timestamp'] = datetime.datetime.utcnow().strftime("%Y-%M-%dT%H:%m UTC")
-            f.attrs['md5'] = ""
-            f.attrs['autor'] = self.author
-            f.attrs['transforms'] = self.transforms.to_json()
-            f.attrs['description'] = self.description
-            if 0 < self.compression_level <= 9:
-                f.create_group("data", compression='gzip', compression_opts=self.compression_level)
-            else:
-                f.create_group("data")
 
     def info(self, classes=False):
         """
@@ -355,19 +549,6 @@ class DataSetBuilder(ReadWriteData):
             return None
         else:
             return self.processing_class.module_cls_name()
-
-    def dtype_t(self, data):
-        """
-        :type data: narray
-        :param data: narray to cast
-
-        cast the data to the predefined dataset dtype
-        """
-        dtype = dtype_c(self.dtype)
-        if data.dtype is not dtype and data.dtype != np.object:
-            return data.astype(dtype_c(self.dtype))
-        else:
-            return data
 
     #def to_raw(self):
     #    return {
@@ -488,13 +669,7 @@ class DataSetBuilder(ReadWriteData):
         dataset.from_raw(data)
         if info:
             dataset.info()
-        return dataset        
-
-    def is_binary(self):
-        """
-        return true if the labels only has two classes
-        """
-        return len(self.labels_info()) == 2
+        return dataset
 
     @classmethod
     def to_DF(self, dataset, labels):
@@ -507,8 +682,8 @@ class DataSetBuilder(ReadWriteData):
         """
         convert the dataset to a dataframe
         """
-        data, labels = self.desfragment()
-        return self.to_DF(data, labels)
+        dl = self.desfragment()
+        return self.to_DF(dl.data[:], dl.labels[:])
 
     def processing_rows(self, data):
         if not self.transforms.empty('row') and self.transforms_apply and data is not None:
@@ -613,26 +788,6 @@ class DataSetBuilder(ReadWriteData):
         """
         return self.copy(limit=percentaje)
 
-    def md5(self):
-        """
-        return the signature of the dataset in hex md5
-        """
-        with h5py.File(self.url(), 'r') as f:
-            md5 = f.attrs['md5']
-
-        if md5 == "":
-             md5 = self.calc_md5()
-
-        return md5
-
-    def calc_md5(self):
-        import hashlib
-        with h5py.File(self.url(), 'w') as f:
-            data, labels = self.desfragment()
-            h = hashlib.md5(data)
-            f.attrs['md5'] = h.hexdigest()
-            return f.attrs['md5']
-
     def _clf(self):
         from ml.clf.extended.w_sklearn import RandomForest
         train_labels = np.ones(self.train_labels.shape[0], dtype=int)
@@ -692,41 +847,6 @@ class DataSetBuilder(ReadWriteData):
         ax.legend(loc=2)
         plt.show()
 
-    def distinct_data(self):
-        """
-        return the radio of distincts elements in the training data.
-        i.e 
-        [1,2,3,4,5] return 5/5
-        [2,2,2,2,2] return 1/5        
-        
-        """
-        if not isinstance(self.train_data.dtype, object):
-            data = self.train_data.reshape(self.train_data.shape[0], -1)
-        else:
-            data = np.asarray([row.reshape(1, -1)[0] for row in self.train_data])
-        y = set((elem for row in data for elem in row))
-        return float(len(y)) / data.size
-
-    def sparcity(self):
-        """
-        return a value between [0, 1] of the sparcity of the dataset.
-        0 no zeros exists, 1 all data is zero.
-        """
-        if not isinstance(self.train_data.dtype, object):
-            data = self.train_data.reshape(self.train_data.shape[0], -1)
-        else:
-            data = np.asarray([row.reshape(1, -1)[0] for row in self.train_data])
-
-        zero_counter = 0
-        total = 0
-        for row in data:
-            for elem in row:
-                if elem == 0:
-                    zero_counter += 1
-                total += 1
-    
-        return float(zero_counter) / total
-
     def add_transforms(self, transforms_global=None, transforms_row=None, 
                         processing_class=None, save=False):
         """
@@ -762,26 +882,8 @@ class DataSetBuilder(ReadWriteData):
 
         return dataset
 
-
-class DataSetBuilderBlock(DataSetBuilder):
-
-    @property
-    def data(self):
-        return self._get_data('data')
-
-    @data.setter
-    def data(self, value):
-        self._set_data('data', value)
-
-    @property
-    def labels(self):
-        return self._get_data('labels')
-
-    @labels.setter
-    def labels(self, value):
-        return self._set_data('labels', value)
-
     def to_block(self, dsb):
+        dl = DataLabel()
         data_shape = dsb.shape
         labels_shape = (data_shape[0], dsb.train_labels[1]) 
         self._set_space_data("data", data_shape)
@@ -794,6 +896,8 @@ class DataSetBuilderBlock(DataSetBuilder):
         self.chunks_writer("labels", dsb.train_labels, chunks=100)
         self.chunks_writer("labels", dsb.test_labels, chunks=100, init=dsb.train_labels.shape[0])
         self.chunks_writer("labels", dsb.validation_labels, chunks=100, init=dsb.test_labels[0])
+
+        return dl
 
 
 class DataSetBuilderImage(DataSetBuilder):
