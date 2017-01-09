@@ -12,29 +12,28 @@ class TestDataset(unittest.TestCase):
         self.X = np.append(np.zeros((5, NUM_FEATURES)), np.ones((5, NUM_FEATURES)), axis=0)
         self.Y = (np.sum(self.X, axis=1) / 10).astype(int)
         self.dataset = DataSetBuilder(
-            "test",
+            name="test_ds",
             dataset_path="/tmp/", 
-            transforms_row=[('scale', None)],
+            #transforms_row=[('scale', None)],
             train_size=.5,
             valid_size=.2,
-            validator="cross",
-            processing_class=Preprocessing)
+            validator="cross")
+            #processing_class=Preprocessing)
         self.dataset.build_dataset(self.X, self.Y)
 
     def test_build_dataset_dim_7_1_2(self):
         dataset = DataSetBuilder(
-            "test",
-            dataset_path="/tmp/", 
-            #transforms=[('scale', None)],
+            name="test_ds_0",
+            dataset_path="/tmp/",
             validator="cross")
         dataset.build_dataset(self.X, self.Y)
         self.assertEqual(dataset.train_labels.shape, (7,))
-        self.assertEqual(dataset.valid_labels.shape, (1,))
+        self.assertEqual(dataset.validation_labels.shape, (1,))
         self.assertEqual(dataset.test_labels.shape, (2,))
 
     def test_build_dataset_dim_5_2_3(self):
         self.assertEqual(self.dataset.train_labels.shape, (5,))
-        self.assertEqual(self.dataset.valid_labels.shape, (2,))
+        self.assertEqual(self.dataset.validation_labels.shape, (2,))
         self.assertEqual(self.dataset.test_labels.shape, (3,))
 
     def test_only_labels(self):

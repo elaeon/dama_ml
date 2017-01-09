@@ -68,7 +68,7 @@ class Transforms(object):
     #    self.transforms[group] = OrderedDict(transforms)
 
     def empty(self):
-        return len(self.transforms) == 0:
+        return len(self.transforms) == 0
         #    return True
         #elif len(self.transforms.get(group, [])) == 0:
         #    return True

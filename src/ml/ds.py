@@ -10,6 +10,7 @@ import cPickle as pickle
 import random
 import h5py
 import logging
+import datetime
 
 from ml.processing import PreprocessingImage, Preprocessing, Transforms
 from ml.utils.config import get_settings
@@ -35,8 +36,19 @@ def dtype_c(dtype):
         return getattr(np, dtype)
 
 
+def connect(fn):
+    def check(*args, **kwargs):
+        self = args[0]
+        print("open")
+        kwargs['f'] = h5py.File(self.url(), 'r')
+        return fn(*args, **kwargs)
+    #kwargs['f'].close()
+    print("close")
+    return check
+
+
 class ReadWriteData(object):
-    
+
     def _set_space_shape(self, f, name, shape):
         f['data'].create_dataset(name, shape, dtype=dtype_c(self.dtype), 
                                  chunks=True)
@@ -49,13 +61,14 @@ class ReadWriteData(object):
         key = '/data/' + name
         f[key] = data
 
-    def _get_data(self, name):
-        with h5py.File(self.url(), 'r') as f:
-            key = '/data/' + name
-            return f[key]
+    @connect
+    def _get_data(self, name, f=None):
+        key = '/data/' + name
+        return f[key]
 
-    def _set_attr(self, f, name, value):
-        f.attrs[name] = value
+    def _set_attr(self, name, value):
+        with h5py.File(self.url(), 'r+') as f:
+            f.attrs[name] = value
 
     def _get_attr(self, name):
         with h5py.File(self.url(), 'r') as f:
@@ -63,9 +76,11 @@ class ReadWriteData(object):
 
     def chunks_writer(self, f, name, data, chunks=128, init=0):
         from ml.utils.seq import grouper_chunk
-        for i, row in enumerate(grouper_chunk(128, data), init+1):
+        print(name, init, data)
+        for i, row in enumerate(grouper_chunk(128, data), init):
             seq = np.asarray(list(row))
-            end = i * seq.shape[0]
+            end = i + seq.shape[0]
+            print("---", init, end, seq)
             f[name][init:end] = seq
             init = end
 
@@ -80,9 +95,6 @@ class DataLabel(ReadWriteData):
 
     :type dataset_path: string
     :param dataset_path: path where the datased is saved. This param is automaticly set by the settings.cfg file.
-
-    :type data_folder_path: string
-    :param data_folder_path: path to the data what you want to add to the dataset, automaticly split the data in train, test and validation. If you want manualy split the data in train and test, check test_folder_path.
 
     :type transforms: transform instance
     :param transforms: list of transforms
@@ -99,29 +111,27 @@ class DataLabel(ReadWriteData):
     :type author: string
     :param author: Dataset Author's name
     """
-    def __init__(self, name=name, 
-                dataset_path=None, 
-                data_folder_path=None, 
+    def __init__(self, name=None, 
+                dataset_path=None,
                 transforms=None,
                 transforms_apply=True,
                 dtype='float64',
                 description='',
                 author='',
                 compression_level=0):
-        self.data_folder_path = data_folder_path
-        self.dtype = dtype
+        self.name = name
 
         if dataset_path is None:
             self.dataset_path = settings["dataset_path"]
         else:
             self.dataset_path = dataset_path
-        self.name = name
-
+        
         if not self._preload_attrs():
             self.transforms_apply = transforms_apply
-            self.autor = author
+            self.author = author
             self.description = description
             self.compression_level = compression_level
+            self.dtype = dtype
             self.transforms = transforms#Transforms([transforms_global, transforms_row])
 
     @property
@@ -200,10 +210,12 @@ class DataLabel(ReadWriteData):
         f = h5py.File(self.url(), 'w')
         f.attrs['path'] = self.url()
         f.attrs['timestamp'] = datetime.datetime.utcnow().strftime("%Y-%M-%dT%H:%m UTC")
-        f.attrs['autor'] = self.author
-        f.attrs['transforms'] = self.transforms.to_json()
+        f.attrs['author'] = self.author
+        f.attrs['transforms'] = ''#self.transforms.to_json()
         f.attrs['description'] = self.description
         f.attrs['applied_transforms'] = self.transforms_apply
+        f.attrs['dtype'] = self.dtype
+        f.attrs['compression_level'] = self.compression_level
 
         if 0 < self.compression_level <= 9:
             params = {"compression": "gzip", "compression_opts": self.compression_level}
@@ -219,8 +231,14 @@ class DataLabel(ReadWriteData):
                 self.author = f.attrs['autor']
                 self.transforms = f.attrs['transforms']
                 self.description = f.attrs['description']
-                self.apply_transforms = f.attrs['applied_transforms']
-        except:
+                self.transforms_apply = f.attrs['applied_transforms']
+                self.dtype = f.attrs['dtype']
+                self.compression_level = f.attrs['compression_level']
+            if not self.md5():
+                return False
+        except KeyError:
+            return False
+        except IOError:
             return False
         else:
             return True
@@ -256,7 +274,7 @@ class DataLabel(ReadWriteData):
     def calc_md5(self):
         import hashlib
         dl = self.desfragment()
-        h = hashlib.md5(dl.data)
+        h = hashlib.md5(dl.data[:])
         return h.hexdigest()
 
     def md5(self):
@@ -302,17 +320,17 @@ class DataLabel(ReadWriteData):
 
     def build_dataset_from_dsb(self, dsb):
         f = self._open_attrs()
-        labels_shape = (dsb.shape[0], dsb.train_labels[1]) 
-        self._set_space_data(f, "data", dsb.shape)
-        self._set_space_data(f, "labels", labels_shape)
+        labels_shape = (dsb.shape[0], )#dsb.train_labels[1])
+        self._set_space_shape(f, "data", dsb.shape)
+        self._set_space_shape(f, "labels", labels_shape)
 
-        self.chunks_writer(f, "data", dsb.train_data, chunks=100)
-        self.chunks_writer(f, "data", dsb.test_data, chunks=100, init=dsb.train_data.shape[0])
-        self.chunks_writer(f, "data", dsb.validation_data, chunks=100, init=dsb.test_data.shape[0])
+        self.chunks_writer(f, "/data/data", dsb.train_data, chunks=100)
+        self.chunks_writer(f, "/data/data", dsb.test_data, chunks=100, init=dsb.train_data.shape[0])
+        self.chunks_writer(f, "/data/data", dsb.validation_data, chunks=100, init=dsb.test_data.shape[0])
 
-        self.chunks_writer(f, "labels", dsb.train_labels, chunks=100)
-        self.chunks_writer(f, "labels", dsb.test_labels, chunks=100, init=dsb.train_labels.shape[0])
-        self.chunks_writer(f, "labels", dsb.validation_labels, chunks=100, init=dsb.test_labels[0])
+        self.chunks_writer(f, "/data/labels", dsb.train_labels, chunks=100)
+        self.chunks_writer(f, "/data/labels", dsb.test_labels, chunks=100, init=dsb.train_labels.shape[0])
+        self.chunks_writer(f, "/data/labels", dsb.validation_labels, chunks=100, init=dsb.test_labels.shape[0])
 
         f.close()
 
@@ -321,8 +339,16 @@ class DataLabel(ReadWriteData):
         data = self.processing(data, initial=True)
         self._set_space_data(f, 'data', data)
         self._set_space_data(f, 'labels', labels)
-        self._set_attr(f, "md5", self.calc_md5())
         f.close()
+        self._set_attr("md5", self.calc_md5())
+
+    def create_route(self):
+        """
+        create directories if the dataset_path does not exist
+        """
+        if self.dataset_path is not None:
+            if not os.path.exists(self.dataset_path):
+                os.makedirs(self.dataset_path)
 
 
 class DataSetBuilder(DataLabel):
@@ -372,10 +398,8 @@ class DataSetBuilder(DataLabel):
     :type author: string
     :param author: Dataset Author's name
     """
-    def __init__(self, name=name, 
-                dataset_path=None, 
-                test_folder_path=None, 
-                train_folder_path=None,
+    def __init__(self, name=None, 
+                dataset_path=None,
                 transforms_row=None,
                 transforms_global=None,
                 transforms_apply=True,
@@ -387,36 +411,36 @@ class DataSetBuilder(DataLabel):
                 description='',
                 author='',
                 compression_level=0):
-        self.test_folder_path = test_folder_path
-        self.train_folder_path = train_folder_path
-        self.dtype = dtype
+        self.name = name
 
         if dataset_path is None:
             self.dataset_path = settings["dataset_path"]
         else:
             self.dataset_path = dataset_path
-        self.name = name
-        self.processing_class = processing_class
-        self.valid_size = valid_size
-        self.train_size = train_size
-        self.test_size = round(1 - (train_size + valid_size), 2)
-        self.transforms_apply = transforms_apply
-        self.validator = validator
-        self.autor = author
-        self.description = description
-        self.compression_level = compression_level
+        
+        if not self._preload_attrs():
+            self.dtype = dtype
+            self.processing_class = processing_class
+            self.valid_size = valid_size
+            self.train_size = train_size
+            self.test_size = round(1 - (train_size + valid_size), 2)
+            self.transforms_apply = transforms_apply
+            self.validator = validator
+            self.author = author
+            self.description = description
+            self.compression_level = compression_level
 
-        if transforms_row is None:
-            transforms_row = ('row', [])
-        else:
-            transforms_row = ("row", transforms_row)
+        #if transforms_row is None:
+        #    transforms_row = ('row', [])
+        #else:
+        #    transforms_row = ("row", transforms_row)
 
-        if transforms_global is None:
-            transforms_global = ("global", [])
-        else:
-            transforms_global = ("global", transforms_global)
+        #if transforms_global is None:
+        #    transforms_global = ("global", [])
+        #else:
+        #    transforms_global = ("global", transforms_global)
 
-        self.transforms = Transforms([transforms_global, transforms_row])
+        self.transforms = None#Transforms([transforms_global, transforms_row])
 
     @property
     def train_data(self):
@@ -446,6 +470,7 @@ class DataSetBuilder(DataLabel):
     def data(self):
         return self.train_data
 
+    @property
     def labels(self):
         return self.train_labels
 
@@ -468,7 +493,6 @@ class DataSetBuilder(DataLabel):
         dl = DataLabel(
             name=self.name+"dl",
             dataset_path=self.dataset_path,
-            data_folder_path=self.data_folder_path,
             transforms=self.transforms,
             transforms_apply=self.transforms_apply,
             dtype=self.dtype,
@@ -623,46 +647,38 @@ class DataSetBuilder(DataLabel):
             axis=0)
         self.save()
 
-    def create_route(self):
-        """
-        create directories if the dataset_path does not exist
-        """
-        if self.dataset_path is not None:
-            if not os.path.exists(self.dataset_path):
-                os.makedirs(self.dataset_path)
-
     #@classmethod
     #def load_dataset_raw(self, name, dataset_path=None):
     #    with open(dataset_path+name, 'rb') as f:
     #        save = pickle.load(f)
     #        return save
 
-    @classmethod
-    def load_dataset(self, name, dataset_path=None, info=True, dtype='float64',
-                    transforms_apply=False):
-        """
-        :type name: string
-        :param name: name of the dataset to load
+    #@classmethod
+    #def load_dataset(self, name, dataset_path=None, info=True, dtype='float64',
+    #                transforms_apply=False):
+    #    """
+    #    :type name: string
+    #    :param name: name of the dataset to load
 
-        :type dataset_path: string
-        :param dataset_path: path where the dataset was saved
+    #    :type dataset_path: string
+    #    :param dataset_path: path where the dataset was saved
 
-        :type dtype: string
-        :param dtype: cast the data to the defined type
+    #    :type dtype: string
+    #    :param dtype: cast the data to the defined type
 
-        dataset_path is not necesary to especify, this info is obtained from settings.cfg
-        """
-        if dataset_path is None:
-             dataset_path = settings["dataset_path"]
+     #   dataset_path is not necesary to especify, this info is obtained from settings.cfg
+     #   """
+     #   if dataset_path is None:
+     #        dataset_path = settings["dataset_path"]
         #data = self.load_dataset_raw(name, dataset_path=dataset_path)
-        dataset = DataSetBuilder(name, dataset_path=dataset_path, dtype=dtype, 
-                                transforms_apply=transforms_apply)
+     #   dataset = DataSetBuilder(name, dataset_path=dataset_path, dtype=dtype, 
+     #                           transforms_apply=transforms_apply)
         #dataset.from_raw(data)
-        if info:
-            dataset.info()
-        return dataset
+     #   if info:
+     #       dataset.info()
+     #   return dataset
 
-    def convert(dtype='float64', transforms_apply=False):
+    def convert(self, dtype='float64', transforms_apply=False):
         """
         :type dtype: string
         :param dtype: cast the data to the defined type
@@ -743,11 +759,34 @@ class DataSetBuilder(DataLabel):
         self._set_space_data(f, 'validation_data', validation_data)
 
         self._set_space_data(f, 'train_labels', data_labels[3])
-        self._set_space_data(f,  'test_labels', data_labels[5])
+        self._set_space_data(f, 'test_labels', data_labels[5])
         self._set_space_data(f, 'validation_labels', data_labels[4])
 
-        self._set_attr(f, "md5", self.calc_md5())
         f.close()
+        self._set_attr("md5", self.calc_md5())        
+
+    #def copy(self, limit=None):
+    #    dataset = DataSetBuilder(self.name)
+    #    def calc_nshape(data, value):
+    #        if value is None or not (0 < value <= 1) or data is None:
+    #            value = 1
+
+    #        limit = int(round(data.shape[0] * value, 0))
+    #        return data[:limit]
+
+    #    dataset.test_folder_path = self.test_folder_path
+    #    dataset.train_folder_path = self.train_folder_path
+    #    dataset.dataset_path = self.dataset_path
+    #    dataset.train_data = calc_nshape(self.train_data, limit)
+    #    dataset.train_labels = calc_nshape(self.train_labels, limit)
+    #    dataset.valid_data = calc_nshape(self.valid_data, limit)
+    #    dataset.valid_labels = calc_nshape(self.valid_labels, limit)
+    #    dataset.test_data = calc_nshape(self.test_data, limit)
+    #    dataset.test_labels = calc_nshape(self.test_labels, limit)
+    #    dataset.transforms = self.transforms
+    #    dataset.processing_class = self.processing_class
+    #    dataset.md5()
+    #    return dataset
 
     #def copy(self, limit=None):
     #    dataset = DataSetBuilder(self.name)
@@ -773,7 +812,7 @@ class DataSetBuilder(DataLabel):
     #    return dataset
 
     def processing(self, data, initial=True):
-        data = self.processing_rows(data)
+        #data = self.processing_rows(data)
         #if init is True:
         #    return self.processing_global(data, base_data=data)
         #elif init is False and not self.transforms.empty('global'):
@@ -863,14 +902,14 @@ class DataSetBuilder(DataLabel):
         :param processing_class: class of the row transforms
         """
         dataset = self.copy()
-        if old_transforms.empty("global") and transforms_global is not None:
-            dataset.transforms = Transforms([transforms_global, transforms_row])
-        else:
-            dataset.transforms = transforms
-            dataset.train_data = dataset.processing(dataset.train_data)
-            dataset.test_data = dataset.processing(dataset.test_data)
-            dataset.valid_data = dataset.processing(dataset.valid_data)
-            dataset.transforms = self.transforms + dataset.transforms
+        #if old_transforms.empty("global") and transforms_global is not None:
+        #    dataset.transforms = Transforms([transforms_global, transforms_row])
+        #else:
+        #    dataset.transforms = transforms
+        #    dataset.train_data = dataset.processing(dataset.train_data)
+        #    dataset.test_data = dataset.processing(dataset.test_data)
+        #    dataset.valid_data = dataset.processing(dataset.valid_data)
+        #    dataset.transforms = self.transforms + dataset.transforms
 
         return dataset
 
@@ -883,6 +922,9 @@ class DataSetBuilderImage(DataSetBuilder):
     :param image_size: define the image size to save in the dataset
 
     kwargs are the same that DataSetBuilder's options
+
+    :type data_folder_path: string
+    :param data_folder_path: path to the data what you want to add to the dataset, automaticly split the data in train, test and validation. If you want manualy split the data in train and test, check test_folder_path.
     """
     def __init__(self, name, image_size=None, **kwargs):
         super(DataSetBuilderImage, self).__init__(name, **kwargs)
