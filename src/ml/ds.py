@@ -31,56 +31,54 @@ def load_metadata(path):
 
 
 def dtype_c(dtype):
-    types = set(["float64", "float32", "int64", "int32"])
-    if hasattr(np, dtype) and dtype in types:
-        return getattr(np, dtype)
-
-
-def connect(fn):
-    def check(*args, **kwargs):
-        self = args[0]
-        print("open")
-        kwargs['f'] = h5py.File(self.url(), 'r')
-        return fn(*args, **kwargs)
-    #kwargs['f'].close()
-    print("close")
-    return check
+    #types = set(["float64", "float32", "int64", "int32", "|S1"])
+    return np.dtype(dtype)
+    #if hasattr(np, dtype) and dtype in types:
+    #    return getattr(np, dtype)
 
 
 class ReadWriteData(object):
 
-    def _set_space_shape(self, f, name, shape):
-        f['data'].create_dataset(name, shape, dtype=dtype_c(self.dtype), 
-                                 chunks=True)
+    def _set_space_shape(self, f, name, shape, label=False):
+        dtype = dtype_c(self.dtype) if label is False else dtype_c(self.ltype)
+        f['data'].create_dataset(name, shape, dtype=dtype, chunks=True)
 
-    def _set_space_data(self, f, name, data):
-        f['data'].create_dataset(name, data.shape, dtype=dtype_c(self.dtype), 
-                                data=self.dtype_t(data), chunks=True)
+    def _set_space_data(self, f, name, data, label=False):
+        dtype = dtype_c(self.dtype) if label is False else dtype_c(self.ltype)
+        print(dtype, data.dtype)
+        f['data'].create_dataset(name, data.shape, dtype=dtype, data=data, chunks=True)
 
     def _set_data(self, f, name, data):
         key = '/data/' + name
         f[key] = data
 
-    @connect
-    def _get_data(self, name, f=None):
+    def _get_data(self, name):
+        if not hasattr(self, 'f'):
+            self.f = h5py.File(self.url(), 'r')
+        print(self.f.id)
         key = '/data/' + name
-        return f[key]
+        return self.f[key]
 
     def _set_attr(self, name, value):
-        with h5py.File(self.url(), 'r+') as f:
-            f.attrs[name] = value
-
+        while True:
+            try:
+                with h5py.File(self.url(), 'r+') as f:
+                    f.attrs[name] = value
+                break
+            except IOError:
+                self.f.close()
+                del self.f
+            
     def _get_attr(self, name):
         with h5py.File(self.url(), 'r') as f:
             return f.attrs[name]
 
     def chunks_writer(self, f, name, data, chunks=128, init=0):
         from ml.utils.seq import grouper_chunk
-        print(name, init, data)
         for i, row in enumerate(grouper_chunk(128, data), init):
             seq = np.asarray(list(row))
             end = i + seq.shape[0]
-            print("---", init, end, seq)
+            #print("---", i, init, end, seq)
             f[name][init:end] = seq
             init = end
 
@@ -116,6 +114,7 @@ class DataLabel(ReadWriteData):
                 transforms=None,
                 transforms_apply=True,
                 dtype='float64',
+                ltype='|S1',
                 description='',
                 author='',
                 compression_level=0):
@@ -132,6 +131,7 @@ class DataLabel(ReadWriteData):
             self.description = description
             self.compression_level = compression_level
             self.dtype = dtype
+            self.ltype = ltype
             self.transforms = transforms#Transforms([transforms_global, transforms_row])
 
     @property
@@ -165,7 +165,9 @@ class DataLabel(ReadWriteData):
         """
         from collections import Counter
         dl = self.desfragment()
-        return Counter(dl.labels)
+        counter = Counter(dl.labels)
+        dl.destroy()
+        return counter
 
     def only_labels(self, labels):
         """
@@ -174,10 +176,13 @@ class DataLabel(ReadWriteData):
 
         return a tuple of arrays with data and labels, the returned data only have the labels selected.
         """
-        dl = self.desfragment()
-        s_labels = set(dl.labels)
         try:
+            dl = self.desfragment()
+            s_labels = set(labels)
+            print(zip(dl.data, dl.labels))
+            #print(s_labels)
             dataset, n_labels = zip(*filter(lambda x: x[1] in s_labels, zip(dl.data, dl.labels)))
+            dl.destroy()
         except ValueError:
             label = labels[0] if len(labels) > 0 else None
             log.warning("label {} is not found in the labels set".format(label))
@@ -205,8 +210,22 @@ class DataLabel(ReadWriteData):
         else:
             return data
 
+    def ltype_t(self, labels):
+        """
+        :type labels: narray
+        :param labels: narray to cast
+
+        cast the labels to the predefined dataset ltype
+        """
+        ltype = dtype_c(self.ltype)
+        if labels.dtype is not ltype and labels.dtype != np.object:
+            return labels.astype(dtype_c(self.ltype))
+        else:
+            return labels
+
     def _open_attrs(self):
         self.create_route()
+        #f = self.f
         f = h5py.File(self.url(), 'w')
         f.attrs['path'] = self.url()
         f.attrs['timestamp'] = datetime.datetime.utcnow().strftime("%Y-%M-%dT%H:%m UTC")
@@ -215,6 +234,7 @@ class DataLabel(ReadWriteData):
         f.attrs['description'] = self.description
         f.attrs['applied_transforms'] = self.transforms_apply
         f.attrs['dtype'] = self.dtype
+        f.attrs['ltype'] = self.ltype
         f.attrs['compression_level'] = self.compression_level
 
         if 0 < self.compression_level <= 9:
@@ -233,6 +253,7 @@ class DataLabel(ReadWriteData):
                 self.description = f.attrs['description']
                 self.transforms_apply = f.attrs['applied_transforms']
                 self.dtype = f.attrs['dtype']
+                self.ltype = f.attrs['ltype']
                 self.compression_level = f.attrs['compression_level']
             if not self.md5():
                 return False
@@ -275,6 +296,7 @@ class DataLabel(ReadWriteData):
         import hashlib
         dl = self.desfragment()
         h = hashlib.md5(dl.data[:])
+        dl.destroy()
         return h.hexdigest()
 
     def md5(self):
@@ -319,26 +341,36 @@ class DataLabel(ReadWriteData):
         return float(zero_counter) / total
 
     def build_dataset_from_dsb(self, dsb):
+        """
+        Transform a dataset with train, test and validation dataset into a datalabel dataset
+        """
         f = self._open_attrs()
         labels_shape = (dsb.shape[0], )#dsb.train_labels[1])
         self._set_space_shape(f, "data", dsb.shape)
-        self._set_space_shape(f, "labels", labels_shape)
+        self._set_space_shape(f, "labels", labels_shape, label=True)
 
         self.chunks_writer(f, "/data/data", dsb.train_data, chunks=100)
-        self.chunks_writer(f, "/data/data", dsb.test_data, chunks=100, init=dsb.train_data.shape[0])
-        self.chunks_writer(f, "/data/data", dsb.validation_data, chunks=100, init=dsb.test_data.shape[0])
+        self.chunks_writer(f, "/data/data", dsb.test_data, chunks=100, 
+                            init=dsb.train_data.shape[0])
+        self.chunks_writer(f, "/data/data", dsb.validation_data, chunks=100, 
+                            init=dsb.train_data.shape[0]+dsb.test_data.shape[0])
 
         self.chunks_writer(f, "/data/labels", dsb.train_labels, chunks=100)
-        self.chunks_writer(f, "/data/labels", dsb.test_labels, chunks=100, init=dsb.train_labels.shape[0])
-        self.chunks_writer(f, "/data/labels", dsb.validation_labels, chunks=100, init=dsb.test_labels.shape[0])
+        self.chunks_writer(f, "/data/labels", dsb.test_labels, chunks=100, 
+                            init=dsb.train_labels.shape[0])
+        self.chunks_writer(f, "/data/labels", dsb.validation_labels, chunks=100, 
+                            init=dsb.train_labels.shape[0]+dsb.test_labels.shape[0])
 
-        f.close()
+        #f.close()
 
     def build_dataset(self, data, labels):
+        """
+        build a datalabel dataset from data and labels
+        """
         f = self._open_attrs()
         data = self.processing(data, initial=True)
-        self._set_space_data(f, 'data', data)
-        self._set_space_data(f, 'labels', labels)
+        self._set_space_data(f, 'data', self.dtype_t(data))
+        self._set_space_data(f, 'labels', self.ltype_t(labels), label=True)
         f.close()
         self._set_attr("md5", self.calc_md5())
 
@@ -349,6 +381,13 @@ class DataLabel(ReadWriteData):
         if self.dataset_path is not None:
             if not os.path.exists(self.dataset_path):
                 os.makedirs(self.dataset_path)
+
+    def destroy(self):
+        """
+        delete the correspondly hdf5 file
+        """
+        from ml.utils.files import rm
+        rm(self.url())
 
 
 class DataSetBuilder(DataLabel):
@@ -408,6 +447,7 @@ class DataSetBuilder(DataLabel):
                 valid_size=.1,
                 validator='cross',
                 dtype='float64',
+                ltype='|S1',
                 description='',
                 author='',
                 compression_level=0):
@@ -420,6 +460,7 @@ class DataSetBuilder(DataLabel):
         
         if not self._preload_attrs():
             self.dtype = dtype
+            self.ltype = ltype
             self.processing_class = processing_class
             self.valid_size = valid_size
             self.train_size = train_size
@@ -702,7 +743,9 @@ class DataSetBuilder(DataLabel):
         convert the dataset to a dataframe
         """
         dl = self.desfragment()
-        return self.to_DF(dl.data[:], dl.labels[:])
+        df = self.to_DF(dl.data[:], dl.labels[:])
+        dl.destroy()
+        return df
 
     def processing_rows(self, data):
         if not self.transforms.empty('row') and self.transforms_apply and data is not None:
@@ -754,13 +797,13 @@ class DataSetBuilder(DataLabel):
         validation_data = self.processing(data_labels[1])
         test_data = self.processing(data_labels[2])
         
-        self._set_space_data(f, 'train_data', train_data)
-        self._set_space_data(f, 'test_data', test_data)
-        self._set_space_data(f, 'validation_data', validation_data)
+        self._set_space_data(f, 'train_data', self.dtype_t(train_data))
+        self._set_space_data(f, 'test_data', self.dtype_t(test_data))
+        self._set_space_data(f, 'validation_data', self.dtype_t(validation_data))
 
-        self._set_space_data(f, 'train_labels', data_labels[3])
-        self._set_space_data(f, 'test_labels', data_labels[5])
-        self._set_space_data(f, 'validation_labels', data_labels[4])
+        self._set_space_data(f, 'train_labels', self.ltype_t(data_labels[3]), label=True)
+        self._set_space_data(f, 'test_labels', self.ltype_t(data_labels[5]), label=True)
+        self._set_space_data(f, 'validation_labels', self.ltype_t(data_labels[4]), label=True)
 
         f.close()
         self._set_attr("md5", self.calc_md5())        
@@ -1057,11 +1100,11 @@ class DataSetBuilderImage(DataSetBuilder):
         raw.update(new)
         return raw
 
-    def from_raw(self, raw_data):
-        super(DataSetBuilderImage, self).from_raw(raw_data)
+    #def from_raw(self, raw_data):
+    #    super(DataSetBuilderImage, self).from_raw(raw_data)
         #self.transforms.add_transforms("local", raw_data["local_filters"])
-        self.image_size = raw_data["array_length"]
-        self.desfragment()
+    #    self.image_size = raw_data["array_length"]
+    #    self.desfragment()
 
     def info(self):
         super(DataSetBuilderImage, self).info()

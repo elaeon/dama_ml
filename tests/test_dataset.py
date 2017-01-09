@@ -21,6 +21,9 @@ class TestDataset(unittest.TestCase):
             #processing_class=Preprocessing)
         self.dataset.build_dataset(self.X, self.Y)
 
+    def tearDown(self):
+        self.dataset.destroy()
+
     def test_build_dataset_dim_7_1_2(self):
         dataset = DataSetBuilder(
             name="test_ds_0",
@@ -30,6 +33,7 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(dataset.train_labels.shape, (7,))
         self.assertEqual(dataset.validation_labels.shape, (1,))
         self.assertEqual(dataset.test_labels.shape, (2,))
+        dataset.destroy()
 
     def test_build_dataset_dim_5_2_3(self):
         self.assertEqual(self.dataset.train_labels.shape, (5,))
@@ -37,7 +41,8 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(self.dataset.test_labels.shape, (3,))
 
     def test_only_labels(self):
-        dataset0, label0 = self.dataset.only_labels([0])
+        dataset0, label0 = self.dataset.only_labels(['0'])
+        print("result", label0)
         self.assertItemsEqual(label0, np.zeros(5))
         dataset1, label1 = self.dataset.only_labels([1])
         self.assertItemsEqual(label1, np.ones(5))
