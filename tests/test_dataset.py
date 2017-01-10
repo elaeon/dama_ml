@@ -63,7 +63,24 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(self.dataset.copy(.5).train_data.shape[0], 3)
 
     def test_apply_transforms_flag(self):
-        self.dataset.info()
+        self.dataset.apply_transforms = True
+        copy = self.dataset.copy()
+        transforms_to_apply = copy.transforms_to_apply
+        copy.destroy()
+        self.assertEqual(transforms_to_apply, False)
+
+        self.dataset.apply_transforms = False
+        copy = self.dataset.copy()
+        transforms_to_apply = copy.transforms_to_apply
+        copy.destroy()
+        self.assertEqual(transforms_to_apply, False)
+
+    def test_convert(self):
+        dsb = self.dataset.convert("convert_test", dtype='float32', ltype='|S1')
+        #apply_transforms=False, percentaje=1, applied_transforms=False):
+        self.assertEqual(dsb.train_data.dtype, np.dtype('float32'))
+        self.assertEqual(dsb.train_labels.dtype, np.dtype('|S1'))
+        dsb.destroy()
 
 
 class TestDatasetFile(unittest.TestCase):
