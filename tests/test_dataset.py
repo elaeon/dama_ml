@@ -17,6 +17,7 @@ class TestDataset(unittest.TestCase):
             #transforms_row=[('scale', None)],
             train_size=.5,
             valid_size=.2,
+            ltype='int',
             validator="cross")
             #processing_class=Preprocessing)
         self.dataset.build_dataset(self.X, self.Y)
@@ -28,6 +29,7 @@ class TestDataset(unittest.TestCase):
         dataset = DataSetBuilder(
             name="test_ds_0",
             dataset_path="/tmp/",
+            ltype='int',
             validator="cross")
         dataset.build_dataset(self.X, self.Y)
         self.assertEqual(dataset.train_labels.shape, (7,))
@@ -41,8 +43,7 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(self.dataset.test_labels.shape, (3,))
 
     def test_only_labels(self):
-        dataset0, label0 = self.dataset.only_labels(['0'])
-        print("result", label0)
+        dataset0, label0 = self.dataset.only_labels([0])
         self.assertItemsEqual(label0, np.zeros(5))
         dataset1, label1 = self.dataset.only_labels([1])
         self.assertItemsEqual(label1, np.ones(5))
@@ -56,10 +57,13 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(self.dataset.distinct_data() > 0, True)
 
     def test_sparcity(self):
-        self.assertEqual(self.dataset.sparcity() > .9, True)
+        self.assertEqual(self.dataset.sparcity() > .3, True)
 
-    def test_subset(self):
-        self.assertEqual(self.dataset.subset(.5).train_data.shape[0], 3)
+    def test_copy(self):
+        self.assertEqual(self.dataset.copy(.5).train_data.shape[0], 3)
+
+    def test_apply_transforms_flag(self):
+        self.dataset.info()
 
 
 class TestDatasetFile(unittest.TestCase):
