@@ -411,7 +411,7 @@ class DataLabel(ReadWriteData):
             description=self.description,
             author=self.author,
             compression_level=self.compression_level)
-        dl._applied_transforms = apply_transforms
+        dl._applied_transforms = self.apply_transforms
         dl.build_dataset(calc_nshape(self.data, percentaje), calc_nshape(self.labels, percentaje))
         dl.close_reader()
         return dl
@@ -473,6 +473,27 @@ class DataLabel(ReadWriteData):
         df = self.to_DF(dl.data[:], dl.labels[:])
         dl.destroy()
         return df
+
+    def add_transforms(self, name, transforms):
+        """
+        :type name: string
+        :param name: result dataset's name
+
+        :type transforms: Transform
+        :param transforms: transforms to apply in the new dataset
+        """
+        if self.apply_transforms is True:
+            dsb_c = self.copy()
+            dsb_c.apply_transforms = False
+            dsb_c.transforms = transforms
+            dsb = dsb_c.convert(name, dtype=self.dtype, ltype=self.ltype, 
+                apply_transforms=True, percentaje=1)
+            dsb_c.destroy()
+            #dsb.transforms = self.transforms + transforms
+        else:
+            dsb = self.copy()
+            #dsb.transforms += transforms
+        return dsb
 
 
 class DataSetBuilder(DataLabel):
@@ -921,28 +942,6 @@ class DataSetBuilder(DataLabel):
         ax.legend(loc=2)
         plt.show()
 
-    def add_transforms(self, name, transforms):
-        """
-        :type transforms_global: list
-        :param transforms_global: list of global transforms to apply
-
-        :type transforms_row: list
-        :param transforms_row: list of row transforms to apply
-
-        :type processing_class: class
-        :param processing_class: class of the row transforms
-        """
-        if self.apply_transforms is True:
-            #dsb = self.copy()
-            #dsb.transforms = self.transforms + dataset.transforms
-            #dsb = dsb.convert(name, dtype=self.dtype, ltype=self.ltype, apply_transforms=True, 
-            #    percentaje=1)
-            pass
-        else:
-            dsb = self.copy()
-            dsb.transforms = self.transforms + dataset.transforms
-        return dsb
-
     def convert(self, name, dtype='float64', ltype='|S1', apply_transforms=False, 
                 percentaje=1):
         """
@@ -975,7 +974,7 @@ class DataSetBuilder(DataLabel):
             description=self.description,
             author=self.author,
             compression_level=self.compression_level)
-        dl._applied_transforms = apply_transforms
+        dl._applied_transforms = self.apply_transforms
         dl.build_dataset(
             calc_nshape(self.train_data, percentaje), 
             calc_nshape(self.train_labels, percentaje),

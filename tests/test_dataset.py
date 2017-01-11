@@ -82,6 +82,26 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(dsb.train_labels.dtype, np.dtype('|S1'))
         dsb.destroy()
 
+    def test_add_transform(self):
+        transforms = []
+        if self.dataset.transforms_to_apply is True:
+            dsb = self.dataset.add_transforms("add_transform", transforms)
+            self.assertEqual(dsb.transforms_to_apply, True)
+            dsb.destroy()
+        
+        dataset = DataSetBuilder(
+            name="test_ds_0",
+            dataset_path="/tmp/",
+            ltype='int',
+            apply_transforms=False,
+            validator="cross")
+
+        dataset.build_dataset(self.X, self.Y)
+        dsb = dataset.add_transforms("add_transform", transforms)
+        self.assertEqual(dsb.transforms_to_apply, False)
+        dsb.destroy()
+        dataset.destroy()
+
 
 class TestDatasetFile(unittest.TestCase):
     def setUp(self):
