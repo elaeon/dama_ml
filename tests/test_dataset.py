@@ -3,7 +3,7 @@ import numpy as np
 import csv
 
 from ml.ds import DataSetBuilder, DataSetBuilderFile
-from ml.processing import Preprocessing
+from ml.processing import Transforms
 
 
 class TestDataset(unittest.TestCase):
@@ -13,13 +13,11 @@ class TestDataset(unittest.TestCase):
         self.Y = (np.sum(self.X, axis=1) / 10).astype(int)
         self.dataset = DataSetBuilder(
             name="test_ds",
-            dataset_path="/tmp/", 
-            #transforms_row=[('scale', None)],
+            dataset_path="/tmp/",
             train_size=.5,
             valid_size=.2,
             ltype='int',
             validator="cross")
-            #processing_class=Preprocessing)
         self.dataset.build_dataset(self.X, self.Y)
 
     def tearDown(self):
@@ -83,7 +81,7 @@ class TestDataset(unittest.TestCase):
         dsb.destroy()
 
     def test_add_transform(self):
-        transforms = []
+        transforms = Transforms()
         if self.dataset.transforms_to_apply is True:
             dsb = self.dataset.add_transforms("add_transform", transforms)
             self.assertEqual(dsb.transforms_to_apply, True)

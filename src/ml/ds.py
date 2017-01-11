@@ -12,7 +12,7 @@ import h5py
 import logging
 import datetime
 
-from ml.processing import PreprocessingImage, Preprocessing, Transforms
+from ml.processing import PreprocessingImage, Transforms
 from ml.utils.config import get_settings
 
 settings = get_settings("ml")
@@ -29,12 +29,6 @@ def load_metadata(path):
         data = pickle.load(f)
     return data
 
-
-#def dtype_c(dtype):
-    #types = set(["float64", "float32", "int64", "int32", "|S1"])
-#    return np.dtype(dtype)
-    #if hasattr(np, dtype) and dtype in types:
-    #    return getattr(np, dtype)
 
 def calc_nshape(data, value):
     if value is None or not (0 < value <= 1) or data is None:
@@ -119,7 +113,7 @@ class DataLabel(ReadWriteData):
     """
     def __init__(self, name=None, 
                 dataset_path=None,
-                transforms=None,
+                transforms=Transforms(),
                 apply_transforms=True,
                 dtype='float64',
                 ltype='|S1',
@@ -141,7 +135,7 @@ class DataLabel(ReadWriteData):
             self.compression_level = compression_level
             self.dtype = dtype
             self.ltype = ltype
-            self.transforms = transforms#Transforms([transforms_global, transforms_row])
+            self.transforms = transforms
 
     @property
     def data(self):
@@ -236,7 +230,7 @@ class DataLabel(ReadWriteData):
         f.attrs['path'] = self.url()
         f.attrs['timestamp'] = datetime.datetime.utcnow().strftime("%Y-%M-%dT%H:%m UTC")
         f.attrs['author'] = self.author
-        f.attrs['transforms'] = ''#self.transforms.to_json()
+        f.attrs['transforms'] = self.transforms.to_json()
         f.attrs['description'] = self.description
         f.attrs['applied_transforms'] = self.apply_transforms
         f.attrs['dtype'] = self.dtype
@@ -255,7 +249,7 @@ class DataLabel(ReadWriteData):
         try:
             with h5py.File(self.url(), 'r') as f:
                 self.author = f.attrs['autor']
-                self.transforms = f.attrs['transforms']
+                self.transforms = Transforms.from_json(f.attrs['transforms'])
                 self.description = f.attrs['description']
                 self.apply_transforms = f.attrs['applied_transforms']
                 self.dtype = f.attrs['dtype']
@@ -445,7 +439,7 @@ class DataLabel(ReadWriteData):
             self.f.close()
 
     def processing_rows(self, data):
-        if not self.transforms.empty('row') and self.transforms_to_apply and data is not None:
+        if not self.transforms.empty() and self.transforms_to_apply and data is not None:
             pdata = []
             for row in data:
                 preprocessing = self.processing_class(row, self.transforms.get_transforms('row'))
@@ -489,10 +483,10 @@ class DataLabel(ReadWriteData):
             dsb = dsb_c.convert(name, dtype=self.dtype, ltype=self.ltype, 
                 apply_transforms=True, percentaje=1)
             dsb_c.destroy()
-            #dsb.transforms = self.transforms + transforms
+            dsb.transforms = self.transforms + transforms
         else:
             dsb = self.copy()
-            #dsb.transforms += transforms
+            dsb.transforms += transforms
         return dsb
 
 
@@ -545,11 +539,8 @@ class DataSetBuilder(DataLabel):
     """
     def __init__(self, name=None, 
                 dataset_path=None,
-                #transforms_row=None,
-                #transforms_global=None,
                 apply_transforms=True,
-                #processing_class=None,
-                transforms=None,
+                transforms=Transforms(),
                 train_size=.7,
                 valid_size=.1,
                 validator='cross',
@@ -570,7 +561,6 @@ class DataSetBuilder(DataLabel):
             self.dtype = dtype
             self.ltype = ltype
             self.transforms = transforms
-            #self.processing_class = processing_class
             self.valid_size = valid_size
             self.train_size = train_size
             self.test_size = round(1 - (train_size + valid_size), 2)
@@ -579,18 +569,6 @@ class DataSetBuilder(DataLabel):
             self.author = author
             self.description = description
             self.compression_level = compression_level
-
-        #if transforms_row is None:
-        #    transforms_row = ('row', [])
-        #else:
-        #    transforms_row = ("row", transforms_row)
-
-        #if transforms_global is None:
-        #    transforms_global = ("global", [])
-        #else:
-        #    transforms_global = ("global", transforms_global)
-
-        #self.transforms = None#Transforms([transforms_global, transforms_row])
 
     @property
     def train_data(self):
@@ -664,9 +642,8 @@ class DataSetBuilder(DataLabel):
         print('       ')
         print('DATASET NAME: {}'.format(self.name))
         print('Author: {}'.format(self.author))
-        #print('Transforms: {}'.format(self.transforms.to_json()))
+        print('Transforms: {}'.format(self.transforms.to_json()))
         print('Applied transforms: {}'.format(self.apply_transforms))
-        #print('Preprocessing Class: {}'.format(self.get_processing_class_name()))
         print('MD5: {}'.format(self.md5()))
         print('Description: {}'.format(self.description))
         print('       ')
@@ -712,52 +689,6 @@ class DataSetBuilder(DataLabel):
         X_train = X_train[valid_size_index:]
         y_train = y_train[valid_size_index:]
         return X_train, X_validation, X_test, y_train, y_validation, y_test
-
-    #def get_processing_class_name(self):
-    #    """
-    #    return the name of the processing class
-    #    """
-    #    if self.processing_class is None:
-    #        return None
-    #    else:
-    #        return self.processing_class.module_cls_name()
-
-    #def to_raw(self):
-    #    return {
-    #        'train_dataset': self.dtype_t(self.train_data),
-    #        'train_labels': self.train_labels,
-    #        'valid_dataset': self.dtype_t(self.valid_data),
-    #        'valid_labels': self.valid_labels,
-    #        'test_dataset': self.dtype_t(self.test_data),
-    #        'test_labels': self.test_labels,
-    #        'transforms': self.transforms.get_all_transforms(),
-    #        'preprocessing_class': self.get_processing_class_name(),
-    #        'applied_transforms': self.apply_transforms,
-    #        'md5': self.md5()}
-
-    #@classmethod
-    #def from_raw_to_ds(self, name, dataset_path, data, save=True):
-    #    ds = DataSetBuilder(name, 
-    #            dataset_path=dataset_path)
-    #    ds.from_raw(data)
-    #    if save is True:
-    #        ds.save()
-    #    return ds
-
-    #def from_raw(self, raw_data):
-    #    from pydoc import locate
-        #if self.processing_class is None:
-    #    if raw_data["preprocessing_class"] is not None:
-    #        self.processing_class = locate(raw_data["preprocessing_class"])
-
-    #    self.transforms = Transforms(raw_data["transforms"])
-    #    self.train_data = self.dtype_t(raw_data['train_dataset'])
-    #    self.train_labels = raw_data['train_labels']
-    #    self.valid_data = self.dtype_t(raw_data['valid_dataset'])
-    #    self.valid_labels = raw_data['valid_labels']
-    #    self.test_data = self.dtype_t(raw_data['test_dataset'])
-    #    self.test_labels = raw_data['test_labels']        
-    #    self._cached_md5 = raw_data["md5"]
 
     #def shuffle_and_save(self, data, labels):
     #    self.train_data, self.valid_data, self.test_data, self.train_labels, self.valid_labels, self.test_labels = 
