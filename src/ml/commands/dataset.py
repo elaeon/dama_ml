@@ -13,8 +13,8 @@ settings = get_settings("ml")
   
 def run(args):
     if args.info:
-        dataset = DataSetBuilder.load_dataset(args.info, 
-            dataset_path=settings["dataset_path"], info=False)
+        dataset = DataSetBuilder(args.info, 
+            dataset_path=settings["dataset_path"])
         dataset.info(classes=True)
     elif args.rm:
         try:

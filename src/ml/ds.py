@@ -12,7 +12,7 @@ import h5py
 import logging
 import datetime
 
-from ml.processing import PreprocessingImage, Transforms
+from ml.processing import Transforms
 from ml.utils.config import get_settings
 
 settings = get_settings("ml")
@@ -42,12 +42,12 @@ class ReadWriteData(object):
 
     def _set_space_shape(self, f, name, shape, label=False):
         dtype = np.dtype(self.dtype) if label is False else np.dtype(self.ltype)
-        f['data'].create_dataset(name, shape, dtype=dtype, chunks=True)
+        f['data'].create_dataset(name, shape, dtype=dtype, chunks=True, **self.zip_params)
 
     def _set_space_data(self, f, name, data, label=False):
         dtype = np.dtype(self.dtype) if label is False else np.dtype(self.ltype)
         #print(dtype, data.dtype)
-        f['data'].create_dataset(name, data.shape, dtype=dtype, data=data, chunks=True)
+        f['data'].create_dataset(name, data.shape, dtype=dtype, data=data, chunks=True, **self.zip_params)
 
     def _set_data(self, f, name, data):
         key = '/data/' + name
@@ -71,19 +71,24 @@ class ReadWriteData(object):
                 del self.f
             
     def _get_attr(self, name):
-        with h5py.File(self.url(), 'r') as f:
-            return f.attrs[name]
+        try:
+            with h5py.File(self.url(), 'r') as f:
+                return f.attrs[name]
+        except KeyError:
+            return None
 
-    def chunks_writer(self, f, name, data, chunks=128, init=0):
+    def chunks_writer(self, f, name, data, chunks=128, counter=1, init=0):
         from ml.utils.seq import grouper_chunk
-        for i, row in enumerate(grouper_chunk(128, data), init):
+        init = init * chunks
+        for row in grouper_chunk(chunks, data):
             seq = np.asarray(list(row))
-            end = i + seq.shape[0]
-            #print("---", i, init, end, seq)
-            #print(f[name])
+            end = counter * seq.shape[0]
+            #print("i:{}, init:{}, end:{}, shape:{}".format(counter, init, end, seq.shape))
+            #print(f[name].dtype)
             f[name][init:end] = seq
             init = end
-
+            counter += 1
+        return counter
 
 class DataLabel(ReadWriteData):
     """
@@ -119,9 +124,11 @@ class DataLabel(ReadWriteData):
                 ltype='|S1',
                 description='',
                 author='',
-                compression_level=0):
+                compression_level=0,
+                chunks=100):
         self.name = name
         self._applied_transforms = False
+        self.chunks = chunks
 
         if dataset_path is None:
             self.dataset_path = settings["dataset_path"]
@@ -136,6 +143,9 @@ class DataLabel(ReadWriteData):
             self.dtype = dtype
             self.ltype = ltype
             self.transforms = transforms
+            self.mode = "w"
+        else:
+            self.mode = "r"
 
     @property
     def data(self):
@@ -238,27 +248,25 @@ class DataLabel(ReadWriteData):
         f.attrs['compression_level'] = self.compression_level
 
         if 0 < self.compression_level <= 9:
-            params = {"compression": "gzip", "compression_opts": self.compression_level}
+            self.zip_params = {"compression": "gzip", "compression_opts": self.compression_level}
         else:
-            params = {}
+            self.zip_params = {}
 
-        f.create_group("data", **params)
+        f.create_group("data")
         return f
 
     def _preload_attrs(self):
         try:
             with h5py.File(self.url(), 'r') as f:
-                self.author = f.attrs['autor']
+                self.author = f.attrs['author']
                 self.transforms = Transforms.from_json(f.attrs['transforms'])
                 self.description = f.attrs['description']
                 self.apply_transforms = f.attrs['applied_transforms']
                 self.dtype = f.attrs['dtype']
                 self.ltype = f.attrs['ltype']
                 self.compression_level = f.attrs['compression_level']
-            if not self.md5():
+            if self.md5() is None:
                 return False
-        except KeyError:
-            return False
         except IOError:
             return False
         else:
@@ -343,22 +351,25 @@ class DataLabel(ReadWriteData):
         """
         Transform a dataset with train, test and validation dataset into a datalabel dataset
         """
+        if self.mode == "r":
+            return
+
         f = self._open_attrs()
-        labels_shape = (dsb.shape[0], )#dsb.train_labels[1])
+        labels_shape = (dsb.shape[0], )
         self._set_space_shape(f, "data", dsb.shape)
         self._set_space_shape(f, "labels", labels_shape, label=True)
 
-        self.chunks_writer(f, "/data/data", dsb.train_data, chunks=100)
-        self.chunks_writer(f, "/data/data", dsb.test_data, chunks=100, 
-                            init=dsb.train_data.shape[0])
-        self.chunks_writer(f, "/data/data", dsb.validation_data, chunks=100, 
-                            init=dsb.train_data.shape[0]+dsb.test_data.shape[0])
+        counter = self.chunks_writer(f, "/data/data", dsb.train_data, chunks=self.chunks)
+        counter = self.chunks_writer(f, "/data/data", dsb.test_data, chunks=self.chunks, 
+                            counter=counter, init=counter)
+        counter = self.chunks_writer(f, "/data/data", dsb.validation_data, chunks=self.chunks, 
+                            counter=counter, init=counter)
 
-        self.chunks_writer(f, "/data/labels", dsb.train_labels, chunks=100)
-        self.chunks_writer(f, "/data/labels", dsb.test_labels, chunks=100, 
-                            init=dsb.train_labels.shape[0])
-        self.chunks_writer(f, "/data/labels", dsb.validation_labels, chunks=100, 
-                            init=dsb.train_labels.shape[0]+dsb.test_labels.shape[0])
+        self.chunks_writer(f, "/data/labels", dsb.train_labels, chunks=self.chunks)
+        counter = self.chunks_writer(f, "/data/labels", dsb.test_labels, chunks=self.chunks, 
+                            counter=counter, init=counter)
+        counter = self.chunks_writer(f, "/data/labels", dsb.validation_labels, chunks=self.chunks, 
+                            counter=counter, init=counter)
         f.close()
 
     def build_dataset(self, data, labels):
@@ -501,18 +512,6 @@ class DataSetBuilder(DataLabel):
     :type dataset_path: string
     :param dataset_path: path where the datased is saved. This param is automaticly set by the settings.cfg file.
 
-    :type train_folder_path: string
-    :param train_folder_path: path to the data what you want to add to the dataset, automaticly split the data in train, test and validation. If you want manualy split the data in train and test, check test_folder_path.
-
-    :type test_folder_path: string
-    :param test_folder_path: path to the test data. If None the test data is get from train_folder_path.
-
-    :type transforms_global: list
-    :param transforms_global: list of transforms for all row x column
-
-    :type transforms_row: list
-    :param transforms_row: list of transforms for each row
-
     :type apply_transforms: bool
     :param apply_transforms: apply transformations to the data
 
@@ -536,6 +535,9 @@ class DataSetBuilder(DataLabel):
 
     :type author: string
     :param author: Dataset Author's name
+
+    :type compression_level: int
+    :param compression_level: compression level
     """
     def __init__(self, name=None, 
                 dataset_path=None,
@@ -548,16 +550,18 @@ class DataSetBuilder(DataLabel):
                 ltype='|S1',
                 description='',
                 author='',
-                compression_level=0):
+                compression_level=0,
+                chunks=100):
         self.name = name
         self._applied_transforms = False
+        self.chunks = chunks
 
         if dataset_path is None:
             self.dataset_path = settings["dataset_path"]
         else:
             self.dataset_path = dataset_path
-        
-        if not self._preload_attrs():
+
+        if not self._preload_attrs():# and mode != "rw":
             self.dtype = dtype
             self.ltype = ltype
             self.transforms = transforms
@@ -569,6 +573,9 @@ class DataSetBuilder(DataLabel):
             self.author = author
             self.description = description
             self.compression_level = compression_level
+            self.mode = "w"
+        else:
+            self.mode = "r"
 
     @property
     def train_data(self):
@@ -611,6 +618,33 @@ class DataSetBuilder(DataLabel):
             return tuple([rows] + list(self.train_data.shape[1:]))
         else:
             return (rows,)
+
+    def _open_attrs(self):
+        f = super(DataSetBuilder, self)._open_attrs()
+        f.attrs["validator"] = self.validator
+        f.attrs["train_size"] = self.train_size 
+        f.attrs["valid_size"] = self.valid_size 
+        return f
+
+    def _preload_attrs(self):
+        try:
+            with h5py.File(self.url(), 'r') as f:
+                self.author = f.attrs['author']
+                self.transforms = Transforms.from_json(f.attrs['transforms'])
+                self.description = f.attrs['description']
+                self.apply_transforms = f.attrs['applied_transforms']
+                self.dtype = f.attrs['dtype']
+                self.ltype = f.attrs['ltype']
+                self.compression_level = f.attrs['compression_level']
+                self.validator = f.attrs["validator"]
+                self.train_size = f.attrs["train_size"]
+                self.valid_size = f.attrs["valid_size"]
+            if self.md5() is None:
+                return False
+        except IOError:
+            return False
+        else:
+            return True
 
     def desfragment(self):
         """
@@ -729,37 +763,6 @@ class DataSetBuilder(DataLabel):
             axis=0)
         self.save()
 
-    #@classmethod
-    #def load_dataset_raw(self, name, dataset_path=None):
-    #    with open(dataset_path+name, 'rb') as f:
-    #        save = pickle.load(f)
-    #        return save
-
-    #@classmethod
-    #def load_dataset(self, name, dataset_path=None, info=True, dtype='float64',
-    #                apply_transforms=False):
-    #    """
-    #    :type name: string
-    #    :param name: name of the dataset to load
-
-    #    :type dataset_path: string
-    #    :param dataset_path: path where the dataset was saved
-
-    #    :type dtype: string
-    #    :param dtype: cast the data to the defined type
-
-     #   dataset_path is not necesary to especify, this info is obtained from settings.cfg
-     #   """
-     #   if dataset_path is None:
-     #        dataset_path = settings["dataset_path"]
-        #data = self.load_dataset_raw(name, dataset_path=dataset_path)
-     #   dataset = DataSetBuilder(name, dataset_path=dataset_path, dtype=dtype, 
-     #                           apply_transforms=apply_transforms)
-        #dataset.from_raw(data)
-     #   if info:
-     #       dataset.info()
-     #   return dataset
-
     #def processing_global(self, data, base_data=None):
     #    if not self.transforms.empty('global') and self.apply_transforms and data is not None:
     #        from pydoc import locate
@@ -786,6 +789,9 @@ class DataSetBuilder(DataLabel):
         :type labels: ndarray
         :param labels: array of labels to save in the dataset
         """
+        if self.mode == "r":
+            return
+
         f = self._open_attrs()
 
         if test_data is not None and test_labels is not None \

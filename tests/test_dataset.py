@@ -17,7 +17,8 @@ class TestDataset(unittest.TestCase):
             train_size=.5,
             valid_size=.2,
             ltype='int',
-            validator="cross")
+            validator="cross",
+            chunks=2)
         self.dataset.build_dataset(self.X, self.Y)
 
     def tearDown(self):
