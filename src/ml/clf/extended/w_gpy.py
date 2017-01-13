@@ -51,8 +51,8 @@ class GPC(SKLP):
             yield self.convert_label(p, raw=raw)
 
     def load_model(self):
-        self.model = GPy.models.GPClassification(self.dataset.train_data, 
-            self.dataset.train_labels[:].reshape(-1, 1), kernel=self.k, initialize=False)
+        self.model = GPy.models.GPClassification(self.dataset.train_data[:1000], 
+            self.dataset.train_labels[:1000].reshape(-1, 1), kernel=self.k, initialize=False)
         if self.check_point_path is not None:
             path = self.make_model_file()
             r = np.load(path+".npy")

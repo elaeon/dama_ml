@@ -79,16 +79,25 @@ class ReadWriteData(object):
 
     def chunks_writer(self, f, name, data, chunks=128, counter=1, init=0):
         from ml.utils.seq import grouper_chunk
-        init = init * chunks
-        for row in grouper_chunk(chunks, data):
-            seq = np.asarray(list(row))
-            end = counter * seq.shape[0]
-            #print("i:{}, init:{}, end:{}, shape:{}".format(counter, init, end, seq.shape))
-            #print(f[name].dtype)
-            f[name][init:end] = seq
-            init = end
-            counter += 1
-        return counter
+        if data.shape[0] >= chunks:
+            init = init * chunks
+            for row in grouper_chunk(chunks, data):
+                seq = np.asarray(list(row))
+                end = counter * seq.shape[0]
+                print("c:{}, init:{}, end:{}, shape:{}, chunks:{}".format(
+                    counter, init, end, seq.shape, chunks))
+                #print(f[name].dtype)
+                print(data, seq)
+                f[name][init:end] = seq
+                init = end
+                counter += 1
+            return counter
+        else:
+            end = init + data.shape[0]
+            print(init, end)
+            f[name][init:end] = data
+            return end
+
 
 class DataLabel(ReadWriteData):
     """
@@ -361,14 +370,14 @@ class DataLabel(ReadWriteData):
 
         counter = self.chunks_writer(f, "/data/data", dsb.train_data, chunks=self.chunks)
         counter = self.chunks_writer(f, "/data/data", dsb.test_data, chunks=self.chunks, 
-                            counter=counter, init=counter)
-        counter = self.chunks_writer(f, "/data/data", dsb.validation_data, chunks=self.chunks, 
+                                    counter=counter, init=counter)
+        self.chunks_writer(f, "/data/data", dsb.validation_data, chunks=self.chunks, 
                             counter=counter, init=counter)
 
-        self.chunks_writer(f, "/data/labels", dsb.train_labels, chunks=self.chunks)
+        counter = self.chunks_writer(f, "/data/labels", dsb.train_labels, chunks=self.chunks)
         counter = self.chunks_writer(f, "/data/labels", dsb.test_labels, chunks=self.chunks, 
-                            counter=counter, init=counter)
-        counter = self.chunks_writer(f, "/data/labels", dsb.validation_labels, chunks=self.chunks, 
+                                    counter=counter, init=counter)
+        self.chunks_writer(f, "/data/labels", dsb.validation_labels, chunks=self.chunks, 
                             counter=counter, init=counter)
         f.close()
 
@@ -415,7 +424,8 @@ class DataLabel(ReadWriteData):
             ltype=ltype,
             description=self.description,
             author=self.author,
-            compression_level=self.compression_level)
+            compression_level=self.compression_level,
+            chunks=self.chunks)
         dl._applied_transforms = self.apply_transforms
         dl.build_dataset(calc_nshape(self.data, percentaje), calc_nshape(self.labels, percentaje))
         dl.close_reader()
@@ -795,7 +805,7 @@ class DataSetBuilder(DataLabel):
 
         f = self._open_attrs()
 
-        if self.validator == '' or test_data is not None and test_labels is not None \
+        if self.validator == '' and test_data is not None and test_labels is not None \
             and validation_data is not None and validation_labels is not None:
                 data_labels = [
                     data, validation_data, test_data,

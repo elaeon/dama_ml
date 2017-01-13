@@ -28,6 +28,7 @@ class Measure(object):
     #false positives
     def precision(self):
         from sklearn.metrics import precision_score
+        print(self.labels, self.labels2classes(self.predictions), self.predictions)
         return precision_score(self.labels, self.labels2classes(self.predictions), 
             average=self.average, pos_label=None)
 
@@ -235,7 +236,9 @@ class BaseClassif(DataDrive):
         return list_measure
 
     def only_is(self, op):
+        #print(self.dataset.test_data[:])
         predictions = np.asarray(list(self.predict(self.dataset.test_data, raw=False, transform=False)))
+        #print(predictions)
         data = zip(*filter(
                         lambda x: op(x[1], x[2]), 
                         zip(self.dataset.test_data, 
@@ -265,6 +268,7 @@ class BaseClassif(DataDrive):
         return self.num_labels == 2
 
     def labels_encode(self, labels):
+        print(labels[:])
         self.le.fit(labels)
         self.num_labels = self.le.classes_.shape[0]
         self.base_labels = self.le.classes_
@@ -284,6 +288,7 @@ class BaseClassif(DataDrive):
         if len(labels.shape) > 1 and labels.shape[1] > 1:
             return self.le.inverse_transform(np.argmax(labels, axis=1))
         else:
+            #print(self.le.classes_)
             return self.le.inverse_transform(labels.astype('int'))
 
     def reformat_all(self, dataset):
@@ -295,7 +300,7 @@ class BaseClassif(DataDrive):
             apply_transforms=True if dataset.apply_transforms is False else False,
             compression_level=9,
             dtype=dataset.dtype,
-            ltype='float32',
+            ltype='int',
             validator='')
         train_data, train_labels = self.reformat(dataset.train_data, 
                                     self.le.transform(dataset.train_labels))
@@ -326,31 +331,6 @@ class BaseClassif(DataDrive):
     def set_dataset(self, dataset):
         self._original_dataset_md5 = dataset.md5()
         self.dataset = self.reformat_all(dataset)
-
-    #def set_dataset_from_raw(self, train_data, test_data, valid_data, 
-    #                        train_labels, test_labels, valid_labels, save=False, 
-    #                        dataset_name=None):
-    #    from ml.ds import DataSetBuilder
-    #    data = {}
-    #    data["train_dataset"] = train_data
-    #    data["test_dataset"] = test_data
-    #    data["valid_dataset"] = valid_data
-    #    data["train_labels"] = self.numerical_labels2classes(train_labels)
-    #    data["test_labels"] = self.numerical_labels2classes(test_labels)
-    #    data["valid_labels"] = self.numerical_labels2classes(valid_labels)
-    #    data['transforms'] = self.dataset.transforms.get_all_transforms()
-    #    if self.dataset.processing_class is not None:
-    #        data['preprocessing_class'] = self.dataset.processing_class.module_cls_name()
-    #    else:
-    #        data['preprocessing_class'] = None
-    #    data["md5"] = None
-    #    dataset_name = self.dataset.name if dataset_name is None else dataset_name
-    #    dataset = DataSetBuilder.from_raw_to_ds(
-    #        dataset_name,
-    #        self.dataset.dataset_path,
-    #        data,
-    #        save=save)
-    #    self.set_dataset(dataset)
         
     def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False):
         from ml.utils.seq import grouper_chunk
@@ -371,17 +351,16 @@ class BaseClassif(DataDrive):
 
         if transform is True and chunk_size > 0:
             fn = lambda x, s: self.transform_shape(
-                self.dataset.processing(x, init=False), size=s)
+                self.dataset.processing(x, initial=False), size=s)
             return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)
         elif transform is True and chunk_size == 0:
-            data = self.transform_shape(self.dataset.processing(data, init=False))
+            data = self.transform_shape(self.dataset.processing(data, initial=False))
             return self._predict(data, raw=raw)
         elif transform is False and chunk_size > 0:
             fn = lambda x, s: self.transform_shape(x, size=s)
             return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)
         elif transform is False:
             return self._predict(data, raw=raw)
-            
 
     def _pred_erros(self, predictions, test_data, test_labels, valid_size=.1):
         validation_labels_d = {}
