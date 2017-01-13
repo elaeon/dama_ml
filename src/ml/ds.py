@@ -177,9 +177,9 @@ class DataLabel(ReadWriteData):
         return a counter of labels
         """
         from collections import Counter
-        dl = self.desfragment()
-        counter = Counter(dl.labels)
-        dl.destroy()
+        #dl = self.desfragment()
+        counter = Counter(self.labels)
+        #dl.destroy()
         return counter
 
     def only_labels(self, labels):
@@ -448,6 +448,7 @@ class DataLabel(ReadWriteData):
     def close_reader(self):
         if hasattr(self, 'f'):
             self.f.close()
+            del self.f
 
     def processing_rows(self, data):
         if not self.transforms.empty() and self.transforms_to_apply and data is not None:
@@ -794,7 +795,7 @@ class DataSetBuilder(DataLabel):
 
         f = self._open_attrs()
 
-        if test_data is not None and test_labels is not None \
+        if self.validator == '' or test_data is not None and test_labels is not None \
             and validation_data is not None and validation_labels is not None:
                 data_labels = [
                     data, validation_data, test_data,

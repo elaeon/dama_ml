@@ -6,6 +6,8 @@ import logging
 from sklearn.preprocessing import LabelEncoder
 from ml.utils.config import get_settings
 from ml.models import MLModel
+from ml.ds import DataSetBuilder
+
 
 settings = get_settings("ml")
 logging.basicConfig()
@@ -218,7 +220,7 @@ class BaseClassif(DataDrive):
         list_measure.calc_scores(self.__class__.__name__, 
                                 self.predict, 
                                 self.dataset.test_data, 
-                                self.dataset.test_labels, 
+                                self.dataset.test_labels[:], 
                                 labels2classes_fn=self.numerical_labels2classes,
                                 measures=measures)
         return list_measure
@@ -238,7 +240,7 @@ class BaseClassif(DataDrive):
                         lambda x: op(x[1], x[2]), 
                         zip(self.dataset.test_data, 
                             self.numerical_labels2classes(predictions), 
-                            self.numerical_labels2classes(self.dataset.test_labels))))
+                            self.numerical_labels2classes(self.dataset.test_labels[:]))))
         if len(data) > 0:
             return np.array(data[0]), data[1], data[2]
 
@@ -257,7 +259,7 @@ class BaseClassif(DataDrive):
     def transform_shape(self, data, size=None):
         if size is None:
             size = data.shape[0]
-        return data.reshape(size, -1).astype(np.float32)
+        return data[:].reshape(size, -1).astype(np.float32)
 
     def is_binary():
         return self.num_labels == 2
@@ -282,66 +284,73 @@ class BaseClassif(DataDrive):
         if len(labels.shape) > 1 and labels.shape[1] > 1:
             return self.le.inverse_transform(np.argmax(labels, axis=1))
         else:
-            return self.le.inverse_transform(labels)
+            return self.le.inverse_transform(labels.astype('int'))
 
-    def reformat_all(self):
-        all_ds = np.concatenate((self.dataset.train_labels, 
-            self.dataset.valid_labels, self.dataset.test_labels), axis=0)
-        self.labels_encode(all_ds)
-        self.dataset.train_data, self.dataset.train_labels = self.reformat(
-            self.dataset.train_data, self.le.transform(self.dataset.train_labels))
-        self.dataset.test_data, self.dataset.test_labels = self.reformat(
-            self.dataset.test_data, self.le.transform(self.dataset.test_labels))
-        self.num_features = self.dataset.test_data.shape[-1]
+    def reformat_all(self, dataset):
+        dl = dataset.desfragment()
+        self.labels_encode(dl.labels)
+        dl.destroy()
+        dsb = DataSetBuilder(
+            name=dataset.name+"_"+self.model_name+"_"+self.cls_name(),
+            apply_transforms=True if dataset.apply_transforms is False else False,
+            compression_level=9,
+            dtype=dataset.dtype,
+            ltype='float32',
+            validator='')
+        train_data, train_labels = self.reformat(dataset.train_data, 
+                                    self.le.transform(dataset.train_labels))
+        test_data, test_labels = self.reformat(dataset.test_data, 
+                                    self.le.transform(dataset.test_labels))
+        validation_data, validation_labels = self.reformat(dataset.validation_data, 
+                                    self.le.transform(dataset.validation_labels))
+        dsb.build_dataset(train_data, train_labels, test_data, test_labels,
+                        validation_data, validation_labels)
+        self.num_features = dsb.data.shape[-1]
+        dsb.close_reader()
+        return dsb
+        #if self.dataset_train_limit is not None:
+        #    if self.dataset.train_data.shape[0] > self.dataset_train_limit:
+        #        self.dataset.train_data = self.dataset.train_data[:self.dataset_train_limit]
+        #        self.dataset.train_labels = self.dataset.train_labels[:self.dataset_train_limit]
 
-        if len(self.dataset.valid_labels) > 0:
-            self.dataset.valid_data, self.dataset.valid_labels = self.reformat(
-                self.dataset.valid_data, self.le.transform(self.dataset.valid_labels))
-
-        if self.dataset_train_limit is not None:
-            if self.dataset.train_data.shape[0] > self.dataset_train_limit:
-                self.dataset.train_data = self.dataset.train_data[:self.dataset_train_limit]
-                self.dataset.train_labels = self.dataset.train_labels[:self.dataset_train_limit]
-
-            if self.dataset.valid_data.shape[0] > self.dataset_train_limit:
-                self.dataset.valid_data = self.dataset.valid_data[:self.dataset_train_limit]
-                self.dataset.valid_labels = self.dataset.valid_labels[:self.dataset_train_limit]
+        #    if self.dataset.valid_data.shape[0] > self.dataset_train_limit:
+        #        self.dataset.valid_data = self.dataset.valid_data[:self.dataset_train_limit]
+        #        self.dataset.valid_labels = self.dataset.valid_labels[:self.dataset_train_limit]
 
     def load_dataset(self, dataset):
         if dataset is None:
-            self.set_dataset(self.get_dataset())
+            self.dataset = self.get_dataset()
         else:
-            self.set_dataset(dataset.copy())
+            self.set_dataset(dataset)
 
     def set_dataset(self, dataset):
-        self.dataset = dataset
-        self._original_dataset_md5 = self.dataset.md5()
-        self.reformat_all()
+        self._original_dataset_md5 = dataset.md5()
+        self.dataset = self.reformat_all(dataset)
 
-    def set_dataset_from_raw(self, train_data, test_data, valid_data, 
-                            train_labels, test_labels, valid_labels, save=False, 
-                            dataset_name=None):
-        from ml.ds import DataSetBuilder
-        data = {}
-        data["train_dataset"] = train_data
-        data["test_dataset"] = test_data
-        data["valid_dataset"] = valid_data
-        data["train_labels"] = self.numerical_labels2classes(train_labels)
-        data["test_labels"] = self.numerical_labels2classes(test_labels)
-        data["valid_labels"] = self.numerical_labels2classes(valid_labels)
-        data['transforms'] = self.dataset.transforms.get_all_transforms()
-        if self.dataset.processing_class is not None:
-            data['preprocessing_class'] = self.dataset.processing_class.module_cls_name()
-        else:
-            data['preprocessing_class'] = None
-        data["md5"] = None
-        dataset_name = self.dataset.name if dataset_name is None else dataset_name
-        dataset = DataSetBuilder.from_raw_to_ds(
-            dataset_name,
-            self.dataset.dataset_path,
-            data,
-            save=save)
-        self.set_dataset(dataset)
+    #def set_dataset_from_raw(self, train_data, test_data, valid_data, 
+    #                        train_labels, test_labels, valid_labels, save=False, 
+    #                        dataset_name=None):
+    #    from ml.ds import DataSetBuilder
+    #    data = {}
+    #    data["train_dataset"] = train_data
+    #    data["test_dataset"] = test_data
+    #    data["valid_dataset"] = valid_data
+    #    data["train_labels"] = self.numerical_labels2classes(train_labels)
+    #    data["test_labels"] = self.numerical_labels2classes(test_labels)
+    #    data["valid_labels"] = self.numerical_labels2classes(valid_labels)
+    #    data['transforms'] = self.dataset.transforms.get_all_transforms()
+    #    if self.dataset.processing_class is not None:
+    #        data['preprocessing_class'] = self.dataset.processing_class.module_cls_name()
+    #    else:
+    #        data['preprocessing_class'] = None
+    #    data["md5"] = None
+    #    dataset_name = self.dataset.name if dataset_name is None else dataset_name
+    #    dataset = DataSetBuilder.from_raw_to_ds(
+    #        dataset_name,
+    #        self.dataset.dataset_path,
+    #        data,
+    #        save=save)
+    #    self.set_dataset(dataset)
         
     def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False):
         from ml.utils.seq import grouper_chunk
@@ -405,15 +414,16 @@ class BaseClassif(DataDrive):
                 "model_module": self.module_cls_name(),
                 "model_name": self.model_name,
                 "model_version": self.model_version,
-                "score": list_measure.measures_to_dict()}
+                "score": list_measure.measures_to_dict(),
+                "base_labels": list(self.base_labels)}
         
     def get_dataset(self):
         from ml.ds import DataSetBuilder
         meta = self.load_meta()
-        dataset = DataSetBuilder.load_dataset(
-            meta["dataset_name"],
-            dataset_path=meta["dataset_path"],
-            transforms_apply=True)
+        dataset = DataSetBuilder(meta["dataset_name"], dataset_path=meta["dataset_path"],
+            apply_transforms=False)
+        self._original_dataset_md5 = meta["md5"]
+        self.labels_encode(meta["base_labels"])
         self.group_name = meta.get('group_name', None)
         if meta.get('md5', None) != dataset.md5():
             log.warning("The dataset md5 is not equal to the model '{}'".format(

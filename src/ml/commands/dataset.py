@@ -18,8 +18,7 @@ def run(args):
         dataset.info(classes=True)
     elif args.rm:
         try:
-            dataset = DataSetBuilder.load_dataset(args.rm, 
-                dataset_path=settings["dataset_path"], info=False)
+            dataset = DataSetBuilder(args.rm)
             models_path = get_models_from_dataset(dataset.md5(), settings["checkpoints_path"])
             print("Dataset: {}".format(dataset.url()))
             rm(dataset.url())
@@ -34,8 +33,7 @@ def run(args):
         delete_orphans(settings["checkpoints_path"])
         print("Done.")
     elif args.used_in:
-        dataset = DataSetBuilder.load_dataset(args.used_in, 
-            dataset_path=settings["dataset_path"], info=False)
+        dataset = DataSetBuilder(args.used_in)
         for _, model_path_meta in get_models_from_dataset(dataset.md5(), settings["checkpoints_path"]):
             print("Dataset used in model: {}".format(DataDrive.read_meta("model_module", model_path_meta)))
     else:
@@ -64,8 +62,7 @@ def dataset_model_relation():
     dataset_md5 = {}
     for parent, datasets_name in datasets.items():
         for dataset_name in datasets_name:
-            dataset = DataSetBuilder.load_dataset(
-                dataset_name, dataset_path=settings["dataset_path"], info=False)
+            dataset = DataSetBuilder(dataset_name)
             dataset_md5[dataset.md5()] = dataset_name
     return dataset_md5
 
