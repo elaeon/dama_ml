@@ -55,16 +55,10 @@ class Transforms(object):
             for fn, params in self.transforms.items():
                 fn = locate(fn)
                 data = fn(data, **params)
-        return data
-
-
-#def poly_features(data, degree=2, interaction_only=False, include_bias=True):
-#    if len(self.data.shape) == 1:
-#        data = data.reshape(1, -1)
-#    selector = preprocessing.PolynomialFeatures(
-#        degree=degree, interaction_only=interaction_only, include_bias=include_bias)
-#    return selector.fit_transform(self.data)
-
+        if data is None:
+            raise Exception
+        else:
+            return data
 
 class FiT(object):
     def __init__(self, **kwargs):
@@ -98,6 +92,14 @@ class FiTScaler(FiT):
         self.t = scaler.transform
 
 
+def poly_features(data, degree=2, interaction_only=False, include_bias=True):
+    if len(data.shape) == 1:
+        data = data.reshape(1, -1)
+    selector = preprocessing.PolynomialFeatures(
+        degree=degree, interaction_only=interaction_only, include_bias=include_bias)
+    return selector.fit_transform(data)
+
+
 def resize(data, image_size=90, type_r="asym"):
     if type_r == "asym":
         dim = []
@@ -128,18 +130,18 @@ def upsample(data):
                                     mode='reflect', cval=0)
 
 def rgb2gray(data):
-    return color.rgb2gray(self.data)
+    return color.rgb2gray(data)
 
 
 def blur(data, level=.2):
-    return filters.gaussian(self.data, level)
+    return filters.gaussian(data, level)
 
 
 def align_face(data):
     from ml.face_detector import FaceAlign
     dlibFacePredictor = "/home/sc/dlib-18.18/python_examples/shape_predictor_68_face_landmarks.dat"
     align = FaceAlign(dlibFacePredictor)
-    self.data = align.process_img(self.data)
+    return align.process_img(data)
 
 
 def detector(data):
@@ -151,7 +153,7 @@ def detector(data):
 
 def cut(data, rectangle=None):
     top, bottom, left, right = rectangle
-    return self.data[top:bottom, left:right]
+    return data[top:bottom, left:right]
 
 
 def as_ubyte(data):
@@ -160,9 +162,9 @@ def as_ubyte(data):
 
 def merge_offset(data, image_size=90, bg_color=1):
     if len(data.shape) == 2:
-        self.merge_offset2(image_size=image_size, bg_color=bg_color)
+        return merge_offset2(data, image_size=image_size, bg_color=bg_color)
     elif len(data.shape) == 3:
-        self.merge_offset3(image_size=image_size, bg_color=bg_color)
+        return merge_offset3(data, image_size=image_size, bg_color=bg_color)
 
 
 def merge_offset2(data, image_size=90, bg_color=1):
@@ -205,7 +207,7 @@ def merge_offset3(data, image_size=90, bg_color=1):
         bg2 = bg - 1
     
     bg2[v_range1, h_range1, w_range1] = bg[v_range1, h_range1, w_range1] - 1
-    bg2[v_range1, h_range1, w_range1] = bg2[v_range1, h_range1, w_range1] + self.data[v_range2, h_range2, w_range2]
+    bg2[v_range1, h_range1, w_range1] = bg2[v_range1, h_range1, w_range1] + data[v_range2, h_range2, w_range2]
     return bg2
 
 

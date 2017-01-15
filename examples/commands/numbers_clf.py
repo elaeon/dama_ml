@@ -1,7 +1,8 @@
 import argparse
 from ml.ds import DataSetBuilderImage
 from ml.utils.config import get_settings
-from ml.processing import PreprocessingImage, FiTScaler
+from ml.processing import FiTScaler, Transforms
+from ml.processing import rgb2gray, resize, threshold, merge_offset
 from ml.clf.extended.w_sklearn import RandomForest
 from skimage import io
 
@@ -11,11 +12,11 @@ settings.update(get_settings("transcriptor"))
 
 if __name__ == '__main__':
     IMAGE_SIZE = int(settings["image_size"])
-    transforms = [
-            ("rgb2gray", None),
-            ("resize", {"image_size": IMAGE_SIZE, "type_r": "asym"}), 
-            ("threshold", 91), 
-            ("merge_offset", {"image_size": IMAGE_SIZE, "bg_color": 1})]
+    transforms = Transforms()
+    transforms.add(rgb2gray),
+    transforms.add(resize, image_size=IMAGE_SIZE, type_r="asym"), 
+    transforms.add(threshold, block_size=91) 
+    transforms.add(merge_offset, image_size=IMAGE_SIZE, bg_color=1)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--build-dataset", help="[cross] [adversarial]", type=str)
@@ -45,19 +46,17 @@ if __name__ == '__main__':
             args.dataset_name, 
             image_size=int(settings["image_size"]), 
             train_folder_path=train_folder_path,
-            transforms_row=transforms,
-            transforms_global=[(FiTScaler.module_cls_name(), None)],
-            processing_class=PreprocessingImage)
+            transforms=transforms)
         ds_builder.build_dataset()
         ds_builder.info()
     elif args.train:
-        dataset = DataSetBuilderImage.load_dataset(
-            args.dataset_name)
+        dataset = DataSetBuilderImage(name=args.dataset_name)
         classif = RandomForest(
             dataset=dataset,
             model_name=args.model_name, 
             model_version=args.model_version,
             group_name="numbers")
+        print("Training")
         classif.train(num_steps=args.epoch, batch_size=128)
     elif args.test:
         classif = RandomForest(

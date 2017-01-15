@@ -28,7 +28,6 @@ class Measure(object):
     #false positives
     def precision(self):
         from sklearn.metrics import precision_score
-        print(self.labels, self.labels2classes(self.predictions), self.predictions)
         return precision_score(self.labels, self.labels2classes(self.predictions), 
             average=self.average, pos_label=None)
 
@@ -236,9 +235,7 @@ class BaseClassif(DataDrive):
         return list_measure
 
     def only_is(self, op):
-        #print(self.dataset.test_data[:])
         predictions = np.asarray(list(self.predict(self.dataset.test_data, raw=False, transform=False)))
-        #print(predictions)
         data = zip(*filter(
                         lambda x: op(x[1], x[2]), 
                         zip(self.dataset.test_data, 
@@ -268,7 +265,6 @@ class BaseClassif(DataDrive):
         return self.num_labels == 2
 
     def labels_encode(self, labels):
-        print(labels[:])
         self.le.fit(labels)
         self.num_labels = self.le.classes_.shape[0]
         self.base_labels = self.le.classes_
@@ -288,10 +284,11 @@ class BaseClassif(DataDrive):
         if len(labels.shape) > 1 and labels.shape[1] > 1:
             return self.le.inverse_transform(np.argmax(labels, axis=1))
         else:
-            #print(self.le.classes_)
+            print(self.le.classes_)
             return self.le.inverse_transform(labels.astype('int'))
 
     def reformat_all(self, dataset):
+        print("Reformating...")
         dl = dataset.desfragment()
         self.labels_encode(dl.labels)
         dl.destroy()
@@ -350,6 +347,7 @@ class BaseClassif(DataDrive):
             chunk_size = 1
 
         if transform is True and chunk_size > 0:
+            self.dataset.apply_transforms = True
             fn = lambda x, s: self.transform_shape(
                 self.dataset.processing(x, initial=False), size=s)
             return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)

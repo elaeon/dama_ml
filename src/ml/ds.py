@@ -77,26 +77,16 @@ class ReadWriteData(object):
         except KeyError:
             return None
 
-    def chunks_writer(self, f, name, data, chunks=128, counter=1, init=0):
+    def chunks_writer(self, f, name, data, chunks=128, init=0):
         from ml.utils.seq import grouper_chunk
-        if data.shape[0] >= chunks:
-            init = init * chunks
-            for row in grouper_chunk(chunks, data):
-                seq = np.asarray(list(row))
-                end = counter * seq.shape[0]
-                print("c:{}, init:{}, end:{}, shape:{}, chunks:{}".format(
-                    counter, init, end, seq.shape, chunks))
-                #print(f[name].dtype)
-                print(data, seq)
-                f[name][init:end] = seq
-                init = end
-                counter += 1
-            return counter
-        else:
-            end = init + data.shape[0]
-            print(init, end)
-            f[name][init:end] = data
-            return end
+        end = init
+        for row in grouper_chunk(chunks, data):
+            seq = np.asarray(list(row))
+            end += seq.shape[0]
+            #print("init:{}, end:{}, shape:{}, chunks:{}".format(init, end, seq.shape, chunks))
+            f[name][init:end] = seq
+            init = end
+        return end
 
 
 class DataLabel(ReadWriteData):
@@ -368,17 +358,17 @@ class DataLabel(ReadWriteData):
         self._set_space_shape(f, "data", dsb.shape)
         self._set_space_shape(f, "labels", labels_shape, label=True)
 
-        counter = self.chunks_writer(f, "/data/data", dsb.train_data, chunks=self.chunks)
-        counter = self.chunks_writer(f, "/data/data", dsb.test_data, chunks=self.chunks, 
-                                    counter=counter, init=counter)
+        end = self.chunks_writer(f, "/data/data", dsb.train_data, chunks=self.chunks)
+        end = self.chunks_writer(f, "/data/data", dsb.test_data, chunks=self.chunks, 
+                                init=end)
         self.chunks_writer(f, "/data/data", dsb.validation_data, chunks=self.chunks, 
-                            counter=counter, init=counter)
+                            init=end)
 
-        counter = self.chunks_writer(f, "/data/labels", dsb.train_labels, chunks=self.chunks)
-        counter = self.chunks_writer(f, "/data/labels", dsb.test_labels, chunks=self.chunks, 
-                                    counter=counter, init=counter)
+        end = self.chunks_writer(f, "/data/labels", dsb.train_labels, chunks=self.chunks)
+        end = self.chunks_writer(f, "/data/labels", dsb.test_labels, chunks=self.chunks, 
+                                init=end)
         self.chunks_writer(f, "/data/labels", dsb.validation_labels, chunks=self.chunks, 
-                            counter=counter, init=counter)
+                            init=end)
         f.close()
 
     def build_dataset(self, data, labels):
@@ -445,7 +435,11 @@ class DataLabel(ReadWriteData):
         return dl
 
     def processing(self, data, initial=True):
-        #data = self.processing_rows(data)
+        print(data.shape)
+        data = self.processing_rows(data)
+        print(self.transforms_to_apply, self.apply_transforms)
+        print(self.transforms.transforms)
+        print(data.shape)
         #if init is True:
         #    return self.processing_global(data, base_data=data)
         #elif init is False and not self.transforms.empty('global'):
@@ -462,11 +456,7 @@ class DataLabel(ReadWriteData):
 
     def processing_rows(self, data):
         if not self.transforms.empty() and self.transforms_to_apply and data is not None:
-            pdata = []
-            for row in data:
-                preprocessing = self.processing_class(row, self.transforms.get_transforms('row'))
-                pdata.append(preprocessing.pipeline())
-            return np.asarray(pdata)
+            return np.asarray([self.transforms.apply(row) for row in data])
         else:
             return data if isinstance(data, np.ndarray) else np.asarray(data)
 
@@ -728,7 +718,12 @@ class DataSetBuilder(DataLabel):
         X_train, X_test, y_train, y_test = train_test_split(
             data, labels, train_size=round(self.train_size+self.valid_size, 2), random_state=0)
 
-        valid_size_index = int(round(data.shape[0] * self.valid_size))
+        if isinstance(data, list):
+            size = len(data)
+        else:
+            size = data.shape[0]
+
+        valid_size_index = int(round(size * self.valid_size))
         X_validation = X_train[:valid_size_index]
         y_validation = y_train[:valid_size_index]
         X_train = X_train[valid_size_index:]
@@ -820,6 +815,7 @@ class DataSetBuilder(DataLabel):
         validation_data = self.processing(data_labels[1])
         test_data = self.processing(data_labels[2])
         
+        #print("-------", train_data.dtype)
         self._set_space_data(f, 'train_data', self.dtype_t(train_data))
         self._set_space_data(f, 'test_data', self.dtype_t(test_data))
         self._set_space_data(f, 'validation_data', self.dtype_t(validation_data))
@@ -946,9 +942,10 @@ class DataSetBuilderImage(DataSetBuilder):
     :type data_folder_path: string
     :param data_folder_path: path to the data what you want to add to the dataset, automaticly split the data in train, test and validation. If you want manualy split the data in train and test, check test_folder_path.
     """
-    def __init__(self, name, image_size=None, **kwargs):
+    def __init__(self, name, image_size=None, train_folder_path=None, **kwargs):
         super(DataSetBuilderImage, self).__init__(name, **kwargs)
         self.image_size = image_size
+        self.train_folder_path = train_folder_path
         self.images = []
 
     def add_img(self, img):
@@ -978,9 +975,8 @@ class DataSetBuilderImage(DataSetBuilder):
         data = []
         for image_index, (number_id, image_file) in enumerate(images):
             img = io.imread(image_file)
-            data.append(img) 
+            data.append(img)
             labels[image_index] = number_id
-        data = self.processing(data)
         return data, labels
 
     @classmethod
@@ -1018,7 +1014,7 @@ class DataSetBuilderImage(DataSetBuilder):
         the data is extracted from the train_folder_path, and then saved.
         """
         data, labels = self.images_to_dataset(self.train_folder_path)
-        self.shuffle_and_save(data, labels)
+        super(DataSetBuilderImage, self).build_dataset(data, labels)
 
     def build_train_test(self, process_images, sample=True):
         images = {}
@@ -1070,18 +1066,6 @@ class DataSetBuilderImage(DataSetBuilder):
         dataset.image_size = self.image_size
         dataset.images = []
         return dataset
-
-    def to_raw(self):
-        raw = super(DataSetBuilderImage, self).to_raw()
-        new = {'array_length': self.image_size}
-        raw.update(new)
-        return raw
-
-    #def from_raw(self, raw_data):
-    #    super(DataSetBuilderImage, self).from_raw(raw_data)
-        #self.transforms.add_transforms("local", raw_data["local_filters"])
-    #    self.image_size = raw_data["array_length"]
-    #    self.desfragment()
 
     def info(self):
         super(DataSetBuilderImage, self).info()

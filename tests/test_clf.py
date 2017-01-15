@@ -43,7 +43,6 @@ class TestClf(unittest.TestCase):
 
         X = np.asarray([1, 0]*10)
         Y = X*1
-        print(Y)
         self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", ltype='int')
         self.dataset.build_dataset(X, Y)
         self.classif = RandomForest(dataset=self.dataset, 
@@ -54,9 +53,8 @@ class TestClf(unittest.TestCase):
 
     def test_only_is(self):
         self.assertEqual(self.classif.erroneous_clf(), None)
-        #c, _ , _ = self.classif.correct_clf()
-        #self.assertEqual(list(c.reshape(-1, 1)), [1, 0, 0, 1])
-        pass
+        c, _ , _ = self.classif.correct_clf()
+        self.assertEqual(list(c.reshape(-1, 1)), [1, 0, 0, 1])
 
     def test_load_meta(self):
         self.assertEqual(type(self.classif.load_meta()), type({}))
