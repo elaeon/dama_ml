@@ -30,14 +30,13 @@ def set_up_cfg(filepath):
 
 def build_tickets_processed(transforms, settings, PICTURES):
     from skimage import io
-    from ml.processing import PreprocessingImage
     tickets_processed_url = settings["tickets_processed"]
     if not os.path.exists(tickets_processed_url):
         os.makedirs(tickets_processed_url)
     for path in [os.path.join(settings["tickets"], f) for f in PICTURES]:
         name = path.split("/").pop()
         image = io.imread(path)
-        image = PreprocessingImage(image, transforms).pipeline()
+        image = transforms.apply(image)
         d_path = os.path.join(tickets_processed_url, name)
         io.imsave(d_path, image)
 

@@ -284,7 +284,6 @@ class BaseClassif(DataDrive):
         if len(labels.shape) > 1 and labels.shape[1] > 1:
             return self.le.inverse_transform(np.argmax(labels, axis=1))
         else:
-            print(self.le.classes_)
             return self.le.inverse_transform(labels.astype('int'))
 
     def reformat_all(self, dataset):
@@ -312,14 +311,6 @@ class BaseClassif(DataDrive):
         self.num_features = dsb.data.shape[-1]
         dsb.close_reader()
         return dsb
-        #if self.dataset_train_limit is not None:
-        #    if self.dataset.train_data.shape[0] > self.dataset_train_limit:
-        #        self.dataset.train_data = self.dataset.train_data[:self.dataset_train_limit]
-        #        self.dataset.train_labels = self.dataset.train_labels[:self.dataset_train_limit]
-
-        #    if self.dataset.valid_data.shape[0] > self.dataset_train_limit:
-        #        self.dataset.valid_data = self.dataset.valid_data[:self.dataset_train_limit]
-        #        self.dataset.valid_labels = self.dataset.valid_labels[:self.dataset_train_limit]
 
     def load_dataset(self, dataset):
         if dataset is None:

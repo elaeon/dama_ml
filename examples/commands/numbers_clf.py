@@ -20,8 +20,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--build-dataset", help="[cross] [adversarial]", type=str)
-    parser.add_argument("--detector", action="store_true")
-    parser.add_argument("--detector-xml", action="store_true")
+    parser.add_argument("--from-detector", action="store_true")
+    parser.add_argument("--from-xml", action="store_true")
     parser.add_argument("--dataset-name", help="crea el dataset", type=str)
     parser.add_argument("--test", 
         help="evalua el predictor en base a los datos de prueba", 
@@ -34,9 +34,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.build_dataset:
-        if args.detector:
+        if args.from_detector:
             train_folder_path=[settings["numbers_detector"]]
-        elif args.detector_xml:
+        elif args.from_xml:
             train_folder_path = [settings["train_folder_path"], 
                 settings["numbers_detector"]]
         else:

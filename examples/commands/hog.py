@@ -25,19 +25,19 @@ PICTURES = ["DSC_0055.jpg", "DSC_0056.jpg",
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--train", help="--train-hog [xml_filename]", type=str)
+    parser.add_argument("--train", action="store_true")
     parser.add_argument("--test", action="store_true")
     parser.add_argument("--draw", action="store_true")
     args = parser.parse_args()
 
     if args.train:
-        from ml.processing import rgbgray, contrast
+        from ml.processing import rgb2gray, contrast
         transforms = Transforms()
         transforms.add(rgb2gray), 
         transforms.add(contrast)
         hog = HOG(model_name="detector", transforms=transforms)
         build_tickets_processed(transforms, settings, PICTURES)
-        hog.train(args.train)
+        hog.train("tickets.xml")
         delete_tickets_processed(settings)
         print("Cleaned")
     elif args.test:

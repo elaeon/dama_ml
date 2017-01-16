@@ -38,7 +38,7 @@ def transcriptor(classif, hog, url=None):
     for f in pictures:
         print("Processing file: {}".format(f))
         img = io.imread(f)
-        img = img_as_ubyte(hog.transforms.apply())
+        img = img_as_ubyte(hog.transforms.apply(img))
         dets = detector(img)
         data = [(e.left(), e.top(), e.right(), e.bottom()) for e in dets]
         for block, coords in order_2d(data, index=(1, 0), block_size=20).items():
