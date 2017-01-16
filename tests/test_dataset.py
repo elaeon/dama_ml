@@ -67,12 +67,14 @@ class TestDataset(unittest.TestCase):
         transforms_to_apply = copy.transforms_to_apply
         copy.destroy()
         self.assertEqual(transforms_to_apply, False)
+        self.assertEqual(copy.apply_transforms, self.dataset.apply_transforms)
 
         self.dataset.apply_transforms = False
         copy = self.dataset.copy()
         transforms_to_apply = copy.transforms_to_apply
         copy.destroy()
-        self.assertEqual(transforms_to_apply, False)
+        self.assertEqual(transforms_to_apply, False)        
+        self.assertEqual(copy.apply_transforms, self.dataset.apply_transforms)
 
     def test_convert(self):
         dsb = self.dataset.convert("convert_test", dtype='float32', ltype='|S1')
@@ -123,28 +125,6 @@ class TestDatasetFile(unittest.TestCase):
             validator="cross")
         data, labels = dataset.from_csv('/tmp/test.csv', 'target')
         self.assertItemsEqual(self.Y, labels.astype(int))
-
-
-class TestDatasetNoTransforms(unittest.TestCase):
-    def setUp(self):
-        NUM_FEATURES = 10
-        self.X = np.append(np.zeros((5, NUM_FEATURES)), np.ones((5, NUM_FEATURES)), axis=0)
-        self.Y = (np.sum(self.X, axis=1) / 10).astype(int)
-        self.dataset = DataSetBuilder(
-            "test",
-            dataset_path="/tmp/", 
-            transforms_row=[('scale', None)],
-            train_size=.5,
-            valid_size=.2,
-            validator="cross",
-            processing_class=Preprocessing,
-            transforms_apply=False)
-        self.dataset.build_dataset(self.X, self.Y)
-
-    def test_no_transforms(self):
-        self.dataset.info()
-        self.assertEqual(DataSetBuilder.load_dataset_raw(
-            self.dataset.name, self.dataset.dataset_path)["applied_transforms"], False)
 
 
 if __name__ == '__main__':

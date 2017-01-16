@@ -48,7 +48,7 @@ def run(args):
             for filename in files:
                 size = os.stat(path+filename).st_size
                 date = get_date_from_file(path+filename)
-                table.append([filename, humanize_bytesize(size), date])
+                table.append([filename, humanize_bytesize(size), date.strftime("%Y-%m-%d %H:%M UTC")])
                 total_size += size
         print("Total size: {}".format(humanize_bytesize(total_size)))
         order_table_print(headers, table, "dataset", reverse=False)

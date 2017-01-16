@@ -294,11 +294,13 @@ class BaseClassif(DataDrive):
         dl.destroy()
         dsb = DataSetBuilder(
             name=dataset.name+"_"+self.model_name+"_"+self.cls_name(),
-            apply_transforms=True if dataset.apply_transforms is False else False,
+            apply_transforms=True,
             compression_level=9,
             dtype=dataset.dtype,
+            transforms=dataset.transforms,
             ltype='int',
             validator='')
+        dsb._applied_transforms = dataset.apply_transforms
         train_data, train_labels = self.reformat(dataset.train_data, 
                                     self.le.transform(dataset.train_labels))
         test_data, test_labels = self.reformat(dataset.test_data, 
@@ -347,7 +349,6 @@ class BaseClassif(DataDrive):
             chunk_size = 1
 
         if transform is True and chunk_size > 0:
-            self.dataset.apply_transforms = True
             fn = lambda x, s: self.transform_shape(
                 self.dataset.processing(x, initial=False), size=s)
             return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)

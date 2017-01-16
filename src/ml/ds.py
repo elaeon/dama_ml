@@ -76,6 +76,9 @@ class ReadWriteData(object):
                 return f.attrs[name]
         except KeyError:
             return None
+        except IOError:
+            log.warning("Error found in file {}".format(self.url()))
+            return None
 
     def chunks_writer(self, f, name, data, chunks=128, init=0):
         from ml.utils.seq import grouper_chunk
@@ -435,11 +438,7 @@ class DataLabel(ReadWriteData):
         return dl
 
     def processing(self, data, initial=True):
-        print(data.shape)
         data = self.processing_rows(data)
-        print(self.transforms_to_apply, self.apply_transforms)
-        print(self.transforms.transforms)
-        print(data.shape)
         #if init is True:
         #    return self.processing_global(data, base_data=data)
         #elif init is False and not self.transforms.empty('global'):
