@@ -9,8 +9,7 @@ from pydoc import locate
 
 import numpy as np
 import json
-#def mean(array):
-#    return np.mean(array, axis=0, dtype=np.int32)
+
 
 def pixelate_mode(mode):
     if mode == 'mean':
@@ -59,6 +58,7 @@ class Transforms(object):
             raise Exception
         else:
             return data
+
 
 class FiT(object):
     def __init__(self, **kwargs):

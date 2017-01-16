@@ -5,6 +5,7 @@ import ml
 from ml.utils.config import get_settings
 from ml.utils.files import build_tickets_processed, delete_tickets_processed
 from ml.clf.wrappers import DataDrive, ListMeasure
+from ml.processing import Transforms
 
 settings = get_settings("ml")
 settings.update(get_settings("tickets"))
@@ -32,7 +33,7 @@ class HOG(DataDrive):
     def load(self):
         try:
             meta = self.load_meta()
-            self.transforms = meta["transforms"]
+            self.transforms = Transforms.from_json(meta["transforms"])
             self.data_training_path = meta["data_training_path"]
         except IOError:
             pass
@@ -43,7 +44,7 @@ class HOG(DataDrive):
 
     def _metadata(self, score=None):
         list_measure = self.scores()
-        return {"transforms": self.transforms,
+        return {"transforms": self.transforms.to_json(),
                 "model_module": self.module_cls_name(),
                 "data_training_path": self.data_training_path,
                 "model_name": self.model_name,
@@ -88,7 +89,7 @@ class HOG(DataDrive):
         for path in pictures:
             print("Processing file: {}".format(path))
             img = io.imread(path)
-            img = img_as_ubyte(ml.ds.PreprocessingImage(img, self.transforms).pipeline())
+            img = img_as_ubyte(self.transforms.apply(img))
             dets = detector(img)
             print("Numbers detected: {}".format(len(dets)))
 

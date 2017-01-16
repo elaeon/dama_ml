@@ -5,7 +5,7 @@ from skimage import io
 from ml.utils.config import get_settings
 from ml.utils.files import filename_from_path
 from ml.ds import DataSetBuilderImage
-from ml.processing import PreprocessingImage
+from ml.processing import Transforms
 from ml.clf.extended import RandomForest
 
 settings = get_settings("ml")
@@ -14,7 +14,7 @@ settings.update(get_settings("tickets"))
 settings.update(get_settings("transcriptor"))
 
 
-def tickets2numbers_from_xml(url, local=None, general=None):
+def tickets2numbers_from_xml(url, transforms=None):
     import xmltodict
     from tqdm import tqdm
 
@@ -29,13 +29,13 @@ def tickets2numbers_from_xml(url, local=None, general=None):
                 filepath = filepath[2:] if filepath.startswith("../") else filepath
                 filename = filename_from_path(filepath)
                 image = io.imread(os.path.join(settings["tickets"], filename))
-                image = PreprocessingImage(image, general).pipeline()
+                image = transforms.apply(image)
                 for box in numbers["box"]:
                     rectangle = (int(box["@top"]), 
                         int(box["@top"])+int(box["@height"]), 
                         int(box["@left"]), 
                         int(box["@left"])+int(box["@width"]))
-                    thumb_bg = PreprocessingImage(image, local+[("cut", {"rectangle": rectangle})]).pipeline()
+                    thumb_bg = cut(image, rectangle=rectangle)
                     ds_builder.save_images(url, box["label"], [thumb_bg])
                     labels_images.setdefault(box["label"], [])
                     labels_images[box["label"]].append(thumb_bg)
@@ -61,15 +61,14 @@ def tickets2numbers_from_detector(url, classif):
     detector = hog.detector()
     for path in [os.path.join(settings["tickets"], f) for f in tickets]:
         img = io.imread(path)
-        img_p = img_as_ubyte(
-            PreprocessingImage(img, hog.transforms).pipeline()) 
+        img_p = img_as_ubyte(hog.transforms.apply(img)) 
         dets = detector(img_p)
         print(path)
         print("Numbers detected: {}".format(len(dets)))        
         for r in dets:
             m_rectangle = (r.top(), r.top() + r.height()-2, 
                 r.left() - 5, r.left() + r.width())
-            thumb_bg = PreprocessingImage(img, [("cut", {"rectangle": m_rectangle})]).pipeline()
+            thumb_bg = cut(img, rectangle=m_rectangle)
             numbers.append(thumb_bg)
     numbers_predicted = list(classif.predict(numbers, chunk_size=258))
     labels_numbers = zip(numbers_predicted, numbers)
@@ -95,15 +94,13 @@ if __name__ == '__main__':
     parser.add_argument("--model-name", type=str)
     args = parser.parse_args()
 
+    transforms = Transforms()
     if args.transforms:
-        general = [] 
-        local = [("pixelate", {"pixel_width": 16, "pixel_height": 16})]
-    else:
-        general = []
-        local = []
+        from ml.processing import pixelate        
+        transforms.add(pixelate, pixel_width=16, pixel_height=16)
 
     if args.build_images == "xml":
-        tickets2numbers_from_xml(settings["numbers"], local=local, general=general)
+        tickets2numbers_from_xml(settings["numbers"], transforms=transforms)
     elif args.build_images == "detector":
         classif = RandomForest(
             model_name=args.model_name,

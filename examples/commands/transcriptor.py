@@ -4,9 +4,9 @@ import dlib
 
 from skimage import io
 from ml.utils.config import get_settings
-from ml.processing import PreprocessingImage
 from ml.clf.extended.w_sklearn import RandomForest
 from ml.detector import HOG
+from ml.processing import cut
 
 settings = get_settings("ml")
 settings.update(get_settings("transcriptor"))
@@ -38,9 +38,7 @@ def transcriptor(classif, hog, url=None):
     for f in pictures:
         print("Processing file: {}".format(f))
         img = io.imread(f)
-        img = img_as_ubyte(
-            PreprocessingImage(img, 
-            hog.transforms).pipeline())
+        img = img_as_ubyte(hog.transforms.apply())
         dets = detector(img)
         data = [(e.left(), e.top(), e.right(), e.bottom()) for e in dets]
         for block, coords in order_2d(data, index=(1, 0), block_size=20).items():
@@ -52,7 +50,7 @@ def transcriptor(classif, hog, url=None):
                 r = rectangle(*v)
                 m_rectangle = (r.top(), r.top() + r.height()-2, 
                     r.left() - 5, r.left() + r.width())
-                thumb_bg = PreprocessingImage(img, [("cut", {"rectangle":m_rectangle})]).pipeline()
+                thumb_bg = cut(img, rectangle=m_rectangle)
                 win.add_overlay(r)
                 numbers.append(thumb_bg)
             numbers_predicted = list(classif.predict(numbers))
