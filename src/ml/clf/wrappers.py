@@ -298,7 +298,8 @@ class BaseClassif(DataDrive):
             dtype=dataset.dtype,
             transforms=dataset.transforms,
             ltype='int',
-            validator='')
+            validator='',
+            rewrite=dataset.rewrite)
         dsb._applied_transforms = dataset.apply_transforms
         train_data, train_labels = self.reformat(dataset.train_data, 
                                     self.le.transform(dataset.train_labels))
@@ -515,7 +516,7 @@ class TFL(BaseClassif):
             self.model.fit(self.dataset.train_data, 
                 self.dataset.train_labels, 
                 n_epoch=num_steps, 
-                validation_set=(self.dataset.valid_data, self.dataset.valid_labels),
+                validation_set=(self.dataset.validation_data, self.dataset.validation_labels),
                 show_metric=True, 
                 batch_size=batch_size,
                 run_id="tfl_model")
@@ -551,5 +552,5 @@ class Keras(BaseClassif):
             nb_epoch=num_steps,
             batch_size=batch_size,
             shuffle=True,
-            validation_data=(self.dataset.valid_data, self.dataset.valid_labels))
+            validation_data=(self.dataset.validation_data, self.dataset.validation_labels))
         self.save_model()

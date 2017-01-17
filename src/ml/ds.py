@@ -40,13 +40,22 @@ def calc_nshape(data, value):
 
 class ReadWriteData(object):
 
+    def auto_dtype(self, data, ttype):
+        if ttype == "auto" and data is not None:
+            return data.dtype
+        elif ttype == "auto" and isinstance(data, type(None)):
+            return "float64"
+        else:
+            return np.dtype(ttype)
+
     def _set_space_shape(self, f, name, shape, label=False):
-        dtype = np.dtype(self.dtype) if label is False else np.dtype(self.ltype)
+        dtype = self.auto_dtype(None, self.dtype) if label is False else self.auto_dtype(None, self.ltype)
+        #print("SHAPE N", shape)
         f['data'].create_dataset(name, shape, dtype=dtype, chunks=True, **self.zip_params)
 
     def _set_space_data(self, f, name, data, label=False):
-        dtype = np.dtype(self.dtype) if label is False else np.dtype(self.ltype)
-        #print(dtype, data.dtype)
+        #print("SHAPE", data.shape)
+        dtype = self.auto_dtype(data, self.dtype) if label is False else self.auto_dtype(data, self.ltype)
         f['data'].create_dataset(name, data.shape, dtype=dtype, data=data, chunks=True, **self.zip_params)
 
     def _set_data(self, f, name, data):
@@ -127,17 +136,19 @@ class DataLabel(ReadWriteData):
                 description='',
                 author='',
                 compression_level=0,
-                chunks=100):
+                chunks=100,
+                rewrite=True):
         self.name = name
         self._applied_transforms = False
         self.chunks = chunks
+        self.rewrite = rewrite
 
         if dataset_path is None:
             self.dataset_path = settings["dataset_path"]
         else:
             self.dataset_path = dataset_path
         
-        if not self._preload_attrs():
+        if not self._preload_attrs() and self.rewrite is True:
             self.apply_transforms = apply_transforms
             self.author = author
             self.description = description
@@ -210,6 +221,16 @@ class DataLabel(ReadWriteData):
         """
         return self.copy()
 
+    def type_t(self, ttype, data):
+        if ttype == 'auto':
+            return data
+
+        ttype = np.dtype(ttype)
+        if data.dtype is not ttype and data.dtype != np.object:
+            return data.astype(ttype)
+        else:
+            return data
+
     def dtype_t(self, data):
         """
         :type data: narray
@@ -217,11 +238,7 @@ class DataLabel(ReadWriteData):
 
         cast the data to the predefined dataset dtype
         """
-        dtype = np.dtype(self.dtype)
-        if data.dtype is not dtype and data.dtype != np.object:
-            return data.astype(np.dtype(self.dtype))
-        else:
-            return data
+        return self.type_t(self.dtype, data)
 
     def ltype_t(self, labels):
         """
@@ -230,11 +247,7 @@ class DataLabel(ReadWriteData):
 
         cast the labels to the predefined dataset ltype
         """
-        ltype = np.dtype(self.ltype)
-        if labels.dtype is not ltype and labels.dtype != np.object:
-            return labels.astype(np.dtype(self.ltype))
-        else:
-            return labels
+        return self.type_t(self.ltype, labels)
 
     def _open_attrs(self):
         self.create_route()
@@ -269,6 +282,8 @@ class DataLabel(ReadWriteData):
                 self.compression_level = f.attrs['compression_level']
             if self.md5() is None:
                 return False
+        except KeyError:
+            return False
         except IOError:
             return False
         else:
@@ -357,7 +372,7 @@ class DataLabel(ReadWriteData):
             return
 
         f = self._open_attrs()
-        labels_shape = (dsb.shape[0], )
+        labels_shape = tuple(dsb.shape[0:1] + dsb.train_labels.shape[1:])
         self._set_space_shape(f, "data", dsb.shape)
         self._set_space_shape(f, "labels", labels_shape, label=True)
 
@@ -418,7 +433,8 @@ class DataLabel(ReadWriteData):
             description=self.description,
             author=self.author,
             compression_level=self.compression_level,
-            chunks=self.chunks)
+            chunks=self.chunks,
+            rewrite=self.rewrite)
         dl._applied_transforms = self.apply_transforms
         dl.build_dataset(calc_nshape(self.data, percentaje), calc_nshape(self.labels, percentaje))
         dl.close_reader()
@@ -551,17 +567,19 @@ class DataSetBuilder(DataLabel):
                 description='',
                 author='',
                 compression_level=0,
-                chunks=100):
+                chunks=100,
+                rewrite=False):
         self.name = name
         self._applied_transforms = False
         self.chunks = chunks
+        self.rewrite = rewrite
 
         if dataset_path is None:
             self.dataset_path = settings["dataset_path"]
         else:
             self.dataset_path = dataset_path
 
-        if not self._preload_attrs():# and mode != "rw":
+        if not self._preload_attrs() or self.rewrite is True:
             self.dtype = dtype
             self.ltype = ltype
             self.transforms = transforms
@@ -641,6 +659,8 @@ class DataSetBuilder(DataLabel):
                 self.valid_size = f.attrs["valid_size"]
             if self.md5() is None:
                 return False
+        except KeyError:
+            return False
         except IOError:
             return False
         else:
@@ -728,10 +748,6 @@ class DataSetBuilder(DataLabel):
         X_train = X_train[valid_size_index:]
         y_train = y_train[valid_size_index:]
         return X_train, X_validation, X_test, y_train, y_validation, y_test
-
-    #def shuffle_and_save(self, data, labels):
-    #    self.train_data, self.valid_data, self.test_data, self.train_labels, self.valid_labels, self.test_labels = 
-        #self.save()
 
     def adversarial_validator(self, train_data, train_labels, test_data, test_labels):
         self.train_data = train_data
@@ -905,7 +921,7 @@ class DataSetBuilder(DataLabel):
         apply transforms and cast function, then return a subset
 
         """
-        dl = DataSetBuilder(name=name, 
+        dsb = DataSetBuilder(name=name, 
             dataset_path=self.dataset_path,
             transforms=self.transforms,
             apply_transforms=apply_transforms,
@@ -916,17 +932,18 @@ class DataSetBuilder(DataLabel):
             ltype=ltype,
             description=self.description,
             author=self.author,
-            compression_level=self.compression_level)
-        dl._applied_transforms = self.apply_transforms
-        dl.build_dataset(
+            compression_level=self.compression_level,
+            rewrite=self.rewrite)
+        dsb._applied_transforms = self.apply_transforms
+        dsb.build_dataset(
             calc_nshape(self.train_data, percentaje), 
             calc_nshape(self.train_labels, percentaje),
             test_data=calc_nshape(self.test_data, percentaje),
             test_labels=calc_nshape(self.test_labels, percentaje),
             validation_data=calc_nshape(self.validation_data, percentaje),
             validation_labels=calc_nshape(self.validation_labels, percentaje))
-        dl.close_reader()
-        return dl
+        dsb.close_reader()
+        return dsb
 
 
 class DataSetBuilderImage(DataSetBuilder):
@@ -939,16 +956,16 @@ class DataSetBuilderImage(DataSetBuilder):
     kwargs are the same that DataSetBuilder's options
 
     :type data_folder_path: string
-    :param data_folder_path: path to the data what you want to add to the dataset, automaticly split the data in train, test and validation. If you want manualy split the data in train and test, check test_folder_path.
+    :param data_folder_path: path to the data what you want to add to the dataset, split the data in train, test and validation. If you want manualy split the data in train and test, check test_folder_path.
     """
-    def __init__(self, name, image_size=None, train_folder_path=None, **kwargs):
+    def __init__(self, name=None, image_size=None, train_folder_path=None, **kwargs):
         super(DataSetBuilderImage, self).__init__(name, **kwargs)
         self.image_size = image_size
         self.train_folder_path = train_folder_path
-        self.images = []
+        #self.images = []
 
-    def add_img(self, img):
-        self.images.append(img)
+    #def add_img(self, img):
+    #    self.images.append(img)
 
     def images_from_directories(self, directories):
         if isinstance(directories, str):
@@ -1063,7 +1080,7 @@ class DataSetBuilderImage(DataSetBuilder):
     def copy(self):
         dataset = super(DataSetBuilderImage, self).copy()
         dataset.image_size = self.image_size
-        dataset.images = []
+        #dataset.images = []
         return dataset
 
     def info(self):
@@ -1075,6 +1092,11 @@ class DataSetBuilderFile(DataSetBuilder):
     """
     Class for csv dataset build. Get the data from a csv's file.
     """
+
+    def __init__(self, name=None, train_folder_path=None, **kwargs):
+        super(DataSetBuilderFile, self).__init__(name, **kwargs)
+        self.train_folder_path = train_folder_path
+
     def from_csv(self, folder_path, label_column):
         """
         :type folder_path: string
@@ -1091,7 +1113,7 @@ class DataSetBuilderFile(DataSetBuilder):
         df = pd.read_csv(path)
         dataset = df.drop([label_column], axis=1).as_matrix()
         labels = df[label_column].as_matrix()
-        return dataset, labels
+        return dataset, labels        
 
     def build_dataset(self, label_column=None):
         """
@@ -1099,18 +1121,7 @@ class DataSetBuilderFile(DataSetBuilder):
          :param label_column: column's name where are the labels
         """
         data, labels = self.from_csv(self.train_folder_path, label_column)
-        data = self.processing(data)
-        if self.test_folder_path is not None:
-            raise #NotImplemented
-            #test_data, test_labels = self.from_csv(self.test_folder_path, label_column)
-            #if self.validator == 'cross':
-            #    data = np.concatenate((data, test_data), axis=0)
-            #    labels = np.concatenate((labels, test_labels), axis=0)
-
-        if self.validator == 'cross':
-            self.shuffle_and_save(data, labels)
-        else:
-            self.adversarial_validator_and_save(data, labels, test_data, test_labels)
+        super(DataSetBuilderFile, self).build_dataset(data, labels)
 
     @classmethod
     def merge_data_labels(self, data_path, labels_path, column_id):

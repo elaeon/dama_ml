@@ -18,7 +18,8 @@ class TestDataset(unittest.TestCase):
             valid_size=.2,
             ltype='int',
             validator="cross",
-            chunks=2)
+            chunks=2,
+            rewrite=True)
         self.dataset.build_dataset(self.X, self.Y)
 
     def tearDown(self):
@@ -29,7 +30,8 @@ class TestDataset(unittest.TestCase):
             name="test_ds_0",
             dataset_path="/tmp/",
             ltype='int',
-            validator="cross")
+            validator="cross",
+            rewrite=True)
         dataset.build_dataset(self.X, self.Y)
         self.assertEqual(dataset.train_labels.shape, (7,))
         self.assertEqual(dataset.validation_labels.shape, (1,))
@@ -83,6 +85,11 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(dsb.train_labels.dtype, np.dtype('|S1'))
         dsb.destroy()
 
+        dsb = self.dataset.convert("convert_test", dtype='auto', ltype='auto')
+        self.assertEqual(dsb.train_data.dtype, self.dataset.train_data.dtype)
+        self.assertEqual(dsb.train_labels.dtype, self.dataset.train_labels.dtype)
+        dsb.destroy()
+
     def test_add_transform(self):
         transforms = Transforms()
         if self.dataset.transforms_to_apply is True:
@@ -118,10 +125,8 @@ class TestDatasetFile(unittest.TestCase):
 
     def test_load(self):
         dataset = DataSetBuilderFile(
-            "test",
-            dataset_path="/tmp/", 
-            transforms_row=[('scale', None)],
-            processing_class=Preprocessing,
+            name="test",
+            dataset_path="/tmp/",
             validator="cross")
         data, labels = dataset.from_csv('/tmp/test.csv', 'target')
         self.assertItemsEqual(self.Y, labels.astype(int))

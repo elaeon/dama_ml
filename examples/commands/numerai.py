@@ -3,7 +3,8 @@ import argparse
 from ml.ds import DataSetBuilderFile
 from ml.utils.config import get_settings
 from ml.utils.numeric_functions import le
-from ml.processing import Preprocessing, FiTScaler
+#from ml.processing import Preprocessing, FiTScaler
+from ml.processing import Transforms
 from ml.clf.extended import w_sklearn
 from ml.clf.extended import w_tflearn
 from ml.clf import ensemble as clf_ensemble
@@ -49,24 +50,24 @@ def merge_data_labels(file_path=None):
 
 def build(dataset_name, transforms=None):
     dataset = DataSetBuilderFile(
-        dataset_name, 
+        name=dataset_name, 
         train_folder_path=settings["numerai_train"],
-        transforms_global=transforms)
+        transforms=transforms,
+        compression_level=9)
     dataset.build_dataset(label_column="target")
     return dataset
 
 
-def build2(dataset_name, transforms=None):
-    test_data, test_labels = merge_data_labels("/home/sc/test_data/t.csv")
-    dataset = DataSetBuilderFile(
-        dataset_name, 
-        processing_class=Preprocessing,
-        train_folder_path=settings["numerai_train"],
-        test_folder_path="/home/sc/test_data/t.csv",
-        validator="adversarial",
-        transforms_global=transforms)
-    dataset.build_dataset(label_column="target")
-    return dataset
+#def build2(dataset_name, transforms=None):
+#    test_data, test_labels = merge_data_labels("/home/sc/test_data/t.csv")
+#    dataset = DataSetBuilderFile(
+#        dataset_name, 
+#        train_folder_path=settings["numerai_train"],
+#        test_folder_path="/home/sc/test_data/t.csv",
+#        validator="adversarial",
+#        transforms_global=transforms)
+#    dataset.build_dataset(label_column="target")
+#    return dataset
 
 
 if __name__ == '__main__':
@@ -84,23 +85,23 @@ if __name__ == '__main__':
 
 
     if args.build_dataset and args.dataset_name:
-        transforms = [(FiTScaler.module_cls_name(), None)]
-        #transforms = None
+        #transforms = [(FiTScaler.module_cls_name(), None)]
+        transforms = Transforms()
         dataset = build(args.dataset_name, transforms=transforms)
 
     if args.train:
-        dataset = DataSetBuilderFile.load_dataset(args.dataset_name)
+        dataset = DataSetBuilderFile(args.dataset_name)
 
         if args.ensemble == "boosting":
             classif = clf_ensemble.Boosting({"0": [
-                w_sklearn.ExtraTrees,
-                w_tflearn.MLP,
-                w_sklearn.RandomForest,
-                w_sklearn.SGDClassifier,
-                w_sklearn.SVC,
-                w_sklearn.LogisticRegression,
-                w_sklearn.AdaBoost,
-                w_sklearn.GradientBoost]},
+                #w_sklearn.ExtraTrees,
+                w_tflearn.MLP]},
+                #w_sklearn.RandomForest,
+                #w_sklearn.SGDClassifier,
+                #w_sklearn.SVC,
+                #w_sklearn.LogisticRegression,
+                #w_sklearn.AdaBoost,
+                #w_sklearn.GradientBoost]},
                 dataset=dataset,
                 model_name=args.model_name,
                 model_version=args.model_version,
