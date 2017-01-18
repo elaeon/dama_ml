@@ -25,9 +25,12 @@ def save_metadata(file_path, data):
 
 
 def load_metadata(path):
-    with open(path, 'rb') as f:
-        data = pickle.load(f)
-    return data
+    try:
+        with open(path, 'rb') as f:
+            data = pickle.load(f)
+        return data
+    except IOError:
+        return {}
 
 
 def calc_nshape(data, value):
@@ -302,7 +305,7 @@ class DataLabel(ReadWriteData):
         print('Author: {}'.format(self.author))
         print('Transforms: {}'.format(self.transforms.to_json()))
         print('Applied transforms: {}'.format(self.apply_transforms))
-        print('Preprocessing Class: {}'.format(self.get_processing_class_name()))
+        #print('Preprocessing Class: {}'.format(self.get_processing_class_name()))
         print('MD5: {}'.format(self.md5()))
         print('Description: {}'.format(self.description))
         print('       ')

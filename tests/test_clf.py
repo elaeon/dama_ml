@@ -51,6 +51,9 @@ class TestClf(unittest.TestCase):
             check_point_path="/tmp/")
         self.classif.train(num_steps=1)
 
+    def tearDown(self):
+        self.dataset.destroy()
+
     def test_only_is(self):
         self.assertEqual(self.classif.erroneous_clf(), None)
         c, _ , _ = self.classif.correct_clf()
@@ -77,6 +80,9 @@ class TestMLP(unittest.TestCase):
             check_point_path="/tmp/")
         self.classif.train(num_steps=2)
 
+    def tearDown(self):
+        self.dataset.destroy()
+
     def test_labels(self):
         pass
         #self.assertEqual(type(self.classif.load_meta()), type({}))
@@ -89,9 +95,9 @@ class TestGrid(unittest.TestCase):
         from ml.clf.extended.w_sklearn import RandomForest
         from ml.clf.extended.w_tflearn import MLP
 
-        X = np.asarray([1, 0]*10)
+        X = np.asarray([1, 0]*1000)
         Y = X*1
-        self.dataset = DataSetBuilder("test", dataset_path="/tmp/")
+        self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
         self.dataset.build_dataset(X, Y)
 
         self.classif = Grid({0: [RandomForest, MLP]},
@@ -101,8 +107,45 @@ class TestGrid(unittest.TestCase):
             check_point_path="/tmp/")
         self.classif.train(num_steps=1)
 
+    def tearDown(self):
+        self.dataset.destroy()
+
     def test_load_meta(self):
         self.assertEqual(type(self.classif.load_meta()), type({}))
+        self.classif.scores().print_scores()
+
+
+class TestBoosting(unittest.TestCase):
+    def setUp(self):
+        from ml.ds import DataSetBuilder
+        from ml.clf.ensemble import Boosting
+        from ml.clf.extended.w_sklearn import RandomForest
+        from ml.clf.extended.w_tflearn import MLP
+
+        X = np.asarray([1, 0]*1000)
+        Y = X*1
+        self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
+        self.dataset.build_dataset(X, Y)
+
+        self.classif = Boosting({"0": [
+            MLP,
+            RandomForest]},
+            dataset=self.dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/",
+            weights=[3, 1],
+            election='best-c',
+            num_max_clfs=5)
+        self.classif.train(num_steps=1)
+
+    def tearDown(self):
+        self.dataset.destroy()
+
+    def test_load_meta(self):
+        self.assertEqual(type(self.classif.load_meta()), type({}))
+        self.classif.scores().print_scores()
+
 
 if __name__ == '__main__':
     unittest.main()

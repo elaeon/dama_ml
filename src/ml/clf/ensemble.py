@@ -80,8 +80,9 @@ class Grid(DataDrive):
     def ordered_best_predictors(self, measure="logloss", operator=None):
         from functools import cmp_to_key
         list_measure = self.all_clf_scores(measures=measure)
+        #print("MEASURES", list_measure.measures)
         column_measures = list_measure.get_measure(measure)
-
+        print(column_measures)
         class DTuple:
             def __init__(self, counter, elem):
                 self.elem = elem
@@ -243,7 +244,8 @@ class Boosting(Ensemble):
         return weights
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        models = (self.load_model(classif, info=False, namespace=self.meta_name+".0") for classif in self.classifs_p[self.meta_name+".0"])
+        models = (self.load_model(classif, namespace=self.meta_name+".0") 
+                    for classif in self.classifs_p[self.meta_name+".0"])
         weights = [w for i, w in sorted(self.weights_p.items(), key=lambda x:x[0])]
         predictions = (
             classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
@@ -261,7 +263,8 @@ class Boosting(Ensemble):
         def predictions_fn():
             predictions = {}
             for index, _ in self.best_predictor_threshold(operator=le, limit=self.num_max_clfs):
-                classif = self.load_model(self.classifs[self.meta_name+".0"][index], info=False, namespace=self.meta_name+".0")
+                classif = self.load_model(self.classifs[self.meta_name+".0"][index], 
+                    namespace=self.meta_name+".0")
                 predictions[index] = np.asarray(list(classif.predict(
                     classif.dataset.test_data, raw=False, transform=False, chunk_size=258)))
                 best_predictors.append(index)
@@ -281,11 +284,14 @@ class Boosting(Ensemble):
                 #total_weight = sum(FG[v1][v2]["weight"] for v1, v2 in zip(path, path[1:]))
                 classif_weight.append((total_weight/len(path), path))
 
-        relation_clf = min(classif_weight, key=lambda x:x[0])[1]
-        if sort:
-            return order_from_ordered(best_predictors, relation_clf)
+        if len(classif_weight) == 0:
+            return (0, [1])[1]
         else:
-            return relation_clf
+            relation_clf = min(classif_weight, key=lambda x:x[0])[1]
+            if sort:
+                return order_from_ordered(best_predictors, relation_clf)
+            else:
+                return relation_clf
 
 
 class Stacking(Ensemble):

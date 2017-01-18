@@ -79,9 +79,14 @@ class ListMeasure(object):
         return self.measures_to_dict().get(name, None)
 
     def measures_to_dict(self):
-        return {header: measures for header, measures in zip(self.headers[1:], self.measures[0][1:])}
-            
-    def print_scores(self, order_column="f1"):
+        from collections import defaultdict
+        measures = defaultdict(list)
+        for i, header in enumerate(self.headers, 0):
+            for measure in self.measures:
+                measures[header].append(measure[i])
+        return measures
+             
+    def print_scores(self, order_column=None):
         from ml.utils.order import order_table_print
         order_table_print(self.headers, self.measures, order_column)
 
