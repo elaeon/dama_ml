@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import csv
 
-from ml.ds import DataSetBuilder, DataSetBuilderFile
+from ml.ds import DataSetBuilder, DataSetBuilderFile, DataSetBuilderFold
 from ml.processing import Transforms
 
 
@@ -111,7 +111,7 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
 
 
-class TestDatasetFile(unittest.TestCase):
+class TestDataSetFile(unittest.TestCase):
     def setUp(self):
         NUM_FEATURES = 10
         self.X = np.append(np.zeros((5, NUM_FEATURES)), np.ones((5, NUM_FEATURES)), axis=0)
@@ -130,6 +130,30 @@ class TestDatasetFile(unittest.TestCase):
             validator="cross")
         data, labels = dataset.from_csv('/tmp/test.csv', 'target')
         self.assertItemsEqual(self.Y, labels.astype(int))
+
+
+class TestDataSetFold(unittest.TestCase):
+    def setUp(self):
+        NUM_FEATURES = 10
+        self.X = np.append(np.zeros((5, NUM_FEATURES)), np.ones((5, NUM_FEATURES)), axis=0)
+        self.Y = (np.sum(self.X, axis=1) / 10).astype(int)
+        self.dataset = DataSetBuilder(
+            name="test_ds",
+            dataset_path="/tmp/",
+            train_size=.5,
+            valid_size=.2,
+            ltype='int',
+            validator="cross",
+            chunks=2,
+            rewrite=True)
+        self.dataset.build_dataset(self.X, self.Y)
+
+    def tearDown(self):
+        self.dataset.destroy()
+
+    def test_fold(self):
+        dsbf = DataSetBuilderFold(name="folds")
+        dsbf.build_dataset(self.dataset)
 
 
 if __name__ == '__main__':

@@ -198,7 +198,7 @@ class DataDrive(object):
 class BaseClassif(DataDrive):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
                 model_version=None, dataset_train_limit=None, 
-                auto_load=True, group_name=None):
+                autoload=True, group_name=None):
         self.model = None
         self.le = LabelEncoder()
         self.dataset_train_limit = dataset_train_limit
@@ -209,7 +209,7 @@ class BaseClassif(DataDrive):
             model_version=model_version,
             model_name=model_name,
             group_name=group_name)
-        if auto_load is True:
+        if autoload is True:
             self.load_dataset(dataset)
 
     @classmethod
@@ -292,7 +292,7 @@ class BaseClassif(DataDrive):
             return self.le.inverse_transform(labels.astype('int'))
 
     def reformat_all(self, dataset):
-        print("Reformating...")
+        print("Reformating {}...".format(self.cls_name()))
         dl = dataset.desfragment()
         self.labels_encode(dl.labels)
         dl.destroy()

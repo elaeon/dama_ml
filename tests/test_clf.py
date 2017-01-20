@@ -43,7 +43,8 @@ class TestClf(unittest.TestCase):
 
         X = np.asarray([1, 0]*10)
         Y = X*1
-        self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", ltype='int')
+        self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+            ltype='int', rewrite=True)
         self.dataset.build_dataset(X, Y)
         self.classif = RandomForest(dataset=self.dataset, 
             model_name="test", 
@@ -120,7 +121,7 @@ class TestBoosting(unittest.TestCase):
         from ml.ds import DataSetBuilder
         from ml.clf.ensemble import Boosting
         from ml.clf.extended.w_sklearn import RandomForest
-        from ml.clf.extended.w_tflearn import MLP
+        from ml.clf.extended.w_sklearn import ExtraTrees, AdaBoost
 
         X = np.asarray([1, 0]*1000)
         Y = X*1
@@ -128,8 +129,9 @@ class TestBoosting(unittest.TestCase):
         self.dataset.build_dataset(X, Y)
 
         self.classif = Boosting({"0": [
-            MLP,
-            RandomForest]},
+            ExtraTrees,
+            RandomForest,
+            AdaBoost]},
             dataset=self.dataset, 
             model_name="test", 
             model_version="1",
@@ -137,6 +139,37 @@ class TestBoosting(unittest.TestCase):
             weights=[3, 1],
             election='best-c',
             num_max_clfs=5)
+        self.classif.train(num_steps=1)
+
+    def tearDown(self):
+        self.dataset.destroy()
+
+    def test_load_meta(self):
+        self.assertEqual(type(self.classif.load_meta()), type({}))
+        self.classif.scores().print_scores()
+
+
+class TestStacking(unittest.TestCase):
+    def setUp(self):
+        from ml.ds import DataSetBuilder
+        from ml.clf.ensemble import Stacking
+        from ml.clf.extended.w_sklearn import RandomForest
+        from ml.clf.extended.w_sklearn import ExtraTrees, AdaBoost
+
+        X = np.asarray([1, 0]*1000)
+        Y = X*1
+        self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
+        self.dataset.build_dataset(X, Y)
+
+        self.classif = Stacking({"0": [
+            ExtraTrees,
+            RandomForest,
+            AdaBoost]},
+            dataset=self.dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/",
+            n_splits=3)
         self.classif.train(num_steps=1)
 
     def tearDown(self):

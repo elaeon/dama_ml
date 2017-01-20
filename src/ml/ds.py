@@ -193,9 +193,7 @@ class DataLabel(ReadWriteData):
         return a counter of labels
         """
         from collections import Counter
-        #dl = self.desfragment()
         counter = Counter(self.labels)
-        #dl.destroy()
         return counter
 
     def only_labels(self, labels):
@@ -675,8 +673,10 @@ class DataSetBuilder(DataLabel):
         Concatenate the train, valid, and test labels in another array.
         return data, labels
         """
+        import uuid
+        id_ = uuid.uuid4().hex
         dl = DataLabel(
-            name=self.name+"dl",
+            name=self.name+id_,
             dataset_path=self.dataset_path,
             transforms=self.transforms,
             apply_transforms=self.apply_transforms,
@@ -1134,3 +1134,46 @@ class DataSetBuilderFile(DataSetBuilder):
         return pd.merge(data_df, labels_df, on=column_id)
 
 
+class DataSetBuilderFold(object):
+    """
+    Class for create folds in from of datasets.
+    """
+    def __init__(self, name=None, n_splits=2):
+        self.name = name
+        self.n_splits = n_splits
+    
+    def create_folds(self, dl):
+        from sklearn.model_selection import StratifiedKFold
+        skf = StratifiedKFold(n_splits=self.n_splits)
+        for i, (train, test) in enumerate(skf.split(dl.data, dl.labels)):
+            validation_index = int(train.shape[0] * .1)
+            validation = train[:validation_index]
+            train = train[validation_index:]
+            dsb = DataSetBuilder(name=str(i), 
+                dataset_path=None,
+                transforms=None,
+                apply_transforms=False,
+                dtype=dl.dtype,
+                ltype=dl.ltype,
+                description="",
+                author="",
+                compression_level=9,
+                rewrite=True)
+            print(train)
+            n = dl.data[:]
+            print(n[train])
+            #print(dl.data[:])#[train])
+            #dsb.build_dataset(dl.data[train], dl.labels[train], test_data=dl.data[test], 
+            #    test_labels=dl.labels[test], validation_data=dl.data[validation], 
+            #    validation_labels=dl.labels[validation])
+            yield dsb
+
+    def build_dataset(self, dataset=None):
+        """
+         :type dataset: dataset
+         :param dataset: dataset to fold
+        """
+        dl = dataset.desfragment()
+        for dsb in self.create_folds(dl):
+            print(dsb.name)
+        dl.destroy()
