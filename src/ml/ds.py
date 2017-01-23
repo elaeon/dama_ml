@@ -132,7 +132,7 @@ class DataLabel(ReadWriteData):
     """
     def __init__(self, name=None, 
                 dataset_path=None,
-                transforms=Transforms(),
+                transforms=None,
                 apply_transforms=True,
                 dtype='float64',
                 ltype='|S1',
@@ -151,6 +151,9 @@ class DataLabel(ReadWriteData):
         else:
             self.dataset_path = dataset_path
         
+        if transforms is None:
+            transforms = Transforms()
+
         if not self._preload_attrs() and self.rewrite is True:
             self.apply_transforms = apply_transforms
             self.author = author
@@ -559,7 +562,7 @@ class DataSetBuilder(DataLabel):
     def __init__(self, name=None, 
                 dataset_path=None,
                 apply_transforms=True,
-                transforms=Transforms(),
+                transforms=None,
                 train_size=.7,
                 valid_size=.1,
                 validator='cross',
@@ -579,6 +582,9 @@ class DataSetBuilder(DataLabel):
             self.dataset_path = settings["dataset_path"]
         else:
             self.dataset_path = dataset_path
+
+        if transforms is None:
+            transforms = Transforms()
 
         if not self._preload_attrs() or self.rewrite is True:
             self.dtype = dtype
@@ -1140,6 +1146,7 @@ class DataSetBuilderFold(object):
     """
     def __init__(self, name=None, n_splits=2):
         self.name = name
+        self.splits = []
         self.n_splits = n_splits
     
     def create_folds(self, dl):
@@ -1159,13 +1166,12 @@ class DataSetBuilderFold(object):
                 author="",
                 compression_level=9,
                 rewrite=True)
-            print(train)
-            n = dl.data[:]
-            print(n[train])
-            #print(dl.data[:])#[train])
-            #dsb.build_dataset(dl.data[train], dl.labels[train], test_data=dl.data[test], 
-            #    test_labels=dl.labels[test], validation_data=dl.data[validation], 
-            #    validation_labels=dl.labels[validation])
+            data = dl.data[:]
+            labels = dl.labels[:]
+            dsb.build_dataset(data[train], labels[train], test_data=data[test], 
+                test_labels=labels[test], validation_data=data[validation], 
+                validation_labels=labels[validation])
+            dsb.close_reader()
             yield dsb
 
     def build_dataset(self, dataset=None):
@@ -1175,5 +1181,9 @@ class DataSetBuilderFold(object):
         """
         dl = dataset.desfragment()
         for dsb in self.create_folds(dl):
-            print(dsb.name)
+            self.splits.append(dsb.name)
         dl.destroy()
+
+    def get_splits(self):
+        for split in self.splits:
+            yield DataSetBuilder(name=split)

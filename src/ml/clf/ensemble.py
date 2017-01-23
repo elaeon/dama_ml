@@ -164,7 +164,7 @@ class Boosting(Ensemble):
             self.weights = self.weights_p
             self.election = meta["election"]
             self.model_name = meta["model_name"]
-            self.dataset = DataSetBuilder.load_dataset(
+            self.dataset = DataSetBuilder(
                 meta["dataset_name"], 
                 dataset_path=meta["dataset_path"])
 
@@ -310,7 +310,7 @@ class Stacking(Ensemble):
                 meta.get('models', {}), lambda x: locate(x))
             self.iterations = meta["iterations"]
             self.model_name = meta["model_name"]
-            self.dataset = DataSetBuilder.load_dataset(
+            self.dataset = DataSetBuilder(
                 meta["dataset_name"], 
                 dataset_path=meta["dataset_path"])
         else:
@@ -347,12 +347,9 @@ class Stacking(Ensemble):
             self.save_meta()
 
     def train(self, batch_size=128, num_steps=1):
-        #from sklearn.model_selection import StratifiedKFold
         from ml.ds import DataSetBuilderFold
         num_classes = len(self.dataset.labels_info().keys())
         n_splits = self.n_splits if num_classes < self.n_splits else num_classes
-        #skf = StratifiedKFold(n_splits=n_splits)
-        #dl = self.dataset.desfragment()
         size = self.dataset.shape[0]
         dataset_blend_train = np.zeros((size, len(self.classifs[self.meta_name+".0"]), num_classes))
         dataset_blend_labels = np.zeros((size, len(self.classifs[self.meta_name+".0"]), 1))
@@ -360,25 +357,24 @@ class Stacking(Ensemble):
             print("Training [{}]".format(clf.__class__.__name__))
             dsbf = DataSetBuilderFold(n_splits=n_splits)
             dsbf.build_dataset(dataset=self.dataset)
-            #for i, (train, test) in enumerate(skf.split(dl.data, dl.labels)):
-            for i, dataset in enumerate(dsbf.folds())
-                #validation_index = int(train.shape[0] * .1)
-                #validation = train[:validation_index]
-                #train = train[validation_index:]
+            init_r = 0
+            for i, dataset in enumerate(dsbf.get_splits()):
                 print("Fold", i)
                 clf.set_dataset(dataset)
-                #clf.set_dataset(data[train], data[test], data[validation],
-                #    labels[train], labels[test], labels[validation])
                 clf.train(batch_size=batch_size, num_steps=num_steps)
                 y_submission = np.asarray(list(
                     clf.predict(clf.dataset.test_data, raw=True, transform=False, chunk_size=0)))
                 if len(clf.dataset.test_labels.shape) > 1:
                     test_labels = np.argmax(clf.dataset.test_labels, axis=1)
                 else:
-                    test_labels = clf.dataset.test_labels
-                dataset_blend_train[test, j] = y_submission
-                dataset_blend_labels[test, j] = test_labels.reshape(-1, 1)
-        dl.destroy()
+                    test_labels = clf.dataset.test_labels[:]
+                r = init_r + clf.dataset.test_data.shape[0]
+                dataset_blend_train[init_r:r, j] = y_submission
+                dataset_blend_labels[init_r:r, j] = test_labels.reshape(-1, 1)
+                init_r = r
+                dataset.destroy()
+                clf.dataset.destroy()
+            #dsbf.destroy() pending to implement
         self.iterations = i + 1
         dataset_blend_train = dataset_blend_train.reshape(dataset_blend_train.shape[0], -1)
         dataset_blend_labels = dataset_blend_labels.reshape(dataset_blend_labels.shape[0], -1)

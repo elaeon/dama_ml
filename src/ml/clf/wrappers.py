@@ -264,7 +264,7 @@ class BaseClassif(DataDrive):
     def transform_shape(self, data, size=None):
         if size is None:
             size = data.shape[0]
-        return data[:].reshape(size, -1).astype(np.float32)
+        return data[:].reshape(size, -1)#.astype(np.float32)
 
     def is_binary():
         return self.num_labels == 2
@@ -355,7 +355,9 @@ class BaseClassif(DataDrive):
         elif transform is False and chunk_size > 0:
             fn = lambda x, s: self.transform_shape(x, size=s)
             return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)
-        elif transform is False:
+        elif transform is False and chunk_size == 0:
+            if len(data.shape) == 1:
+                data = self.transform_shape(data)
             return self._predict(data, raw=raw)
 
     def _pred_erros(self, predictions, test_data, test_labels, valid_size=.1):
