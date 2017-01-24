@@ -94,7 +94,7 @@ if __name__ == '__main__':
 
         if args.ensemble == "boosting":
             classif = clf_ensemble.Boosting({"0": [
-                #w_sklearn.ExtraTrees,
+                w_sklearn.ExtraTrees,
                 #w_tflearn.MLP,
                 w_sklearn.RandomForest]},
                 #w_sklearn.SGDClassifier,

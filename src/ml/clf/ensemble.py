@@ -416,8 +416,8 @@ class Bagging(Ensemble):
                 meta.get('models', {}), lambda x: locate(x))
             self.classif = locate(meta["model_base"])
             self.model_name = meta["model_name"]
-            self.dataset = DataSetBuilder.load_dataset(
-                meta["dataset_name"], 
+            self.dataset = DataSetBuilder(
+                name=meta["dataset_name"], 
                 dataset_path=meta["dataset_path"])
         else:
             self.classif = classif
@@ -445,18 +445,21 @@ class Bagging(Ensemble):
             print("Training [{}]".format(classif.__class__.__name__))
             classif.train(batch_size=batch_size, num_steps=num_steps)
         model_base = self.load_model(self.classif, dataset=self.dataset, 
-                                    info=False, namespace=self.meta_name)
+                                    namespace=self.meta_name)
         self.le = model_base.le
         print("Building features...")
-        model_base.set_dataset_from_raw(
-            self.prepare_data(model_base.dataset.train_data, transform=False, chunk_size=256), 
-            self.prepare_data(model_base.dataset.test_data, transform=False, chunk_size=256), 
-            self.prepare_data(model_base.dataset.valid_data, transform=False, chunk_size=256),
-            model_base.numerical_labels2classes(model_base.dataset.train_labels), 
-            model_base.numerical_labels2classes(model_base.dataset.test_labels), 
-            model_base.numerical_labels2classes(model_base.dataset.valid_labels),
-            save=True,
-            dataset_name=model_base.dataset.name+"."+self.meta_name)
+        dsb = DataSetBuilder(name=model_base.dataset.name+"."+self.meta_name, rewrite=True)
+        dsb.build_dataset(
+            self.prepare_data(model_base.dataset.train_data, transform=False, chunk_size=256),
+            model_base.numerical_labels2classes(model_base.dataset.train_labels[:]),
+            test_data=self.prepare_data(model_base.dataset.test_data, transform=False, 
+                chunk_size=256),
+            test_labels=model_base.numerical_labels2classes(model_base.dataset.test_labels[:]),
+            validation_data=self.prepare_data(model_base.dataset.validation_data, 
+                transform=False, chunk_size=256),
+            validation_labels=model_base.numerical_labels2classes(
+                model_base.dataset.validation_labels[:]))
+        model_base.set_dataset(dsb)
         print("Done...")
         model_base.train(batch_size=batch_size, num_steps=num_steps)
         self.save_model()
@@ -467,10 +470,12 @@ class Bagging(Ensemble):
             classif.predict(data, raw=True, transform=transform, chunk_size=chunk_size)
             for classif in self.load_models(self.dataset))
         predictions = np.asarray(list(geometric_mean(predictions, len(self.classifs[self.meta_name+".0"]))))
+        if len(data.shape) == 1:
+            data = data[:].reshape(-1, 1)
         return np.append(data, predictions, axis=1)
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        model_base = self.load_model(self.classif, info=True, namespace=self.meta_name)
+        model_base = self.load_model(self.classif, namespace=self.meta_name)
         self.le = model_base.le
         data_model_base = self.prepare_data(data, transform=transform, chunk_size=chunk_size)
         return model_base.predict(data_model_base, raw=raw, transform=False, chunk_size=chunk_size)
