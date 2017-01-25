@@ -19,6 +19,7 @@ settings = get_settings("ml")
 logging.basicConfig()
 log = logging.getLogger(__name__)
 
+
 def save_metadata(file_path, data):
     with open(file_path, 'wb') as f:
         pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
@@ -53,11 +54,9 @@ class ReadWriteData(object):
 
     def _set_space_shape(self, f, name, shape, label=False):
         dtype = self.auto_dtype(None, self.dtype) if label is False else self.auto_dtype(None, self.ltype)
-        #print("SHAPE N", shape)
         f['data'].create_dataset(name, shape, dtype=dtype, chunks=True, **self.zip_params)
 
     def _set_space_data(self, f, name, data, label=False):
-        #print("SHAPE", data.shape)
         dtype = self.auto_dtype(data, self.dtype) if label is False else self.auto_dtype(data, self.ltype)
         f['data'].create_dataset(name, data.shape, dtype=dtype, data=data, chunks=True, **self.zip_params)
 
@@ -68,7 +67,6 @@ class ReadWriteData(object):
     def _get_data(self, name):
         if not hasattr(self, 'f'):
             self.f = h5py.File(self.url(), 'r')
-        #print(self.f.id)
         key = '/data/' + name
         return self.f[key]
 
@@ -129,6 +127,12 @@ class DataLabel(ReadWriteData):
 
     :type author: string
     :param author: Dataset Author's name
+
+    :type compression_level: int
+    :param compression_level: number in 0-9 range. If 0 is passed no compression is executed
+
+    :type rewrite: bool
+    :param rewrite: if true, you can clean the saved data and add a new dataset.
     """
     def __init__(self, name=None, 
                 dataset_path=None,
@@ -168,10 +172,16 @@ class DataLabel(ReadWriteData):
 
     @property
     def data(self):
+        """
+        eturn the data in the dataset
+        """
         return self._get_data('data')
 
     @property
     def labels(self):
+        """
+        return the labels in the dataset
+        """
         return self._get_data('labels')
 
     def url(self):
@@ -226,6 +236,16 @@ class DataLabel(ReadWriteData):
         return self.copy()
 
     def type_t(self, ttype, data):
+        """
+        :type ttype: string
+        :param ttype: name of the type to convert the data. If ttype is 'auto' 
+        the data is returned without be converted.
+
+        :type data: array
+        :param data: data to be converted
+
+        convert the data to the especified ttype.
+        """
         if ttype == 'auto':
             return data
 
@@ -306,7 +326,6 @@ class DataLabel(ReadWriteData):
         print('Author: {}'.format(self.author))
         print('Transforms: {}'.format(self.transforms.to_json()))
         print('Applied transforms: {}'.format(self.apply_transforms))
-        #print('Preprocessing Class: {}'.format(self.get_processing_class_name()))
         print('MD5: {}'.format(self.md5()))
         print('Description: {}'.format(self.description))
         print('       ')
@@ -322,6 +341,9 @@ class DataLabel(ReadWriteData):
         return len(self.labels_info()) == 2
 
     def calc_md5(self):
+        """
+        calculate the md5 from the data.
+        """
         import hashlib
         dl = self.desfragment()
         h = hashlib.md5(dl.data[:])
@@ -458,6 +480,17 @@ class DataLabel(ReadWriteData):
         return dl
 
     def processing(self, data, initial=True):
+        """
+        :type data: array
+        :param data: data to transform
+
+        :type initial: bool
+        :param initial: if multirow transforms are added, then this parameter
+        indicates the initial data fit
+
+        execute the transformations to the data.
+
+        """
         data = self.processing_rows(data)
         #if init is True:
         #    return self.processing_global(data, base_data=data)
@@ -469,11 +502,20 @@ class DataLabel(ReadWriteData):
         return data
 
     def close_reader(self):
+        """
+        close the hdf5 file. If closed no more data retrive will be perform.
+        """
         if hasattr(self, 'f'):
             self.f.close()
             del self.f
 
     def processing_rows(self, data):
+        """
+        :type data: array
+        :param data: data to be transformed
+
+        transforms each row with the transformations.
+        """
         if not self.transforms.empty() and self.transforms_to_apply and data is not None:
             return np.asarray([self.transforms.apply(row) for row in data])
         else:
@@ -557,7 +599,13 @@ class DataSetBuilder(DataLabel):
     :param author: Dataset Author's name
 
     :type compression_level: int
-    :param compression_level: compression level
+    :param compression_level: number in 0-9 range. If 0 is passed no compression is executed
+
+    :type rewrite: bool
+    :param rewrite: if true, you can clean the saved data and add a new dataset.
+
+    :type chunks: int
+    :param chunks: number of chunks to use when the dataset is copy or desfragmented.
     """
     def __init__(self, name=None, 
                 dataset_path=None,
