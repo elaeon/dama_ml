@@ -257,7 +257,7 @@ class DataLabel(ReadWriteData):
         self.create_route()
         f = h5py.File(self.url(), 'w')
         f.attrs['path'] = self.url()
-        f.attrs['timestamp'] = datetime.datetime.utcnow().strftime("%Y-%M-%dT%H:%m UTC")
+        f.attrs['timestamp'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
         f.attrs['author'] = self.author
         f.attrs['transforms'] = self.transforms.to_json()
         f.attrs['description'] = self.description

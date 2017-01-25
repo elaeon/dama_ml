@@ -4,7 +4,7 @@ from ml.utils.config import get_settings
 from ml.utils.order import order_table_print
 from ml.utils.numeric_functions import humanize_bytesize
 from ml.clf.wrappers import DataDrive
-from ml.ds import DataSetBuilder
+from ml.ds import DataSetBuilder, DataLabel
 from ml.utils.files import rm, get_models_path, delete_file_model
 from ml.utils.files import get_date_from_file, get_models_from_dataset
 
@@ -47,8 +47,10 @@ def run(args):
         for path, files in datasets.items():
             for filename in files:
                 size = os.stat(path+filename).st_size
-                date = get_date_from_file(path+filename)
-                table.append([filename, humanize_bytesize(size), date.strftime("%Y-%m-%d %H:%M UTC")])
+                dl = DataLabel(name=filename)
+                date = dl._get_attr("timestamp")
+                dl.close_reader()
+                table.append([filename, humanize_bytesize(size), date])
                 total_size += size
         print("Total size: {}".format(humanize_bytesize(total_size)))
         order_table_print(headers, table, "dataset", reverse=False)
