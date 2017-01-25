@@ -11,7 +11,6 @@ from ml.processing import cut
 settings = get_settings("ml")
 settings.update(get_settings("transcriptor"))
 settings.update(get_settings("tickets"))
-settings.update(get_settings("numbers"))
 
 
 PICTURES = ["DSC_0055.jpg", "DSC_0056.jpg",
@@ -142,5 +141,5 @@ if __name__ == '__main__':
         data = io.imread(args.transcriptor_number_test)
         print(list(classif.predict([data])))
     elif args.transcriptor_ticket_test:
-        hog = HOG(model_name="detector")
+        hog = HOG(model_name="detector", model_version="1")
         transcriptor_test(classif, hog)

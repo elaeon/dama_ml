@@ -37,6 +37,8 @@ class HOG(DataDrive):
             self.data_training_path = meta["data_training_path"]
         except IOError:
             pass
+        except KeyError:
+            pass
 
     @classmethod
     def module_cls_name(cls):

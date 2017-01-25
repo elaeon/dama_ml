@@ -35,15 +35,15 @@ if __name__ == '__main__':
         transforms = Transforms()
         transforms.add(rgb2gray), 
         transforms.add(contrast)
-        hog = HOG(model_name="detector", transforms=transforms)
+        hog = HOG(model_name="detector", transforms=transforms, model_version="1")
         build_tickets_processed(transforms, settings, PICTURES)
         hog.train("tickets.xml")
         delete_tickets_processed(settings)
         print("Cleaned")
     elif args.test:
-        hog = HOG(model_name="detector")
+        hog = HOG(model_name="detector", model_version="1")
         hog.test_set(settings, PICTURES)
     elif args.draw:
-        hog = HOG(model_name="detector")
+        hog = HOG(model_name="detector", model_version="1")
         pictures = glob.glob(os.path.join(settings["tickets"], "*.jpg"))        
         hog.draw_detections(sorted(pictures)[0:1])

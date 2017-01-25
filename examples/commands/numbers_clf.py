@@ -7,8 +7,7 @@ from ml.clf.extended.w_sklearn import RandomForest
 from skimage import io
 
 settings = get_settings("ml")
-settings.update(get_settings("numbers"))
-settings.update(get_settings("transcriptor"))
+settings.update(get_settings("tickets"))
 
 if __name__ == '__main__':
     IMAGE_SIZE = int(settings["image_size"])
@@ -37,16 +36,17 @@ if __name__ == '__main__':
         if args.from_detector:
             train_folder_path=[settings["numbers_detector"]]
         elif args.from_xml:
-            train_folder_path = [settings["train_folder_path"], 
-                settings["numbers_detector"]]
+            train_folder_path = [settings["numbers_xml"]]
         else:
-            train_folder_path = [settings["train_folder_path"]]
+            train_folder_path = [settings["numbers_xml"]]
 
         ds_builder = DataSetBuilderImage(
             args.dataset_name, 
             image_size=int(settings["image_size"]), 
             train_folder_path=train_folder_path,
-            transforms=transforms)
+            transforms=transforms,
+            compression_level=9,
+            rewrite=True)
         ds_builder.build_dataset()
         ds_builder.info()
     elif args.train:

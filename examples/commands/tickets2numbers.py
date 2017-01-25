@@ -5,11 +5,10 @@ from skimage import io
 from ml.utils.config import get_settings
 from ml.utils.files import filename_from_path
 from ml.ds import DataSetBuilderImage
-from ml.processing import Transforms
-from ml.clf.extended import RandomForest
+from ml.processing import Transforms, cut
+from ml.clf.extended.w_sklearn import RandomForest
 
 settings = get_settings("ml")
-settings.update(get_settings("numbers"))
 settings.update(get_settings("tickets"))
 settings.update(get_settings("transcriptor"))
 
@@ -55,11 +54,12 @@ def tickets2numbers_from_detector(url, classif):
     import dlib
 
     tickets = glob.glob(os.path.join(settings["tickets"], "*.jpg"))
-    settings.update(get_settings("transcriptor"))
     numbers = []
-    hog = HOG(model_name="detector", model_version="0")
+    hog = HOG(model_name="detector", model_version="1")
     detector = hog.detector()
     for path in [os.path.join(settings["tickets"], f) for f in tickets]:
+        if "DSC_0055.jpg" in path:
+            continue
         img = io.imread(path)
         img_p = img_as_ubyte(hog.transforms.apply(img)) 
         dets = detector(img_p)
@@ -89,13 +89,13 @@ if __name__ == '__main__':
     IMAGE_SIZE = int(settings["image_size"])
     parser = argparse.ArgumentParser()
     parser.add_argument("--build-images", help="[xml] [detector]", type=str)
-    parser.add_argument("--transforms", help="crea el detector de numeros", action="store_true")
+    parser.add_argument("--pixelate", help="pixelea los numeros", action="store_true")
     parser.add_argument("--model-version", type=str)
     parser.add_argument("--model-name", type=str)
     args = parser.parse_args()
 
     transforms = Transforms()
-    if args.transforms:
+    if args.pixelate:
         from ml.processing import pixelate        
         transforms.add(pixelate, pixel_width=16, pixel_height=16)
 
