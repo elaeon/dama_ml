@@ -11,6 +11,7 @@ import random
 import h5py
 import logging
 import datetime
+import uuid
 
 from ml.processing import Transforms
 from ml.utils.config import get_settings
@@ -727,7 +728,6 @@ class DataSetBuilder(DataLabel):
         Concatenate the train, valid, and test labels in another array.
         return data, labels
         """
-        import uuid
         id_ = uuid.uuid4().hex
         dl = DataLabel(
             name=self.name+id_,
@@ -1190,22 +1190,31 @@ class DataSetBuilderFile(DataSetBuilder):
 
 class DataSetBuilderFold(object):
     """
-    Class for create folds in from of datasets.
+    Class for create datasets folds from datasets.
+    
+    :type n_splits: int
+    :param n_plists: numbers of splits for apply to the dataset
     """
-    def __init__(self, name=None, n_splits=2):
-        self.name = name
+    def __init__(self, n_splits=2):
+        self.name = uuid.uuid4().hex
         self.splits = []
         self.n_splits = n_splits
     
     def create_folds(self, dl):
+        """
+        :type dl: DataLabel
+        :param dl: datalabel to split
+
+        return an iterator of splited datalabel in n_splits DataSetBuilder datasets
+        """
         from sklearn.model_selection import StratifiedKFold
         skf = StratifiedKFold(n_splits=self.n_splits)
         for i, (train, test) in enumerate(skf.split(dl.data, dl.labels)):
             validation_index = int(train.shape[0] * .1)
             validation = train[:validation_index]
             train = train[validation_index:]
-            dsb = DataSetBuilder(name=str(i), 
-                dataset_path=None,
+            dsb = DataSetBuilder(name=self.name+"_"+str(i), 
+                dataset_path=settings["dataset_folds_path"],
                 transforms=None,
                 apply_transforms=False,
                 dtype=dl.dtype,
@@ -1224,8 +1233,10 @@ class DataSetBuilderFold(object):
 
     def build_dataset(self, dataset=None):
         """
-         :type dataset: dataset
+         :type dataset: DataLabel
          :param dataset: dataset to fold
+
+        construct the dataset fold from an DataSet class
         """
         dl = dataset.desfragment()
         for dsb in self.create_folds(dl):
@@ -1233,5 +1244,12 @@ class DataSetBuilderFold(object):
         dl.destroy()
 
     def get_splits(self):
+        """
+        return an iterator of datasets with the splits of original data
+        """
         for split in self.splits:
-            yield DataSetBuilder(name=split)
+            yield DataSetBuilder(name=split, dataset_path=settings["dataset_folds_path"])
+
+    def destroy(self):
+        for split in self.get_splits():
+            split.destroy()

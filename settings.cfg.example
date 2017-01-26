@@ -1,6 +1,7 @@
 [ml]
 dataset_path = {home}/ml_data/dataset/
 checkpoints_path = {home}/ml_data/checkpoints/
+dataset_folds_path = {home}/ml_data/dataset_folds/
 
 [numerai]
 predictions_file_path = {home}/predictions.csv

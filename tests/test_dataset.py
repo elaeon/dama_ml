@@ -152,11 +152,14 @@ class TestDataSetFold(unittest.TestCase):
         self.dataset.destroy()
 
     def test_fold(self):
-        dsbf = DataSetBuilderFold(name="folds", n_splits=4)
+        n_splits = 5
+        dsbf = DataSetBuilderFold(n_splits=n_splits)
         dsbf.build_dataset(self.dataset)
         for dsb in dsbf.get_splits():
             self.assertEqual(dsb.shape[0] < 10, True)
             self.assertEqual(dsb.shape[1], 10)
+        self.assertEqual(len(dsbf.splits), n_splits)
+        dsbf.destroy()
 
 
 if __name__ == '__main__':

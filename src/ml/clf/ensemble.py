@@ -372,9 +372,9 @@ class Stacking(Ensemble):
                 dataset_blend_train[init_r:r, j] = y_submission
                 dataset_blend_labels[init_r:r, j] = test_labels.reshape(-1, 1)
                 init_r = r
-                dataset.destroy()
+                #dataset.destroy()
                 clf.dataset.destroy()
-            #dsbf.destroy() pending to implement
+            dsbf.destroy()
         self.iterations = i + 1
         dataset_blend_train = dataset_blend_train.reshape(dataset_blend_train.shape[0], -1)
         dataset_blend_labels = dataset_blend_labels.reshape(dataset_blend_labels.shape[0], -1)
