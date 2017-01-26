@@ -1019,10 +1019,6 @@ class DataSetBuilderImage(DataSetBuilder):
         super(DataSetBuilderImage, self).__init__(name, **kwargs)
         self.image_size = image_size
         self.train_folder_path = train_folder_path
-        #self.images = []
-
-    #def add_img(self, img):
-    #    self.images.append(img)
 
     def images_from_directories(self, directories):
         if isinstance(directories, str):
@@ -1043,6 +1039,12 @@ class DataSetBuilderImage(DataSetBuilder):
         return images
 
     def images_to_dataset(self, folder_base):
+        """
+        :type folder_base: string path
+        :param folder_base: path where live the images to convert
+
+        extract the images from folder_base, where folder_base has the structure folder_base/label/
+        """
         images = self.images_from_directories(folder_base)
         labels = np.ndarray(shape=(len(images),), dtype='|S1')
         data = []
@@ -1072,15 +1074,15 @@ class DataSetBuilderImage(DataSetBuilder):
         import shutil
         shutil.rmtree(path)
 
-    def original_to_images_set(self, url, test_folder_data=False):
-        images_data, labels = self.labels_images(url)
-        images = (self.processing(img, 'image') for img in images_data)
-        image_train, image_test = self.build_train_test(zip(labels, images), sample=test_folder_data)
-        for number_id, images in image_train.items():
-            self.save_images(self.train_folder_path, number_id, images)
+    #def original_to_images_set(self, url, test_folder_data=False):
+    #    images_data, labels = self.labels_images(url)
+    #    images = (self.processing(img, 'image') for img in images_data)
+    #    image_train, image_test = self.build_train_test(zip(labels, images), sample=test_folder_data)
+    #    for number_id, images in image_train.items():
+    #        self.save_images(self.train_folder_path, number_id, images)
 
-        for number_id, images in image_test.items():
-            self.save_images(self.test_folder_path, number_id, images)
+    #    for number_id, images in image_test.items():
+    #        self.save_images(self.test_folder_path, number_id, images)
 
     def build_dataset(self):
         """
@@ -1089,38 +1091,38 @@ class DataSetBuilderImage(DataSetBuilder):
         data, labels = self.images_to_dataset(self.train_folder_path)
         super(DataSetBuilderImage, self).build_dataset(data, labels)
 
-    def build_train_test(self, process_images, sample=True):
-        images = {}
-        images_index = {}
+    #def build_train_test(self, process_images, sample=True):
+    #    images = {}
+    #    images_index = {}
         
-        try:
-            for number_id, image_array in process_images:
-                images.setdefault(number_id, [])
-                images[number_id].append(image_array)
-        except TypeError:
+    #    try:
+    #        for number_id, image_array in process_images:
+    #            images.setdefault(number_id, [])
+    #            images[number_id].append(image_array)
+    #    except TypeError:
             #if no faces are detected
-            return {}, {}
+    #        return {}, {}
 
-        if sample is True:
-            sample_data = {}
-            images_good = {}
-            for number_id in images:
-                base_indexes = set(range(len(images[number_id])))
-                if len(base_indexes) > 3:
-                    sample_indexes = set(random.sample(base_indexes, 3))
-                else:
-                    sample_indexes = set([])
-                sample_data[number_id] = [images[number_id][index] for index in sample_indexes]
-                images_index[number_id] = base_indexes.difference(sample_indexes)
+    #    if sample is True:
+    #        sample_data = {}
+    #        images_good = {}
+    #        for number_id in images:
+    #            base_indexes = set(range(len(images[number_id])))
+    #            if len(base_indexes) > 3:
+    #                sample_indexes = set(random.sample(base_indexes, 3))
+    #            else:
+    #                sample_indexes = set([])
+    #            sample_data[number_id] = [images[number_id][index] for index in sample_indexes]
+    #            images_index[number_id] = base_indexes.difference(sample_indexes)
 
-            for number_id, indexes in images_index.items():
-                images_good.setdefault(number_id, [])
-                for index in indexes:
-                    images_good[number_id].append(images[number_id][index])
+    #        for number_id, indexes in images_index.items():
+    #            images_good.setdefault(number_id, [])
+    #            for index in indexes:
+    #                images_good[number_id].append(images[number_id][index])
             
-            return images_good, sample_data
-        else:
-            return images, {}
+    #        return images_good, sample_data
+    #    else:
+    #        return images, {}
 
     def labels_images(self, urls):
         images_data = []
@@ -1137,7 +1139,6 @@ class DataSetBuilderImage(DataSetBuilder):
     def copy(self):
         dataset = super(DataSetBuilderImage, self).copy()
         dataset.image_size = self.image_size
-        #dataset.images = []
         return dataset
 
     def info(self):

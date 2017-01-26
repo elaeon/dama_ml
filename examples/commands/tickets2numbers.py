@@ -100,7 +100,7 @@ if __name__ == '__main__':
         transforms.add(pixelate, pixel_width=16, pixel_height=16)
 
     if args.build_images == "xml":
-        tickets2numbers_from_xml(settings["numbers"], transforms=transforms)
+        tickets2numbers_from_xml(settings["numbers_xml"], transforms=transforms)
     elif args.build_images == "detector":
         classif = RandomForest(
             model_name=args.model_name,
