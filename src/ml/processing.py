@@ -21,14 +21,33 @@ def pixelate_mode(mode):
 
 
 class Transforms(object):
+    """
+    In this class are deposit the functions for apply to the data.
+    
+    transforms = Transforms()
+    transforms.add(function1, {'a': 1, 'b': 0}) -> function1(a=1, b=0)
+    transforms.add(function2, {'x': 10}) -> function2(x=10)
+    """
     def __init__(self):
         self.transforms = OrderedDict({})
 
     def add(self, fn, **params):
+        """
+        :type fn: function
+        :param fn: function to add
+
+        :type params: dict
+        :param params: the parameters of the function fn
+
+        This function add to the class the functions to use with the data.
+        """
         fn_name = "{}.{}".format(fn.__module__, fn.__name__)
         self.transforms[fn_name] = params
 
     def empty(self):
+        """
+        return True if not transforms was added.
+        """
         return len(self.transforms) == 0
 
     def __add__(self, o):
@@ -38,11 +57,17 @@ class Transforms(object):
         return all_transforms
 
     def to_json(self):
+        """
+        convert this class to json format
+        """
         import json
         return json.dumps(self.transforms)
 
     @classmethod
     def from_json(self, json_transforms):
+        """
+        from json format to Transform class.
+        """
         transforms_dict = json.loads(json_transforms, object_pairs_hook=OrderedDict)
         transforms = Transforms()
         for fn, params in transforms_dict.items():
@@ -50,6 +75,10 @@ class Transforms(object):
         return transforms
 
     def apply(self, data):
+        """
+        :type data: array
+        :param data: apply the transforms added to the data
+        """
         if self.empty() is False:
             for fn, params in self.transforms.items():
                 fn = locate(fn)
@@ -100,17 +129,18 @@ def poly_features(data, degree=2, interaction_only=False, include_bias=True):
     return selector.fit_transform(data)
 
 
-def resize(data, image_size=90, type_r="asym"):
-    if type_r == "asym":
-        dim = []
-        for v in data.shape:
-            if v > image_size:
-                dim.append(image_size)
-            else:
-                dim.append(v)
-    else:
-        dim = (image_size, image_size)
+def resize(data, image_size_h=90, image_size_w=90):
+    """
+    :type data: array
+    :param data: data to be resized
 
+    :type image_size_h: int
+    :param image_size_h: reduce the image height to this size.
+
+    :type image_size_w: int
+    param image_size_w: reduce the image weight to this size.
+    """
+    dim = (image_size_h, image_size_w)
     if dim < data.shape or data.shape <= dim:
         try:
             data = transform.resize(data, dim)
@@ -120,6 +150,12 @@ def resize(data, image_size=90, type_r="asym"):
 
 
 def contrast(data):
+    """
+    :type data: array
+    :param data: data to transform
+
+    add contrast stretching to the data.
+    """
     #contrast stretching
     p2, p98 = np.percentile(data, (2, 98))
     return exposure.rescale_intensity(data, in_range=(p2, p98))

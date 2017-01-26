@@ -13,7 +13,7 @@ if __name__ == '__main__':
     IMAGE_SIZE = int(settings["image_size"])
     transforms = Transforms()
     transforms.add(rgb2gray),
-    transforms.add(resize, image_size=IMAGE_SIZE, type_r="asym"), 
+    transforms.add(resize, image_size_h=IMAGE_SIZE, image_size_w=IMAGE_SIZE), 
     transforms.add(threshold, block_size=91) 
     transforms.add(merge_offset, image_size=IMAGE_SIZE, bg_color=1)
 
