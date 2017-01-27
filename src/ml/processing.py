@@ -162,14 +162,32 @@ def contrast(data):
 
 
 def upsample(data):
+    """
+    :type data: array
+    :param data: data to transform
+
+    apply pyramid expand with params upscale 2 and order 1, mode reflect.
+    """
     return transform.pyramid_expand(data, upscale=2, sigma=None, order=1, 
                                     mode='reflect', cval=0)
 
 def rgb2gray(data):
+    """
+    :type data: array
+    :param data: data to transform
+
+    convert an image to gray scale
+    """
     return color.rgb2gray(data)
 
 
 def blur(data, level=.2):
+    """
+    :type data: array
+    :param data: data to transform
+
+    apply gaussian blur to the data.
+    """
     return filters.gaussian(data, level)
 
 
@@ -188,6 +206,15 @@ def detector(data):
 
 
 def cut(data, rectangle=None):
+    """
+    :type data: array
+    :param data: data to cut    
+
+    :type rectangle: tuple
+    :param rectangle: (top, bottom, left, right)
+
+    return the data restricted inside the rectangle.
+    """
     top, bottom, left, right = rectangle
     return data[top:bottom, left:right]
 
@@ -197,6 +224,19 @@ def as_ubyte(data):
 
 
 def merge_offset(data, image_size=90, bg_color=1):
+    """
+    :type data: array
+    :param data: data transform
+
+    :type image_size: int
+    :param image_size: the new image size
+
+    :type bg_color: float
+    :param bg_color: value in [0, 1] for backgroung color
+
+    transform a rectangular image of (with, height) or (widh, height, channel) to 
+    a squared image of size (image_size, image_size) 
+    """
     if len(data.shape) == 2:
         return merge_offset2(data, image_size=image_size, bg_color=bg_color)
     elif len(data.shape) == 3:
@@ -252,6 +292,21 @@ def threshold(data, block_size=41):
 
 
 def pixelate(data, pixel_width=None, pixel_height=None, mode='mean'):
+    """
+    :type data: array
+    :param data: data to pixelate
+
+    :type pixel_width: int
+    :param pixel_width: pixel with in the image
+
+    :type pixel_height: int
+    :param pixel_height: pixel height in the image
+
+    :type mode: string
+    :param mode: mean, min or max
+
+    add pixelation to the image in de data.
+    """
     #import time
     #start_time = time.time()
     if len(data.shape) > 2:
