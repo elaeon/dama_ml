@@ -17,6 +17,7 @@ from ml.processing import Transforms
 from ml.utils.config import get_settings
 
 settings = get_settings("ml")
+#logging.basicConfig(level=logging.DEBUG)
 logging.basicConfig()
 log = logging.getLogger(__name__)
 
@@ -504,7 +505,7 @@ class DataLabel(ReadWriteData):
 
     def close_reader(self):
         """
-        close the hdf5 file. If closed no more data retrive will be perform.
+        close the hdf5 file. If is closed, no more data retrive will be perform.
         """
         if hasattr(self, 'f'):
             self.f.close()
@@ -515,11 +516,13 @@ class DataLabel(ReadWriteData):
         :type data: array
         :param data: data to be transformed
 
-        transforms each row with the transformations.
+        each row is transformed with the transformations defined.
         """
         if not self.transforms.empty() and self.transforms_to_apply and data is not None:
+            log.debug("Apply transforms")
             return np.asarray([self.transforms.apply(row) for row in data])
         else:
+            log.debug("No transforms applied")
             return data if isinstance(data, np.ndarray) else np.asarray(data)
 
     @property

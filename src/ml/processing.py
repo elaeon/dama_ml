@@ -7,9 +7,12 @@ from skimage import exposure
 from collections import OrderedDict
 from pydoc import locate
 
+import logging
 import numpy as np
 import json
 
+logging.basicConfig()
+log = logging.getLogger(__name__)
 
 def pixelate_mode(mode):
     if mode == 'mean':
@@ -81,10 +84,10 @@ class Transforms(object):
         :type data: array
         :param data: apply the transforms added to the data
         """
-        if self.empty() is False:
-            for fn, params in self.transforms.items():
-                fn = locate(fn)
-                data = fn(data, **params)
+        for fn, params in self.transforms.items():
+            fn = locate(fn)
+            data = fn(data, **params)
+
         if data is None:
             raise Exception
         else:
