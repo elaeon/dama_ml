@@ -4,7 +4,8 @@ from ml.utils.config import get_settings
 from ml.utils.order import order_table_print
 from ml.clf.wrappers import DataDrive
 from ml.clf.measures import ListMeasure
-from ml.utils.files import get_models_path, delete_file_model
+from ml.utils.files import get_models_path, get_models_from_dataset, rm
+from ml.ds import DataSetBuilder
 
 settings = get_settings("ml")
 
@@ -15,8 +16,8 @@ def run(args):
         table = []
         measure = None
         order_m = False
-        for clf, dataset in models_path.items():
-            for name_version in dataset:
+        for clf, models_name_v in models_path.items():
+            for name_version in models_name_v:
                 model_path = os.path.join(
                     settings["checkpoints_path"], clf, name_version, name_version)
                 meta = DataDrive.read_meta(None, model_path)
@@ -47,21 +48,24 @@ def run(args):
         list_measure = ListMeasure(headers=headers, measures=table, order=order)
         list_measure.print_scores(order_column=measure)
     elif args.rm:
-        #models_path = get_models_from_dataset(dataset, settings["checkpoints_path"])
-        #    print("Dataset: {}".format(dataset.url()))
-            #rm(dataset.url())
-            #for model_path, _ in models_path:
-            #    print("Model: {}".format(model_path))
-                #rm(model_path)
         clf, model_name, version = args.rm.split(".")
-        path = delete_file_model(clf, model_name, version, settings["checkpoints_path"])
-        print(path)
+        name_version = model_name + "." + version
+        model_path_meta = os.path.join(settings["checkpoints_path"], clf, name_version, name_version)
+        model_path = os.path.join(settings["checkpoints_path"], clf, name_version)    
+        dataset_name = DataDrive.read_meta("dataset_name", model_path_meta)
+        dataset = DataSetBuilder(name=dataset_name, dataset_path=settings["dataset_model_path"])
+        models_path = get_models_from_dataset(dataset, settings["checkpoints_path"])
+        if len(list(models_path)) == 1:
+            print("Delete dataset: {}".format(dataset.url()))
+            rm(dataset.url())        
+        print("Delete model: {}".format(model_path))
+        rm(model_path)
         print("Done.")
     else:
         headers = ["classif", "model name", "version", "dataset", "group"]
         table = []
-        for clf, dataset in models_path.items():
-            for name_version in dataset:
+        for clf, models_name_v in models_path.items():
+            for name_version in models_name_v:
                 meta = DataDrive.read_meta(None, os.path.join(
                     settings["checkpoints_path"], clf, name_version, name_version))
                 try:

@@ -65,12 +65,6 @@ def get_models_path(checkpoints_path):
     return classes
 
 
-def delete_file_model(clf, model_name, version, checkpoints_path):
-    name_version = model_name + "." + version
-    path = os.path.join(checkpoints_path, clf, name_version)
-    #rm(path)
-    return path
-
 
 def get_models_from_dataset(dataset, checkpoints_path):
     from ml.clf.wrappers import DataDrive

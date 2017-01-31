@@ -447,7 +447,7 @@ class DataLabel(ReadWriteData):
         from ml.utils.files import rm
         self.close_reader()
         rm(self.url())
-        print("rm {}".format(self.url()))
+        log.debug("rm {}".format(self.url()))
 
     def convert(self, name, dtype='float64', ltype='|S1', apply_transforms=False, 
                 percentaje=1):
