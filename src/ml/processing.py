@@ -25,7 +25,9 @@ class Transforms(object):
     In this class are deposit the functions for apply to the data.
     
     transforms = Transforms()
+
     transforms.add(function1, {'a': 1, 'b': 0}) -> function1(a=1, b=0)
+
     transforms.add(function2, {'x': 10}) -> function2(x=10)
     """
     def __init__(self):

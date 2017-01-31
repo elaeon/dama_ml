@@ -1,4 +1,4 @@
-Preprocessing
+Processing
 =====================================
 
 When you build a dataset you can add transformations to the data, i.e preprocessing it before training. So if you need some transformations to be applied to the data, add the functions to the Transformations class.

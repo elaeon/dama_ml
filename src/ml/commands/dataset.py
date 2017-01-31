@@ -3,7 +3,7 @@ import os
 from ml.utils.config import get_settings
 from ml.utils.order import order_table_print
 from ml.utils.numeric_functions import humanize_bytesize
-from ml.clf.wrappers import DataDrive
+from ml.clf.wrappers import DataDrive, ListMeasure
 from ml.ds import DataSetBuilder, DataLabel
 from ml.utils.files import rm, get_models_path, delete_file_model
 from ml.utils.files import get_date_from_file, get_models_from_dataset
@@ -53,7 +53,8 @@ def run(args):
                 table.append([filename, humanize_bytesize(size), date])
                 total_size += size
         print("Total size: {}".format(humanize_bytesize(total_size)))
-        order_table_print(headers, table, "dataset", reverse=False)
+        list_measure = ListMeasure(headers=headers, measures=table)
+        list_measure.print_scores(order_column="dataset")
 
 
 def dataset_model_relation():

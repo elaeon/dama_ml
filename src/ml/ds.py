@@ -974,8 +974,7 @@ class DataSetBuilder(DataLabel):
         :param apply_transforms: apply the transforms to the data
 
         :type percentaje: float
-        :param percentaje: values between 0 and 1, this value specify the percentaje of the data to
-        apply transforms and cast function, then return a subset
+        :param percentaje: values between 0 and 1, this value specify the percentaje of the data to apply transforms and cast function, then return a subset
 
         """
         dsb = DataSetBuilder(name=name, 
@@ -1191,8 +1190,8 @@ class DataSetBuilderFold(object):
 
     def build_dataset(self, dataset=None):
         """
-         :type dataset: DataLabel
-         :param dataset: dataset to fold
+        :type dataset: DataLabel
+        :param dataset: dataset to fold
 
         construct the dataset fold from an DataSet class
         """

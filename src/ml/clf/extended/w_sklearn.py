@@ -40,10 +40,11 @@ class RandomForest(SKLP):
         reg = CalibratedClassifierCV(
             RandomForestClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
+        return reg
         #sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         #sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
         #return sig_clf
-        return reg
+
 
 class ExtraTrees(SKLP):
     def prepare_model(self):

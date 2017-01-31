@@ -14,7 +14,6 @@ class TestListMeasure(unittest.TestCase):
         self.list_measure2.add_measure("Name", "Row2")
         self.list_measure2.add_measure("M1", .5)
 
-
     def test_list_measure(self):
         m1 = self.list_measure1.get_measure("M0")
         self.assertEqual(m1, None)        
@@ -22,9 +21,15 @@ class TestListMeasure(unittest.TestCase):
         self.assertEqual(m1, [1])
 
         list_measure_1_2 = self.list_measure1 + self.list_measure2
-        #list_measure_1_2.print_scores()
         m1_m2 = list_measure_1_2.get_measure("M1")
         self.assertEqual(m1_m2, [1, 0.5])
+
+    def test_list_measure_to_dict(self):
+        list_measure_1_2 = self.list_measure1 + self.list_measure2
+        list_measure_1_2.print_scores()
+        self.assertEqual(list_measure_1_2.measures_to_dict(), 
+            {'M1': {'values': [1, 0.5], 'reverse': False}, 
+            'Name': {'values': ['Row1', 'Row2'], 'reverse': False})
 
 
 if __name__ == '__main__':
