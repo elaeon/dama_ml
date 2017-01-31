@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from ml.clf.wrappers import ListMeasure
+from ml.clf.measures import ListMeasure
 
 
 class TestListMeasure(unittest.TestCase):
@@ -18,15 +18,17 @@ class TestListMeasure(unittest.TestCase):
         m1 = self.list_measure1.get_measure("M0")
         self.assertEqual(m1, None)        
         m1 = self.list_measure1.get_measure("M1")
-        self.assertEqual(m1, [1])
+        self.assertEqual(m1['values'], [1])
+        self.assertEqual(m1['reverse'], False)
 
         list_measure_1_2 = self.list_measure1 + self.list_measure2
         m1_m2 = list_measure_1_2.get_measure("M1")
-        self.assertEqual(m1_m2, [1, 0.5])
+        self.assertEqual(m1_m2['values'], [1, 0.5])
+        self.assertEqual(m1_m2['reverse'], False)
 
     def test_list_measure_to_dict(self):
         list_measure_1_2 = self.list_measure1 + self.list_measure2
-        list_measure_1_2.print_scores()
+        #list_measure_1_2.print_scores()
         self.assertEqual(list_measure_1_2.measures_to_dict(), 
             {'M1': {'values': [1, 0.5], 'reverse': False}, 
             'Name': {'values': ['Row1', 'Row2'], 'reverse': False}})

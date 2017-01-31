@@ -12,7 +12,12 @@ import numpy as np
 import json
 
 logging.basicConfig()
+console = logging.StreamHandler()
+console.setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
+log.addHandler(console)
+
 
 def pixelate_mode(mode):
     if mode == 'mean':

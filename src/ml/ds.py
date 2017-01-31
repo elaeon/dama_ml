@@ -17,9 +17,13 @@ from ml.processing import Transforms
 from ml.utils.config import get_settings
 
 settings = get_settings("ml")
-#logging.basicConfig(level=logging.DEBUG)
+
 logging.basicConfig()
+console = logging.StreamHandler()
+console.setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
+log.addHandler(console)
 
 
 def save_metadata(file_path, data):
@@ -89,7 +93,7 @@ class ReadWriteData(object):
         except KeyError:
             return None
         except IOError:
-            log.warning("Error found in file {}".format(self.url()))
+            log.debug("Error found in file {}".format(self.url()))
             return None
 
     def chunks_writer(self, f, name, data, chunks=128, init=0):
@@ -160,7 +164,7 @@ class DataLabel(ReadWriteData):
         if transforms is None:
             transforms = Transforms()
 
-        if not self._preload_attrs() and self.rewrite is True:
+        if not self._preload_attrs() or self.rewrite is True:
             self.apply_transforms = apply_transforms
             self.author = author
             self.description = description
@@ -443,6 +447,7 @@ class DataLabel(ReadWriteData):
         from ml.utils.files import rm
         self.close_reader()
         rm(self.url())
+        print("rm {}".format(self.url()))
 
     def convert(self, name, dtype='float64', ltype='|S1', apply_transforms=False, 
                 percentaje=1):

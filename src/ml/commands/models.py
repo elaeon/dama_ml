@@ -2,7 +2,8 @@ import os
 
 from ml.utils.config import get_settings
 from ml.utils.order import order_table_print
-from ml.clf.wrappers import DataDrive, ListMeasure
+from ml.clf.wrappers import DataDrive
+from ml.clf.measures import ListMeasure
 from ml.utils.files import get_models_path, delete_file_model
 
 settings = get_settings("ml")
@@ -46,6 +47,12 @@ def run(args):
         list_measure = ListMeasure(headers=headers, measures=table, order=order)
         list_measure.print_scores(order_column=measure)
     elif args.rm:
+        #models_path = get_models_from_dataset(dataset, settings["checkpoints_path"])
+        #    print("Dataset: {}".format(dataset.url()))
+            #rm(dataset.url())
+            #for model_path, _ in models_path:
+            #    print("Model: {}".format(model_path))
+                #rm(model_path)
         clf, model_name, version = args.rm.split(".")
         path = delete_file_model(clf, model_name, version, settings["checkpoints_path"])
         print(path)
