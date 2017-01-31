@@ -175,11 +175,36 @@ class ListMeasure(object):
         print the matrix
         """
         from ml.utils.order import order_table_print
+        self.drop_empty_columns()
         order_table_print(self.headers, self.measures, order_column, natural_order=self.order)
+
+    def empty_columns(self):
+        """
+        return a set of indexes of empty columns
+        """
+        empty_cols = {}
+        for row in self.measures:
+            for i, col in enumerate(row):
+                if col is None or col == '':
+                    empty_cols.setdefault(i, 0)
+                    empty_cols[i] += 1
+
+        return set([col for col, counter in empty_cols.items() if counter == len(self.measures)])        
+
+    def drop_empty_columns(self):
+        """
+        drop empty columns
+        """
+        empty_columns = self.empty_columns()
+        for counter, c in enumerate(empty_columns):
+            del self.headers[c-counter]
+            del self.order[c-counter]
+            for row in self.measures:
+                del row[c-counter]
 
     def print_matrix(self, labels):
         from tabulate import tabulate
-        for name, measure in self.measures:
+        for name, measure in enumerate(self.measures):
             print("******")
             print(name)
             print("******")
