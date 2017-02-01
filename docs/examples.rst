@@ -48,7 +48,7 @@ Finally, run the transcriptor
 Numerai competition
 -----------------------
 
-You need to download and save the data in the correspondient folder (previously difined in the settings.cfg file) and run the commands.
+You need to download and save the numerai's data in the correspondient folder (previously difined in the settings.cfg file) and run the commands.
 
 .. code-block:: python
 

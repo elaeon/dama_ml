@@ -78,7 +78,8 @@ if __name__ == '__main__':
     parser.add_argument("--train", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--ensemble", type=str)
     parser.add_argument("--epoch", type=int, default=1)
-    parser.add_argument("--predict", help="inicia el entrenamiento", action="store_true")
+    parser.add_argument("--predict", help="", action="store_true")
+    parser.add_argument("--test", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--model-version", type=str)
     #parser.add_argument("--plot", action="store_true")
     args = parser.parse_args()
@@ -138,6 +139,22 @@ if __name__ == '__main__':
         classif.train(batch_size=128, num_steps=args.epoch) # only_voting=True
         classif.scores().print_scores(order_column="logloss")
 
+    if args.test:
+        if args.ensemble == "boosting":
+            classif = clf_ensemble.Boosting({},
+                model_name=args.model_name,
+                model_version=args.model_version)
+        elif args.ensemble == "stacking":
+            classif = clf_ensemble.Stacking({},
+                model_name=args.model_name,
+                model_version=args.model_version)
+        else:
+            classif = clf_ensemble.Bagging(None, {},
+                model_name=args.model_name,
+                model_version=args.model_version)
+        
+        classif.scores().print_scores(order_column="logloss")
+
     if args.predict:
         if args.ensemble == "boosting":
             classif = clf_ensemble.Boosting({},
@@ -151,7 +168,6 @@ if __name__ == '__main__':
             classif = clf_ensemble.Bagging(None, {},
                 model_name=args.model_name,
                 model_version=args.model_version)
-        classif.scores().print_scores(order_column="logloss")
         predict(classif, settings["numerai_test"], "t_id")
         print("Predictions writed in {}".format(settings["predictions_file_path"]))
 
