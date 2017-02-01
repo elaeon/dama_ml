@@ -4,7 +4,7 @@ Wrappers
 The wrappers are classes where is posible define operations over distincts machine learning's frameworks.
 mlPyp has wrappers for clasificators and auto encoders, manly for frameworks like tensorflow, keras, scikit-learn, but if you want to use another framework, the base class 'BaseAe' and 'BaseClassif' will help you to convert you model into mlPyp classes.
 
-For example, if you are using the framework "X" for build a classification model, the BaseClassif is the parent class where you must define (aditionally to prepare model function) convert_label, train, reformat and load functions.
+For example, if you are using the framework "X" for build a classification model, the BaseClassif is the parent class where you must define (aditionally to the prepare model function) convert_label, train, reformat and load functions.
 
 .. code-block:: python
 

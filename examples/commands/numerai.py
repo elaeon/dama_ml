@@ -80,7 +80,7 @@ if __name__ == '__main__':
     parser.add_argument("--epoch", type=int, default=1)
     parser.add_argument("--predict", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--model-version", type=str)
-    parser.add_argument("--plot", action="store_true")
+    #parser.add_argument("--plot", action="store_true")
     args = parser.parse_args()
 
 
@@ -155,7 +155,7 @@ if __name__ == '__main__':
         predict(classif, settings["numerai_test"], "t_id")
         print("Predictions writed in {}".format(settings["predictions_file_path"]))
 
-    if args.plot:
-        dataset = DataSetBuilderFile.load_dataset(args.model_name)
-        print("DENSITY: ", dataset.density())
-        dataset.plot()
+    #if args.plot:
+    #    dataset = DataSetBuilderFile.load_dataset(args.model_name)
+    #    print("DENSITY: ", dataset.density())
+    #    dataset.plot()

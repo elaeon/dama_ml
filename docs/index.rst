@@ -130,6 +130,7 @@ Index
    models
    extra_models
    wrappers
+   ensemble
    examples
    changes
    modindex

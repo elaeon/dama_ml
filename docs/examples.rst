@@ -1,62 +1,57 @@
-Preprocessing
+Examples
 =====================================
 
-When you build a dataset you can add transformations to the data, i.e preprocessing it before training. Preprocessing is the parent class, so if you need you own transformation be applied, you can extend the Preprocessing class.
+Here are examples divided in categories.
 
-For example, we want two extra functions for preprocessing:
-
-.. code-block:: python
-
-    from ml.preprocessing import Preprocessing
-    class MyPreprocessing(Preprocessing):
-
-        def my_scale(self):
-            self.data = np.log(1 + self.data)
-
-        def plus_b(self, b=1):
-            self.data = self.data + b
-
-
-Now in the DataSetBuilder use this class:
+Basic predictor
+----------------
 
 .. code-block:: python
 
-    dataset = DataSetBuilder(
-        dataset_name, 
-        preprocessing_class=MyPreprocessing
-        transforms_row=[('my_scale', None), ('plus_b', {'b': 1})])
-    dataset.build_dataset(X, Y)
+    python examples/commands/basic_predict.py --build-dataset cross --dataset-name basic_test
+    python examples/commands/basic_predict.py --train --dataset-name basic_test --model-name svgpc_test --model-version 1
+    python examples/commands/basic_predict.py --predict --model-name svgpc_test --model-version 1 --chunk-size 100
 
-transforms_row apply indepently transformations to each elem in the data, but if you want add a transformation
-who interact (dependently) with each, you must use the FiT class.
 
-Fit is similar to Preprocessing except, you need define a FiT for every function.
+Supermarker's numbers tickets transcriptor
+---------------------------------------------
 
-.. code-block:: python
-
-    from ml.preprocessing import FiT
-    class FiTScaler(FiT):
-        # if the transformation not support high dimensions
-        def dim_rule(self, data):
-            if len(data.shape) > 2:
-                data = data.reshape(data.shape[0], -1)
-            return data
-
-        #This is the only function you need to define
-        def fit(self, data):
-            from sklearn.preprocessing import StandardScaler
-            scaler = StandardScaler(**self.params)
-            scaler.fit(self.dim_rule(data))
-            self.t = scaler
-
-Now apply FiT to you dataset with:
+The first step is build the number detector from supermarket's tickets (for this is necessary
+have installed dlib)
 
 .. code-block:: python
 
-    dataset = DataSetBuilder(
-        dataset_name,
-        transforms_global=[(FiTScaler.module_cls_name(), None)])
-    dataset.build_dataset(X, Y)
+    python examples/commands/hog.py --train
+    python examples/commands/hog.py --test
+    python examples/commands/hog.py --draw
 
+Then, build the directory with the images for the train dataset
 
-        
+.. code-block:: python
+
+    python examples/commands/tickets2numbers.py --build-images xml
+
+The next step is build the dataset and train the model
+
+.. code-block:: python
+
+    python examples/commands/numbers_clf.py --build-dataset cross --dataset-name numbers_tickets --from-xml
+    python examples/commands/numbers_clf.py --train --dataset-name numbers_tickets --model-name numbers_tickets --model-version 1
+    python examples/commands/numbers_clf.py --test --model-name numbers_tickets --model-version 1
+
+Finally, run the transcriptor
+
+.. code-block:: python
+
+    python examples/commands/transcriptor.py --model-name numbers_tickets --model-version 1 --transcriptor-ticket-test
+
+Numerai competition
+-----------------------
+
+You need to download and save the data in the correspondient folder (previously difined in the settings.cfg file) and run the commands.
+
+.. code-block:: python
+
+    python examples/commands/numerai.py --build-dataset --dataset-name numerai
+    python examples/commands/numerai.py --train --dataset-name numerai --ensemble stacking --model-name numerai --model-version 1
+    python examples/commands/numerai.py --predict --ensemble stacking --model-name numerai --model-version 1

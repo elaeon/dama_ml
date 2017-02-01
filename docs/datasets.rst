@@ -40,11 +40,12 @@ There are two more DataSetBuilder classes, a dataset builder for images, and ano
 
 .. code-block:: python
 
-    transforms = [("poly_features", {"degree":2, "interaction_only":False)]
+    transforms = Transforms()
+    transforms.add(poly_features, {"degree": 2, "interaction_only": False})
     dataset = DataSetBuilderFile(
         name="test_ds_file",
         train_folder_path="/home/ds/my_file.csv",
         transforms=transforms)
     dataset.build_dataset(label_column="target")
 
-In the processing module are predefined functions for transforms, but, you can add your own functions. For more info about it, check :doc:`processing`.
+In the processing module are predefined functions for transforms, but, you can add your own functions. For more info about it, check :doc:`preprocessing`.

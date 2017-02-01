@@ -7,5 +7,5 @@ Module index
 .. automodule:: processing
     :members: Transforms
 
-.. automodule:: clf.wrappers
+.. automodule:: clf.measures
     :members: Measure, ListMeasure
