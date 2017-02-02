@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Module index &#8212; mlPyp 0.1.1 documentation</title>
+    <title>Module index &#8212; mlPyp 0.2.0 documentation</title>
     
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.1.1',
+        VERSION:     '0.2.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="top" title="mlPyp 0.1.1 documentation" href="index.html" />
+    <link rel="top" title="mlPyp 0.2.0 documentation" href="index.html" />
     <link rel="prev" title="Changelog" href="changes.html" /> 
   </head>
   <body role="document">
@@ -41,7 +41,7 @@
         <li class="right" >
           <a href="changes.html" title="Changelog"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.1.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.2.0 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -55,7 +55,7 @@
 <p>Module for create datasets from distinct sources of data.</p>
 <dl class="class">
 <dt id="ds.DataSetBuilder">
-<em class="property">class </em><code class="descclassname">ds.</code><code class="descname">DataSetBuilder</code><span class="sig-paren">(</span><em>name</em>, <em>dataset_path=None</em>, <em>test_folder_path=None</em>, <em>train_folder_path=None</em>, <em>transforms_row=None</em>, <em>transforms_global=None</em>, <em>transforms_apply=True</em>, <em>processing_class=None</em>, <em>train_size=0.7</em>, <em>valid_size=0.1</em>, <em>validator='cross'</em>, <em>dtype='float64'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">ds.</code><code class="descname">DataSetBuilder</code><span class="sig-paren">(</span><em>name=None</em>, <em>dataset_path=None</em>, <em>apply_transforms=True</em>, <em>transforms=None</em>, <em>train_size=0.7</em>, <em>valid_size=0.1</em>, <em>validator='cross'</em>, <em>dtype='float64'</em>, <em>ltype='|S1'</em>, <em>description=''</em>, <em>author=''</em>, <em>compression_level=0</em>, <em>chunks=100</em>, <em>rewrite=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder" title="Permalink to this definition">¶</a></dt>
 <dd><p>Base class for dataset build. Get data from memory.
 create the initial values for the dataset.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -65,43 +65,25 @@ create the initial values for the dataset.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>name</strong> (<em>string</em>) &#8211; dataset&#8217;s name</li>
 <li><strong>dataset_path</strong> (<em>string</em>) &#8211; path where the datased is saved. This param is automaticly set by the settings.cfg file.</li>
-<li><strong>train_folder_path</strong> (<em>string</em>) &#8211; path to the data what you want to add to the dataset, automaticly split the data in train, test and validation. If you want manualy split the data in train and test, check test_folder_path.</li>
-<li><strong>test_folder_path</strong> (<em>string</em>) &#8211; path to the test data. If None the test data is get from train_folder_path.</li>
-<li><strong>transforms_global</strong> (<em>list</em>) &#8211; list of transforms for all row x column</li>
-<li><strong>transforms_row</strong> (<em>list</em>) &#8211; list of transforms for each row</li>
-<li><strong>transforms_apply</strong> (<em>bool</em>) &#8211; apply transformations to the data</li>
+<li><strong>apply_transforms</strong> (<em>bool</em>) &#8211; apply transformations to the data</li>
 <li><strong>processing_class</strong> (<em>class</em>) &#8211; class where are defined the functions for preprocessing data.</li>
 <li><strong>train_size</strong> (<em>float</em>) &#8211; value between [0, 1] who determine the size of the train data</li>
 <li><strong>valid_size</strong> (<em>float</em>) &#8211; value between [0, 1] who determine the size of the validation data</li>
 <li><strong>validator</strong> (<em>string</em>) &#8211; name of the method for extract from the data, the train data, test data and valid data</li>
 <li><strong>dtype</strong> (<em>string</em>) &#8211; the type of the data to save</li>
+<li><strong>description</strong> (<em>string</em>) &#8211; an bref description of the dataset</li>
+<li><strong>author</strong> (<em>string</em>) &#8211; Dataset Author&#8217;s name</li>
+<li><strong>compression_level</strong> (<em>int</em>) &#8211; number in 0-9 range. If 0 is passed no compression is executed</li>
+<li><strong>rewrite</strong> (<em>bool</em>) &#8211; if true, you can clean the saved data and add a new dataset.</li>
+<li><strong>chunks</strong> (<em>int</em>) &#8211; number of chunks to use when the dataset is copy or desfragmented.</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
-<dl class="method">
-<dt id="ds.DataSetBuilder.add_transforms">
-<code class="descname">add_transforms</code><span class="sig-paren">(</span><em>transforms_global=None</em>, <em>transforms_row=None</em>, <em>processing_class=None</em>, <em>save=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.add_transforms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.add_transforms" title="Permalink to this definition">¶</a></dt>
-<dd><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>transforms_global</strong> (<em>list</em>) &#8211; list of global transforms to apply</li>
-<li><strong>transforms_row</strong> (<em>list</em>) &#8211; list of row transforms to apply</li>
-<li><strong>processing_class</strong> (<em>class</em>) &#8211; class of the row transforms</li>
-<li><strong>save</strong> (<em>bool</em>) &#8211; if true the dataset with the transforms is saved</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
 <dl class="method">
 <dt id="ds.DataSetBuilder.build_dataset">
-<code class="descname">build_dataset</code><span class="sig-paren">(</span><em>data</em>, <em>labels</em>, <em>test_data=None</em>, <em>test_labels=None</em>, <em>valid_data=None</em>, <em>valid_labels=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.build_dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.build_dataset" title="Permalink to this definition">¶</a></dt>
+<code class="descname">build_dataset</code><span class="sig-paren">(</span><em>data</em>, <em>labels</em>, <em>test_data=None</em>, <em>test_labels=None</em>, <em>validation_data=None</em>, <em>validation_labels=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.build_dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.build_dataset" title="Permalink to this definition">¶</a></dt>
 <dd><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -117,40 +99,31 @@ create the initial values for the dataset.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="ds.DataSetBuilder.convert">
+<code class="descname">convert</code><span class="sig-paren">(</span><em>name</em>, <em>dtype='float64'</em>, <em>ltype='|S1'</em>, <em>apply_transforms=False</em>, <em>percentaje=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.convert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.convert" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> (<em>string</em>) &#8211; converted dataset&#8217;s name</li>
+<li><strong>dtype</strong> (<em>string</em>) &#8211; cast the data to the defined type</li>
+<li><strong>ltype</strong> (<em>string</em>) &#8211; cast the labels to the defined type</li>
+<li><strong>apply_transforms</strong> (<em>bool</em>) &#8211; apply the transforms to the data</li>
+<li><strong>percentaje</strong> (<em>float</em>) &#8211; values between 0 and 1, this value specify the percentaje of the data to apply transforms and cast function, then return a subset</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="ds.DataSetBuilder.desfragment">
 <code class="descname">desfragment</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.desfragment"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.desfragment" title="Permalink to this definition">¶</a></dt>
 <dd><p>Concatenate the train, valid and test data in a data array.
 Concatenate the train, valid, and test labels in another array.
 return data, labels</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="ds.DataSetBuilder.distinct_data">
-<code class="descname">distinct_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.distinct_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.distinct_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>return the radio of distincts elements in the training data.
-i.e 
-[1,2,3,4,5] return 5/5
-[2,2,2,2,2] return 1/5</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="ds.DataSetBuilder.dtype_t">
-<code class="descname">dtype_t</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.dtype_t"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.dtype_t" title="Permalink to this definition">¶</a></dt>
-<dd><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> (<em>narray</em>) &#8211; narray to cast</td>
-</tr>
-</tbody>
-</table>
-<p>cast the data to the predefined dataset dtype</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="ds.DataSetBuilder.get_processing_class_name">
-<code class="descname">get_processing_class_name</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.get_processing_class_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.get_processing_class_name" title="Permalink to this definition">¶</a></dt>
-<dd><p>return the name of the processing class</p>
 </dd></dl>
 
 <dl class="method">
@@ -168,69 +141,6 @@ i.e
 </dd></dl>
 
 <dl class="method">
-<dt id="ds.DataSetBuilder.is_binary">
-<code class="descname">is_binary</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.is_binary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.is_binary" title="Permalink to this definition">¶</a></dt>
-<dd><p>return true if the labels only has two classes</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="ds.DataSetBuilder.labels_info">
-<code class="descname">labels_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.labels_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.labels_info" title="Permalink to this definition">¶</a></dt>
-<dd><p>return a counter of labels</p>
-</dd></dl>
-
-<dl class="classmethod">
-<dt id="ds.DataSetBuilder.load_dataset">
-<em class="property">classmethod </em><code class="descname">load_dataset</code><span class="sig-paren">(</span><em>name</em>, <em>dataset_path=None</em>, <em>info=True</em>, <em>dtype='float64'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.load_dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.load_dataset" title="Permalink to this definition">¶</a></dt>
-<dd><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>name</strong> (<em>string</em>) &#8211; name of the dataset to load</li>
-<li><strong>dataset_path</strong> (<em>string</em>) &#8211; path where the dataset was saved</li>
-<li><strong>dtype</strong> (<em>string</em>) &#8211; cast the data to the defined type</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<p>dataset_path is not necesary to especify, this info is obtained from settings.cfg</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="ds.DataSetBuilder.md5">
-<code class="descname">md5</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.md5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.md5" title="Permalink to this definition">¶</a></dt>
-<dd><p>return the signature of the dataset in hex md5</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="ds.DataSetBuilder.num_features">
-<code class="descname">num_features</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.num_features"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.num_features" title="Permalink to this definition">¶</a></dt>
-<dd><p>return the number of features of the dataset</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="ds.DataSetBuilder.only_labels">
-<code class="descname">only_labels</code><span class="sig-paren">(</span><em>labels</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.only_labels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.only_labels" title="Permalink to this definition">¶</a></dt>
-<dd><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>labels</strong> (<em>list</em>) &#8211; list of labels</td>
-</tr>
-</tbody>
-</table>
-<p>return a tuple of arrays with data and labels, the returned data only have the labels selected.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="ds.DataSetBuilder.save">
-<code class="descname">save</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.save" title="Permalink to this definition">¶</a></dt>
-<dd><p>save the dataset in pickle format</p>
-</dd></dl>
-
-<dl class="method">
 <dt id="ds.DataSetBuilder.score_train_test">
 <code class="descname">score_train_test</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.score_train_test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.score_train_test" title="Permalink to this definition">¶</a></dt>
 <dd><p>return the score of separability between the train data and the test data.</p>
@@ -242,44 +152,11 @@ i.e
 <dd><p>return the shape of the dataset</p>
 </dd></dl>
 
-<dl class="method">
-<dt id="ds.DataSetBuilder.sparcity">
-<code class="descname">sparcity</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.sparcity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.sparcity" title="Permalink to this definition">¶</a></dt>
-<dd><p>return a value between [0, 1] of the sparcity of the dataset.
-0 no zeros exists, 1 all data is zero.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="ds.DataSetBuilder.subset">
-<code class="descname">subset</code><span class="sig-paren">(</span><em>percentaje</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.subset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.subset" title="Permalink to this definition">¶</a></dt>
-<dd><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>percentaje</strong> (<em>float</em>) &#8211; value between [0, 1], this value represent the size of the dataset to copy.</td>
-</tr>
-</tbody>
-</table>
-<p>i.e 1 copy all dataset, .5 copy half dataset</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="ds.DataSetBuilder.to_df">
-<code class="descname">to_df</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.to_df"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.to_df" title="Permalink to this definition">¶</a></dt>
-<dd><p>convert the dataset to a dataframe</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="ds.DataSetBuilder.url">
-<code class="descname">url</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilder.url"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilder.url" title="Permalink to this definition">¶</a></dt>
-<dd><p>return the path where is saved the dataset</p>
-</dd></dl>
-
 </dd></dl>
 
 <dl class="class">
 <dt id="ds.DataSetBuilderImage">
-<em class="property">class </em><code class="descclassname">ds.</code><code class="descname">DataSetBuilderImage</code><span class="sig-paren">(</span><em>name</em>, <em>image_size=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilderImage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilderImage" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">ds.</code><code class="descname">DataSetBuilderImage</code><span class="sig-paren">(</span><em>name=None</em>, <em>image_size=None</em>, <em>train_folder_path=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilderImage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilderImage" title="Permalink to this definition">¶</a></dt>
 <dd><p>Class for images dataset build. Get the data from a directory where each directory&#8217;s name is the label.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -290,17 +167,39 @@ i.e
 </tbody>
 </table>
 <p>kwargs are the same that DataSetBuilder&#8217;s options</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data_folder_path</strong> (<em>string</em>) &#8211; path to the data what you want to add to the dataset, split the data in train, test and validation. If you want manualy split the data in train and test, check test_folder_path.</td>
+</tr>
+</tbody>
+</table>
 <dl class="method">
 <dt id="ds.DataSetBuilderImage.build_dataset">
 <code class="descname">build_dataset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilderImage.build_dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilderImage.build_dataset" title="Permalink to this definition">¶</a></dt>
 <dd><p>the data is extracted from the train_folder_path, and then saved.</p>
 </dd></dl>
 
+<dl class="method">
+<dt id="ds.DataSetBuilderImage.images_to_dataset">
+<code class="descname">images_to_dataset</code><span class="sig-paren">(</span><em>folder_base</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilderImage.images_to_dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilderImage.images_to_dataset" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>folder_base</strong> (<em>string path</em>) &#8211; path where live the images to convert</td>
+</tr>
+</tbody>
+</table>
+<p>extract the images from folder_base, where folder_base has the structure folder_base/label/</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="class">
 <dt id="ds.DataSetBuilderFile">
-<em class="property">class </em><code class="descclassname">ds.</code><code class="descname">DataSetBuilderFile</code><span class="sig-paren">(</span><em>name</em>, <em>dataset_path=None</em>, <em>test_folder_path=None</em>, <em>train_folder_path=None</em>, <em>transforms_row=None</em>, <em>transforms_global=None</em>, <em>transforms_apply=True</em>, <em>processing_class=None</em>, <em>train_size=0.7</em>, <em>valid_size=0.1</em>, <em>validator='cross'</em>, <em>dtype='float64'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilderFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilderFile" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">ds.</code><code class="descname">DataSetBuilderFile</code><span class="sig-paren">(</span><em>name=None</em>, <em>train_folder_path=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilderFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilderFile" title="Permalink to this definition">¶</a></dt>
 <dd><p>Class for csv dataset build. Get the data from a csv&#8217;s file.</p>
 <dl class="method">
 <dt id="ds.DataSetBuilderFile.build_dataset">
@@ -327,6 +226,332 @@ i.e
 <li><strong>label_column</strong> (<em>string</em>) &#8211; column&#8217;s name where are the labels</li>
 </ul>
 </td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ds.DataSetBuilderFold">
+<em class="property">class </em><code class="descclassname">ds.</code><code class="descname">DataSetBuilderFold</code><span class="sig-paren">(</span><em>n_splits=2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilderFold"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilderFold" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for create datasets folds from datasets.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>n_plists</strong> &#8211; numbers of splits for apply to the dataset</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ds.DataSetBuilderFold.build_dataset">
+<code class="descname">build_dataset</code><span class="sig-paren">(</span><em>dataset=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilderFold.build_dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilderFold.build_dataset" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>dataset</strong> (<em>DataLabel</em>) &#8211; dataset to fold</td>
+</tr>
+</tbody>
+</table>
+<p>construct the dataset fold from an DataSet class</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilderFold.create_folds">
+<code class="descname">create_folds</code><span class="sig-paren">(</span><em>dl</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilderFold.create_folds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilderFold.create_folds" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>dl</strong> (<em>DataLabel</em>) &#8211; datalabel to split</td>
+</tr>
+</tbody>
+</table>
+<p>return an iterator of splited datalabel in n_splits DataSetBuilder datasets</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ds.DataSetBuilderFold.get_splits">
+<code class="descname">get_splits</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ds.html#DataSetBuilderFold.get_splits"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ds.DataSetBuilderFold.get_splits" title="Permalink to this definition">¶</a></dt>
+<dd><p>return an iterator of datasets with the splits of original data</p>
+</dd></dl>
+
+</dd></dl>
+
+<span class="target" id="module-processing"></span><dl class="class">
+<dt id="processing.Transforms">
+<em class="property">class </em><code class="descclassname">processing.</code><code class="descname">Transforms</code><a class="reference internal" href="_modules/processing.html#Transforms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#processing.Transforms" title="Permalink to this definition">¶</a></dt>
+<dd><p>In this class are deposit the functions for apply to the data.</p>
+<p>transforms = Transforms()</p>
+<p>transforms.add(function1, {&#8216;a&#8217;: 1, &#8216;b&#8217;: 0}) -&gt; function1(a=1, b=0)</p>
+<p>transforms.add(function2, {&#8216;x&#8217;: 10}) -&gt; function2(x=10)</p>
+<dl class="method">
+<dt id="processing.Transforms.add">
+<code class="descname">add</code><span class="sig-paren">(</span><em>fn</em>, <em>**params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/processing.html#Transforms.add"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#processing.Transforms.add" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>fn</strong> (<em>function</em>) &#8211; function to add</li>
+<li><strong>params</strong> (<em>dict</em>) &#8211; the parameters of the function fn</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>This function add to the class the functions to use with the data.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="processing.Transforms.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/processing.html#Transforms.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#processing.Transforms.apply" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> (<em>array</em>) &#8211; apply the transforms added to the data</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="processing.Transforms.empty">
+<code class="descname">empty</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/processing.html#Transforms.empty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#processing.Transforms.empty" title="Permalink to this definition">¶</a></dt>
+<dd><p>return True if not transforms was added.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="processing.Transforms.from_json">
+<em class="property">classmethod </em><code class="descname">from_json</code><span class="sig-paren">(</span><em>json_transforms</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/processing.html#Transforms.from_json"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#processing.Transforms.from_json" title="Permalink to this definition">¶</a></dt>
+<dd><p>from json format to Transform class.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="processing.Transforms.to_json">
+<code class="descname">to_json</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/processing.html#Transforms.to_json"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#processing.Transforms.to_json" title="Permalink to this definition">¶</a></dt>
+<dd><p>convert this class to json format</p>
+</dd></dl>
+
+</dd></dl>
+
+<span class="target" id="module-clf.measures"></span><dl class="class">
+<dt id="clf.measures.Measure">
+<em class="property">class </em><code class="descclassname">clf.measures.</code><code class="descname">Measure</code><span class="sig-paren">(</span><em>predictions</em>, <em>labels</em>, <em>labels2classes_fn</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/clf/measures.html#Measure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#clf.measures.Measure" title="Permalink to this definition">¶</a></dt>
+<dd><p>For measure the results of the predictors, distincts measures are defined in this class</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>predictions</strong> (<em>array</em>) &#8211; array of predictions</li>
+<li><strong>labels</strong> (<em>array</em>) &#8211; array of correct labels of type float for compare with the predictions</li>
+<li><strong>labels2classes_fn</strong> (<em>function</em>) &#8211; function for transform the labels to classes</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="clf.measures.Measure.accuracy">
+<code class="descname">accuracy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/clf/measures.html#Measure.accuracy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#clf.measures.Measure.accuracy" title="Permalink to this definition">¶</a></dt>
+<dd><p>measure for correct predictions, true positives and true negatives.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="clf.measures.Measure.auc">
+<code class="descname">auc</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/clf/measures.html#Measure.auc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#clf.measures.Measure.auc" title="Permalink to this definition">¶</a></dt>
+<dd><p>area under the curve of the reciver operating characteristic, measure for 
+true positives rate and false positive rate</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="clf.measures.Measure.f1">
+<code class="descname">f1</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/clf/measures.html#Measure.f1"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#clf.measures.Measure.f1" title="Permalink to this definition">¶</a></dt>
+<dd><p>weighted average presicion and recall</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="clf.measures.Measure.logloss">
+<code class="descname">logloss</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/clf/measures.html#Measure.logloss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#clf.measures.Measure.logloss" title="Permalink to this definition">¶</a></dt>
+<dd><p>accuracy by penalising false classifications</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="clf.measures.Measure.precision">
+<code class="descname">precision</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/clf/measures.html#Measure.precision"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#clf.measures.Measure.precision" title="Permalink to this definition">¶</a></dt>
+<dd><p>measure for false positives predictions.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="clf.measures.Measure.recall">
+<code class="descname">recall</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/clf/measures.html#Measure.recall"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#clf.measures.Measure.recall" title="Permalink to this definition">¶</a></dt>
+<dd><p>measure from false negatives predictions.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="clf.measures.ListMeasure">
+<em class="property">class </em><code class="descclassname">clf.measures.</code><code class="descname">ListMeasure</code><span class="sig-paren">(</span><em>headers=None</em>, <em>measures=None</em>, <em>order=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/clf/measures.html#ListMeasure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#clf.measures.ListMeasure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for save distincts measures</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>headers</strong> (<em>list</em>) &#8211; lists of headers</li>
+<li><strong>measures</strong> (<em>list</em>) &#8211; list of values</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>list_measure = ListMeasure(headers=[&#8220;classif&#8221;, &#8220;f1&#8221;], measures=[[&#8220;test&#8221;, 0.5], [&#8220;test2&#8221;, 0.6]])</p>
+<dl class="method">
+<dt id="clf.measures.ListMeasure.add_measure">
+<code class="descname">add_measure</code><span class="sig-paren">(</span><em>name</em>, <em>value</em>, <em>i=0</em>, <em>reverse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/clf/measures.html#ListMeasure.add_measure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#clf.measures.ListMeasure.add_measure" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> (<em>string</em>) &#8211; column name</li>
+<li><strong>value</strong> (<em>float</em>) &#8211; value to add</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="clf.measures.ListMeasure.drop_empty_columns">
+<code class="descname">drop_empty_columns</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/clf/measures.html#ListMeasure.drop_empty_columns"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#clf.measures.ListMeasure.drop_empty_columns" title="Permalink to this definition">¶</a></dt>
+<dd><p>drop empty columns</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="clf.measures.ListMeasure.empty_columns">
+<code class="descname">empty_columns</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/clf/measures.html#ListMeasure.empty_columns"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#clf.measures.ListMeasure.empty_columns" title="Permalink to this definition">¶</a></dt>
+<dd><p>return a set of indexes of empty columns</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="clf.measures.ListMeasure.get_measure">
+<code class="descname">get_measure</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/clf/measures.html#ListMeasure.get_measure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#clf.measures.ListMeasure.get_measure" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<em>string</em>) &#8211; by name of the column you can get his values.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="clf.measures.ListMeasure.measures_to_dict">
+<code class="descname">measures_to_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/clf/measures.html#ListMeasure.measures_to_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#clf.measures.ListMeasure.measures_to_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>convert the matrix to a dictionary</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="clf.measures.ListMeasure.print_scores">
+<code class="descname">print_scores</code><span class="sig-paren">(</span><em>order_column=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/clf/measures.html#ListMeasure.print_scores"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#clf.measures.ListMeasure.print_scores" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>order_column</strong> (<em>string</em>) &#8211; order the matrix by the order_column name that you pass</li>
+<li><strong>reverse</strong> (<em>bool</em>) &#8211; if False the order is ASC else DESC</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>print the matrix</p>
+</dd></dl>
+
+</dd></dl>
+
+<span class="target" id="module-detector"></span><dl class="class">
+<dt id="detector.HOG">
+<em class="property">class </em><code class="descclassname">detector.</code><code class="descname">HOG</code><span class="sig-paren">(</span><em>model_name=None</em>, <em>check_point_path=None</em>, <em>model_version=None</em>, <em>transforms=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/detector.html#HOG"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#detector.HOG" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a histrogram oriented gradient.
+You need the dlib&#8217;s library and his python bindings to use this class.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>model_name</strong> (<em>string</em>) &#8211; Name of the model</li>
+<li><strong>check_point_path</strong> (<em>string</em>) &#8211; path where the model will be saved, this param is taken from settings</li>
+<li><strong>model_version</strong> (<em>string</em>) &#8211; a string number for identify the differents models</li>
+<li><strong>transforms</strong> (<a class="reference internal" href="#processing.Transforms" title="processing.Transforms"><em>Transforms</em></a>) &#8211; the transforms to apply to the data</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="detector.HOG.detector">
+<code class="descname">detector</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/detector.html#HOG.detector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#detector.HOG.detector" title="Permalink to this definition">¶</a></dt>
+<dd><p>return dlib.simple_object_detector</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="detector.HOG.draw_detections">
+<code class="descname">draw_detections</code><span class="sig-paren">(</span><em>pictures</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/detector.html#HOG.draw_detections"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#detector.HOG.draw_detections" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>pictures</strong> (<em>list</em>) &#8211; list of paths of pictures to search the boinding boxes.</td>
+</tr>
+</tbody>
+</table>
+<p>draw the bounding boxes from the training model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="detector.HOG.load">
+<code class="descname">load</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/detector.html#HOG.load"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#detector.HOG.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loadd the metadata saved after the training.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="detector.HOG.scores">
+<code class="descname">scores</code><span class="sig-paren">(</span><em>measures=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/detector.html#HOG.scores"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#detector.HOG.scores" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>measures</strong> (<em>list</em>) &#8211; list of measures names to show in the score&#8217;s table.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="detector.HOG.test">
+<code class="descname">test</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/detector.html#HOG.test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#detector.HOG.test" title="Permalink to this definition">¶</a></dt>
+<dd><p>test the training model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="detector.HOG.train">
+<code class="descname">train</code><span class="sig-paren">(</span><em>xml_filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/detector.html#HOG.train"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#detector.HOG.train" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>xml_filename</strong> (<em>string</em>) &#8211; name of the filename where are defined the bounding boxes</td>
 </tr>
 </tbody>
 </table>
@@ -378,7 +603,7 @@ i.e
         <li class="right" >
           <a href="changes.html" title="Changelog"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.1.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.2.0 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">

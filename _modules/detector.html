@@ -1,0 +1,251 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>detector &#8212; mlPyp 0.2.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="mlPyp 0.2.0 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">mlPyp 0.2.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for detector</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">dlib</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">ml</span>
+
+<span class="kn">from</span> <span class="nn">ml.utils.config</span> <span class="k">import</span> <span class="n">get_settings</span>
+<span class="kn">from</span> <span class="nn">ml.utils.files</span> <span class="k">import</span> <span class="n">build_tickets_processed</span><span class="p">,</span> <span class="n">delete_tickets_processed</span>
+<span class="kn">from</span> <span class="nn">ml.clf.wrappers</span> <span class="k">import</span> <span class="n">DataDrive</span><span class="p">,</span> <span class="n">ListMeasure</span>
+<span class="kn">from</span> <span class="nn">ml.processing</span> <span class="k">import</span> <span class="n">Transforms</span>
+
+<span class="n">settings</span> <span class="o">=</span> <span class="n">get_settings</span><span class="p">(</span><span class="s2">&quot;ml&quot;</span><span class="p">)</span>
+<span class="n">settings</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">get_settings</span><span class="p">(</span><span class="s2">&quot;tickets&quot;</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="HOG"><a class="viewcode-back" href="../modindex.html#detector.HOG">[docs]</a><span class="k">class</span> <span class="nc">HOG</span><span class="p">(</span><span class="n">DataDrive</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a histrogram oriented gradient.</span>
+<span class="sd">    You need the dlib&#39;s library and his python bindings to use this class.</span>
+
+<span class="sd">    :type model_name: string</span>
+<span class="sd">    :param model_name: Name of the model</span>
+
+<span class="sd">    :type check_point_path: string</span>
+<span class="sd">    :param check_point_path: path where the model will be saved, this param is taken from settings</span>
+
+<span class="sd">    :type model_version: string</span>
+<span class="sd">    :param model_version: a string number for identify the differents models</span>
+
+<span class="sd">    :type transforms: Transforms</span>
+<span class="sd">    :param transforms: the transforms to apply to the data</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">check_point_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+            <span class="n">model_version</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">transforms</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">check_point_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">check_point_path</span> <span class="o">=</span> <span class="n">settings</span><span class="p">[</span><span class="s2">&quot;checkpoints_path&quot;</span><span class="p">]</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">HOG</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span>
+            <span class="n">check_point_path</span><span class="o">=</span><span class="n">check_point_path</span><span class="p">,</span>
+            <span class="n">model_version</span><span class="o">=</span><span class="n">model_version</span><span class="p">,</span>
+            <span class="n">model_name</span><span class="o">=</span><span class="n">model_name</span><span class="p">)</span>
+        <span class="c1">#self.options.epsilon = 0.0005</span>
+        <span class="c1">#self.options.detection_window_size #60 pixels wide by 107 tall</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span> <span class="o">=</span> <span class="n">dlib</span><span class="o">.</span><span class="n">simple_object_detector_training_options</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">add_left_right_image_flips</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">C</span> <span class="o">=</span> <span class="o">.</span><span class="mi">5</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">num_threads</span> <span class="o">=</span> <span class="mi">4</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">be_verbose</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span> <span class="o">=</span> <span class="n">transforms</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+
+<div class="viewcode-block" id="HOG.load"><a class="viewcode-back" href="../modindex.html#detector.HOG.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Loadd the metadata saved after the training.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">meta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_meta</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span> <span class="o">=</span> <span class="n">Transforms</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;transforms&quot;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_training_path</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;data_training_path&quot;</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">pass</span></div>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">module_cls_name</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">.</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">__module__</span><span class="p">,</span> <span class="n">cls</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">score</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">list_measure</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scores</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;transforms&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">to_json</span><span class="p">(),</span>
+                <span class="s2">&quot;model_module&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">module_cls_name</span><span class="p">(),</span>
+                <span class="s2">&quot;data_training_path&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_training_path</span><span class="p">,</span>
+                <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_name</span><span class="p">,</span>
+                <span class="s2">&quot;model_version&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_version</span><span class="p">,</span>
+                <span class="s2">&quot;score&quot;</span><span class="p">:</span> <span class="n">list_measure</span><span class="o">.</span><span class="n">measures_to_dict</span><span class="p">()}</span>
+
+<div class="viewcode-block" id="HOG.train"><a class="viewcode-back" href="../modindex.html#detector.HOG.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xml_filename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :type xml_filename: string</span>
+<span class="sd">        :param xml_filename: name of the filename where are defined the bounding boxes</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">examples</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span> <span class="s1">&#39;../../examples/xml&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_training_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">examples</span><span class="p">,</span> <span class="n">xml_filename</span><span class="p">)</span>
+        <span class="n">detector_path_svm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_model_file</span><span class="p">()</span>
+        <span class="n">dlib</span><span class="o">.</span><span class="n">train_simple_object_detector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_training_path</span><span class="p">,</span> <span class="n">detector_path_svm</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">)</span>        
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_meta</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="HOG.scores"><a class="viewcode-back" href="../modindex.html#detector.HOG.scores">[docs]</a>    <span class="k">def</span> <span class="nf">scores</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">measures</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :type measures: list</span>
+<span class="sd">        :param measures: list of measures names to show in the score&#39;s table.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">measures</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">measures</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;presicion&quot;</span><span class="p">,</span> <span class="s2">&quot;recall&quot;</span><span class="p">,</span> <span class="s2">&quot;f1&quot;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">measures</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">measures</span> <span class="o">=</span> <span class="n">measures</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+
+        <span class="n">list_measure</span> <span class="o">=</span> <span class="n">ListMeasure</span><span class="p">()</span>
+        <span class="n">score</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test</span><span class="p">()</span>
+
+        <span class="n">list_measure</span><span class="o">.</span><span class="n">add_measure</span><span class="p">(</span><span class="s2">&quot;CLF&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+        <span class="n">list_measure</span><span class="o">.</span><span class="n">add_measure</span><span class="p">(</span><span class="s2">&quot;precision&quot;</span><span class="p">,</span> <span class="n">score</span><span class="o">.</span><span class="n">precision</span><span class="p">)</span>
+        <span class="n">list_measure</span><span class="o">.</span><span class="n">add_measure</span><span class="p">(</span><span class="s2">&quot;recall&quot;</span><span class="p">,</span> <span class="n">score</span><span class="o">.</span><span class="n">recall</span><span class="p">)</span>
+        <span class="n">list_measure</span><span class="o">.</span><span class="n">add_measure</span><span class="p">(</span><span class="s2">&quot;f1&quot;</span><span class="p">,</span> <span class="n">score</span><span class="o">.</span><span class="n">average_precision</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">list_measure</span></div>
+
+<div class="viewcode-block" id="HOG.test"><a class="viewcode-back" href="../modindex.html#detector.HOG.test">[docs]</a>    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        test the training model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">detector_path_svm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_model_file</span><span class="p">()</span>
+        <span class="n">examples</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span> <span class="s1">&#39;../../examples/xml&#39;</span><span class="p">)</span>
+        <span class="n">testing_xml_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">examples</span><span class="p">,</span> <span class="s2">&quot;tickets_test.xml&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">dlib</span><span class="o">.</span><span class="n">test_simple_object_detector</span><span class="p">(</span><span class="n">testing_xml_path</span><span class="p">,</span> <span class="n">detector_path_svm</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="HOG.draw_detections"><a class="viewcode-back" href="../modindex.html#detector.HOG.draw_detections">[docs]</a>    <span class="k">def</span> <span class="nf">draw_detections</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pictures</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :type pictures: list</span>
+<span class="sd">        :param pictures: list of paths of pictures to search the boinding boxes.</span>
+
+<span class="sd">        draw the bounding boxes from the training model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">skimage</span> <span class="k">import</span> <span class="n">io</span>
+        <span class="kn">from</span> <span class="nn">skimage</span> <span class="k">import</span> <span class="n">img_as_ubyte</span>
+
+        <span class="n">detector</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">detector</span><span class="p">()</span>
+        <span class="n">win</span> <span class="o">=</span> <span class="n">dlib</span><span class="o">.</span><span class="n">image_window</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">pictures</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Processing file: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">img_as_ubyte</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">img</span><span class="p">))</span>
+            <span class="n">dets</span> <span class="o">=</span> <span class="n">detector</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Numbers detected: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dets</span><span class="p">)))</span>
+
+            <span class="n">win</span><span class="o">.</span><span class="n">clear_overlay</span><span class="p">()</span>
+            <span class="n">win</span><span class="o">.</span><span class="n">set_image</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+            <span class="n">win</span><span class="o">.</span><span class="n">add_overlay</span><span class="p">(</span><span class="n">dets</span><span class="p">)</span>
+            <span class="n">dlib</span><span class="o">.</span><span class="n">hit_enter_to_continue</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">images_from_directories</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">folder_base</span><span class="p">):</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">directory</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">folder_base</span><span class="p">):</span>
+            <span class="n">files</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder_base</span><span class="p">,</span> <span class="n">directory</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">files</span><span class="p">):</span>
+                <span class="n">number_id</span> <span class="o">=</span> <span class="n">directory</span>
+                <span class="k">for</span> <span class="n">image_file</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">files</span><span class="p">):</span>
+                    <span class="n">images</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">number_id</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">files</span><span class="p">,</span> <span class="n">image_file</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">images</span>
+
+    <span class="k">def</span> <span class="nf">test_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">settings</span><span class="p">,</span> <span class="n">PICTURES</span><span class="p">):</span>
+            <span class="n">build_tickets_processed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transforms</span><span class="p">,</span> <span class="n">settings</span><span class="p">,</span> <span class="n">PICTURES</span><span class="p">)</span>
+            <span class="n">score</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test</span><span class="p">()</span>
+            <span class="n">delete_tickets_processed</span><span class="p">(</span><span class="n">settings</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">score</span><span class="p">)</span>
+
+<div class="viewcode-block" id="HOG.detector"><a class="viewcode-back" href="../modindex.html#detector.HOG.detector">[docs]</a>    <span class="k">def</span> <span class="nf">detector</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        return dlib.simple_object_detector</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">dlib</span><span class="o">.</span><span class="n">simple_object_detector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">make_model_file</span><span class="p">())</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">mlPyp 0.2.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Alejandro G. Martinez Romero.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

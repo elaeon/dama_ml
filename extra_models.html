@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Changelog &#8212; mlPyp 0.2.0 documentation</title>
+    <title>Extra models &#8212; mlPyp 0.2.0 documentation</title>
     
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -26,8 +26,8 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="top" title="mlPyp 0.2.0 documentation" href="index.html" />
-    <link rel="next" title="Module index" href="modindex.html" />
-    <link rel="prev" title="Examples" href="examples.html" /> 
+    <link rel="next" title="Wrappers" href="wrappers.html" />
+    <link rel="prev" title="Models" href="models.html" /> 
   </head>
   <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
@@ -40,10 +40,10 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="modindex.html" title="Module index"
+          <a href="wrappers.html" title="Wrappers"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="examples.html" title="Examples"
+          <a href="models.html" title="Models"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.2.0 documentation</a> &#187;</li> 
       </ul>
@@ -54,32 +54,32 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="changelog">
-<h1>Changelog<a class="headerlink" href="#changelog" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="id1">
-<h2>0.2.0<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+  <div class="section" id="extra-models">
+<h1>Extra models<a class="headerlink" href="#extra-models" title="Permalink to this headline">¶</a></h1>
+<p>The extra models are predefined models that you can use for classification without change almost anything.</p>
+<p>In the module ml.clf.extended.w_gpy you can use the models:</p>
 <ul class="simple">
-<li>Now the datasets are saved in hdf5 format</li>
-<li>The datasets can be splited, and models can be trained in folds</li>
-<li>Added a new class for integrate transformations to the data</li>
-<li>You can choice if the datasets are saved with applied tranformations or not</li>
-<li>Examples for data operations are described in the example&#8217;s section</li>
-<li>Added ensembled models (Bagging, Stacking, Boosting)</li>
+<li>GPC (Gaussian Process Classification)</li>
+<li>SVGPC (Stochastic Variational Gaussian Process Classification)</li>
 </ul>
-</div>
-<div class="section" id="id2">
-<h2>0.1.1<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>In the module ml.clf.extended.w_sklearn are:</p>
 <ul class="simple">
-<li>Added Auto Encoder class</li>
-<li>Added parametric tsne</li>
+<li>SVC (Support Vector Component)</li>
+<li>RandomForest</li>
+<li>ExtraTrees</li>
+<li>LogisticRegression</li>
+<li>SGDClassifier</li>
+<li>AdaBoost</li>
+<li>GradientBoost</li>
 </ul>
-</div>
-<div class="section" id="id3">
-<h2>0.1.0<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>In the module ml.clf.extended.w_tflearn are:</p>
 <ul class="simple">
-<li>Initial version</li>
+<li>MLP (MultiLayer Perceptron)</li>
 </ul>
-</div>
+<p>In the module ml.clf.extended.w_keras are:</p>
+<ul class="simple">
+<li>FCNet (Full Conected Network)</li>
+</ul>
 </div>
 
 
@@ -88,26 +88,16 @@
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-  <h3><a href="index.html">Table Of Contents</a></h3>
-  <ul>
-<li><a class="reference internal" href="#">Changelog</a><ul>
-<li><a class="reference internal" href="#id1">0.2.0</a></li>
-<li><a class="reference internal" href="#id2">0.1.1</a></li>
-<li><a class="reference internal" href="#id3">0.1.0</a></li>
-</ul>
-</li>
-</ul>
-
   <h4>Previous topic</h4>
-  <p class="topless"><a href="examples.html"
-                        title="previous chapter">Examples</a></p>
+  <p class="topless"><a href="models.html"
+                        title="previous chapter">Models</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="modindex.html"
-                        title="next chapter">Module index</a></p>
+  <p class="topless"><a href="wrappers.html"
+                        title="next chapter">Wrappers</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
-      <li><a href="_sources/changes.txt"
+      <li><a href="_sources/extra_models.txt"
             rel="nofollow">Show Source</a></li>
     </ul>
    </div>
@@ -135,10 +125,10 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="modindex.html" title="Module index"
+          <a href="wrappers.html" title="Wrappers"
              >next</a> |</li>
         <li class="right" >
-          <a href="examples.html" title="Examples"
+          <a href="models.html" title="Models"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.2.0 documentation</a> &#187;</li> 
       </ul>

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Models &#8212; mlPyp 0.1.1 documentation</title>
+    <title>Models &#8212; mlPyp 0.2.0 documentation</title>
     
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.1.1',
+        VERSION:     '0.2.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,9 +25,9 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="top" title="mlPyp 0.1.1 documentation" href="index.html" />
-    <link rel="next" title="Wrappers" href="wrappers.html" />
-    <link rel="prev" title="Preprocessing" href="preprocessing.html" /> 
+    <link rel="top" title="mlPyp 0.2.0 documentation" href="index.html" />
+    <link rel="next" title="Extra models" href="extra_models.html" />
+    <link rel="prev" title="Processing" href="preprocessing.html" /> 
   </head>
   <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
@@ -40,12 +40,12 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="wrappers.html" title="Wrappers"
+          <a href="extra_models.html" title="Extra models"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="preprocessing.html" title="Preprocessing"
+          <a href="preprocessing.html" title="Processing"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.1.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.2.0 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -57,7 +57,7 @@
   <div class="section" id="models">
 <h1>Models<a class="headerlink" href="#models" title="Permalink to this headline">¶</a></h1>
 <p>The models are classificators with operations like fit and predict. Only this two operations are
-need for add models to python-ml.</p>
+need for add models to mlPyp.</p>
 <dl class="docutils">
 <dt>By default the supported frameworks are:</dt>
 <dd><ul class="first last simple">
@@ -69,10 +69,11 @@ need for add models to python-ml.</p>
 </dd>
 </dl>
 <p>but you can define more, see: <a class="reference internal" href="wrappers.html"><span class="doc">Wrappers</span></a>.</p>
-<p>For example, we add a model called AdaBoost.</p>
+<p>For example, we want to add a model called AdaBoost.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># SKLP is the wrapper for classificators with probabilistic</span>
 <span class="c1"># predictions in scikit-learn</span>
 <span class="kn">from</span> <span class="nn">ml.clf.extended.w_sklearn</span> <span class="kn">import</span> <span class="n">SKLP</span>
+
 <span class="k">class</span> <span class="nc">AdaBoost</span><span class="p">(</span><span class="n">SKLP</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">prepare_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="kn">from</span> <span class="nn">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">AdaBoostClassifier</span>
@@ -82,20 +83,11 @@ need for add models to python-ml.</p>
         <span class="n">reg</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">train_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">train_labels</span><span class="p">)</span>
         <span class="n">sig_clf</span> <span class="o">=</span> <span class="n">CalibratedClassifierCV</span><span class="p">(</span><span class="n">reg</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;sigmoid&quot;</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="s2">&quot;prefit&quot;</span><span class="p">)</span>
         <span class="n">sig_clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">valid_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">valid_labels</span><span class="p">)</span>
-        <span class="c1">#sig_clf must have operations like fit and predict</span>
-        <span class="c1">#i.e sig_clf.fit(X, y), sig_clf.predict(X)</span>
-        <span class="c1">#if not you can use MLModel as wrapper</span>
-        <span class="c1">#from ml.models import MLModel</span>
-        <span class="c1">#return MLModel(fit_fn=sig_clf.fit,</span>
-        <span class="c1">#                predictors=[sig_clf.predict],</span>
-        <span class="c1">#                load_fn=self.load_fn,</span>
-        <span class="c1">#                save_fn=save) you would define save</span>
         <span class="k">return</span> <span class="n">sig_clf</span>
 </pre></div>
 </div>
 <p>Now we can use AdaBoost.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">dataset</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">DataSetBuilder</span><span class="o">.</span><span class="n">load_dataset</span><span class="p">(</span>
-    <span class="s2">&quot;cats_and_dogs_dataset&quot;</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">dataset</span> <span class="o">=</span> <span class="n">DataSetBuilder</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;cats_and_dogs_dataset&quot;</span><span class="p">)</span>
 
 <span class="n">classif</span> <span class="o">=</span> <span class="n">AdaBoost</span><span class="p">(</span>
     <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;my_new_model&quot;</span><span class="p">,</span>
@@ -103,7 +95,7 @@ need for add models to python-ml.</p>
     <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
     <span class="n">group_name</span><span class="o">=</span><span class="s2">&quot;cats_and_dogs&quot;</span><span class="p">)</span>
 <span class="n">classif</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">num_steps</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
-<span class="c1">#Automaticly the train is saved and now can predict data.</span>
+<span class="c1">#Automatically the train is saved and now can predict data.</span>
 </pre></div>
 </div>
 <p>Predict data is like</p>
@@ -114,9 +106,10 @@ need for add models to python-ml.</p>
 <span class="n">predictions</span> <span class="o">=</span> <span class="n">classif</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>If you want add a TensorFlow model i.e a multilayer perceptron</p>
+<p>If you want to add a TensorFlow model i.e a multilayer perceptron</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># TFL is the wrapper for classificators in TensorFlow</span>
 <span class="kn">from</span> <span class="nn">ml.clf.extended.w_tflearn</span> <span class="kn">import</span> <span class="n">TFL</span>
+
 <span class="k">class</span> <span class="nc">MLP</span><span class="p">(</span><span class="n">TFL</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">if</span> <span class="s2">&quot;layers&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
@@ -161,10 +154,10 @@ need for add models to python-ml.</p>
         <div class="sphinxsidebarwrapper">
   <h4>Previous topic</h4>
   <p class="topless"><a href="preprocessing.html"
-                        title="previous chapter">Preprocessing</a></p>
+                        title="previous chapter">Processing</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="wrappers.html"
-                        title="next chapter">Wrappers</a></p>
+  <p class="topless"><a href="extra_models.html"
+                        title="next chapter">Extra models</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -196,12 +189,12 @@ need for add models to python-ml.</p>
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="wrappers.html" title="Wrappers"
+          <a href="extra_models.html" title="Extra models"
              >next</a> |</li>
         <li class="right" >
-          <a href="preprocessing.html" title="Preprocessing"
+          <a href="preprocessing.html" title="Processing"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.1.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.2.0 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">

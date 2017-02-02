@@ -94,10 +94,11 @@ Return a table of datasets previosly builded.
 
 .. code-block:: python
 
-    dataset    size       date
-    ---------  ---------  --------------------------
-    numbers    240.03 MB  2016-12-10 23:50:14.167061
-    test2      16.79 MB   2016-12-17 23:28:46.739531
+    Total size: 6.75 MB
+    dataset            size     date
+    -----------------  -------  --------------------
+    numbers_tickets    2.27 MB  2017-01-26T22:25 UTC
+    numbers_tickets_d  4.48 MB  2017-01-25T17:01 UTC
 
 Or
 
@@ -129,6 +130,8 @@ Index
    models
    extra_models
    wrappers
+   ensemble
+   examples
    changes
    modindex
 

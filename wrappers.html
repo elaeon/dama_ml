@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Wrappers &#8212; mlPyp 0.1.1 documentation</title>
+    <title>Wrappers &#8212; mlPyp 0.2.0 documentation</title>
     
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.1.1',
+        VERSION:     '0.2.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,9 +25,9 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="top" title="mlPyp 0.1.1 documentation" href="index.html" />
-    <link rel="next" title="Changelog" href="changes.html" />
-    <link rel="prev" title="Models" href="models.html" /> 
+    <link rel="top" title="mlPyp 0.2.0 documentation" href="index.html" />
+    <link rel="next" title="Ensemble models" href="ensemble.html" />
+    <link rel="prev" title="Extra models" href="extra_models.html" /> 
   </head>
   <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
@@ -40,12 +40,12 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="changes.html" title="Changelog"
+          <a href="ensemble.html" title="Ensemble models"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="models.html" title="Models"
+          <a href="extra_models.html" title="Extra models"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.1.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.2.0 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -58,11 +58,11 @@
 <h1>Wrappers<a class="headerlink" href="#wrappers" title="Permalink to this headline">¶</a></h1>
 <p>The wrappers are classes where is posible define operations over distincts machine learning&#8217;s frameworks.
 mlPyp has wrappers for clasificators and auto encoders, manly for frameworks like tensorflow, keras, scikit-learn, but if you want to use another framework, the base class &#8216;BaseAe&#8217; and &#8216;BaseClassif&#8217; will help you to convert you model into mlPyp classes.</p>
-<p>For example, if you are using the framework &#8220;X&#8221; for build a classification model, the BaseClassif is the parent class where you must define (aditionaly to prepare model) convert_label, train, reformat and load functions.</p>
+<p>For example, if you are using the framework &#8220;X&#8221; for build a classification model, the BaseClassif is the parent class where you must define (aditionally to the prepare model function) convert_label, train, reformat and load functions.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Xclf</span><span class="p">(</span><span class="n">BaseClassif</span><span class="p">):</span>
  <span class="c1"># load_fn load a saved model</span>
  <span class="k">def</span> <span class="nf">load_fn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
-     <span class="kn">from</span> <span class="nn">xclf.models</span> <span class="kn">import</span> <span class="n">load_model</span>
+     <span class="kn">from</span> <span class="nn">clf.models</span> <span class="kn">import</span> <span class="n">load_model</span>
      <span class="n">model</span> <span class="o">=</span> <span class="n">load_model</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
      <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">MLModel</span><span class="p">(</span><span class="n">fit_fn</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">,</span>
                          <span class="n">predictors</span><span class="o">=</span><span class="p">[</span><span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">],</span>
@@ -114,11 +114,11 @@ mlPyp has wrappers for clasificators and auto encoders, manly for frameworks lik
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
   <h4>Previous topic</h4>
-  <p class="topless"><a href="models.html"
-                        title="previous chapter">Models</a></p>
+  <p class="topless"><a href="extra_models.html"
+                        title="previous chapter">Extra models</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="changes.html"
-                        title="next chapter">Changelog</a></p>
+  <p class="topless"><a href="ensemble.html"
+                        title="next chapter">Ensemble models</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -150,12 +150,12 @@ mlPyp has wrappers for clasificators and auto encoders, manly for frameworks lik
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="changes.html" title="Changelog"
+          <a href="ensemble.html" title="Ensemble models"
              >next</a> |</li>
         <li class="right" >
-          <a href="models.html" title="Models"
+          <a href="extra_models.html" title="Extra models"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.1.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.2.0 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">

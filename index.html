@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Welcome to mlPyp’s documentation! &#8212; mlPyp 0.1.1 documentation</title>
+    <title>Welcome to mlPyp’s documentation! &#8212; mlPyp 0.2.0 documentation</title>
     
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.1.1',
+        VERSION:     '0.2.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="top" title="mlPyp 0.1.1 documentation" href="#" />
+    <link rel="top" title="mlPyp 0.2.0 documentation" href="#" />
     <link rel="next" title="Datasets" href="datasets.html" /> 
   </head>
   <body role="document">
@@ -41,7 +41,7 @@
         <li class="right" >
           <a href="datasets.html" title="Datasets"
              accesskey="N">next</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">mlPyp 0.1.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="#">mlPyp 0.2.0 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -117,7 +117,7 @@ pip install ML/
 <span class="n">predictions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">classif</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">258</span><span class="p">)))</span>
 </pre></div>
 </div>
-<p>You can use more extra models (see <span class="xref doc">extra_models</span>). Extend the base model and make you own predictors! For more information about this, see the section <a class="reference internal" href="models.html"><span class="doc">Models</span></a>.</p>
+<p>You can use more extra models (see <a class="reference internal" href="extra_models.html"><span class="doc">Extra models</span></a>). Extend the base model and make you own predictors! For more information about this, see the section <a class="reference internal" href="models.html"><span class="doc">Models</span></a>.</p>
 </div>
 <div class="section" id="cli">
 <h1>CLI<a class="headerlink" href="#cli" title="Permalink to this headline">¶</a></h1>
@@ -127,10 +127,11 @@ For example</p>
 </pre></div>
 </div>
 <p>Return a table of datasets previosly builded.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">dataset</span>    <span class="n">size</span>       <span class="n">date</span>
-<span class="o">---------</span>  <span class="o">---------</span>  <span class="o">--------------------------</span>
-<span class="n">numbers</span>    <span class="mf">240.03</span> <span class="n">MB</span>  <span class="mi">2016</span><span class="o">-</span><span class="mi">12</span><span class="o">-</span><span class="mi">10</span> <span class="mi">23</span><span class="p">:</span><span class="mi">50</span><span class="p">:</span><span class="mf">14.167061</span>
-<span class="n">test2</span>      <span class="mf">16.79</span> <span class="n">MB</span>   <span class="mi">2016</span><span class="o">-</span><span class="mi">12</span><span class="o">-</span><span class="mi">17</span> <span class="mi">23</span><span class="p">:</span><span class="mi">28</span><span class="p">:</span><span class="mf">46.739531</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">Total</span> <span class="n">size</span><span class="p">:</span> <span class="mf">6.75</span> <span class="n">MB</span>
+<span class="n">dataset</span>            <span class="n">size</span>     <span class="n">date</span>
+<span class="o">-----------------</span>  <span class="o">-------</span>  <span class="o">--------------------</span>
+<span class="n">numbers_tickets</span>    <span class="mf">2.27</span> <span class="n">MB</span>  <span class="mi">2017</span><span class="o">-</span><span class="mo">01</span><span class="o">-</span><span class="mi">26</span><span class="n">T22</span><span class="p">:</span><span class="mi">25</span> <span class="n">UTC</span>
+<span class="n">numbers_tickets_d</span>  <span class="mf">4.48</span> <span class="n">MB</span>  <span class="mi">2017</span><span class="o">-</span><span class="mo">01</span><span class="o">-</span><span class="mi">25</span><span class="n">T17</span><span class="p">:</span><span class="mo">01</span> <span class="n">UTC</span>
 </pre></div>
 </div>
 <p>Or</p>
@@ -151,12 +152,26 @@ For example</p>
 <div class="toctree-wrapper compound" id="mastertoc">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="datasets.html">Datasets</a></li>
-<li class="toctree-l1"><a class="reference internal" href="preprocessing.html">Preprocessing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="preprocessing.html">Processing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extra_models.html">Extra models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="wrappers.html">Wrappers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ensemble.html">Ensemble models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ensemble.html#boosting">Boosting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ensemble.html#stacking">Stacking</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ensemble.html#bagging">Bagging</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#basic-predictor">Basic predictor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#supermarker-s-numbers-tickets-transcriptor">Supermarker&#8217;s numbers tickets transcriptor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#numerai-competition">Numerai competition</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="changes.html#id1">0.1.1</a></li>
-<li class="toctree-l2"><a class="reference internal" href="changes.html#id2">0.1.0</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changes.html#id1">0.2.0</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changes.html#id2">0.1.1</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changes.html#id3">0.1.0</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="modindex.html">Module index</a></li>
@@ -229,7 +244,7 @@ For example</p>
         <li class="right" >
           <a href="datasets.html" title="Datasets"
              >next</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">mlPyp 0.1.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="#">mlPyp 0.2.0 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">

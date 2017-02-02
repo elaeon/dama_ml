@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Preprocessing &#8212; mlPyp 0.1.1 documentation</title>
+    <title>Processing &#8212; mlPyp 0.2.0 documentation</title>
     
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.1.1',
+        VERSION:     '0.2.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="top" title="mlPyp 0.1.1 documentation" href="index.html" />
+    <link rel="top" title="mlPyp 0.2.0 documentation" href="index.html" />
     <link rel="next" title="Models" href="models.html" />
     <link rel="prev" title="Datasets" href="datasets.html" /> 
   </head>
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="datasets.html" title="Datasets"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.1.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.2.0 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -54,51 +54,27 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="preprocessing">
-<h1>Preprocessing<a class="headerlink" href="#preprocessing" title="Permalink to this headline">¶</a></h1>
-<p>When you build a dataset you can add transformations to the data, i.e preprocessing it before training. Preprocessing is the parent class, so if you need you own transformation be applied, you can extend the Preprocessing class.</p>
-<p>For example, we want two extra functions for preprocessing:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ml.preprocessing</span> <span class="kn">import</span> <span class="n">Preprocessing</span>
-<span class="k">class</span> <span class="nc">MyPreprocessing</span><span class="p">(</span><span class="n">Preprocessing</span><span class="p">):</span>
+  <div class="section" id="processing">
+<h1>Processing<a class="headerlink" href="#processing" title="Permalink to this headline">¶</a></h1>
+<p>When you build a dataset you can add transformations to the data, i.e preprocessing it before training. So if you need some transformations to be applied to the data, add the functions to the Transformations class.</p>
+<p>For example, we want to add two extra functions for preprocessing:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ml.processing</span> <span class="kn">import</span> <span class="n">Transforms</span>
 
-    <span class="k">def</span> <span class="nf">my_scale</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">my_scale</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">data</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">plus_b</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">+</span> <span class="n">b</span>
+<span class="k">def</span> <span class="nf">plus_b</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">data</span> <span class="o">+</span> <span class="n">b</span>
+
+<span class="n">transforms</span> <span class="o">=</span> <span class="n">Transforms</span><span class="p">()</span>
+<span class="n">transforms</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">my_scale</span><span class="p">)</span>
+<span class="n">transforms</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">plus_b</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Now in the DataSetBuilder use this class:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">dataset</span> <span class="o">=</span> <span class="n">DataSetBuilder</span><span class="p">(</span>
     <span class="n">dataset_name</span><span class="p">,</span>
-    <span class="n">preprocessing_class</span><span class="o">=</span><span class="n">MyPreprocessing</span>
-    <span class="n">transforms_row</span><span class="o">=</span><span class="p">[(</span><span class="s1">&#39;my_scale&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;plus_b&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">})])</span>
-<span class="n">dataset</span><span class="o">.</span><span class="n">build_dataset</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>transforms_row apply indepently transformations to each elem in the data, but if you want add a transformation
-who interact (dependently) with each, you must use the FiT class.</p>
-<p>Fit is similar to Preprocessing except, you need define a FiT for every function.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ml.preprocessing</span> <span class="kn">import</span> <span class="n">FiT</span>
-<span class="k">class</span> <span class="nc">FiTScaler</span><span class="p">(</span><span class="n">FiT</span><span class="p">):</span>
-    <span class="c1"># if the transformation not support high dimensions</span>
-    <span class="k">def</span> <span class="nf">dim_rule</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
-            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">data</span>
-
-    <span class="c1">#This is the only function you need to define</span>
-    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
-        <span class="kn">from</span> <span class="nn">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
-        <span class="n">scaler</span> <span class="o">=</span> <span class="n">StandardScaler</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
-        <span class="n">scaler</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim_rule</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">=</span> <span class="n">scaler</span>
-</pre></div>
-</div>
-<p>Now apply FiT to you dataset with:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">dataset</span> <span class="o">=</span> <span class="n">DataSetBuilder</span><span class="p">(</span>
-    <span class="n">dataset_name</span><span class="p">,</span>
-    <span class="n">transforms_global</span><span class="o">=</span><span class="p">[(</span><span class="n">FiTScaler</span><span class="o">.</span><span class="n">module_cls_name</span><span class="p">(),</span> <span class="bp">None</span><span class="p">)])</span>
+    <span class="n">transforms</span><span class="o">=</span><span class="n">transforms</span><span class="p">)</span>
 <span class="n">dataset</span><span class="o">.</span><span class="n">build_dataset</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -152,7 +128,7 @@ who interact (dependently) with each, you must use the FiT class.</p>
         <li class="right" >
           <a href="datasets.html" title="Datasets"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.1.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.2.0 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
