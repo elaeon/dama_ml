@@ -12,6 +12,23 @@ settings.update(get_settings("tickets"))
 
 
 class HOG(DataDrive):
+    """
+    Create a histrogram oriented gradient.
+    You need the dlib's library and his python bindings to use this class.
+
+    :type model_name: string
+    :param model_name: Name of the model
+
+    :type check_point_path: string
+    :param check_point_path: path where the model will be saved, this param is taken from settings
+
+    :type model_version: string
+    :param model_version: a string number for identify the differents models
+
+    :type transforms: Transforms
+    :param transforms: the transforms to apply to the data
+
+    """
     def __init__(self, model_name=None, check_point_path=None, 
             model_version=None, transforms=None):
         if check_point_path is None:
@@ -31,6 +48,9 @@ class HOG(DataDrive):
         self.load()
 
     def load(self):
+        """
+        Loadd the metadata saved after the training.
+        """
         try:
             meta = self.load_meta()
             self.transforms = Transforms.from_json(meta["transforms"])
@@ -54,6 +74,10 @@ class HOG(DataDrive):
                 "score": list_measure.measures_to_dict()}
 
     def train(self, xml_filename):
+        """
+        :type xml_filename: string
+        :param xml_filename: name of the filename where are defined the bounding boxes
+        """
         examples = os.path.join(os.path.dirname(__file__), '../../examples/xml')
         self.data_training_path = os.path.join(examples, xml_filename)
         detector_path_svm = self.make_model_file()
@@ -61,6 +85,10 @@ class HOG(DataDrive):
         self.save_meta()
 
     def scores(self, measures=None):
+        """
+        :type measures: list
+        :param measures: list of measures names to show in the score's table.
+        """
         if measures is None:
             measures = ["presicion", "recall", "f1"]
         elif isinstance(measures, str):
@@ -77,12 +105,21 @@ class HOG(DataDrive):
         return list_measure
 
     def test(self):
+        """
+        test the training model.
+        """
         detector_path_svm = self.make_model_file()
         examples = os.path.join(os.path.dirname(__file__), '../../examples/xml')
         testing_xml_path = os.path.join(examples, "tickets_test.xml")
         return dlib.test_simple_object_detector(testing_xml_path, detector_path_svm)
 
     def draw_detections(self, pictures):
+        """
+        :type pictures: list
+        :param pictures: list of paths of pictures to search the boinding boxes.
+
+        draw the bounding boxes from the training model.
+        """
         from skimage import io
         from skimage import img_as_ubyte
 
@@ -117,4 +154,7 @@ class HOG(DataDrive):
             print(score)
 
     def detector(self):
+        """
+        return dlib.simple_object_detector
+        """
         return dlib.simple_object_detector(self.make_model_file())

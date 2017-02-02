@@ -9,3 +9,6 @@ Module index
 
 .. automodule:: clf.measures
     :members: Measure, ListMeasure
+
+.. automodule:: detector
+    :members: HOG
