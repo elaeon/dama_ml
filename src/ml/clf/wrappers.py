@@ -6,135 +6,18 @@ import logging
 from sklearn.preprocessing import LabelEncoder
 from ml.utils.config import get_settings
 from ml.models import MLModel
+from ml.ds import DataSetBuilder
+from ml.clf.measures import ListMeasure
+
 
 settings = get_settings("ml")
 logging.basicConfig()
+console = logging.StreamHandler()
+console.setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
+log.addHandler(console)
 #np.random.seed(133)
-
-class Measure(object):
-    def __init__(self, predictions, labels, labels2classes_fn):
-        self.labels = labels2classes_fn(labels)
-        self.predictions = predictions
-        self.average = "macro"
-        self.labels2classes = labels2classes_fn
-
-    def accuracy(self):
-        from sklearn.metrics import accuracy_score
-        return accuracy_score(self.labels, self.labels2classes(self.predictions))
-
-    #false positives
-    def precision(self):
-        from sklearn.metrics import precision_score
-        return precision_score(self.labels, self.labels2classes(self.predictions), 
-            average=self.average, pos_label=None)
-
-    #false negatives
-    def recall(self):
-        from sklearn.metrics import recall_score
-        return recall_score(self.labels, self.labels2classes(self.predictions), 
-            average=self.average, pos_label=None)
-
-    #weighted avg presicion and recall
-    def f1(self):
-        from sklearn.metrics import f1_score
-        return f1_score(self.labels, self.labels2classes(self.predictions), 
-            average=self.average, pos_label=None)
-
-    def auc(self):
-        from sklearn.metrics import roc_auc_score
-        try:
-            return roc_auc_score(self.labels, self.labels2classes(self.predictions), 
-                average=self.average)
-        except ValueError:
-            return None
-
-    def confusion_matrix(self, base_labels=None):
-        from sklearn.metrics import confusion_matrix
-        cm = confusion_matrix(self.labels, self.transform(self.predictions), labels=base_labels)
-        return cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-
-    def logloss(self):
-        from sklearn.metrics import log_loss
-        return log_loss(self.labels, self.predictions)
-
-
-class ListMeasure(object):
-    def __init__(self, headers=None, measures=None):
-        if headers is None:
-            headers = []
-        if measures is None:
-            measures = [[]]
-
-        self.headers = headers
-        self.measures = measures
-
-    def add_measure(self, name, value, i=0):
-        self.headers.append(name)
-        self.measures[i].append(value)
-
-    def get_measure(self, name):
-        return self.measures_to_dict().get(name, None)
-
-    def measures_to_dict(self):
-        return {header: measures for header, measures in zip(self.headers[1:], self.measures[0][1:])}
-            
-    def print_scores(self, order_column="f1"):
-        from ml.utils.order import order_table_print
-        order_table_print(self.headers, self.measures, order_column)
-
-    def print_matrix(self, labels):
-        from tabulate import tabulate
-        for name, measure in self.measures:
-            print("******")
-            print(name)
-            print("******")
-            print(tabulate(np.c_[labels.T, measure], list(labels)))
-
-    def __add__(self, other):
-        for hs, ho in zip(self.headers, other.headers):
-            if hs != ho:
-                raise Exception
-
-        diff_len = abs(len(self.headers) - len(other.headers)) + 1
-        if len(self.headers) < len(other.headers):
-            headers = other.headers
-            this_measures = [m +  ([None] * diff_len) for m in self.measures]
-            other_measures = other.measures
-        elif len(self.headers) > len(other.headers):
-            headers = self.headers
-            this_measures = self.measures
-            other_measures = [m + ([None] * diff_len) for m in other.measures]
-        else:
-            headers = self.headers
-            this_measures = self.measures
-            other_measures = other.measures
-
-        list_measure = ListMeasure(
-            headers=headers, measures=this_measures+other_measures)
-        return list_measure
-
-    def calc_scores(self, name, predict, data, labels, labels2classes_fn=None, measures=None):
-        if measures is None:
-            measures = ["accuracy", "precision", "recall", "f1", "auc", "logloss"]
-        elif isinstance(measures, str):
-            measures = measures.split(",")
-        else:
-            measures = ["logloss"]
-        uncertain = "logloss" in measures
-        predictions = np.asarray(list(
-            predict(data, raw=uncertain, transform=False, chunk_size=258)))
-        measure = Measure(predictions, labels, labels2classes_fn)
-        self.add_measure("CLF", name)
-
-        measure_class = []
-        for measure_name in measures:
-            measure_name = measure_name.strip()
-            if hasattr(measure, measure_name):
-                measure_class.append((measure_name, measure))
-
-        for measure_name, measure in measure_class:
-            self.add_measure(measure_name, getattr(measure, measure_name)())
 
 
 class DataDrive(object):
@@ -191,7 +74,7 @@ class DataDrive(object):
 class BaseClassif(DataDrive):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
                 model_version=None, dataset_train_limit=None, 
-                auto_load=True, group_name=None):
+                autoload=True, group_name=None):
         self.model = None
         self.le = LabelEncoder()
         self.dataset_train_limit = dataset_train_limit
@@ -202,7 +85,7 @@ class BaseClassif(DataDrive):
             model_version=model_version,
             model_name=model_name,
             group_name=group_name)
-        if auto_load is True:
+        if autoload is True:
             self.load_dataset(dataset)
 
     @classmethod
@@ -218,7 +101,7 @@ class BaseClassif(DataDrive):
         list_measure.calc_scores(self.__class__.__name__, 
                                 self.predict, 
                                 self.dataset.test_data, 
-                                self.dataset.test_labels, 
+                                self.dataset.test_labels[:], 
                                 labels2classes_fn=self.numerical_labels2classes,
                                 measures=measures)
         return list_measure
@@ -238,7 +121,7 @@ class BaseClassif(DataDrive):
                         lambda x: op(x[1], x[2]), 
                         zip(self.dataset.test_data, 
                             self.numerical_labels2classes(predictions), 
-                            self.numerical_labels2classes(self.dataset.test_labels))))
+                            self.numerical_labels2classes(self.dataset.test_labels[:]))))
         if len(data) > 0:
             return np.array(data[0]), data[1], data[2]
 
@@ -257,7 +140,7 @@ class BaseClassif(DataDrive):
     def transform_shape(self, data, size=None):
         if size is None:
             size = data.shape[0]
-        return data.reshape(size, -1).astype(np.float32)
+        return data[:].reshape(size, -1)#.astype(np.float32)
 
     def is_binary():
         return self.num_labels == 2
@@ -282,66 +165,49 @@ class BaseClassif(DataDrive):
         if len(labels.shape) > 1 and labels.shape[1] > 1:
             return self.le.inverse_transform(np.argmax(labels, axis=1))
         else:
-            return self.le.inverse_transform(labels)
+            return self.le.inverse_transform(labels.astype('int'))
 
-    def reformat_all(self):
-        all_ds = np.concatenate((self.dataset.train_labels, 
-            self.dataset.valid_labels, self.dataset.test_labels), axis=0)
-        self.labels_encode(all_ds)
-        self.dataset.train_data, self.dataset.train_labels = self.reformat(
-            self.dataset.train_data, self.le.transform(self.dataset.train_labels))
-        self.dataset.test_data, self.dataset.test_labels = self.reformat(
-            self.dataset.test_data, self.le.transform(self.dataset.test_labels))
-        self.num_features = self.dataset.test_data.shape[-1]
+    def reformat_all(self, dataset):
+        log.info("Reformating {}...".format(self.cls_name()))
+        dl = dataset.desfragment()
+        self.labels_encode(dl.labels)
+        dl.destroy()
+        log.info("Labels encode finished")
+        dsb = DataSetBuilder(
+            name=dataset.name+"_"+self.model_name+"_"+self.cls_name(),
+            dataset_path=settings["dataset_model_path"],
+            apply_transforms=True,
+            compression_level=9,
+            dtype=dataset.dtype,
+            transforms=dataset.transforms,
+            ltype='int',
+            validator='',
+            chunks=1000,
+            rewrite=False)
 
-        if len(self.dataset.valid_labels) > 0:
-            self.dataset.valid_data, self.dataset.valid_labels = self.reformat(
-                self.dataset.valid_data, self.le.transform(self.dataset.valid_labels))
-
-        if self.dataset_train_limit is not None:
-            if self.dataset.train_data.shape[0] > self.dataset_train_limit:
-                self.dataset.train_data = self.dataset.train_data[:self.dataset_train_limit]
-                self.dataset.train_labels = self.dataset.train_labels[:self.dataset_train_limit]
-
-            if self.dataset.valid_data.shape[0] > self.dataset_train_limit:
-                self.dataset.valid_data = self.dataset.valid_data[:self.dataset_train_limit]
-                self.dataset.valid_labels = self.dataset.valid_labels[:self.dataset_train_limit]
+        if dsb.mode == "w":
+            dsb._applied_transforms = dataset.apply_transforms
+            train_data, train_labels = self.reformat(dataset.train_data, 
+                                        self.le.transform(dataset.train_labels))
+            test_data, test_labels = self.reformat(dataset.test_data, 
+                                        self.le.transform(dataset.test_labels))
+            validation_data, validation_labels = self.reformat(dataset.validation_data, 
+                                        self.le.transform(dataset.validation_labels))
+            dsb.build_dataset(train_data, train_labels, test_data, test_labels,
+                            validation_data, validation_labels)
+        self.num_features = dsb.data.shape[-1]
+        dsb.close_reader()
+        return dsb
 
     def load_dataset(self, dataset):
         if dataset is None:
-            self.set_dataset(self.get_dataset())
+            self.dataset = self.get_dataset()
         else:
-            self.set_dataset(dataset.copy())
+            self.set_dataset(dataset)
 
     def set_dataset(self, dataset):
-        self.dataset = dataset
-        self._original_dataset_md5 = self.dataset.md5()
-        self.reformat_all()
-
-    def set_dataset_from_raw(self, train_data, test_data, valid_data, 
-                            train_labels, test_labels, valid_labels, save=False, 
-                            dataset_name=None):
-        from ml.ds import DataSetBuilder
-        data = {}
-        data["train_dataset"] = train_data
-        data["test_dataset"] = test_data
-        data["valid_dataset"] = valid_data
-        data["train_labels"] = self.numerical_labels2classes(train_labels)
-        data["test_labels"] = self.numerical_labels2classes(test_labels)
-        data["valid_labels"] = self.numerical_labels2classes(valid_labels)
-        data['transforms'] = self.dataset.transforms.get_all_transforms()
-        if self.dataset.processing_class is not None:
-            data['preprocessing_class'] = self.dataset.processing_class.module_cls_name()
-        else:
-            data['preprocessing_class'] = None
-        data["md5"] = None
-        dataset_name = self.dataset.name if dataset_name is None else dataset_name
-        dataset = DataSetBuilder.from_raw_to_ds(
-            dataset_name,
-            self.dataset.dataset_path,
-            data,
-            save=save)
-        self.set_dataset(dataset)
+        self._original_dataset_md5 = dataset.md5()
+        self.dataset = self.reformat_all(dataset)
         
     def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False):
         from ml.utils.seq import grouper_chunk
@@ -362,17 +228,18 @@ class BaseClassif(DataDrive):
 
         if transform is True and chunk_size > 0:
             fn = lambda x, s: self.transform_shape(
-                self.dataset.processing(x, init=False), size=s)
+                self.dataset.processing(x, initial=False), size=s)
             return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)
         elif transform is True and chunk_size == 0:
-            data = self.transform_shape(self.dataset.processing(data, init=False))
+            data = self.transform_shape(self.dataset.processing(data, initial=False))
             return self._predict(data, raw=raw)
         elif transform is False and chunk_size > 0:
             fn = lambda x, s: self.transform_shape(x, size=s)
             return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)
-        elif transform is False:
+        elif transform is False and chunk_size == 0:
+            if len(data.shape) == 1:
+                data = self.transform_shape(data)
             return self._predict(data, raw=raw)
-            
 
     def _pred_erros(self, predictions, test_data, test_labels, valid_size=.1):
         validation_labels_d = {}
@@ -405,15 +272,16 @@ class BaseClassif(DataDrive):
                 "model_module": self.module_cls_name(),
                 "model_name": self.model_name,
                 "model_version": self.model_version,
-                "score": list_measure.measures_to_dict()}
+                "score": list_measure.measures_to_dict(),
+                "base_labels": list(self.base_labels)}
         
     def get_dataset(self):
         from ml.ds import DataSetBuilder
         meta = self.load_meta()
-        dataset = DataSetBuilder.load_dataset(
-            meta["dataset_name"],
-            dataset_path=meta["dataset_path"],
-            transforms_apply=True)
+        dataset = DataSetBuilder(meta["dataset_name"], dataset_path=meta["dataset_path"],
+            apply_transforms=False)
+        self._original_dataset_md5 = meta["md5"]
+        self.labels_encode(meta["base_labels"])
         self.group_name = meta.get('group_name', None)
         if meta.get('md5', None) != dataset.md5():
             log.warning("The dataset md5 is not equal to the model '{}'".format(
@@ -536,7 +404,7 @@ class TFL(BaseClassif):
             self.model.fit(self.dataset.train_data, 
                 self.dataset.train_labels, 
                 n_epoch=num_steps, 
-                validation_set=(self.dataset.valid_data, self.dataset.valid_labels),
+                validation_set=(self.dataset.validation_data, self.dataset.validation_labels),
                 show_metric=True, 
                 batch_size=batch_size,
                 run_id="tfl_model")
@@ -572,5 +440,5 @@ class Keras(BaseClassif):
             nb_epoch=num_steps,
             batch_size=batch_size,
             shuffle=True,
-            validation_data=(self.dataset.valid_data, self.dataset.valid_labels))
+            validation_data=(self.dataset.validation_data, self.dataset.validation_labels))
         self.save_model()

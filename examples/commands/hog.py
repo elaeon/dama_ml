@@ -7,6 +7,7 @@ from ml.utils.files import build_tickets_processed, delete_tickets_processed
 from ml.utils.config import get_settings
 from ml.ds import save_metadata, load_metadata
 from ml.detector import HOG
+from ml.processing import Transforms
 
 settings = get_settings("ml")
 settings.update(get_settings("transcriptor"))
@@ -24,23 +25,25 @@ PICTURES = ["DSC_0055.jpg", "DSC_0056.jpg",
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--train", help="--train-hog [xml_filename]", type=str)
+    parser.add_argument("--train", action="store_true")
     parser.add_argument("--test", action="store_true")
     parser.add_argument("--draw", action="store_true")
     args = parser.parse_args()
 
     if args.train:
-        transforms = [("rgb2gray", None), ("contrast", None)]
-        hog = HOG(model_name="detector",
-            transforms=transforms)
+        from ml.processing import rgb2gray, contrast
+        transforms = Transforms()
+        transforms.add(rgb2gray), 
+        transforms.add(contrast)
+        hog = HOG(model_name="detector", transforms=transforms, model_version="1")
         build_tickets_processed(transforms, settings, PICTURES)
-        hog.train(args.train)
+        hog.train("tickets.xml")
         delete_tickets_processed(settings)
         print("Cleaned")
     elif args.test:
-        hog = HOG(model_name="detector")
+        hog = HOG(model_name="detector", model_version="1")
         hog.test_set(settings, PICTURES)
     elif args.draw:
-        hog = HOG(model_name="detector")
+        hog = HOG(model_name="detector", model_version="1")
         pictures = glob.glob(os.path.join(settings["tickets"], "*.jpg"))        
         hog.draw_detections(sorted(pictures)[0:1])

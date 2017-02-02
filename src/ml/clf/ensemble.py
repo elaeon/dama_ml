@@ -37,36 +37,39 @@ class Grid(DataDrive):
         else:
             return "{}.{}".format(self.model_name, namespace)
 
-    def load_models(self):
+    def load_models(self, dataset=None, autoload=True):
         for namespace, classifs in self.classifs.items():
             for classif in classifs:
-                yield self.load_model(classif, dataset=self.dataset, namespace=namespace)
-    
-    def load_model(self, model, dataset=None, namespace=None):
+                yield self.load_model(classif, dataset=dataset, 
+                    namespace=namespace, autoload=autoload)
+
+    def load_model(self, model, dataset=None, namespace=None, autoload=True):
         namespace = self.model_namespace2str("" if namespace is None else namespace)
         return model(dataset=dataset, 
                 model_name=namespace, 
                 model_version=self.model_version, 
                 check_point_path=self.check_point_path,
+                autoload=autoload,
                 **self.get_params(model.cls_name()))
 
     def train(self, batch_size=128, num_steps=1):
-        for classif in self.load_models():
+        for classif in self.load_models(self.dataset):
             print("Training [{}]".format(classif.__class__.__name__))
             classif.train(batch_size=batch_size, num_steps=num_steps)
     
     def all_clf_scores(self, measures=None):
         from operator import add
         return reduce(add, (classif.scores(measures=measures) 
-            for classif in self.load_models()))
+            for classif in self.load_models(self.dataset)))
 
     def scores(self, measures=None, namespace=None):
         return self.all_clf_scores(measures=measures)
 
     def print_confusion_matrix(self, namespace=None):
         from operator import add
-        list_measure = reduce(add, (classif.confusion_matrix() for classif in self.load_models()))
-        classifs_reader = self.load_models()
+        list_measure = reduce(add, (classif.confusion_matrix() 
+            for classif in self.load_models(self.dataset)))
+        classifs_reader = self.load_models(self.dataset)
         classif = classifs_reader.next()
         list_measure.print_matrix(classif.base_labels)
 
@@ -80,8 +83,9 @@ class Grid(DataDrive):
     def ordered_best_predictors(self, measure="logloss", operator=None):
         from functools import cmp_to_key
         list_measure = self.all_clf_scores(measures=measure)
+        #print("MEASURES", list_measure.measures)
         column_measures = list_measure.get_measure(measure)
-
+        #print(column_measures)
         class DTuple:
             def __init__(self, counter, elem):
                 self.elem = elem
@@ -118,7 +122,7 @@ class Grid(DataDrive):
         return best
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        for classif in self.load_models():
+        for classif in self.load_models(self.dataset):
             yield classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
 
 
@@ -128,7 +132,7 @@ class Ensemble(Grid):
         list_measure.calc_scores(self.__class__.__name__, 
                                 self.predict, 
                                 self.dataset.test_data, 
-                                self.dataset.test_labels,
+                                self.dataset.test_labels[:],
                                 labels2classes_fn=self.numerical_labels2classes, 
                                 measures=measures)
         if all_clf is True:
@@ -140,7 +144,7 @@ class Ensemble(Grid):
         if len(labels.shape) > 1 and labels.shape[1] > 1:
             return self.le.inverse_transform(np.argmax(labels, axis=1))
         else:
-            return self.le.inverse_transform(labels)
+            return self.le.inverse_transform(labels.astype('int'))
 
 
 class Boosting(Ensemble):
@@ -160,11 +164,11 @@ class Boosting(Ensemble):
             self.weights = self.weights_p
             self.election = meta["election"]
             self.model_name = meta["model_name"]
-            self.dataset = DataSetBuilder.load_dataset(
+            self.dataset = DataSetBuilder(
                 meta["dataset_name"], 
                 dataset_path=meta["dataset_path"])
 
-        for classif in self.load_models():
+        for classif in self.load_models(self.dataset):
             self.le = classif.le
             break
 
@@ -186,7 +190,7 @@ class Boosting(Ensemble):
 
     def train(self, batch_size=128, num_steps=1, only_voting=False):
         if only_voting is False:
-            for classif in self.load_models():
+            for classif in self.load_models(self.dataset):
                 print("Training [{}]".format(classif.__class__.__name__))
                 classif.train(batch_size=batch_size, num_steps=num_steps)
 
@@ -243,7 +247,8 @@ class Boosting(Ensemble):
         return weights
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        models = (self.load_model(classif, info=False, namespace=self.meta_name+".0") for classif in self.classifs_p[self.meta_name+".0"])
+        models = (self.load_model(classif, namespace=self.meta_name+".0") 
+                    for classif in self.classifs_p[self.meta_name+".0"])
         weights = [w for i, w in sorted(self.weights_p.items(), key=lambda x:x[0])]
         predictions = (
             classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
@@ -261,7 +266,8 @@ class Boosting(Ensemble):
         def predictions_fn():
             predictions = {}
             for index, _ in self.best_predictor_threshold(operator=le, limit=self.num_max_clfs):
-                classif = self.load_model(self.classifs[self.meta_name+".0"][index], info=False, namespace=self.meta_name+".0")
+                classif = self.load_model(self.classifs[self.meta_name+".0"][index], 
+                    namespace=self.meta_name+".0")
                 predictions[index] = np.asarray(list(classif.predict(
                     classif.dataset.test_data, raw=False, transform=False, chunk_size=258)))
                 best_predictors.append(index)
@@ -281,11 +287,14 @@ class Boosting(Ensemble):
                 #total_weight = sum(FG[v1][v2]["weight"] for v1, v2 in zip(path, path[1:]))
                 classif_weight.append((total_weight/len(path), path))
 
-        relation_clf = min(classif_weight, key=lambda x:x[0])[1]
-        if sort:
-            return order_from_ordered(best_predictors, relation_clf)
+        if len(classif_weight) == 0:
+            return (0, [1])[1]
         else:
-            return relation_clf
+            relation_clf = min(classif_weight, key=lambda x:x[0])[1]
+            if sort:
+                return order_from_ordered(best_predictors, relation_clf)
+            else:
+                return relation_clf
 
 
 class Stacking(Ensemble):
@@ -301,13 +310,13 @@ class Stacking(Ensemble):
                 meta.get('models', {}), lambda x: locate(x))
             self.iterations = meta["iterations"]
             self.model_name = meta["model_name"]
-            self.dataset = DataSetBuilder.load_dataset(
+            self.dataset = DataSetBuilder(
                 meta["dataset_name"], 
                 dataset_path=meta["dataset_path"])
         else:
             self.iterations = 0
 
-        for classif in self.load_models():
+        for classif in self.load_models(self.dataset):
             self.le = classif.le
             break
 
@@ -338,32 +347,34 @@ class Stacking(Ensemble):
             self.save_meta()
 
     def train(self, batch_size=128, num_steps=1):
-        from sklearn.model_selection import StratifiedKFold
+        from ml.ds import DataSetBuilderFold
         num_classes = len(self.dataset.labels_info().keys())
         n_splits = self.n_splits if num_classes < self.n_splits else num_classes
-        skf = StratifiedKFold(n_splits=n_splits)
-        data, labels = self.dataset.desfragment()
-        size = data.shape[0]
+        size = self.dataset.shape[0]
         dataset_blend_train = np.zeros((size, len(self.classifs[self.meta_name+".0"]), num_classes))
         dataset_blend_labels = np.zeros((size, len(self.classifs[self.meta_name+".0"]), 1))
-        for j, clf in enumerate(self.load_models()):
+        for j, clf in enumerate(self.load_models(autoload=False)):
             print("Training [{}]".format(clf.__class__.__name__))
-            for i, (train, test) in enumerate(skf.split(data, labels)):
+            dsbf = DataSetBuilderFold(n_splits=n_splits)
+            dsbf.build_dataset(dataset=self.dataset)
+            init_r = 0
+            for i, dataset in enumerate(dsbf.get_splits()):
                 print("Fold", i)
-                validation_index = int(train.shape[0]*.1)
-                validation = train[:validation_index]
-                train = train[validation_index:]
-                clf.set_dataset_from_raw(data[train], data[test], data[validation],
-                    labels[train], labels[test], labels[validation])
+                clf.set_dataset(dataset)
                 clf.train(batch_size=batch_size, num_steps=num_steps)
                 y_submission = np.asarray(list(
                     clf.predict(clf.dataset.test_data, raw=True, transform=False, chunk_size=0)))
                 if len(clf.dataset.test_labels.shape) > 1:
                     test_labels = np.argmax(clf.dataset.test_labels, axis=1)
                 else:
-                    test_labels = clf.dataset.test_labels
-                dataset_blend_train[test, j] = y_submission
-                dataset_blend_labels[test, j] = test_labels.reshape(-1, 1)
+                    test_labels = clf.dataset.test_labels[:]
+                r = init_r + clf.dataset.test_data.shape[0]
+                dataset_blend_train[init_r:r, j] = y_submission
+                dataset_blend_labels[init_r:r, j] = test_labels.reshape(-1, 1)
+                init_r = r
+                #dataset.destroy()
+                clf.dataset.destroy()
+            dsbf.destroy()
         self.iterations = i + 1
         dataset_blend_train = dataset_blend_train.reshape(dataset_blend_train.shape[0], -1)
         dataset_blend_labels = dataset_blend_labels.reshape(dataset_blend_labels.shape[0], -1)
@@ -374,11 +385,11 @@ class Stacking(Ensemble):
         if self.dataset_blend is None:
             self.load_blend()
 
-        clf_b = self.load_models().next()
+        clf_b = self.load_models(self.dataset).next()
         size = data.shape[0]
         num_classes = clf_b.num_labels
         dataset_blend_test = np.zeros((size, len(self.classifs[self.meta_name+".0"]), num_classes))
-        for j, clf in enumerate(self.load_models()):
+        for j, clf in enumerate(self.load_models(self.dataset)):
             dataset_blend_test_j = np.zeros((size, self.iterations, num_classes))
             count = 0     
             while count < self.iterations:
@@ -405,8 +416,8 @@ class Bagging(Ensemble):
                 meta.get('models', {}), lambda x: locate(x))
             self.classif = locate(meta["model_base"])
             self.model_name = meta["model_name"]
-            self.dataset = DataSetBuilder.load_dataset(
-                meta["dataset_name"], 
+            self.dataset = DataSetBuilder(
+                name=meta["dataset_name"], 
                 dataset_path=meta["dataset_path"])
         else:
             self.classif = classif
@@ -430,22 +441,25 @@ class Bagging(Ensemble):
             self.save_meta()
 
     def train(self, batch_size=128, num_steps=1):
-        for classif in self.load_models():
+        for classif in self.load_models(self.dataset):
             print("Training [{}]".format(classif.__class__.__name__))
             classif.train(batch_size=batch_size, num_steps=num_steps)
         model_base = self.load_model(self.classif, dataset=self.dataset, 
-                                    info=False, namespace=self.meta_name)
+                                    namespace=self.meta_name)
         self.le = model_base.le
         print("Building features...")
-        model_base.set_dataset_from_raw(
-            self.prepare_data(model_base.dataset.train_data, transform=False, chunk_size=256), 
-            self.prepare_data(model_base.dataset.test_data, transform=False, chunk_size=256), 
-            self.prepare_data(model_base.dataset.valid_data, transform=False, chunk_size=256),
-            model_base.numerical_labels2classes(model_base.dataset.train_labels), 
-            model_base.numerical_labels2classes(model_base.dataset.test_labels), 
-            model_base.numerical_labels2classes(model_base.dataset.valid_labels),
-            save=True,
-            dataset_name=model_base.dataset.name+"."+self.meta_name)
+        dsb = DataSetBuilder(name=model_base.dataset.name+"."+self.meta_name, rewrite=True)
+        dsb.build_dataset(
+            self.prepare_data(model_base.dataset.train_data, transform=False, chunk_size=256),
+            model_base.numerical_labels2classes(model_base.dataset.train_labels[:]),
+            test_data=self.prepare_data(model_base.dataset.test_data, transform=False, 
+                chunk_size=256),
+            test_labels=model_base.numerical_labels2classes(model_base.dataset.test_labels[:]),
+            validation_data=self.prepare_data(model_base.dataset.validation_data, 
+                transform=False, chunk_size=256),
+            validation_labels=model_base.numerical_labels2classes(
+                model_base.dataset.validation_labels[:]))
+        model_base.set_dataset(dsb)
         print("Done...")
         model_base.train(batch_size=batch_size, num_steps=num_steps)
         self.save_model()
@@ -454,12 +468,14 @@ class Bagging(Ensemble):
         from ml.utils.numeric_functions import geometric_mean
         predictions = (
             classif.predict(data, raw=True, transform=transform, chunk_size=chunk_size)
-            for classif in self.load_models())
+            for classif in self.load_models(self.dataset))
         predictions = np.asarray(list(geometric_mean(predictions, len(self.classifs[self.meta_name+".0"]))))
+        if len(data.shape) == 1:
+            data = data[:].reshape(-1, 1)
         return np.append(data, predictions, axis=1)
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        model_base = self.load_model(self.classif, info=True, namespace=self.meta_name)
+        model_base = self.load_model(self.classif, namespace=self.meta_name)
         self.le = model_base.le
         data_model_base = self.prepare_data(data, transform=transform, chunk_size=chunk_size)
         return model_base.predict(data_model_base, raw=raw, transform=False, chunk_size=chunk_size)

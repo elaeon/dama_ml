@@ -30,7 +30,7 @@ class SVC(SKL):
             svm.LinearSVC(C=1, max_iter=1000), method="sigmoid")
         reg = reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
-        sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
+        sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
         return sig_clf
 
 
@@ -41,7 +41,7 @@ class RandomForest(SKLP):
             RandomForestClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
-        sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
+        sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
         return sig_clf
 
 
@@ -52,7 +52,7 @@ class ExtraTrees(SKLP):
             ExtraTreesClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
-        sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
+        sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
         return sig_clf
 
 
@@ -64,7 +64,7 @@ class LogisticRegression(SKLP):
             , method="sigmoid")
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
-        sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
+        sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
         return sig_clf
 
 
@@ -76,7 +76,7 @@ class SGDClassifier(SKLP):
             alpha=.0001, n_iter=100, n_jobs=-1), method="sigmoid")
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
-        sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
+        sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
         return sig_clf
 
 
@@ -87,7 +87,7 @@ class AdaBoost(SKLP):
             AdaBoostClassifier(n_estimators=25, learning_rate=1.0), method="sigmoid")
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
-        sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
+        sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
         return sig_clf
 
 
@@ -98,5 +98,5 @@ class GradientBoost(SKLP):
             GradientBoostingClassifier(n_estimators=25, learning_rate=1.0), method="sigmoid")
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
-        sig_clf.fit(self.dataset.valid_data, self.dataset.valid_labels)
+        sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
         return sig_clf

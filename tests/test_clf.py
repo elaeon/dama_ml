@@ -43,14 +43,17 @@ class TestClf(unittest.TestCase):
 
         X = np.asarray([1, 0]*10)
         Y = X*1
-        self.dataset = DataSetBuilder("test", dataset_path="/tmp/")
+        self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+            ltype='int', rewrite=True)
         self.dataset.build_dataset(X, Y)
-
         self.classif = RandomForest(dataset=self.dataset, 
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
         self.classif.train(num_steps=1)
+
+    def tearDown(self):
+        self.dataset.destroy()
 
     def test_only_is(self):
         self.assertEqual(self.classif.erroneous_clf(), None)
@@ -61,6 +64,31 @@ class TestClf(unittest.TestCase):
         self.assertEqual(type(self.classif.load_meta()), type({}))
 
 
+class TestMLP(unittest.TestCase):
+    def setUp(self):
+        from ml.ds import DataSetBuilder
+        from ml.clf.extended.w_tflearn import MLP
+
+        X = np.asarray([1, 0]*1000)
+        Y = X*1
+        self.dataset = DataSetBuilder(name="test_mlp", dataset_path="/tmp/", 
+            ltype='int', rewrite=True)
+        self.dataset.build_dataset(X, Y)
+        
+        self.classif = MLP(dataset=self.dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        self.classif.train(num_steps=2)
+
+    def tearDown(self):
+        self.dataset.destroy()
+
+    def test_labels(self):
+        pass
+        #self.assertEqual(type(self.classif.load_meta()), type({}))
+
+
 class TestGrid(unittest.TestCase):
     def setUp(self):
         from ml.ds import DataSetBuilder
@@ -68,9 +96,9 @@ class TestGrid(unittest.TestCase):
         from ml.clf.extended.w_sklearn import RandomForest
         from ml.clf.extended.w_tflearn import MLP
 
-        X = np.asarray([1, 0]*10)
+        X = np.asarray([1, 0]*1000)
         Y = X*1
-        self.dataset = DataSetBuilder("test", dataset_path="/tmp/")
+        self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
         self.dataset.build_dataset(X, Y)
 
         self.classif = Grid({0: [RandomForest, MLP]},
@@ -80,8 +108,108 @@ class TestGrid(unittest.TestCase):
             check_point_path="/tmp/")
         self.classif.train(num_steps=1)
 
+    def tearDown(self):
+        self.dataset.destroy()
+
     def test_load_meta(self):
         self.assertEqual(type(self.classif.load_meta()), type({}))
+        self.classif.scores().print_scores()
+
+
+class TestBoosting(unittest.TestCase):
+    def setUp(self):
+        from ml.ds import DataSetBuilder
+        from ml.clf.ensemble import Boosting
+        from ml.clf.extended.w_sklearn import RandomForest
+        from ml.clf.extended.w_sklearn import ExtraTrees, AdaBoost
+
+        X = np.asarray([1, 0]*1000)
+        Y = X*1
+        self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
+        self.dataset.build_dataset(X, Y)
+
+        self.classif = Boosting({"0": [
+            ExtraTrees,
+            RandomForest,
+            AdaBoost]},
+            dataset=self.dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/",
+            weights=[3, 1],
+            election='best-c',
+            num_max_clfs=5)
+        self.classif.train(num_steps=1)
+
+    def tearDown(self):
+        self.dataset.destroy()
+
+    def test_load_meta(self):
+        self.assertEqual(type(self.classif.load_meta()), type({}))
+        self.classif.scores().print_scores()
+
+
+class TestStacking(unittest.TestCase):
+    def setUp(self):
+        from ml.ds import DataSetBuilder
+        from ml.clf.ensemble import Stacking
+        from ml.clf.extended.w_sklearn import RandomForest
+        from ml.clf.extended.w_sklearn import ExtraTrees, AdaBoost
+
+        X = np.asarray([1, 0]*1000)
+        Y = X*1
+        self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
+        self.dataset.build_dataset(X, Y)
+
+        self.classif = Stacking({"0": [
+            ExtraTrees,
+            RandomForest,
+            AdaBoost]},
+            dataset=self.dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/",
+            n_splits=3)
+        self.classif.train(num_steps=1)
+
+    def tearDown(self):
+        self.dataset.destroy()
+
+    def test_load_meta(self):
+        self.assertEqual(type(self.classif.load_meta()), type({}))
+        self.classif.scores().print_scores()
+
+
+class TestBagging(unittest.TestCase):
+    def setUp(self):
+        from ml.ds import DataSetBuilder
+        from ml.clf.ensemble import Bagging
+        from ml.clf.extended.w_sklearn import RandomForest
+        from ml.clf.extended.w_sklearn import ExtraTrees, AdaBoost, GradientBoost
+
+        X = np.asarray([1, 0]*1000)
+        Y = X*1
+        self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
+        self.dataset.build_dataset(X, Y)
+
+        self.classif = Bagging(GradientBoost, {"0": [
+            ExtraTrees,
+            RandomForest,
+            AdaBoost]},
+            dataset=self.dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        self.classif.train(num_steps=1)
+
+    def tearDown(self):
+        self.dataset.destroy()
+
+    def test_load_meta(self):
+        from ml.clf.ensemble import Bagging
+        self.assertEqual(type(self.classif.load_meta()), type({}))
+        self.classif.scores().print_scores()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -31,7 +31,7 @@ class GPC(SKLP):
     def prepare_model(self, batch_size=128):
         self.model = GPy.core.GP(
                     X=self.dataset.train_data,
-                    Y=self.dataset.train_labels.reshape(-1, 1), 
+                    Y=self.dataset.train_labels[:].reshape(-1, 1), 
                     kernel=self.k + GPy.kern.White(1),
                     inference_method=GPy.inference.latent_function_inference.expectation_propagation.EP(),
                     likelihood=GPy.likelihoods.Bernoulli())
@@ -51,8 +51,8 @@ class GPC(SKLP):
             yield self.convert_label(p, raw=raw)
 
     def load_model(self):
-        self.model = GPy.models.GPClassification(self.dataset.train_data, 
-            self.dataset.train_labels.reshape(-1, 1), kernel=self.k, initialize=False)
+        self.model = GPy.models.GPClassification(self.dataset.train_data[:1000], 
+            self.dataset.train_labels[:1000].reshape(-1, 1), kernel=self.k, initialize=False)
         if self.check_point_path is not None:
             path = self.make_model_file()
             r = np.load(path+".npy")
@@ -72,7 +72,7 @@ class SVGPC(GPC):
         Z = np.random.rand(100, self.dataset.train_data.shape[1])
         self.model = GPy.core.SVGP(
             X=self.dataset.train_data, 
-            Y=self.dataset.train_labels.reshape(-1, 1),
+            Y=self.dataset.train_labels[:].reshape(-1, 1),
             Z=Z, 
             kernel=self.k + GPy.kern.White(self.dataset.num_features(), variance=1e-5), 
             likelihood=GPy.likelihoods.Bernoulli(),

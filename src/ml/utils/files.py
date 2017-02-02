@@ -30,14 +30,13 @@ def set_up_cfg(filepath):
 
 def build_tickets_processed(transforms, settings, PICTURES):
     from skimage import io
-    from ml.processing import PreprocessingImage
     tickets_processed_url = settings["tickets_processed"]
     if not os.path.exists(tickets_processed_url):
         os.makedirs(tickets_processed_url)
     for path in [os.path.join(settings["tickets"], f) for f in PICTURES]:
         name = path.split("/").pop()
         image = io.imread(path)
-        image = PreprocessingImage(image, transforms).pipeline()
+        image = transforms.apply(image)
         d_path = os.path.join(tickets_processed_url, name)
         io.imsave(d_path, image)
 
@@ -66,25 +65,21 @@ def get_models_path(checkpoints_path):
     return classes
 
 
-def delete_file_model(clf, model_name, version, checkpoints_path):
-    name_version = model_name + "." + version
-    path = os.path.join(checkpoints_path, clf, name_version)
-    rm(path)
-    return path
 
-
-def get_models_from_dataset(md5, checkpoints_path):
+def get_models_from_dataset(dataset, checkpoints_path):
     from ml.clf.wrappers import DataDrive
     from collections import defaultdict
     models_path = get_models_path(checkpoints_path)
     models_md5 = defaultdict(list)
-    for clf, dataset in models_path.items():
-        for name_version in dataset:
+    md5 = dataset.md5()
+    for clf, ds_txt in models_path.items():
+        for name_version in ds_txt:
             model_path_meta = os.path.join(checkpoints_path, clf, name_version, name_version)
-            model_path = os.path.join(checkpoints_path, clf, name_version)
+            model_path = os.path.join(checkpoints_path, clf, name_version)    
+            dataset_name = DataDrive.read_meta("dataset_name", model_path_meta)            
             model_md5 = DataDrive.read_meta("md5", model_path_meta)
-            models_md5[model_md5].append((model_path, model_path_meta))
-    return models_md5.get(md5, [])
+            if dataset_name == dataset.name and md5 == model_md5:
+                yield (model_path, model_path_meta)
 
 
 def get_date_from_file(file_path):

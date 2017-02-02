@@ -1,5 +1,6 @@
 from operator import itemgetter
 
+
 def order_2d(list_2d, index=(0, 1), block_size=60):
     """
     list_ = [(10, 50), (13, 100), (14, 40), (15, 90), (21, 30), (40, 10), (60, 20)]
@@ -10,6 +11,7 @@ def order_2d(list_2d, index=(0, 1), block_size=60):
         if len(items) > 1:
             items.sort(key=itemgetter(index[1]))
     return blocks
+
 
 def build_blocks(list_2d, block_size, index):
     """ build a dict of rows where each row is created if elem in 0 is grater 
@@ -31,17 +33,35 @@ def build_blocks(list_2d, block_size, index):
         initial = elem
     return blocks
 
-def order_table_print(headers, table, order_column, reverse=True):
+
+def order_table_print(headers, table, order_column, natural_order=None):
+    """
+    :type natural_order: list
+    :param natural_order: define the order for each column.
+
+    if the value in natural_order is true, the reverse is True else False 
+    [True, False, True]
+
+    build the table
+    """
     from tabulate import tabulate
-    headers_lower = [h.lower() for h in headers]
-    try:
-        order_index = headers_lower.index(order_column)
-    except ValueError:
-        order_index = 0
-    table = sorted(table, key=lambda x: x[order_index], reverse=reverse)
-    print(tabulate(table, headers))
-    print("")
-    print("")
+    if len(headers) > 0:
+        headers_lower = [h.lower() for h in headers]
+        try:
+            order_index = headers_lower.index(order_column)
+            if natural_order is not None and len(natural_order) > 0:
+                reverse = natural_order[order_index]
+            else:
+                reverse = True
+        except ValueError:
+            order_index = 0
+            reverse = True
+
+        table = sorted(table, key=lambda x: x[order_index], reverse=reverse)
+        print(tabulate(table, headers))
+        print("")
+        print("")
+
 
 def order_from_ordered(ordered, data):
     """ build a ordered list from a desordered list with elems in ordered

@@ -3,7 +3,8 @@ import argparse
 from ml.ds import DataSetBuilderFile
 from ml.utils.config import get_settings
 from ml.utils.numeric_functions import le
-from ml.processing import Preprocessing, FiTScaler
+#from ml.processing import Preprocessing, FiTScaler
+from ml.processing import Transforms
 from ml.clf.extended import w_sklearn
 from ml.clf.extended import w_tflearn
 from ml.clf import ensemble as clf_ensemble
@@ -49,24 +50,24 @@ def merge_data_labels(file_path=None):
 
 def build(dataset_name, transforms=None):
     dataset = DataSetBuilderFile(
-        dataset_name, 
+        name=dataset_name, 
         train_folder_path=settings["numerai_train"],
-        transforms_global=transforms)
+        transforms=transforms,
+        compression_level=9)
     dataset.build_dataset(label_column="target")
     return dataset
 
 
-def build2(dataset_name, transforms=None):
-    test_data, test_labels = merge_data_labels("/home/sc/test_data/t.csv")
-    dataset = DataSetBuilderFile(
-        dataset_name, 
-        processing_class=Preprocessing,
-        train_folder_path=settings["numerai_train"],
-        test_folder_path="/home/sc/test_data/t.csv",
-        validator="adversarial",
-        transforms_global=transforms)
-    dataset.build_dataset(label_column="target")
-    return dataset
+#def build2(dataset_name, transforms=None):
+#    test_data, test_labels = merge_data_labels("/home/sc/test_data/t.csv")
+#    dataset = DataSetBuilderFile(
+#        dataset_name, 
+#        train_folder_path=settings["numerai_train"],
+#        test_folder_path="/home/sc/test_data/t.csv",
+#        validator="adversarial",
+#        transforms_global=transforms)
+#    dataset.build_dataset(label_column="target")
+#    return dataset
 
 
 if __name__ == '__main__':
@@ -77,30 +78,31 @@ if __name__ == '__main__':
     parser.add_argument("--train", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--ensemble", type=str)
     parser.add_argument("--epoch", type=int, default=1)
-    parser.add_argument("--predict", help="inicia el entrenamiento", action="store_true")
+    parser.add_argument("--predict", help="", action="store_true")
+    parser.add_argument("--test", help="inicia el entrenamiento", action="store_true")
     parser.add_argument("--model-version", type=str)
-    parser.add_argument("--plot", action="store_true")
+    #parser.add_argument("--plot", action="store_true")
     args = parser.parse_args()
 
 
     if args.build_dataset and args.dataset_name:
-        transforms = [(FiTScaler.module_cls_name(), None)]
-        #transforms = None
+        #transforms = [(FiTScaler.module_cls_name(), None)]
+        transforms = Transforms()
         dataset = build(args.dataset_name, transforms=transforms)
 
     if args.train:
-        dataset = DataSetBuilderFile.load_dataset(args.dataset_name)
+        dataset = DataSetBuilderFile(args.dataset_name)
 
         if args.ensemble == "boosting":
             classif = clf_ensemble.Boosting({"0": [
                 w_sklearn.ExtraTrees,
-                w_tflearn.MLP,
-                w_sklearn.RandomForest,
-                w_sklearn.SGDClassifier,
-                w_sklearn.SVC,
-                w_sklearn.LogisticRegression,
-                w_sklearn.AdaBoost,
-                w_sklearn.GradientBoost]},
+                #w_tflearn.MLP,
+                w_sklearn.RandomForest]},
+                #w_sklearn.SGDClassifier,
+                #w_sklearn.SVC,
+                #w_sklearn.LogisticRegression,
+                #w_sklearn.AdaBoost,
+                #w_sklearn.GradientBoost]},
                 dataset=dataset,
                 model_name=args.model_name,
                 model_version=args.model_version,
@@ -137,6 +139,22 @@ if __name__ == '__main__':
         classif.train(batch_size=128, num_steps=args.epoch) # only_voting=True
         classif.scores().print_scores(order_column="logloss")
 
+    if args.test:
+        if args.ensemble == "boosting":
+            classif = clf_ensemble.Boosting({},
+                model_name=args.model_name,
+                model_version=args.model_version)
+        elif args.ensemble == "stacking":
+            classif = clf_ensemble.Stacking({},
+                model_name=args.model_name,
+                model_version=args.model_version)
+        else:
+            classif = clf_ensemble.Bagging(None, {},
+                model_name=args.model_name,
+                model_version=args.model_version)
+        
+        classif.scores().print_scores(order_column="logloss")
+
     if args.predict:
         if args.ensemble == "boosting":
             classif = clf_ensemble.Boosting({},
@@ -150,11 +168,10 @@ if __name__ == '__main__':
             classif = clf_ensemble.Bagging(None, {},
                 model_name=args.model_name,
                 model_version=args.model_version)
-        classif.scores().print_scores(order_column="logloss")
         predict(classif, settings["numerai_test"], "t_id")
         print("Predictions writed in {}".format(settings["predictions_file_path"]))
 
-    if args.plot:
-        dataset = DataSetBuilderFile.load_dataset(args.model_name)
-        print("DENSITY: ", dataset.density())
-        dataset.plot()
+    #if args.plot:
+    #    dataset = DataSetBuilderFile.load_dataset(args.model_name)
+    #    print("DENSITY: ", dataset.density())
+    #    dataset.plot()
