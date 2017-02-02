@@ -21,7 +21,7 @@ For example.
 
 Results in:
 
-.. code-block:: python
+.. code-block:: text
 
     DATASET NAME: test
     Author: Alejandro Martínez

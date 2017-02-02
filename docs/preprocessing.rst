@@ -22,7 +22,7 @@ For example, we want to add two extra functions for preprocessing:
 
 Now in the DataSetBuilder use this class:
 
-.. code-block:: python)
+.. code-block:: python
 
     dataset = DataSetBuilder(
         dataset_name,

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Datasets &#8212; mlPyp 0.1.1 documentation</title>
+    <title>Datasets &#8212; mlPyp 0.2.0 documentation</title>
     
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.1.1',
+        VERSION:     '0.2.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,8 +25,8 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="top" title="mlPyp 0.1.1 documentation" href="index.html" />
-    <link rel="next" title="Preprocessing" href="preprocessing.html" />
+    <link rel="top" title="mlPyp 0.2.0 documentation" href="index.html" />
+    <link rel="next" title="Processing" href="preprocessing.html" />
     <link rel="prev" title="Welcome to mlPyp’s documentation!" href="index.html" /> 
   </head>
   <body role="document">
@@ -40,12 +40,12 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="preprocessing.html" title="Preprocessing"
+          <a href="preprocessing.html" title="Processing"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="index.html" title="Welcome to mlPyp’s documentation!"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.1.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.2.0 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -56,7 +56,7 @@
             
   <div class="section" id="datasets">
 <h1>Datasets<a class="headerlink" href="#datasets" title="Permalink to this headline">¶</a></h1>
-<p>The datasets are files in pickle format with data divided in train, test and validation. If this data was preprocessed, information about it is added.</p>
+<p>The datasets are files in hdf5 format with data divided in train, test and validation. If this data was preprocessed, information about it is added.</p>
 <p>For example.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">DIM</span> <span class="o">=</span> <span class="mi">21</span>
 <span class="n">SIZE</span> <span class="o">=</span> <span class="mi">100000</span>
@@ -72,30 +72,30 @@
 </pre></div>
 </div>
 <p>Results in:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">DATASET</span> <span class="n">NAME</span><span class="p">:</span> <span class="n">test</span>
-<span class="n">Transforms</span><span class="p">:</span> <span class="p">[(</span><span class="s1">&#39;global&#39;</span><span class="p">,</span> <span class="p">[]),</span> <span class="p">(</span><span class="s1">&#39;row&#39;</span><span class="p">,</span> <span class="p">[])]</span>
-<span class="n">Preprocessing</span> <span class="n">Class</span><span class="p">:</span> <span class="bp">None</span>
-<span class="n">MD5</span><span class="p">:</span> <span class="n">daa92472f94c90b5bacb6ab172a73566</span>
+<div class="highlight-text"><div class="highlight"><pre><span></span>DATASET NAME: test
+Author: Alejandro Martínez
+Transforms: {}
+MD5: daa92472f94c90b5bacb6ab172a73566
+Description: test dataset
 
-<span class="n">Dataset</span>        <span class="n">Mean</span>       <span class="n">Std</span>  <span class="n">Shape</span>        <span class="n">dType</span>      <span class="n">Labels</span>
-<span class="n">train</span> <span class="nb">set</span>  <span class="mf">0.500195</span>  <span class="mf">0.288638</span>  <span class="p">(</span><span class="mi">70000</span><span class="p">,</span> <span class="mi">21</span><span class="p">)</span>  <span class="n">float64</span>     <span class="mi">70000</span>
-<span class="n">test</span> <span class="nb">set</span>   <span class="mf">0.498693</span>  <span class="mf">0.288993</span>  <span class="p">(</span><span class="mi">20000</span><span class="p">,</span> <span class="mi">21</span><span class="p">)</span>  <span class="n">float64</span>     <span class="mi">20000</span>
-<span class="n">valid</span> <span class="nb">set</span>  <span class="mf">0.499823</span>  <span class="mf">0.288698</span>  <span class="p">(</span><span class="mi">10000</span><span class="p">,</span> <span class="mi">21</span><span class="p">)</span>  <span class="n">float64</span>     <span class="mi">10000</span>
+Dataset        Mean       Std  Shape        dType    Labels
+---------  --------  --------  -----------  -------  --------
+train set  0.500195  0.288638  (70000, 21)  float64   70000
+test set   0.498693  0.288993  (20000, 21)  float64   20000
+valid set  0.499823  0.288698  (10000, 21)  float64   10000
 </pre></div>
 </div>
-<p>There are two more DataSetBuilder class, a dataset builder for images, and another for files in csv format.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ml.processing</span> <span class="kn">import</span> <span class="n">Preprocessing</span>
-<span class="n">transforms</span> <span class="o">=</span> <span class="p">[(</span><span class="s2">&quot;poly_features&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;degree&quot;</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;interaction_only&quot;</span><span class="p">:</span><span class="bp">False</span><span class="p">)]</span>
+<p>There are two more DataSetBuilder classes, a dataset builder for images, and another for files in csv format.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">transforms</span> <span class="o">=</span> <span class="n">Transforms</span><span class="p">()</span>
+<span class="n">transforms</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">poly_features</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;degree&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;interaction_only&quot;</span><span class="p">:</span> <span class="bp">False</span><span class="p">})</span>
 <span class="n">dataset</span> <span class="o">=</span> <span class="n">DataSetBuilderFile</span><span class="p">(</span>
-    <span class="n">dataset_name</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;test_ds_file&quot;</span><span class="p">,</span>
     <span class="n">train_folder_path</span><span class="o">=</span><span class="s2">&quot;/home/ds/my_file.csv&quot;</span><span class="p">,</span>
-    <span class="n">processing_class</span><span class="o">=</span><span class="n">Preprocessing</span><span class="p">,</span>
-    <span class="n">transforms_row</span><span class="o">=</span><span class="n">transforms</span><span class="p">)</span>
+    <span class="n">transforms</span><span class="o">=</span><span class="n">transforms</span><span class="p">)</span>
 <span class="n">dataset</span><span class="o">.</span><span class="n">build_dataset</span><span class="p">(</span><span class="n">label_column</span><span class="o">=</span><span class="s2">&quot;target&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Preprocessing class is a way to add transformations to the data. There are predefined functions,
-but, you can add your own functions. For more info about it, check <a class="reference internal" href="preprocessing.html"><span class="doc">Preprocessing</span></a>.</p>
+<p>In the processing module are predefined functions for transforms, but, you can add your own functions. For more info about it, check <a class="reference internal" href="preprocessing.html"><span class="doc">Processing</span></a>.</p>
 </div>
 
 
@@ -109,7 +109,7 @@ but, you can add your own functions. For more info about it, check <a class="ref
                         title="previous chapter">Welcome to mlPyp&#8217;s documentation!</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="preprocessing.html"
-                        title="next chapter">Preprocessing</a></p>
+                        title="next chapter">Processing</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -141,12 +141,12 @@ but, you can add your own functions. For more info about it, check <a class="ref
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="preprocessing.html" title="Preprocessing"
+          <a href="preprocessing.html" title="Processing"
              >next</a> |</li>
         <li class="right" >
           <a href="index.html" title="Welcome to mlPyp’s documentation!"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.1.1 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.2.0 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">

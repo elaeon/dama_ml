@@ -1,0 +1,206 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Ensemble models &#8212; mlPyp 0.2.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="top" title="mlPyp 0.2.0 documentation" href="index.html" />
+    <link rel="next" title="Examples" href="examples.html" />
+    <link rel="prev" title="Wrappers" href="wrappers.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="examples.html" title="Examples"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="wrappers.html" title="Wrappers"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.2.0 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="ensemble-models">
+<h1>Ensemble models<a class="headerlink" href="#ensemble-models" title="Permalink to this headline">¶</a></h1>
+<p>The ensemble models have less overfit and lower error. There are 3 type of ensemble models
+Boosting, Stacking and Bagging, each model have his pros an cons. You can experment and choose
+whose of this is better for you job.</p>
+<div class="section" id="boosting">
+<h2>Boosting<a class="headerlink" href="#boosting" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ml.clf</span> <span class="kn">import</span> <span class="n">ensemble</span> <span class="k">as</span> <span class="n">clf_ensemble</span>
+
+<span class="n">classif</span> <span class="o">=</span> <span class="n">clf_ensemble</span><span class="o">.</span><span class="n">Boosting</span><span class="p">({</span><span class="s2">&quot;0&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="n">w_sklearn</span><span class="o">.</span><span class="n">ExtraTrees</span><span class="p">,</span>
+                <span class="n">w_tflearn</span><span class="o">.</span><span class="n">MLP</span><span class="p">,</span>
+                <span class="n">w_sklearn</span><span class="o">.</span><span class="n">RandomForest</span><span class="p">]},</span>
+                <span class="n">w_sklearn</span><span class="o">.</span><span class="n">SGDClassifier</span><span class="p">,</span>
+                <span class="n">w_sklearn</span><span class="o">.</span><span class="n">SVC</span><span class="p">,</span>
+                <span class="n">w_sklearn</span><span class="o">.</span><span class="n">LogisticRegression</span><span class="p">,</span>
+                <span class="n">w_sklearn</span><span class="o">.</span><span class="n">AdaBoost</span><span class="p">,</span>
+                <span class="n">w_sklearn</span><span class="o">.</span><span class="n">GradientBoost</span><span class="p">]},</span>
+                <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
+                <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;boosting&quot;</span><span class="p">,</span>
+                <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
+                <span class="n">weights</span><span class="o">=</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+                <span class="n">election</span><span class="o">=</span><span class="s1">&#39;best-c&#39;</span><span class="p">,</span>
+                <span class="n">num_max_clfs</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">classif</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">num_steps</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">epoch</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">classif</span> <span class="o">=</span> <span class="n">clf_ensemble</span><span class="o">.</span><span class="n">Boosting</span><span class="p">({},</span>
+            <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;boosting&quot;</span><span class="p">,</span>
+            <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">)</span>
+<span class="n">classif</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">258</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="stacking">
+<h2>Stacking<a class="headerlink" href="#stacking" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">classif</span> <span class="o">=</span> <span class="n">clf_ensemble</span><span class="o">.</span><span class="n">Stacking</span><span class="p">({</span><span class="s2">&quot;0&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="n">w_sklearn</span><span class="o">.</span><span class="n">ExtraTrees</span><span class="p">,</span>
+            <span class="n">w_tflearn</span><span class="o">.</span><span class="n">MLP</span><span class="p">,</span>
+            <span class="n">w_sklearn</span><span class="o">.</span><span class="n">RandomForest</span><span class="p">,</span>
+            <span class="n">w_sklearn</span><span class="o">.</span><span class="n">SGDClassifier</span><span class="p">,</span>
+            <span class="n">w_sklearn</span><span class="o">.</span><span class="n">SVC</span><span class="p">,</span>
+            <span class="n">w_sklearn</span><span class="o">.</span><span class="n">LogisticRegression</span><span class="p">,</span>
+            <span class="n">w_sklearn</span><span class="o">.</span><span class="n">AdaBoost</span><span class="p">,</span>
+            <span class="n">w_sklearn</span><span class="o">.</span><span class="n">GradientBoost</span><span class="p">]},</span>
+            <span class="n">n_splits</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+            <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
+            <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;stacking&quot;</span><span class="p">,</span>
+            <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">classif</span> <span class="o">=</span> <span class="n">clf_ensemble</span><span class="o">.</span><span class="n">Stacking</span><span class="p">({},</span>
+                <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;stacking&quot;</span><span class="p">,</span>
+                <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">)</span>
+<span class="n">classif</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">258</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="bagging">
+<h2>Bagging<a class="headerlink" href="#bagging" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">classif</span> <span class="o">=</span> <span class="n">clf_ensemble</span><span class="o">.</span><span class="n">Bagging</span><span class="p">(</span><span class="n">w_tflearn</span><span class="o">.</span><span class="n">MLP</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;0&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="n">w_sklearn</span><span class="o">.</span><span class="n">ExtraTrees</span><span class="p">,</span>
+            <span class="n">w_tflearn</span><span class="o">.</span><span class="n">MLP</span><span class="p">,</span>
+            <span class="n">w_sklearn</span><span class="o">.</span><span class="n">RandomForest</span><span class="p">,</span>
+            <span class="n">w_sklearn</span><span class="o">.</span><span class="n">SGDClassifier</span><span class="p">,</span>
+            <span class="n">w_sklearn</span><span class="o">.</span><span class="n">SVC</span><span class="p">,</span>
+            <span class="n">w_sklearn</span><span class="o">.</span><span class="n">LogisticRegression</span><span class="p">,</span>
+            <span class="n">w_sklearn</span><span class="o">.</span><span class="n">AdaBoost</span><span class="p">,</span>
+            <span class="n">w_sklearn</span><span class="o">.</span><span class="n">GradientBoost</span><span class="p">]},</span>
+            <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
+            <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;bagging&quot;</span><span class="p">,</span>
+            <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">classif</span> <span class="o">=</span> <span class="n">clf_ensemble</span><span class="o">.</span><span class="n">Bagging</span><span class="p">({},</span>
+                <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;bagging&quot;</span><span class="p">,</span>
+                <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">)</span>
+<span class="n">classif</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">258</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Ensemble models</a><ul>
+<li><a class="reference internal" href="#boosting">Boosting</a></li>
+<li><a class="reference internal" href="#stacking">Stacking</a></li>
+<li><a class="reference internal" href="#bagging">Bagging</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="wrappers.html"
+                        title="previous chapter">Wrappers</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="examples.html"
+                        title="next chapter">Examples</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/ensemble.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="examples.html" title="Examples"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="wrappers.html" title="Wrappers"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.2.0 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Alejandro G. Martinez Romero.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

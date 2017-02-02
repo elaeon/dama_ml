@@ -1,0 +1,344 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>clf.measures &#8212; mlPyp 0.2.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="mlPyp 0.2.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">mlPyp 0.2.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for clf.measures</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">()</span>
+<span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+<span class="c1">#np.random.seed(133)</span>
+
+
+<span class="k">def</span> <span class="nf">natural_order</span><span class="p">(</span><span class="n">reverse</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">view</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+        <span class="n">fn</span><span class="o">.</span><span class="n">reverse</span> <span class="o">=</span> <span class="n">reverse</span>
+        <span class="k">return</span> <span class="n">fn</span>
+    <span class="k">return</span> <span class="n">view</span>
+
+
+<div class="viewcode-block" id="Measure"><a class="viewcode-back" href="../../modindex.html#clf.measures.Measure">[docs]</a><span class="k">class</span> <span class="nc">Measure</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    For measure the results of the predictors, distincts measures are defined in this class</span>
+<span class="sd">    </span>
+<span class="sd">    :type predictions: array</span>
+<span class="sd">    :param predictions: array of predictions</span>
+
+<span class="sd">    :type labels: array</span>
+<span class="sd">    :param labels: array of correct labels of type float for compare with the predictions</span>
+
+<span class="sd">    :type labels2classes_fn: function</span>
+<span class="sd">    :param labels2classes_fn: function for transform the labels to classes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">predictions</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">labels2classes_fn</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">labels</span> <span class="o">=</span> <span class="n">labels2classes_fn</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">predictions</span> <span class="o">=</span> <span class="n">predictions</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">average</span> <span class="o">=</span> <span class="s2">&quot;macro&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">labels2classes</span> <span class="o">=</span> <span class="n">labels2classes_fn</span>
+
+    <span class="nd">@natural_order</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<div class="viewcode-block" id="Measure.accuracy"><a class="viewcode-back" href="../../modindex.html#clf.measures.Measure.accuracy">[docs]</a>    <span class="k">def</span> <span class="nf">accuracy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        measure for correct predictions, true positives and true negatives.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="k">import</span> <span class="n">accuracy_score</span>
+        <span class="k">return</span> <span class="n">accuracy_score</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">labels2classes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">predictions</span><span class="p">))</span></div>
+
+    <span class="nd">@natural_order</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<div class="viewcode-block" id="Measure.precision"><a class="viewcode-back" href="../../modindex.html#clf.measures.Measure.precision">[docs]</a>    <span class="k">def</span> <span class="nf">precision</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        measure for false positives predictions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="k">import</span> <span class="n">precision_score</span>
+        <span class="k">return</span> <span class="n">precision_score</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">labels2classes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">predictions</span><span class="p">),</span> 
+            <span class="n">average</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">average</span><span class="p">,</span> <span class="n">pos_label</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></div>
+
+    <span class="nd">@natural_order</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<div class="viewcode-block" id="Measure.recall"><a class="viewcode-back" href="../../modindex.html#clf.measures.Measure.recall">[docs]</a>    <span class="k">def</span> <span class="nf">recall</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        measure from false negatives predictions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="k">import</span> <span class="n">recall_score</span>
+        <span class="k">return</span> <span class="n">recall_score</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">labels2classes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">predictions</span><span class="p">),</span> 
+            <span class="n">average</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">average</span><span class="p">,</span> <span class="n">pos_label</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></div>
+
+    <span class="nd">@natural_order</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<div class="viewcode-block" id="Measure.f1"><a class="viewcode-back" href="../../modindex.html#clf.measures.Measure.f1">[docs]</a>    <span class="k">def</span> <span class="nf">f1</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        weighted average presicion and recall</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="k">import</span> <span class="n">f1_score</span>
+        <span class="k">return</span> <span class="n">f1_score</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">labels2classes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">predictions</span><span class="p">),</span> 
+            <span class="n">average</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">average</span><span class="p">,</span> <span class="n">pos_label</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></div>
+
+    <span class="nd">@natural_order</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<div class="viewcode-block" id="Measure.auc"><a class="viewcode-back" href="../../modindex.html#clf.measures.Measure.auc">[docs]</a>    <span class="k">def</span> <span class="nf">auc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        area under the curve of the reciver operating characteristic, measure for </span>
+<span class="sd">        true positives rate and false positive rate</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="k">import</span> <span class="n">roc_auc_score</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">roc_auc_score</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">labels2classes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">predictions</span><span class="p">),</span> 
+                <span class="n">average</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">average</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="k">def</span> <span class="nf">confusion_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_labels</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="k">import</span> <span class="n">confusion_matrix</span>
+        <span class="n">cm</span> <span class="o">=</span> <span class="n">confusion_matrix</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">predictions</span><span class="p">),</span> <span class="n">labels</span><span class="o">=</span><span class="n">base_labels</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cm</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span> <span class="o">/</span> <span class="n">cm</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+
+    <span class="nd">@natural_order</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+<div class="viewcode-block" id="Measure.logloss"><a class="viewcode-back" href="../../modindex.html#clf.measures.Measure.logloss">[docs]</a>    <span class="k">def</span> <span class="nf">logloss</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        accuracy by penalising false classifications</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="k">import</span> <span class="n">log_loss</span>
+        <span class="k">return</span> <span class="n">log_loss</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">predictions</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="ListMeasure"><a class="viewcode-back" href="../../modindex.html#clf.measures.ListMeasure">[docs]</a><span class="k">class</span> <span class="nc">ListMeasure</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class for save distincts measures</span>
+
+<span class="sd">    :type headers: list</span>
+<span class="sd">    :param headers: lists of headers</span>
+
+<span class="sd">    :type measures: list</span>
+<span class="sd">    :param measures: list of values</span>
+
+<span class="sd">    list_measure = ListMeasure(headers=[&quot;classif&quot;, &quot;f1&quot;], measures=[[&quot;test&quot;, 0.5], [&quot;test2&quot;, 0.6]])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">measures</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">headers</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">headers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">measures</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">measures</span> <span class="o">=</span> <span class="p">[[]]</span>
+        <span class="k">if</span> <span class="n">order</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">order</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span> <span class="o">=</span> <span class="n">headers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">measures</span> <span class="o">=</span> <span class="n">measures</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="n">order</span>
+
+<div class="viewcode-block" id="ListMeasure.add_measure"><a class="viewcode-back" href="../../modindex.html#clf.measures.ListMeasure.add_measure">[docs]</a>    <span class="k">def</span> <span class="nf">add_measure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :type name: string</span>
+<span class="sd">        :param name: column name</span>
+
+<span class="sd">        :type value: float</span>
+<span class="sd">        :param value: value to add</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">measures</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">measures</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">measures</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">measures</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">order</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">reverse</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ListMeasure.get_measure"><a class="viewcode-back" href="../../modindex.html#clf.measures.ListMeasure.get_measure">[docs]</a>    <span class="k">def</span> <span class="nf">get_measure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :type name: string</span>
+<span class="sd">        :param name: by name of the column you can get his values. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">measures_to_dict</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ListMeasure.measures_to_dict"><a class="viewcode-back" href="../../modindex.html#clf.measures.ListMeasure.measures_to_dict">[docs]</a>    <span class="k">def</span> <span class="nf">measures_to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        convert the matrix to a dictionary</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">defaultdict</span>
+        <span class="n">measures</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">header</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="n">measures</span><span class="p">[</span><span class="n">header</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;values&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;reverse&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">order</span><span class="p">[</span><span class="n">i</span><span class="p">]}</span>
+            <span class="k">for</span> <span class="n">measure</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">measures</span><span class="p">:</span>
+                <span class="n">measures</span><span class="p">[</span><span class="n">header</span><span class="p">][</span><span class="s2">&quot;values&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">measure</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">measures</span></div>
+             
+<div class="viewcode-block" id="ListMeasure.print_scores"><a class="viewcode-back" href="../../modindex.html#clf.measures.ListMeasure.print_scores">[docs]</a>    <span class="k">def</span> <span class="nf">print_scores</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">order_column</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :type order_column: string</span>
+<span class="sd">        :param order_column: order the matrix by the order_column name that you pass</span>
+<span class="sd">        </span>
+<span class="sd">        :type reverse: bool</span>
+<span class="sd">        :param reverse: if False the order is ASC else DESC</span>
+
+<span class="sd">        print the matrix</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">ml.utils.order</span> <span class="k">import</span> <span class="n">order_table_print</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">drop_empty_columns</span><span class="p">()</span>
+        <span class="n">order_table_print</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">measures</span><span class="p">,</span> <span class="n">order_column</span><span class="p">,</span> <span class="n">natural_order</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">order</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ListMeasure.empty_columns"><a class="viewcode-back" href="../../modindex.html#clf.measures.ListMeasure.empty_columns">[docs]</a>    <span class="k">def</span> <span class="nf">empty_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        return a set of indexes of empty columns</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">empty_cols</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">measures</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">col</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">col</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+                    <span class="n">empty_cols</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="n">empty_cols</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="nb">set</span><span class="p">([</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="n">counter</span> <span class="ow">in</span> <span class="n">empty_cols</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">counter</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">measures</span><span class="p">)])</span>        </div>
+
+<div class="viewcode-block" id="ListMeasure.drop_empty_columns"><a class="viewcode-back" href="../../modindex.html#clf.measures.ListMeasure.drop_empty_columns">[docs]</a>    <span class="k">def</span> <span class="nf">drop_empty_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        drop empty columns</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">empty_columns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">empty_columns</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">counter</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">empty_columns</span><span class="p">):</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="n">c</span><span class="o">-</span><span class="n">counter</span><span class="p">]</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">order</span><span class="p">[</span><span class="n">c</span><span class="o">-</span><span class="n">counter</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">measures</span><span class="p">:</span>
+                <span class="k">del</span> <span class="n">row</span><span class="p">[</span><span class="n">c</span><span class="o">-</span><span class="n">counter</span><span class="p">]</span></div>
+
+    <span class="k">def</span> <span class="nf">print_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">tabulate</span> <span class="k">import</span> <span class="n">tabulate</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">measure</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">measures</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;******&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;******&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">tabulate</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">c_</span><span class="p">[</span><span class="n">labels</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">measure</span><span class="p">],</span> <span class="nb">list</span><span class="p">(</span><span class="n">labels</span><span class="p">)))</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">hs</span><span class="p">,</span> <span class="n">ho</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">headers</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">hs</span> <span class="o">!=</span> <span class="n">ho</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span>
+
+        <span class="n">diff_len</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">headers</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">)</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">headers</span><span class="p">):</span>
+            <span class="n">headers</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">headers</span>
+            <span class="n">this_measures</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span> <span class="o">+</span>  <span class="p">([</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">diff_len</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">measures</span><span class="p">]</span>
+            <span class="n">other_measures</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">measures</span>
+            <span class="n">order</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">order</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">)</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">headers</span><span class="p">):</span>
+            <span class="n">headers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span>
+            <span class="n">this_measures</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">measures</span>
+            <span class="n">other_measures</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span> <span class="o">+</span> <span class="p">([</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">diff_len</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">measures</span><span class="p">]</span>
+            <span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">order</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">headers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span>
+            <span class="n">this_measures</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">measures</span>
+            <span class="n">other_measures</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">measures</span>
+            <span class="n">order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">order</span>
+
+        <span class="n">list_measure</span> <span class="o">=</span> <span class="n">ListMeasure</span><span class="p">(</span>
+            <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> 
+            <span class="n">measures</span><span class="o">=</span><span class="n">this_measures</span><span class="o">+</span><span class="n">other_measures</span><span class="p">,</span>
+            <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">list_measure</span>
+
+    <span class="k">def</span> <span class="nf">calc_scores</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">predict</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">labels2classes_fn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">measures</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">measures</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">measures</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;accuracy&quot;</span><span class="p">,</span> <span class="s2">&quot;precision&quot;</span><span class="p">,</span> <span class="s2">&quot;recall&quot;</span><span class="p">,</span> <span class="s2">&quot;f1&quot;</span><span class="p">,</span> <span class="s2">&quot;auc&quot;</span><span class="p">,</span> <span class="s2">&quot;logloss&quot;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">measures</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">measures</span> <span class="o">=</span> <span class="n">measures</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">measures</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;logloss&quot;</span><span class="p">]</span>
+        <span class="n">uncertain</span> <span class="o">=</span> <span class="s2">&quot;logloss&quot;</span> <span class="ow">in</span> <span class="n">measures</span>
+        <span class="n">predictions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span>
+            <span class="n">predict</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="n">uncertain</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">258</span><span class="p">)))</span>
+        <span class="n">measure</span> <span class="o">=</span> <span class="n">Measure</span><span class="p">(</span><span class="n">predictions</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">labels2classes_fn</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_measure</span><span class="p">(</span><span class="s2">&quot;CLF&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+
+        <span class="n">measure_class</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">measure_name</span> <span class="ow">in</span> <span class="n">measures</span><span class="p">:</span>
+            <span class="n">measure_name</span> <span class="o">=</span> <span class="n">measure_name</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">measure</span><span class="p">,</span> <span class="n">measure_name</span><span class="p">):</span>
+                <span class="n">measure_class</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">measure_name</span><span class="p">,</span> <span class="n">measure</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">measure_name</span><span class="p">,</span> <span class="n">measure</span> <span class="ow">in</span> <span class="n">measure_class</span><span class="p">:</span>
+            <span class="n">fn</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">measure</span><span class="p">,</span> <span class="n">measure_name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_measure</span><span class="p">(</span><span class="n">measure_name</span><span class="p">,</span> <span class="n">fn</span><span class="p">(),</span> <span class="n">reverse</span><span class="o">=</span><span class="n">fn</span><span class="o">.</span><span class="n">reverse</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">mlPyp 0.2.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Alejandro G. Martinez Romero.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>
