@@ -61,7 +61,10 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(self.dataset.sparcity() > .3, True)
 
     def test_copy(self):
+        ds = self.dataset.copy(.5)
         self.assertEqual(self.dataset.copy(.5).train_data.shape[0], 3)
+        dl = self.dataset.desfragment()
+        self.assertEqual(dl.copy(.5).data.shape[0], 5)
 
     def test_apply_transforms_flag(self):
         self.dataset.apply_transforms = True

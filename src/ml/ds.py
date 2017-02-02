@@ -43,7 +43,6 @@ def load_metadata(path):
 def calc_nshape(data, value):
     if value is None or not (0 < value <= 1) or data is None:
         value = 1
-
     limit = int(round(data.shape[0] * value, 0))
     return data[:limit]
 
@@ -351,9 +350,7 @@ class DataLabel(ReadWriteData):
         calculate the md5 from the data.
         """
         import hashlib
-        dl = self.desfragment()
-        h = hashlib.md5(dl.data[:])
-        dl.destroy()
+        h = hashlib.md5(self.data[:])
         return h.hexdigest()
 
     def md5(self):
@@ -419,7 +416,8 @@ class DataLabel(ReadWriteData):
                                 init=end)
         self.chunks_writer(f, "/data/labels", dsb.validation_labels, chunks=self.chunks, 
                             init=end)
-        f.close()
+        f.close()        
+        self._set_attr("md5", self.calc_md5())
 
     def build_dataset(self, data, labels):
         """
@@ -480,7 +478,7 @@ class DataLabel(ReadWriteData):
         
         copy the dataset, a percentaje is permited for the size of the copy
         """
-        name = self.name + "_copy_" + str(percentaje)
+        name = self.name + "_copy_" + uuid.uuid4().hex
         dl = self.convert(name, dtype=self.dtype, ltype=self.ltype, 
                         apply_transforms=self.apply_transforms, 
                         percentaje=percentaje)
@@ -750,6 +748,15 @@ class DataSetBuilder(DataLabel):
         dl.build_dataset_from_dsb(self)
         return dl
 
+    def calc_md5(self):
+        """
+        calculate the md5 from the data.
+        """
+        dl = self.desfragment()
+        md5 = dl.calc_md5()
+        dl.destroy()
+        return md5
+
     def info(self, classes=False):
         """
         :type classes: bool
@@ -867,21 +874,26 @@ class DataSetBuilder(DataLabel):
     #        return data
 
     def build_dataset(self, data, labels, test_data=None, test_labels=None, 
-                        validation_data=None, validation_labels=None):
+                        validation_data=None, validation_labels=None, 
+                        use_validator=True):
         """
         :type data: ndarray
         :param data: array of values to save in the dataset
 
         :type labels: ndarray
         :param labels: array of labels to save in the dataset
+
+        :type use_validator: bool
+        :param use_validator: if want to use cross validator or adversarial
         """
         if self.mode == "r":
             return
 
         f = self._open_attrs()
 
-        if self.validator == '' and test_data is not None and test_labels is not None \
-            and validation_data is not None and validation_labels is not None:
+        if self.validator == '' or use_validator is False and test_data is not None\
+            and test_labels is not None and validation_data is not None\
+            and validation_labels is not None:
                 data_labels = [
                     data, validation_data, test_data,
                     labels, validation_labels, test_labels]
@@ -890,12 +902,13 @@ class DataSetBuilder(DataLabel):
                 data_labels = self.cross_validators(data, labels)
             elif self.validator == 'adversarial':
                 data_labels = self.adversarial_validator(data, labels, test_data, test_labels)
+            else:
+                data_labels = self.cross_validators(data, labels)
 
         train_data = self.processing(data_labels[0], initial=True)        
         validation_data = self.processing(data_labels[1])
         test_data = self.processing(data_labels[2])
-        
-        #print("-------", train_data.dtype)
+
         self._set_space_data(f, 'train_data', self.dtype_t(train_data))
         self._set_space_data(f, 'test_data', self.dtype_t(test_data))
         self._set_space_data(f, 'validation_data', self.dtype_t(validation_data))
@@ -1005,7 +1018,8 @@ class DataSetBuilder(DataLabel):
             test_data=calc_nshape(self.test_data, percentaje),
             test_labels=calc_nshape(self.test_labels, percentaje),
             validation_data=calc_nshape(self.validation_data, percentaje),
-            validation_labels=calc_nshape(self.validation_labels, percentaje))
+            validation_labels=calc_nshape(self.validation_labels, percentaje),
+            use_validator=False)
         dsb.close_reader()
         return dsb
 
@@ -1100,8 +1114,8 @@ class DataSetBuilderImage(DataSetBuilder):
                 labels.append(number_id)
         return images_data, labels
 
-    def copy(self):
-        dataset = super(DataSetBuilderImage, self).copy()
+    def copy(self, percentaje=1):
+        dataset = super(DataSetBuilderImage, self).copy(percentaje=percentaje)
         dataset.image_size = self.image_size
         return dataset
 
