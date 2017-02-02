@@ -51,8 +51,7 @@ class TestDataset(unittest.TestCase):
 
     def test_labels_info(self):
         labels_counter = self.dataset.labels_info()
-        self.assertEqual(labels_counter[0], 5)
-        self.assertEqual(labels_counter[1], 5)
+        self.assertEqual(labels_counter[0]+labels_counter[1], 5)
 
     def test_distinct_data(self):
         self.assertEqual(self.dataset.distinct_data() > 0, True)

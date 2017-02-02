@@ -5,24 +5,27 @@ import os
 
 from ml.utils.tf_functions import ssim, msssim
 from ml.utils.config import get_settings
-from ml.processing import PreprocessingImage
+from ml.processing import Transforms, rgb2gray, merge_offset
 
 settings = get_settings("ml")
-settings.update(get_settings("numbers"))
+settings.update(get_settings("tickets"))
 
 
 class TestMsssiM(unittest.TestCase):
     def setUp(self):
-        self.img1 = os.path.join(settings["train_folder_path"], "1/img-1-0.png")
-        self.img2 = os.path.join(settings["train_folder_path"], "1/img-1-1.png") 
-        self.img3 = os.path.join(settings["train_folder_path"], "1/img-1-2.png")
+        self.img1 = os.path.join(settings["numbers_xml"], "1/img-1-0.png")
+        self.img2 = os.path.join(settings["numbers_xml"], "1/img-1-1.png") 
+        self.img3 = os.path.join(settings["numbers_xml"], "1/img-1-2.png")
 
     def test_same_img(self):
         from skimage import io, img_as_float
 
         image_path = self.img1
         image = io.imread(image_path)
-        image = PreprocessingImage(image, [("rgb2gray", None), ("merge_offset", None)]).pipeline()
+        transforms = Transforms()
+        transforms.add(rgb2gray)
+        transforms.add(merge_offset)
+        image = transforms.apply(image)
         img = img_as_float(image)
         rows, cols = img.shape
 
@@ -70,12 +73,15 @@ class TestMsssiM(unittest.TestCase):
         image_path2 = self.img3
 
         image1 = io.imread(image_path1)
-        image1 = PreprocessingImage(image1, [("rgb2gray", None), ("merge_offset", None)]).pipeline()
+        transforms = Transforms()
+        transforms.add(rgb2gray)
+        transforms.add(merge_offset)
+        image1 = transforms.apply(image1)
         img1 = img_as_float(image1)
         rows1, cols1 = img1.shape
 
         image2 = io.imread(image_path2)
-        image2 = PreprocessingImage(image2, [("rgb2gray", None), ("merge_offset", None)]).pipeline()
+        image2 = transforms.apply(image2)
         img2 = img_as_float(image2)
         rows2, cols2 = img2.shape
 
