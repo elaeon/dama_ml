@@ -158,6 +158,8 @@ class BaseClassif(DataDrive):
     def convert_label(self, label, raw=False):
         if raw is True:
             return label
+        elif raw is None:
+            return self.position_index(label)
         else:
             return self.le.inverse_transform(self.position_index(label))
 
@@ -317,6 +319,8 @@ class SKL(BaseClassif):
     def convert_label(self, label, raw=False):
         if raw is True:
             return (np.arange(self.num_labels) == label).astype(np.float32)
+        elif raw is None:
+            return self.position_index(label)
         else:
             return self.le.inverse_transform(self.position_index(label))
 
@@ -341,15 +345,9 @@ class SKL(BaseClassif):
                             save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
 
 
-class SKLP(SKL):
+class SKLP(BaseClassif):
     def __init__(self, *args, **kwargs):
         super(SKLP, self).__init__(*args, **kwargs)
-
-    def convert_label(self, label, raw=False):
-        if raw is True:
-            return label
-        else:
-            return self.le.inverse_transform(self.position_index(label))
 
     def train(self, batch_size=0, num_steps=0):
         from sklearn.externals import joblib

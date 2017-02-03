@@ -86,7 +86,6 @@ if __name__ == '__main__':
 
 
     if args.build_dataset and args.dataset_name:
-        #transforms = [(FiTScaler.module_cls_name(), None)]
         transforms = Transforms()
         dataset = build(args.dataset_name, transforms=transforms)
 
@@ -96,13 +95,13 @@ if __name__ == '__main__':
         if args.ensemble == "boosting":
             classif = clf_ensemble.Boosting({"0": [
                 w_sklearn.ExtraTrees,
-                #w_tflearn.MLP,
-                w_sklearn.RandomForest]},
-                #w_sklearn.SGDClassifier,
-                #w_sklearn.SVC,
-                #w_sklearn.LogisticRegression,
-                #w_sklearn.AdaBoost,
-                #w_sklearn.GradientBoost]},
+                w_tflearn.MLP,
+                w_sklearn.RandomForest,
+                w_sklearn.SGDClassifier,
+                w_sklearn.SVC,
+                w_sklearn.LogisticRegression,
+                w_sklearn.AdaBoost,
+                w_sklearn.GradientBoost]},
                 dataset=dataset,
                 model_name=args.model_name,
                 model_version=args.model_version,

@@ -112,6 +112,11 @@ class TestDataset(unittest.TestCase):
         dsb.destroy()
         dataset.destroy()
 
+    def test_to_df(self):
+        df = self.dataset.to_df()
+        #print(df.describe())
+        self.assertEqual(list(df.columns), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'target'])
+
 
 class TestDataSetFile(unittest.TestCase):
     def setUp(self):

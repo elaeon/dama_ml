@@ -80,9 +80,10 @@ class Grid(DataDrive):
     def get_params(self, model_cls):
         return self.params.get(model_cls, {})
 
-    def ordered_best_predictors(self, measure="logloss", operator=None):
-        from functools import cmp_to_key
+    def ordered_best_predictors(self, measure="logloss"):
+        #from functools import cmp_to_key
         list_measure = self.all_clf_scores(measures=measure)
+        #print(list_measure.print_scores())
         #print("MEASURES", list_measure.measures)
         column_measures = list_measure.get_measure(measure)
         #print(column_measures)
@@ -94,6 +95,7 @@ class Grid(DataDrive):
             def __sub__(self, other):
                 if self.elem is None or other is None:
                     return 0
+                #print(self.elem, other.elem)
                 return self.elem - other.elem
 
             def __str__(self):
@@ -108,16 +110,16 @@ class Grid(DataDrive):
                 yield DTuple(counter, elem)
                 counter += 1
 
-        return sorted(enum(column_measures), key=cmp_to_key(operator))
+        return sorted(enum(column_measures["values"]), reverse=column_measures["reverse"])
 
-    def best_predictor_threshold(self, threshold=2, limit=3, measure="logloss", operator=None):
-        best = self.ordered_best_predictors(measure=measure, operator=operator)
+    def best_predictor_threshold(self, threshold=2, limit=3, measure="logloss"):
+        best = self.ordered_best_predictors(measure=measure)
         base = best[0].elem
         return filter(lambda x: x[1] < threshold, 
             ((elem.counter, elem.elem/base) for elem in best if elem.elem is not None))[:limit]
 
-    def best_predictor(self, measure="logloss", operator=None):
-        best = self.ordered_best_predictors(measure=measure, operator=operator)[0].counter
+    def best_predictor(self, measure="logloss"):
+        best = self.ordered_best_predictors(measure=measure)[0].counter
         #self.load_model(self.classifs[best], info=False)
         return best
 
@@ -256,7 +258,7 @@ class Boosting(Ensemble):
         return self.avg_prediction(predictions, weights, uncertain=raw)
 
     def correlation_between_models(self, sort=False):
-        from ml.utils.numeric_functions import le, pearsoncc
+        from ml.utils.numeric_functions import pearsoncc
         from ml.utils.network import all_simple_paths_graph
         from itertools import combinations
         from ml.utils.order import order_from_ordered
@@ -265,11 +267,11 @@ class Boosting(Ensemble):
         best_predictors = []
         def predictions_fn():
             predictions = {}
-            for index, _ in self.best_predictor_threshold(operator=le, limit=self.num_max_clfs):
+            for index, _ in self.best_predictor_threshold(limit=self.num_max_clfs):
                 classif = self.load_model(self.classifs[self.meta_name+".0"][index], 
                     namespace=self.meta_name+".0")
                 predictions[index] = np.asarray(list(classif.predict(
-                    classif.dataset.test_data, raw=False, transform=False, chunk_size=258)))
+                    classif.dataset.test_data, raw=None, transform=False, chunk_size=258)))
                 best_predictors.append(index)
             return predictions
 

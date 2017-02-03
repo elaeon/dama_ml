@@ -1146,7 +1146,7 @@ class DataSetBuilderFile(DataSetBuilder):
 
     @classmethod
     def csv2dataset(self, path, label_column):
-        df = pd.read_csv(path)
+        df = pd.read_csv(path, chunksize=100)
         dataset = df.drop([label_column], axis=1).as_matrix()
         labels = df[label_column].as_matrix()
         return dataset, labels        
