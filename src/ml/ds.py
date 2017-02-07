@@ -400,10 +400,11 @@ class DataLabel(ReadWriteData):
         if self.mode == "r":
             return
 
-        f = self._open_attrs()
+        #f = self._open_attrs()
         labels_shape = tuple(dsb.shape[0:1] + dsb.train_labels.shape[1:])
-        self._set_space_shape(f, "data", dsb.shape)
-        self._set_space_shape(f, "labels", labels_shape, label=True)
+        #self._set_space_shape(f, "data", dsb.shape)
+        #self._set_space_shape(f, "labels", labels_shape, label=True)
+        f = self._prepare_attrs(dsb.shape, labels_shape)
 
         end = self.chunks_writer(f, "/data/data", dsb.train_data, chunks=self.chunks)
         end = self.chunks_writer(f, "/data/data", dsb.test_data, chunks=self.chunks, 
@@ -418,6 +419,17 @@ class DataLabel(ReadWriteData):
                             init=end)
         f.close()        
         self._set_attr("md5", self.calc_md5())
+
+    def _prepare_attrs(self, shape, labels_shape):
+        f = self._open_attrs()
+        self._set_space_shape(f, "data", shape)
+        self._set_space_shape(f, "labels", labels_shape, label=True)
+        return f
+
+    def _write(self, f, data, labels, init=0):
+        end = self.chunks_writer(f, "/data/data", data, chunks=self.chunks, init=init)
+        end_l = self.chunks_writer(f, "/data/labels", labels, chunks=self.chunks, init=init)
+        return end
 
     def build_dataset(self, data, labels):
         """
@@ -548,6 +560,25 @@ class DataLabel(ReadWriteData):
         dl.destroy()
         return df
 
+    @classmethod
+    def from_DF(self, name, df, transforms=None, apply_transforms=None, path=None):
+        #dl = DataLabel(name=name, 
+        #    dataset_path=path,
+        #    transforms=transforms,
+        #    apply_transforms=apply_transforms,
+        #    dtype=dtype,
+        #    ltype=ltype,
+        #    description=self.description,
+        #    author=self.author,
+        #    compression_level=self.compression_level,
+        #    chunks=self.chunks,
+        #    rewrite=self.rewrite)
+        #dl._applied_transforms = self.apply_transforms
+        #dl.build_dataset(calc_nshape(df, percentaje), calc_nshape(self.labels, percentaje))
+        #dl.close_reader()
+        #return dl
+        pass
+
     def add_transforms(self, name, transforms):
         """
         :type name: string
@@ -568,6 +599,69 @@ class DataLabel(ReadWriteData):
             dsb = self.copy()
             dsb.transforms += transforms
         return dsb
+
+    def outlayers(self, n_estimators=25, max_samples=.9, contamination=.2):
+        """
+        :type n_estimators: int
+        :params n_estimators: number of estimators for IsolationForest
+
+        :type max_samples: float
+        :params max_samples: IsolationForest's max_samples
+
+        :type contamination: float
+        :params contamination: percentaje of expectect outlayers
+
+        return the indexes of the data who are outlayers
+        """
+        from sklearn.ensemble import IsolationForest
+        
+        clf = IsolationForest(n_estimators=n_estimators,
+            contamination=contamination,
+            random_state=np.random.RandomState(42),
+            max_samples=max_samples,
+            n_jobs=-1)
+        
+        clf.fit(self.data)
+        y_pred = clf.predict(self.data)
+        return (i for i, v in enumerate(y_pred) if v == -1)
+        
+    def remove_outlayers(self):
+        """
+        removel the outlayers of the data
+        """
+        outlayers = list(self.outlayers())
+        dl = self.desfragment()
+        dl_ol = DataLabel(name=self.name+"_n_outlayer", 
+            dataset_path=self.dataset_path,
+            transforms=self.transforms,
+            apply_transforms=self.apply_transforms,
+            dtype=self.dtype,
+            ltype=self.ltype,
+            description=self.description,
+            author=self.author,
+            compression_level=self.compression_level,
+            chunks=self.chunks,
+            rewrite=True)
+
+        shape = tuple([dl.shape[0] - len(outlayers)] + list(dl.shape[1:]))
+        outlayers = iter(outlayers)
+        outlayer = outlayers.next()
+        data = np.empty(shape, dtype=self.dtype)
+        labels = np.empty((shape[0],), dtype=self.ltype)
+        counter = 0
+        for index, row in enumerate(dl.data):
+            if index == outlayer:
+                try:
+                    outlayer = outlayers.next()
+                except StopIteration:
+                    outlayer = None
+            else:
+                data[counter] = dl.data[index]
+                labels[counter] = dl.labels[index]
+                counter += 1
+        dl_ol.build_dataset(data, labels)
+        dl.destroy()
+        return dl_ol
 
 
 class DataSetBuilder(DataLabel):
@@ -940,6 +1034,9 @@ class DataSetBuilder(DataLabel):
         return classif.load_meta().get("score", {measure, None}).get(measure, None) 
 
     def plot(self):
+        #print(df)
+        #df.plot(kind='scatter', x=1, y=2)
+        #plt.show()
         import matplotlib.pyplot as plt
         last_transform = self.transforms.get_transforms("row")[-1]
         data, labels = self.desfragment()
@@ -1146,7 +1243,7 @@ class DataSetBuilderFile(DataSetBuilder):
 
     @classmethod
     def csv2dataset(self, path, label_column):
-        df = pd.read_csv(path, chunksize=100)
+        df = pd.read_csv(path)
         dataset = df.drop([label_column], axis=1).as_matrix()
         labels = df[label_column].as_matrix()
         return dataset, labels        
