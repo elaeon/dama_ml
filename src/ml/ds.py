@@ -672,6 +672,30 @@ class DataLabel(ReadWriteData):
         dl.destroy()
         return dl_ol
 
+    def features2rows(self, labels=False):
+        """
+        :type labels: bool
+        :param labels: if true, labels are included
+
+        transforms a matrix of dim (n, m) to a matrix of dim (n*m, 2) or (n*m, 3) where
+        the rows are describes as [feature_column, feature_data]
+        """
+        if labels is False:
+            data = np.empty((self.data.shape[0] * self.data.shape[1], 2))
+            row_i = 0
+            for row in self.data:
+                for j, col in enumerate(row):
+                    data[row_i] = np.asarray([j, col])
+                    row_i += 1
+        else:
+            data = np.empty((self.data.shape[0] * self.data.shape[1], 3))
+            row_i = 0
+            for i, row in enumerate(self.data):
+                for j, col in enumerate(row):
+                    data[row_i] = np.asarray([j, col, self.labels[i]])
+                    row_i += 1
+        return data
+
 
 class DataSetBuilder(DataLabel):
     """
@@ -1042,48 +1066,67 @@ class DataSetBuilder(DataLabel):
         measure = "auc"
         return classif.load_meta().get("score", {measure, None}).get(measure, None) 
 
-    def plot(self):
+    def plot(self, view="columns", type_g=None):        
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+
+        if view == "columns":
+            sns.set(style="whitegrid", palette="pastel", color_codes=True)
+            data = self.features2rows(labels=True)
+            if type_g == 'box':
+                sns.boxplot(x=data[:,0], y=data[:,1], hue=data[:,2], palette="PRGn")
+            elif type_g == "violin":
+                sns.violinplot(x=data[:,0], y=data[:,1], hue=data[:,2], palette="PRGn", inner="box")
+            #sns.swarmplot(x=data[:,0], y=data[:,1], hue=data[:,2], palette=sns.color_palette("muted"))
+            sns.despine(offset=10, trim=True)
+        else:
+            if len(self.data.shape) > 2:
+                pass
+            elif self.data.shape[1] == 2:
+                df = self.to_df()
+                sns.lmplot(x="c0", y="c1", data=df, hue="target")
+        plt.show()
         #print(df)
         #df.plot(kind='scatter', x=1, y=2)
         #plt.show()
-        import matplotlib.pyplot as plt
-        last_transform = self.transforms.get_transforms("row")[-1]
-        data, labels = self.desfragment()
-        if last_transform[0] == "tsne":
-            if last_transform[1]["action"] == "concatenate":                
-                dim = 2
-                features_tsne = data[:,-dim:]
-            else:
-                features_tsne = data
-        else:
-            features_tsne = ml.processing.Preprocessing(data, [("tsne", 
-                {"perplexity": 50, "action": "replace"})])
+        #import matplotlib.pyplot as plt
+        #last_transform = self.transforms.get_transforms("row")[-1]
+        #data, labels = self.desfragment()
+        #if last_transform[0] == "tsne":
+        #    if last_transform[1]["action"] == "concatenate":                
+        #        dim = 2
+        #        features_tsne = data[:,-dim:]
+        #    else:
+        #        features_tsne = data
+        #else:
+        #    features_tsne = ml.processing.Preprocessing(data, [("tsne", 
+        #        {"perplexity": 50, "action": "replace"})])
 
-        classes = self.labels_info().keys()
-        colors = ['b', 'r', 'y', 'm', 'c']
-        classes_colors = dict(zip(classes, colors))
-        fig, ax = plt.subplots(1, 1, figsize=(17.5, 17.5))
+        #classes = self.labels_info().keys()
+        #colors = ['b', 'r', 'y', 'm', 'c']
+        #classes_colors = dict(zip(classes, colors))
+        #fig, ax = plt.subplots(1, 1, figsize=(17.5, 17.5))
 
-        r_indexes = {}        
-        for index, target in enumerate(labels):
-            r_indexes.setdefault(target, [])
-            r_indexes[target].append(index)
+        #r_indexes = {}        
+        #for index, target in enumerate(labels):
+        #    r_indexes.setdefault(target, [])
+        #    r_indexes[target].append(index)
 
-        for target, indexes in r_indexes.items():
-            features_index = features_tsne[indexes]
-            ax.scatter(
-                features_index[:,0], 
-                features_index[:,1], 
-                color=classes_colors[target], 
-                marker='o',
-                alpha=.4,
-                label=target)
+        #for target, indexes in r_indexes.items():
+        #    features_index = features_tsne[indexes]
+        #    ax.scatter(
+        #        features_index[:,0], 
+        #        features_index[:,1], 
+        #        color=classes_colors[target], 
+        #        marker='o',
+        #        alpha=.4,
+        #        label=target)
          
-        ax.set(xlabel='X',
-               ylabel='Y',
-               title=self.name)
-        ax.legend(loc=2)
-        plt.show()
+        #ax.set(xlabel='X',
+        #       ylabel='Y',
+        #       title=self.name)
+        #ax.legend(loc=2)
+        #plt.show()
 
     def convert(self, name, dtype='float64', ltype='|S1', apply_transforms=False, 
                 percentaje=1):

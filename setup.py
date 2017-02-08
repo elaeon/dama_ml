@@ -8,7 +8,7 @@ install_requires = [
     'networkx>=1.11',
     'numpy>=1.11.2',
     'pandas>=0.18.0',
-    'Pillow==3.4.2',
+    'Pillow>=3.4.2',
     'scikit-image>=0.12.3',
     'scikit-learn>=0.18',
     'scipy>=0.18.1',

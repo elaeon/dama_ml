@@ -1,7 +1,7 @@
 import argparse
 
 from ml import __version__
-from ml.commands import dataset, models
+from ml.commands import dataset, models, plot
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--version', action='version', version=__version__)
@@ -21,6 +21,11 @@ model_parser.add_argument("--rm", type=str, help="delete elements")
 model_parser.add_argument("--measure", type=str, help="select the metric")
 model_parser.add_argument("--meta", action="store_true", help="print the model's metadata")
 model_parser.set_defaults(func=models.run)
+
+plot_parser = subparsers.add_parser('plot')
+plot_parser.add_argument("--dataset", type=str, help="dataset to plot")
+plot_parser.add_argument("--type-g", type=str, help="graph type")
+plot_parser.set_defaults(func=plot.run)
 
 
 def main():

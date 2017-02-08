@@ -118,8 +118,20 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(list(df.columns), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'target'])
 
     def test_outlayer(self):
-        #print(list(self.dataset.outlayers()))
         self.dataset.remove_outlayers()
+
+    def test_plot(self):
+        X = np.random.rand(100, 2)
+        Y = np.asarray([0 if sum(e) <= 1 else 1 for e in X])
+        dataset = DataSetBuilder(
+            name="test_ds_1",
+            dataset_path="/tmp/",
+            ltype='int',
+            validator="cross",
+            rewrite=True)
+        dataset.build_dataset(X, Y)
+        dataset.plot(view="rows", type_g="box")
+        dataset.destroy()
 
 
 class TestDataSetFile(unittest.TestCase):
