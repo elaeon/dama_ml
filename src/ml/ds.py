@@ -459,13 +459,9 @@ class DataLabel(ReadWriteData):
         rm(self.url())
         log.debug("rm {}".format(self.url()))
 
-    def convert(self, name, dtype='float64', ltype='|S1', apply_transforms=False, 
-                percentaje=1):
+    def empty(self, name, dtype='float64', ltype='|S1', apply_transforms=False):
         """
-        :type dtype: string
-        :param dtype: cast the data to the defined type
-
-        dataset_path is not necesary to especify, this info is obtained from settings.cfg
+        build an empty DataLabel with the default parameters
         """
         dl = DataLabel(name=name, 
             dataset_path=self.dataset_path,
@@ -479,6 +475,29 @@ class DataLabel(ReadWriteData):
             chunks=self.chunks,
             rewrite=self.rewrite)
         dl._applied_transforms = self.apply_transforms
+        return dl
+
+    def convert(self, name, dtype='float64', ltype='|S1', apply_transforms=False, 
+                percentaje=1):
+        """
+        :type dtype: string
+        :param dtype: cast the data to the defined type
+
+        dataset_path is not necesary to especify, this info is obtained from settings.cfg
+        """
+        #dl = DataLabel(name=name, 
+        #    dataset_path=self.dataset_path,
+        #    transforms=self.transforms,
+        #    apply_transforms=apply_transforms,
+        #    dtype=dtype,
+        #    ltype=ltype,
+        #    description=self.description,
+        #    author=self.author,
+        #    compression_level=self.compression_level,
+        #    chunks=self.chunks,
+        #    rewrite=self.rewrite)
+        #dl._applied_transforms = self.apply_transforms
+        dl = self.empty(name, dtype=dtype, ltype=ltype, apply_transforms=apply_transforms)
         dl.build_dataset(calc_nshape(self.data, percentaje), calc_nshape(self.labels, percentaje))
         dl.close_reader()
         return dl
@@ -631,18 +650,8 @@ class DataLabel(ReadWriteData):
         """
         outlayers = list(self.outlayers())
         dl = self.desfragment()
-        dl_ol = DataLabel(name=self.name+"_n_outlayer", 
-            dataset_path=self.dataset_path,
-            transforms=self.transforms,
-            apply_transforms=self.apply_transforms,
-            dtype=self.dtype,
-            ltype=self.ltype,
-            description=self.description,
-            author=self.author,
-            compression_level=self.compression_level,
-            chunks=self.chunks,
-            rewrite=True)
-
+        dl_ol = self.empty(self.name+"_n_outlayer", dtype=self.dtype, ltype=self.ltype, 
+            apply_transforms=self.apply_transforms)
         shape = tuple([dl.shape[0] - len(outlayers)] + list(dl.shape[1:]))
         outlayers = iter(outlayers)
         outlayer = outlayers.next()
@@ -1095,6 +1104,22 @@ class DataSetBuilder(DataLabel):
         :param percentaje: values between 0 and 1, this value specify the percentaje of the data to apply transforms and cast function, then return a subset
 
         """
+        dsb = self.empty(name, dtype=dtype, ltype=ltype, apply_transforms=apply_transforms)
+        dsb.build_dataset(
+            calc_nshape(self.train_data, percentaje), 
+            calc_nshape(self.train_labels, percentaje),
+            test_data=calc_nshape(self.test_data, percentaje),
+            test_labels=calc_nshape(self.test_labels, percentaje),
+            validation_data=calc_nshape(self.validation_data, percentaje),
+            validation_labels=calc_nshape(self.validation_labels, percentaje),
+            use_validator=False)
+        dsb.close_reader()
+        return dsb
+
+    def empty(self, name, dtype='float64', ltype='|S1', apply_transforms=False):
+        """
+        build an empty DataLabel with the default parameters
+        """
         dsb = DataSetBuilder(name=name, 
             dataset_path=self.dataset_path,
             transforms=self.transforms,
@@ -1107,17 +1132,9 @@ class DataSetBuilder(DataLabel):
             description=self.description,
             author=self.author,
             compression_level=self.compression_level,
+            chunks=self.chunks,
             rewrite=self.rewrite)
         dsb._applied_transforms = self.apply_transforms
-        dsb.build_dataset(
-            calc_nshape(self.train_data, percentaje), 
-            calc_nshape(self.train_labels, percentaje),
-            test_data=calc_nshape(self.test_data, percentaje),
-            test_labels=calc_nshape(self.test_labels, percentaje),
-            validation_data=calc_nshape(self.validation_data, percentaje),
-            validation_labels=calc_nshape(self.validation_labels, percentaje),
-            use_validator=False)
-        dsb.close_reader()
         return dsb
 
 

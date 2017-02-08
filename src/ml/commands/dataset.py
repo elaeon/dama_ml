@@ -25,6 +25,9 @@ def run(args):
         except IOError:
             pass
         print("Done.")
+    elif args.remove_outlayers:
+        dataset = DataSetBuilder(args.remove_outlayers)
+        dataset.remove_outlayers()
     #elif args.clean:
     #    print("Done.")
     elif args.used_in:

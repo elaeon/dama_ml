@@ -9,9 +9,10 @@ subparsers = parser.add_subparsers()
 
 dataset_parser = subparsers.add_parser('datasets')
 dataset_parser.add_argument("--info", type=str, help="list of datasets or dateset info if a name is added")
-dataset_parser.add_argument("--rm", type=str, help="delete elements")
+dataset_parser.add_argument("--rm", type=str, help="delete the dataset")
 dataset_parser.add_argument("--clean", action="store_true", help="clean orphans elements")
 dataset_parser.add_argument("--used-in", type=str, help="find if the models are using a specific dataset")
+dataset_parser.add_argument("--remove-outlayers", type=str, help="remove the outlayers from the dataset")
 dataset_parser.set_defaults(func=dataset.run)
 
 model_parser = subparsers.add_parser('models')
