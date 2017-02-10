@@ -122,7 +122,7 @@ class TestDataset(unittest.TestCase):
 
     def test_plot(self):
         X = np.random.rand(100, 2)
-        Y = np.asarray([0 if sum(e) <= 1 else 1 for e in X])
+        Y = np.asarray([0 if .5 < sum(e) <= 1 else -1 if 0 < sum(e) < .5 else 1 for e in X])
         dataset = DataSetBuilder(
             name="test_ds_1",
             dataset_path="/tmp/",
@@ -130,7 +130,8 @@ class TestDataset(unittest.TestCase):
             validator="cross",
             rewrite=True)
         dataset.build_dataset(X, Y)
-        dataset.plot(view="rows", type_g="box")
+        dataset.plot(view="columns", type_g="violin")
+        #dataset.plot(view="rows", type_g="pairplot")
         dataset.destroy()
 
 

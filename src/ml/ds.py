@@ -1077,14 +1077,26 @@ class DataSetBuilder(DataLabel):
                 sns.boxplot(x=data[:,0], y=data[:,1], hue=data[:,2], palette="PRGn")
             elif type_g == "violin":
                 sns.violinplot(x=data[:,0], y=data[:,1], hue=data[:,2], palette="PRGn", inner="box")
-            #sns.swarmplot(x=data[:,0], y=data[:,1], hue=data[:,2], palette=sns.color_palette("muted"))
             sns.despine(offset=10, trim=True)
         else:
             if len(self.data.shape) > 2:
-                pass
+                print("To much dimensions")
             elif self.data.shape[1] == 2:
-                df = self.to_df()
-                sns.lmplot(x="c0", y="c1", data=df, hue="target")
+                if type_g == "lm":
+                    df = self.to_df()
+                    sns.lmplot(x="c0", y="c1", data=df, hue="target")
+                elif type_g == "scatter":
+                    df = self.to_df()
+                    legends = []
+                    for label in self.labels_info():
+                        df_tmp = df[df["target"] == label]
+                        legends.append((plt.scatter(df_tmp["c0"], df_tmp["c1"]), label))
+                    p, l = zip(*legends)
+                    plt.legend(p, l, loc='lower left', ncol=3, fontsize=8, 
+                        scatterpoints=1, bbox_to_anchor=(0,0))
+                elif type_g == "pairplot":
+                    df = self.to_df()
+                    sns.pairplot(df, hue='target', vars=df.columns[:-1], diag_kind="kde", palette="husl")
         plt.show()
         #print(df)
         #df.plot(kind='scatter', x=1, y=2)
