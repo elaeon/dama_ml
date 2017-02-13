@@ -33,9 +33,25 @@ def discrete_weight(predictions, weights):
         yield max(counter.items(), key=lambda x:x[1])[0]
 
 def logb(x, b):
+    """
+    :type x: float
+    :param x: number to transform
+
+    :type b: float
+    :param b: base to transform
+
+    transform natural log to log base b
+    """
     return np.log(x) / np.log(b)
 
 def humanize_bytesize(size):
+    """
+    :type size: int
+    :param size: number of bytes
+
+    transforms an integer to a human readeable of the bytes.
+    1024 -> 1.0 KB
+    """
     if size == 0:
         return '0B'
     size_name = ('B', "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
@@ -45,12 +61,27 @@ def humanize_bytesize(size):
     return '{} {}'.format(s, size_name[i])
 
 def expand_matrix_row(matrix, max_size, actual_size):
+    """
+    :type matrix: array
+    :param matrix: NxM matrix
+
+    :type max_size: int
+    :param max_size: max size of new rows to add
+
+    :type actual_size: int
+    :param actual_size: number of rows to ignore
+
+    add rows of zeros to the end of the matrix
+    """
     return np.append(
         matrix, 
         np.zeros((max_size - actual_size, matrix.shape[1]), dtype=matrix.dtype),
         axis=0)
 
 def expand_matrix_col(matrix, max_size, actual_size):
+    """
+    add columns of zeros to the right of the matrix
+    """
     return np.append(
         matrix, 
         np.zeros((matrix.shape[0], max_size - actual_size), dtype=matrix.dtype),

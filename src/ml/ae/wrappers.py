@@ -6,6 +6,7 @@ import logging
 from ml.utils.config import get_settings
 from ml.models import MLModel
 from ml.clf.wrappers import DataDrive
+from ml.ds import Data
 
 settings = get_settings("ml")
 
@@ -44,55 +45,38 @@ class BaseAe(DataDrive):
     def transform_shape(self, data, size=None):
         if size is None:
             size = data.shape[0]
-        return data.reshape(size, -1).astype(np.float32)
+        return data[:].reshape(size, -1)
 
-    def reformat_all(self):
-        self.dataset.train_data = self.reformat(self.dataset.train_data)
-        self.dataset.test_data = self.reformat(self.dataset.test_data)
-        self.num_features = self.dataset.test_data.shape[-1]
-        self.dataset.valid_data = self.reformat(self.dataset.valid_data)
+    def reformat_all(self, dataset):
+        log.info("Reformating {}...".format(self.cls_name()))
+        log.info("Labels encode finished")
+        ds = Data(
+            name=dataset.name+"_"+self.model_name+"_"+self.cls_name(),
+            dataset_path=settings["dataset_model_path"],
+            apply_transforms=True,
+            compression_level=9,
+            dtype=dataset.dtype,
+            transforms=dataset.transforms,
+            chunks=1000,
+            rewrite=False)
 
-        if self.dataset_train_limit is not None:
-            if self.dataset.train_data.shape[0] > self.dataset_train_limit:
-                self.dataset.train_data = self.dataset.train_data[:self.dataset_train_limit]
-
-            if self.dataset.valid_data.shape[0] > self.dataset_train_limit:
-                self.dataset.valid_data = self.dataset.valid_data[:self.dataset_train_limit]
+        if ds.mode == "w":
+            ds._applied_transforms = dataset.apply_transforms
+            train_data = self.reformat(dataset.data)
+            ds.build_dataset(dataset.data)
+        self.num_features = ds.data.shape[-1]
+        ds.close_reader()
+        return ds
 
     def load_dataset(self, dataset):
         if dataset is None:
-            self.set_dataset(self.get_dataset())
+            self.dataset = self.get_dataset()
         else:
-            self.set_dataset(dataset.copy())
+            self.set_dataset(dataset)
 
     def set_dataset(self, dataset):
-        self.dataset = dataset
-        self._original_dataset_md5 = self.dataset.md5()
-        self.reformat_all()
-
-    def set_dataset_from_raw(self, train_data, test_data, valid_data, 
-                            save=False, dataset_name=None):
-        from ml.ds import DataSetBuilder
-        data = {}
-        data["train_dataset"] = train_data
-        data["test_dataset"] = test_data
-        data["valid_dataset"] = valid_data
-        data["train_labels"] = None
-        data["test_labels"] = None
-        data["valid_labels"] = None
-        data['transforms'] = self.dataset.transforms.get_all_transforms()
-        if self.dataset.processing_class is not None:
-            data['preprocessing_class'] = self.dataset.processing_class.module_cls_name()
-        else:
-            data['preprocessing_class'] = None
-        data["md5"] = None
-        dataset_name = self.dataset.name if dataset_name is None else dataset_name
-        dataset = DataSetBuilder.from_raw_to_ds(
-            dataset_name,
-            self.dataset.dataset_path,
-            data,
-            save=save)
-        self.set_dataset(dataset)
+        self._original_dataset_md5 = dataset.md5()
+        self.dataset = self.reformat_all(dataset)
         
     def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False):
         from ml.utils.seq import grouper_chunk
@@ -113,15 +97,17 @@ class BaseAe(DataDrive):
 
         if transform is True and chunk_size > 0:
             fn = lambda x, s: self.transform_shape(
-                self.dataset.processing(x, init=False), size=s)
+                self.dataset.processing(x, initial=False), size=s)
             return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)
         elif transform is True and chunk_size == 0:
-            data = self.transform_shape(self.dataset.processing(data, init=False))
+            data = self.transform_shape(self.dataset.processing(data, initial=False))
             return self._predict(data, raw=raw)
         elif transform is False and chunk_size > 0:
             fn = lambda x, s: self.transform_shape(x, size=s)
             return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)
-        elif transform is False:
+        elif transform is False and chunk_size == 0:
+            if len(data.shape) == 1:
+                data = self.transform_shape(data)
             return self._predict(data, raw=raw)
 
     def _metadata(self):
@@ -132,13 +118,13 @@ class BaseAe(DataDrive):
                 "model_module": self.module_cls_name(),
                 "model_name": self.model_name,
                 "model_version": self.model_version}
-        
+
     def get_dataset(self):
         from ml.ds import DataSetBuilder
         meta = self.load_meta()
-        dataset = DataSetBuilder.load_dataset(
-            meta["dataset_name"],
-            dataset_path=meta["dataset_path"])
+        dataset = DataSetBuilder(meta["dataset_name"], dataset_path=meta["dataset_path"],
+            apply_transforms=False)
+        self._original_dataset_md5 = meta["md5"]
         self.group_name = meta.get('group_name', None)
         if meta.get('md5', None) != dataset.md5():
             log.warning("The dataset md5 is not equal to the model '{}'".format(

@@ -134,9 +134,9 @@ class TSNe:
         
         return P
 
-    #joint_probabilities
+    #join_probabilities
     def calculate_P(self, X):
-        from ml.utils.numeric_functions import expand_matrix_row
+        #from ml.utils.numeric_functions import expand_matrix_row
         print "Computing pairwise distances..."
         n = X.shape[0]
         P = np.zeros([n, self.batch_size])
@@ -146,10 +146,12 @@ class TSNe:
             P_batch = (P_batch + P_batch.T) / 2.
             P_batch = P_batch / P_batch.sum()
             P_batch = np.maximum(P_batch, 1e-12)
+            #print(P_batch.shape)
             P[i:i + self.batch_size] = P_batch
         return P
 
     def KLdivergence(self, P, Y):
+        print(P.dtype, Y.dtype)
         with tf.Session() as sess:
             alpha = self.low_dim - 1.
             sum_Y = tf.reduce_sum(tf.square(Y), 1)

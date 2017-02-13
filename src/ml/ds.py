@@ -106,8 +106,39 @@ class ReadWriteData(object):
             init = end
         return end
 
+    def create_route(self):
+        """
+        create directories if the dataset_path does not exist
+        """
+        if self.dataset_path is not None:
+            if not os.path.exists(self.dataset_path):
+                os.makedirs(self.dataset_path)
 
-class DataLabel(ReadWriteData):
+    def destroy(self):
+        """
+        delete the correspondly hdf5 file
+        """
+        from ml.utils.files import rm
+        self.close_reader()
+        rm(self.url())
+        log.debug("rm {}".format(self.url()))
+
+    def url(self):
+        """
+        return the path where is saved the dataset
+        """
+        return os.path.join(self.dataset_path, self.name)
+
+    def close_reader(self):
+        """
+        close the hdf5 file. If is closed, no more data retrive will be perform.
+        """
+        if hasattr(self, 'f'):
+            self.f.close()
+            del self.f
+
+
+class Data(ReadWriteData):
     """
     Base class for dataset build. Get data from memory.
     create the initial values for the dataset.
@@ -126,6 +157,461 @@ class DataLabel(ReadWriteData):
 
     :type dtype: string
     :param dtype: the type of the data to save
+
+    :type description: string
+    :param description: an bref description of the dataset
+
+    :type author: string
+    :param author: Dataset Author's name
+
+    :type compression_level: int
+    :param compression_level: number in 0-9 range. If 0 is passed no compression is executed
+
+    :type rewrite: bool
+    :param rewrite: if true, you can clean the saved data and add a new dataset.
+    """
+    def __init__(self, name=None, 
+                dataset_path=None,
+                transforms=None,
+                apply_transforms=True,
+                dtype='float64',
+                description='',
+                author='',
+                compression_level=0,
+                chunks=100,
+                rewrite=True):
+        self.name = name
+        self._applied_transforms = False
+        self.chunks = chunks
+        self.rewrite = rewrite
+
+        if dataset_path is None:
+            self.dataset_path = settings["dataset_path"]
+        else:
+            self.dataset_path = dataset_path
+        
+        if transforms is None:
+            transforms = Transforms()
+
+        if not self._preload_attrs() or self.rewrite is True:
+            self.apply_transforms = apply_transforms
+            self.author = author
+            self.description = description
+            self.compression_level = compression_level
+            self.dtype = dtype
+            self.transforms = transforms
+            self.mode = "w"
+        else:
+            self.mode = "r"
+
+    @property
+    def data(self):
+        """
+        eturn the data in the dataset
+        """
+        return self._get_data('data')
+
+    def num_features(self):
+        """
+        return the number of features of the dataset
+        """
+        return self.data.shape[1]
+
+    @property
+    def shape(self):
+        "return the shape of the dataset"
+        return self.data.shape
+
+    def desfragment(self):
+        """
+        Concatenate the train, valid and test data in a data array.
+        Concatenate the train, valid, and test labels in another array.
+        return DataLabel
+        """
+        return self.copy()
+
+    def type_t(self, ttype, data):
+        """
+        :type ttype: string
+        :param ttype: name of the type to convert the data. If ttype is 'auto' 
+        the data is returned without be converted.
+
+        :type data: array
+        :param data: data to be converted
+
+        convert the data to the especified ttype.
+        """
+        if ttype == 'auto':
+            return data
+
+        ttype = np.dtype(ttype)
+        if data.dtype is not ttype and data.dtype != np.object:
+            return data.astype(ttype)
+        else:
+            return data
+
+    def dtype_t(self, data):
+        """
+        :type data: narray
+        :param data: narray to cast
+
+        cast the data to the predefined dataset dtype
+        """
+        return self.type_t(self.dtype, data)
+
+    def _open_attrs(self):
+        self.create_route()
+        f = h5py.File(self.url(), 'w')
+        f.attrs['path'] = self.url()
+        f.attrs['timestamp'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
+        f.attrs['author'] = self.author
+        f.attrs['transforms'] = self.transforms.to_json()
+        f.attrs['description'] = self.description
+        f.attrs['applied_transforms'] = self.apply_transforms
+        f.attrs['dtype'] = self.dtype
+        f.attrs['compression_level'] = self.compression_level
+
+        if 0 < self.compression_level <= 9:
+            self.zip_params = {"compression": "gzip", "compression_opts": self.compression_level}
+        else:
+            self.zip_params = {}
+
+        f.create_group("data")
+        return f
+
+    def _preload_attrs(self):
+        try:
+            with h5py.File(self.url(), 'r') as f:
+                self.author = f.attrs['author']
+                self.transforms = Transforms.from_json(f.attrs['transforms'])
+                self.description = f.attrs['description']
+                self.apply_transforms = f.attrs['applied_transforms']
+                self.dtype = f.attrs['dtype']
+                self.compression_level = f.attrs['compression_level']
+            if self.md5() is None:
+                return False
+        except KeyError:
+            return False
+        except IOError:
+            return False
+        else:
+            return True
+
+    def info(self, classes=False):
+        """
+        :type classes: bool
+        :param classes: if true, print the detail of the labels
+
+        This function print the details of the dataset.
+        """
+        from ml.utils.order import order_table_print
+        print('       ')
+        print('DATASET NAME: {}'.format(self.name))
+        print('Author: {}'.format(self.author))
+        print('Transforms: {}'.format(self.transforms.to_json()))
+        print('Applied transforms: {}'.format(self.apply_transforms))
+        print('MD5: {}'.format(self.md5()))
+        print('Description: {}'.format(self.description))
+        print('       ')
+        headers = ["Dataset", "Mean", "Std", "Shape", "dType"]
+        table = []
+        table.append(["dataset", self.data[:].mean(), self.data[:].std(), 
+            self.data.shape, self.data.dtype])
+        order_table_print(headers, table, "shape")
+
+    def calc_md5(self):
+        """
+        calculate the md5 from the data.
+        """
+        import hashlib
+        h = hashlib.md5(self.data[:])
+        return h.hexdigest()
+
+    def md5(self):
+        """
+        return the signature of the dataset in hex md5
+        """
+        return self._get_attr("md5")
+
+    def distinct_data(self):
+        """
+        return the radio of distincts elements in the training data.
+        i.e 
+        [1,2,3,4,5] return 5/5
+        [2,2,2,2,2] return 1/5        
+        
+        """
+        if not isinstance(self.data.dtype, object):
+            data = self.data[:].reshape(self.data.shape[0], -1)
+        else:
+            data = np.asarray([row.reshape(1, -1)[0] for row in self.data])
+        y = set((elem for row in data for elem in row))
+        return float(len(y)) / data.size
+
+    def sparcity(self):
+        """
+        return a value between [0, 1] of the sparcity of the dataset.
+        0 no zeros exists, 1 all data is zero.
+        """
+        if not isinstance(self.data.dtype, object):
+            data = self.data[:].reshape(self.data.shape[0], -1)
+        else:
+            data = np.asarray([row.reshape(1, -1)[0] for row in self.data])
+
+        zero_counter = 0
+        total = 0
+        for row in data:
+            for elem in row:
+                if elem == 0:
+                    zero_counter += 1
+                total += 1
+        return float(zero_counter) / total
+
+    def build_dataset_from_dsb(self, dsb):
+        """
+        Transform a dataset with train, test and validation dataset into a datalabel dataset
+        """
+        if self.mode == "r":
+            return
+
+        f = self._prepare_attrs(dsb.shape)
+
+        end = self.chunks_writer(f, "/data/data", dsb.train_data, chunks=self.chunks)
+        end = self.chunks_writer(f, "/data/data", dsb.test_data, chunks=self.chunks, 
+                                init=end)
+        self.chunks_writer(f, "/data/data", dsb.validation_data, chunks=self.chunks, 
+                            init=end)
+        f.close()        
+        self._set_attr("md5", self.calc_md5())
+
+    def _prepare_attrs(self, shape):
+        f = self._open_attrs()
+        self._set_space_shape(f, "data", shape)
+        return f
+
+    def _write(self, f, data, labels, init=0):
+        end = self.chunks_writer(f, "/data/data", data, chunks=self.chunks, init=init)
+        return end
+
+    def build_dataset(self, data):
+        """
+        build a datalabel dataset from data and labels
+        """
+        f = self._open_attrs()
+        data = self.processing(data, initial=True)
+        self._set_space_data(f, 'data', self.dtype_t(data))
+        f.close()
+        self._set_attr("md5", self.calc_md5())
+
+    def empty(self, name, dtype='float64', apply_transforms=False):
+        """
+        build an empty DataLabel with the default parameters
+        """
+        data = Data(name=name, 
+            dataset_path=self.dataset_path,
+            transforms=self.transforms,
+            apply_transforms=apply_transforms,
+            dtype=dtype,
+            description=self.description,
+            author=self.author,
+            compression_level=self.compression_level,
+            chunks=self.chunks,
+            rewrite=self.rewrite)
+        data._applied_transforms = self.apply_transforms
+        return data
+
+    def convert(self, name, dtype='float64', apply_transforms=False, 
+                percentaje=1):
+        """
+        :type dtype: string
+        :param dtype: cast the data to the defined type
+
+        dataset_path is not necesary to especify, this info is obtained from settings.cfg
+        """
+        data = self.empty(name, dtype=dtype, ltype=ltype, apply_transforms=apply_transforms)
+        ddata.build_dataset(calc_nshape(self.data, percentaje))
+        data.close_reader()
+        return data
+
+    def copy(self, percentaje=1):
+        """
+        :type percentaje: float
+        :param percentaje: value between [0, 1], this value represent the size of the dataset to copy.
+        
+        copy the dataset, a percentaje is permited for the size of the copy
+        """
+        name = self.name + "_copy_" + uuid.uuid4().hex
+        data = self.convert(name, dtype=self.dtype,
+                        apply_transforms=self.apply_transforms, 
+                        percentaje=percentaje)
+        return data
+
+    def processing(self, data, initial=True):
+        """
+        :type data: array
+        :param data: data to transform
+
+        :type initial: bool
+        :param initial: if multirow transforms are added, then this parameter
+        indicates the initial data fit
+
+        execute the transformations to the data.
+
+        """
+        data = self.processing_rows(data)
+        #if init is True:
+        #    return self.processing_global(data, base_data=data)
+        #elif init is False and not self.transforms.empty('global'):
+        #    base_data, _ = self.desfragment()
+        #    return self.processing_global(data, base_data=base_data)
+        #else:
+        #    return data
+        return data
+
+    def processing_rows(self, data):
+        """
+        :type data: array
+        :param data: data to be transformed
+
+        each row is transformed with the transformations defined.
+        """
+        if not self.transforms.empty() and self.transforms_to_apply and data is not None:
+            log.debug("Apply transforms")
+            return np.asarray([self.transforms.apply(row) for row in data])
+        else:
+            log.debug("No transforms applied")
+            return data if isinstance(data, np.ndarray) else np.asarray(data)
+
+    @property
+    def transforms_to_apply(self):
+        return self.apply_transforms and self._applied_transforms is False
+
+    @classmethod
+    def to_DF(self, dataset):
+        if len(dataset.shape) > 2:
+            dataset = dataset.reshape(dataset.shape[0], -1)
+        columns_name = map(lambda x: "c"+str(x), range(dataset.shape[-1])) + ["target"]
+        return pd.DataFrame(data=dataset, columns=columns_name)
+
+    def to_df(self):
+        """
+        convert the dataset to a dataframe
+        """
+        data = self.desfragment()
+        df = self.to_DF(data.data[:])
+        data.destroy()
+        return df
+
+    def outlayers(self, n_estimators=25, max_samples=.9, contamination=.2):
+        """
+        :type n_estimators: int
+        :params n_estimators: number of estimators for IsolationForest
+
+        :type max_samples: float
+        :params max_samples: IsolationForest's max_samples
+
+        :type contamination: float
+        :params contamination: percentaje of expectect outlayers
+
+        return the indexes of the data who are outlayers
+        """
+        from sklearn.ensemble import IsolationForest
+        
+        clf = IsolationForest(n_estimators=n_estimators,
+            contamination=contamination,
+            random_state=np.random.RandomState(42),
+            max_samples=max_samples,
+            n_jobs=-1)
+        
+        clf.fit(self.data)
+        y_pred = clf.predict(self.data)
+        return (i for i, v in enumerate(y_pred) if v == -1)
+
+    def add_transforms(self, name, transforms):
+        """
+        :type name: string
+        :param name: result dataset's name
+
+        :type transforms: Transform
+        :param transforms: transforms to apply in the new dataset
+        """
+        if self.apply_transforms is True:
+            dsb_c = self.copy()
+            dsb_c.apply_transforms = False
+            dsb_c.transforms = transforms
+            dsb = dsb_c.convert(name, dtype=self.dtype, apply_transforms=True, 
+                percentaje=1)
+            dsb_c.destroy()
+            dsb.transforms = self.transforms + transforms
+        else:
+            dsb = self.copy()
+            dsb.transforms += transforms
+        return dsb
+        
+    def remove_outlayers(self):
+        """
+        removel the outlayers of the data
+        """
+        outlayers = list(self.outlayers())
+        dl = self.desfragment()
+        dl_ol = self.empty(self.name+"_n_outlayer", dtype=self.dtype, 
+            apply_transforms=self.apply_transforms)
+        shape = tuple([dl.shape[0] - len(outlayers)] + list(dl.shape[1:]))
+        outlayers = iter(outlayers)
+        outlayer = outlayers.next()
+        data = np.empty(shape, dtype=self.dtype)
+        counter = 0
+        for index, row in enumerate(dl.data):
+            if index == outlayer:
+                try:
+                    outlayer = outlayers.next()
+                except StopIteration:
+                    outlayer = None
+            else:
+                data[counter] = dl.data[index]
+                counter += 1
+        dl_ol.build_dataset(data)
+        dl.destroy()
+        return dl_ol
+
+    def features2rows(self):
+        """
+        :type labels: bool
+
+        transforms a matrix of dim (n, m) to a matrix of dim (n*m, 2) where
+        the rows are described as [feature_column, feature_data]
+        """
+        data = np.empty((self.data.shape[0] * self.data.shape[1], 2))
+        row_i = 0
+        for row in self.data:
+            for j, col in enumerate(row):
+                data[row_i] = np.asarray([j, col])
+                row_i += 1
+        return data
+
+
+class DataLabel(Data):
+    """
+    Base class for dataset build. Get data from memory.
+    create the initial values for the dataset.
+
+    :type name: string
+    :param name: dataset's name
+
+    :type dataset_path: string
+    :param dataset_path: path where the datased is saved. This param is automaticly set by the settings.cfg file.
+
+    :type transforms: transform instance
+    :param transforms: list of transforms
+
+    :type apply_transforms: bool
+    :param apply_transforms: apply transformations to the data
+
+    :type dtype: string
+    :param dtype: the type of the data to save
+
+    :type ltype: string
+    :param ltype: the type of the labels to save
 
     :type description: string
     :param description: an bref description of the dataset
@@ -176,35 +662,11 @@ class DataLabel(ReadWriteData):
             self.mode = "r"
 
     @property
-    def data(self):
-        """
-        eturn the data in the dataset
-        """
-        return self._get_data('data')
-
-    @property
     def labels(self):
         """
         return the labels in the dataset
         """
         return self._get_data('labels')
-
-    def url(self):
-        """
-        return the path where is saved the dataset
-        """
-        return os.path.join(self.dataset_path, self.name)
-
-    def num_features(self):
-        """
-        return the number of features of the dataset
-        """
-        return self.data.shape[1]
-
-    @property
-    def shape(self):
-        "return the shape of the dataset"
-        return self.data.shape
 
     def labels_info(self):
         """
@@ -231,43 +693,6 @@ class DataLabel(ReadWriteData):
             log.warning("label {} is not found in the labels set".format(label))
             return np.asarray([]), np.asarray([])
         return np.asarray(dataset), np.asarray(n_labels)
-
-    def desfragment(self):
-        """
-        Concatenate the train, valid and test data in a data array.
-        Concatenate the train, valid, and test labels in another array.
-        return DataLabel
-        """
-        return self.copy()
-
-    def type_t(self, ttype, data):
-        """
-        :type ttype: string
-        :param ttype: name of the type to convert the data. If ttype is 'auto' 
-        the data is returned without be converted.
-
-        :type data: array
-        :param data: data to be converted
-
-        convert the data to the especified ttype.
-        """
-        if ttype == 'auto':
-            return data
-
-        ttype = np.dtype(ttype)
-        if data.dtype is not ttype and data.dtype != np.object:
-            return data.astype(ttype)
-        else:
-            return data
-
-    def dtype_t(self, data):
-        """
-        :type data: narray
-        :param data: narray to cast
-
-        cast the data to the predefined dataset dtype
-        """
-        return self.type_t(self.dtype, data)
 
     def ltype_t(self, labels):
         """
@@ -338,60 +763,7 @@ class DataLabel(ReadWriteData):
         table = []
         table.append(["dataset", self.data[:].mean(), self.data[:].std(), 
             self.data.shape, self.data.dtype, self.labels.size])
-
-    def is_binary(self):
-        """
-        return true if the labels only has two classes
-        """
-        return len(self.labels_info()) == 2
-
-    def calc_md5(self):
-        """
-        calculate the md5 from the data.
-        """
-        import hashlib
-        h = hashlib.md5(self.data[:])
-        return h.hexdigest()
-
-    def md5(self):
-        """
-        return the signature of the dataset in hex md5
-        """
-        return self._get_attr("md5")
-
-    def distinct_data(self):
-        """
-        return the radio of distincts elements in the training data.
-        i.e 
-        [1,2,3,4,5] return 5/5
-        [2,2,2,2,2] return 1/5        
-        
-        """
-        if not isinstance(self.data.dtype, object):
-            data = self.data[:].reshape(self.data.shape[0], -1)
-        else:
-            data = np.asarray([row.reshape(1, -1)[0] for row in self.data])
-        y = set((elem for row in data for elem in row))
-        return float(len(y)) / data.size
-
-    def sparcity(self):
-        """
-        return a value between [0, 1] of the sparcity of the dataset.
-        0 no zeros exists, 1 all data is zero.
-        """
-        if not isinstance(self.data.dtype, object):
-            data = self.data[:].reshape(self.data.shape[0], -1)
-        else:
-            data = np.asarray([row.reshape(1, -1)[0] for row in self.data])
-
-        zero_counter = 0
-        total = 0
-        for row in data:
-            for elem in row:
-                if elem == 0:
-                    zero_counter += 1
-                total += 1
-        return float(zero_counter) / total
+        order_table_print(headers, table, "shape")
 
     def build_dataset_from_dsb(self, dsb):
         """
@@ -400,10 +772,7 @@ class DataLabel(ReadWriteData):
         if self.mode == "r":
             return
 
-        #f = self._open_attrs()
         labels_shape = tuple(dsb.shape[0:1] + dsb.train_labels.shape[1:])
-        #self._set_space_shape(f, "data", dsb.shape)
-        #self._set_space_shape(f, "labels", labels_shape, label=True)
         f = self._prepare_attrs(dsb.shape, labels_shape)
 
         end = self.chunks_writer(f, "/data/data", dsb.train_data, chunks=self.chunks)
@@ -442,23 +811,6 @@ class DataLabel(ReadWriteData):
         f.close()
         self._set_attr("md5", self.calc_md5())
 
-    def create_route(self):
-        """
-        create directories if the dataset_path does not exist
-        """
-        if self.dataset_path is not None:
-            if not os.path.exists(self.dataset_path):
-                os.makedirs(self.dataset_path)
-
-    def destroy(self):
-        """
-        delete the correspondly hdf5 file
-        """
-        from ml.utils.files import rm
-        self.close_reader()
-        rm(self.url())
-        log.debug("rm {}".format(self.url()))
-
     def empty(self, name, dtype='float64', ltype='|S1', apply_transforms=False):
         """
         build an empty DataLabel with the default parameters
@@ -485,18 +837,6 @@ class DataLabel(ReadWriteData):
 
         dataset_path is not necesary to especify, this info is obtained from settings.cfg
         """
-        #dl = DataLabel(name=name, 
-        #    dataset_path=self.dataset_path,
-        #    transforms=self.transforms,
-        #    apply_transforms=apply_transforms,
-        #    dtype=dtype,
-        #    ltype=ltype,
-        #    description=self.description,
-        #    author=self.author,
-        #    compression_level=self.compression_level,
-        #    chunks=self.chunks,
-        #    rewrite=self.rewrite)
-        #dl._applied_transforms = self.apply_transforms
         dl = self.empty(name, dtype=dtype, ltype=ltype, apply_transforms=apply_transforms)
         dl.build_dataset(calc_nshape(self.data, percentaje), calc_nshape(self.labels, percentaje))
         dl.close_reader()
@@ -514,54 +854,6 @@ class DataLabel(ReadWriteData):
                         apply_transforms=self.apply_transforms, 
                         percentaje=percentaje)
         return dl
-
-    def processing(self, data, initial=True):
-        """
-        :type data: array
-        :param data: data to transform
-
-        :type initial: bool
-        :param initial: if multirow transforms are added, then this parameter
-        indicates the initial data fit
-
-        execute the transformations to the data.
-
-        """
-        data = self.processing_rows(data)
-        #if init is True:
-        #    return self.processing_global(data, base_data=data)
-        #elif init is False and not self.transforms.empty('global'):
-        #    base_data, _ = self.desfragment()
-        #    return self.processing_global(data, base_data=base_data)
-        #else:
-        #    return data
-        return data
-
-    def close_reader(self):
-        """
-        close the hdf5 file. If is closed, no more data retrive will be perform.
-        """
-        if hasattr(self, 'f'):
-            self.f.close()
-            del self.f
-
-    def processing_rows(self, data):
-        """
-        :type data: array
-        :param data: data to be transformed
-
-        each row is transformed with the transformations defined.
-        """
-        if not self.transforms.empty() and self.transforms_to_apply and data is not None:
-            log.debug("Apply transforms")
-            return np.asarray([self.transforms.apply(row) for row in data])
-        else:
-            log.debug("No transforms applied")
-            return data if isinstance(data, np.ndarray) else np.asarray(data)
-
-    @property
-    def transforms_to_apply(self):
-        return self.apply_transforms and self._applied_transforms is False
 
     @classmethod
     def to_DF(self, dataset, labels):
@@ -581,21 +873,6 @@ class DataLabel(ReadWriteData):
 
     @classmethod
     def from_DF(self, name, df, transforms=None, apply_transforms=None, path=None):
-        #dl = DataLabel(name=name, 
-        #    dataset_path=path,
-        #    transforms=transforms,
-        #    apply_transforms=apply_transforms,
-        #    dtype=dtype,
-        #    ltype=ltype,
-        #    description=self.description,
-        #    author=self.author,
-        #    compression_level=self.compression_level,
-        #    chunks=self.chunks,
-        #    rewrite=self.rewrite)
-        #dl._applied_transforms = self.apply_transforms
-        #dl.build_dataset(calc_nshape(df, percentaje), calc_nshape(self.labels, percentaje))
-        #dl.close_reader()
-        #return dl
         pass
 
     def add_transforms(self, name, transforms):
@@ -618,31 +895,6 @@ class DataLabel(ReadWriteData):
             dsb = self.copy()
             dsb.transforms += transforms
         return dsb
-
-    def outlayers(self, n_estimators=25, max_samples=.9, contamination=.2):
-        """
-        :type n_estimators: int
-        :params n_estimators: number of estimators for IsolationForest
-
-        :type max_samples: float
-        :params max_samples: IsolationForest's max_samples
-
-        :type contamination: float
-        :params contamination: percentaje of expectect outlayers
-
-        return the indexes of the data who are outlayers
-        """
-        from sklearn.ensemble import IsolationForest
-        
-        clf = IsolationForest(n_estimators=n_estimators,
-            contamination=contamination,
-            random_state=np.random.RandomState(42),
-            max_samples=max_samples,
-            n_jobs=-1)
-        
-        clf.fit(self.data)
-        y_pred = clf.predict(self.data)
-        return (i for i, v in enumerate(y_pred) if v == -1)
         
     def remove_outlayers(self):
         """
@@ -678,15 +930,10 @@ class DataLabel(ReadWriteData):
         :param labels: if true, labels are included
 
         transforms a matrix of dim (n, m) to a matrix of dim (n*m, 2) or (n*m, 3) where
-        the rows are describes as [feature_column, feature_data]
+        the rows are described as [feature_column, feature_data]
         """
         if labels is False:
-            data = np.empty((self.data.shape[0] * self.data.shape[1], 2))
-            row_i = 0
-            for row in self.data:
-                for j, col in enumerate(row):
-                    data[row_i] = np.asarray([j, col])
-                    row_i += 1
+            data = super(DataLabel, self).features2rows()
         else:
             data = np.empty((self.data.shape[0] * self.data.shape[1], 3))
             row_i = 0

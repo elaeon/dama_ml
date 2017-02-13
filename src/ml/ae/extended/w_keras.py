@@ -29,18 +29,18 @@ class PTsne(Keras):
         from ml.utils.numeric_functions import expand_matrix_row
         import numpy as np
         self.tsne = TSNe(batch_size=batch_size, perplexity=30.)
-        diff = self.dataset.train_data.shape[0] % batch_size
-        diff2 = self.dataset.valid_data.shape[0] % batch_size
-        X = expand_matrix_row(self.dataset.train_data, batch_size, diff)
-        Z = expand_matrix_row(self.dataset.valid_data, batch_size, diff2)
-        y = self.tsne.calculate_P(X)
+        limit = int(round(self.dataset.data.shape[0] * .9))
+        diff = limit % batch_size
+        diff2 = (limit - self.dataset.data.shape[0]) % batch_size
+        X = expand_matrix_row(self.dataset.data[:limit], batch_size, diff)
+        Z = expand_matrix_row(self.dataset.data[limit:], batch_size, diff2)
+        x = self.tsne.calculate_P(X)
         z = self.tsne.calculate_P(Z)
-        print(X.shape, y.shape)
         self.prepare_model()
         self.model.fit(X, 
-            y,
+            x,
             nb_epoch=num_steps,
             batch_size=batch_size,
-            shuffle=False,
+            shuffle=True,
             validation_data=(Z, z))
         self.save_model()
