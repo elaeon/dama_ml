@@ -3,6 +3,12 @@ from ml.models import MLModel
 
 
 class PTsne(Keras):
+    def __init__(self, *args, **kwargs):
+        if 'dim' in kwargs:
+            self.dim = kwargs['dim']
+            del kwargs['dim']
+        super(PTsne, self).__init__(*args, **kwargs)
+
     def prepare_model(self):
         from keras.layers import Input, Dense, Activation
         from keras.models import Model
@@ -28,7 +34,7 @@ class PTsne(Keras):
         from ml.utils.tf_functions import TSNe
         from ml.utils.numeric_functions import expand_matrix_row
         import numpy as np
-        self.tsne = TSNe(batch_size=batch_size, perplexity=30.)
+        self.tsne = TSNe(batch_size=batch_size, perplexity=30., dim=self.dim)
         limit = int(round(self.dataset.data.shape[0] * .9))
         diff = limit % batch_size
         diff2 = (limit - self.dataset.data.shape[0]) % batch_size

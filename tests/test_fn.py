@@ -63,9 +63,9 @@ class TestFn(unittest.TestCase):
         X = np.random.rand(100, 10)
         Y = np.sin(6*X)
         dataset.build_dataset(Y)
-        classif = PTsne(model_name="tsne", model_version="1", check_point_path="/tmp/", dataset=dataset)
-        classif.train(batch_size=2, num_steps=10)
-        #print(list(classif.predict(X[1])))
+        classif = PTsne(model_name="tsne", model_version="1", check_point_path="/tmp/", dataset=dataset, dim=3)
+        classif.train(batch_size=20, num_steps=10)
+        print(list(classif.predict([X[1]])))
 
 
 if __name__ == '__main__':

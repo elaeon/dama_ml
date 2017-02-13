@@ -80,9 +80,9 @@ def Hbeta(D, beta):
 
 
 class TSNe:
-    def __init__(self, batch_size=258, perplexity=30.):
+    def __init__(self, batch_size=258, perplexity=30., dim=2):
         self.batch_size = batch_size
-        self.low_dim = 2
+        self.low_dim = dim
         self.perplexity = perplexity
         self.tol = 1e-4
 
@@ -136,7 +136,6 @@ class TSNe:
 
     #join_probabilities
     def calculate_P(self, X):
-        #from ml.utils.numeric_functions import expand_matrix_row
         print "Computing pairwise distances..."
         n = X.shape[0]
         P = np.zeros([n, self.batch_size])
@@ -146,20 +145,19 @@ class TSNe:
             P_batch = (P_batch + P_batch.T) / 2.
             P_batch = P_batch / P_batch.sum()
             P_batch = np.maximum(P_batch, 1e-12)
-            #print(P_batch.shape)
             P[i:i + self.batch_size] = P_batch
         return P
 
     def KLdivergence(self, P, Y):
-        print(P.dtype, Y.dtype)
+        dtype = P.dtype
         with tf.Session() as sess:
             alpha = self.low_dim - 1.
             sum_Y = tf.reduce_sum(tf.square(Y), 1)
-            eps = tf.Variable(10e-15, dtype=tf.float64, name="eps").initialized_value()
+            eps = tf.Variable(10e-15, dtype=dtype, name="eps").initialized_value()
             Q = tf.reshape(sum_Y, [-1, 1]) + -2 * tf.matmul(Y, tf.transpose(Y))
             Q = sum_Y + Q / alpha
             Q = tf.pow(1 + Q, -(alpha + 1) / 2)
-            Q = Q * tf.Variable(1 - np.eye(self.batch_size), dtype=tf.float64, name="eye").initialized_value()
+            Q = Q * tf.Variable(1 - np.eye(self.batch_size), dtype=dtype, name="eye").initialized_value()
             Q = Q / tf.reduce_sum(Q)
             Q = tf.maximum(Q, eps)
             C = tf.log((P + eps) / (Q + eps))
