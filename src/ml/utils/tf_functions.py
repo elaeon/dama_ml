@@ -146,13 +146,10 @@ class TSNe:
             P_batch = (P_batch + P_batch.T) / 2.
             P_batch = P_batch / P_batch.sum()
             P_batch = np.maximum(P_batch, 1e-12)
-            if P_batch.shape != [self.batch_size, self.batch_size]:
+            if P_batch.shape[1] < self.batch_size:
                 P_batch = expand_rows_cols(P_batch, 
-                    n_rows=self.batch_size - P_batch.shape[0], 
+                    n_rows=0, #self.batch_size - P_batch.shape[0], 
                     n_cols=self.batch_size - P_batch.shape[0])
-            n_rows = abs(i + self.batch_size - n)
-            if n_rows < self.batch_size and i + n_rows == n:
-                P_batch = P_batch[:n_rows, :]
             P[i:i + self.batch_size] = P_batch
         return P
 
@@ -165,7 +162,10 @@ class TSNe:
             Q = tf.reshape(sum_Y, [-1, 1]) + -2 * tf.matmul(Y, tf.transpose(Y))
             Q = sum_Y + Q / alpha
             Q = tf.pow(1 + Q, -(alpha + 1) / 2)
-            Q = Q * tf.Variable(1 - np.eye(self.batch_size), dtype=dtype, name="eye").initialized_value()
+            #Q = Q * (1 - tf.diag(tf.ones(self.batch_size, dtype=dtype)))
+            Q_d = tf.diag_part(Q)
+            Q_d = Q_d - Q_d
+            Q = tf.matrix_set_diag(Q, Q_d)
             Q = Q / tf.reduce_sum(Q)
             Q = tf.maximum(Q, eps)
             C = tf.log((P + eps) / (Q + eps))

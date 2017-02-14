@@ -1,6 +1,6 @@
 from ml.ae.wrappers import Keras
 from ml.models import MLModel
-
+import tensorflow as tf
 
 class PTsne(Keras):
     def __init__(self, *args, **kwargs):
