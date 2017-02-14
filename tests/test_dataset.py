@@ -130,8 +130,9 @@ class TestDataset(unittest.TestCase):
             validator="cross",
             rewrite=True)
         dataset.build_dataset(X, Y)
-        dataset.plot(view="columns", type_g="violin")
+        #dataset.plot(view="columns", type_g="violin")
         #dataset.plot(view="rows", type_g="pairplot")
+        dataset.plot(view="rows", type_g="scatter")
         dataset.destroy()
 
 

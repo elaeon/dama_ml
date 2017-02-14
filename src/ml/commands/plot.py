@@ -16,5 +16,5 @@ def run(args):
     if args.dataset:
         dataset = DataSetBuilder(args.dataset)
 
-    dataset.plot(view="columns", type_g=args.type_g)
+    dataset.plot(view="rows", type_g=args.type_g)
     dataset.close_reader()
