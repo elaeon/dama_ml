@@ -86,3 +86,10 @@ def expand_matrix_col(matrix, max_size, actual_size):
         matrix, 
         np.zeros((matrix.shape[0], max_size - actual_size), dtype=matrix.dtype),
         axis=1)
+
+
+def expand_rows_cols(X, n_rows=2, n_cols=2):
+    if len(X.shape) == 2:
+        X = np.hstack((X, np.zeros((X.shape[0], n_cols))))
+        X = np.vstack((X, np.zeros((n_rows, X.shape[1]))))
+    return X

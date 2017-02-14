@@ -32,14 +32,13 @@ class PTsne(Keras):
 
     def train(self, batch_size=258, num_steps=50):
         from ml.utils.tf_functions import TSNe
-        from ml.utils.numeric_functions import expand_matrix_row
         import numpy as np
         self.tsne = TSNe(batch_size=batch_size, perplexity=30., dim=self.dim)
         limit = int(round(self.dataset.data.shape[0] * .9))
         diff = limit % batch_size
         diff2 = (limit - self.dataset.data.shape[0]) % batch_size
-        X = expand_matrix_row(self.dataset.data[:limit], batch_size, diff)
-        Z = expand_matrix_row(self.dataset.data[limit:], batch_size, diff2)
+        X = self.dataset.data[:limit]
+        Z = self.dataset.data[limit:]
         x = self.tsne.calculate_P(X)
         z = self.tsne.calculate_P(Z)
         self.prepare_model()

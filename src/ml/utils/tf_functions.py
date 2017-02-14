@@ -80,7 +80,7 @@ def Hbeta(D, beta):
 
 
 class TSNe:
-    def __init__(self, batch_size=258, perplexity=30., dim=2):
+    def __init__(self, batch_size=100, perplexity=30., dim=2):
         self.batch_size = batch_size
         self.low_dim = dim
         self.perplexity = perplexity
@@ -134,8 +134,9 @@ class TSNe:
         
         return P
 
-    #join_probabilities
+    #joint_probabilities
     def calculate_P(self, X):
+        from ml.utils.numeric_functions import expand_rows_cols
         print "Computing pairwise distances..."
         n = X.shape[0]
         P = np.zeros([n, self.batch_size])
@@ -145,6 +146,13 @@ class TSNe:
             P_batch = (P_batch + P_batch.T) / 2.
             P_batch = P_batch / P_batch.sum()
             P_batch = np.maximum(P_batch, 1e-12)
+            if P_batch.shape != [self.batch_size, self.batch_size]:
+                P_batch = expand_rows_cols(P_batch, 
+                    n_rows=self.batch_size - P_batch.shape[0], 
+                    n_cols=self.batch_size - P_batch.shape[0])
+            n_rows = abs(i + self.batch_size - n)
+            if n_rows < self.batch_size and i + n_rows == n:
+                P_batch = P_batch[:n_rows, :]
             P[i:i + self.batch_size] = P_batch
         return P
 
