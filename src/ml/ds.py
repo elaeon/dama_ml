@@ -143,6 +143,13 @@ class ReadWriteData(object):
         except IOError:
             return False
 
+    @classmethod
+    def original_ds(self, name, dataset_path=None):
+        from pydoc import locate
+        meta_dataset = Data(name=name, dataset_path=dataset_path)
+        DS = locate(meta_dataset._get_attr("dataset_class"))
+        return DS(name=name, dataset_path=dataset_path)
+    
 
 class Data(ReadWriteData):
     """
@@ -210,6 +217,10 @@ class Data(ReadWriteData):
         else:
             self.mode = "r"
 
+    @classmethod
+    def module_cls_name(cls):
+        return "{}.{}".format(cls.__module__, cls.__name__)
+
     @property
     def data(self):
         """
@@ -265,9 +276,7 @@ class Data(ReadWriteData):
         """
         return self.type_t(self.dtype, data)
 
-    def _open_attrs(self):
-        self.create_route()
-        f = h5py.File(self.url(), 'w')
+    def _primitive_attrs(self, f):
         f.attrs['path'] = self.url()
         f.attrs['timestamp'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
         f.attrs['author'] = self.author
@@ -276,13 +285,20 @@ class Data(ReadWriteData):
         f.attrs['applied_transforms'] = self.apply_transforms
         f.attrs['dtype'] = self.dtype
         f.attrs['compression_level'] = self.compression_level
-
+        f.attrs['dataset_class'] = self.module_cls_name()
         if 0 < self.compression_level <= 9:
             self.zip_params = {"compression": "gzip", "compression_opts": self.compression_level}
         else:
             self.zip_params = {}
 
-        f.create_group("data")
+    def _open_attrs(self):
+        if self.mode == 'w':
+            self.create_route()
+            f = h5py.File(self.url(), 'w')
+            self._primitive_attrs(f)
+            f.create_group("data")
+        else:
+            f = h5py.File(self.url(), 'r')
         return f
 
     def _preload_attrs(self):
@@ -710,24 +726,8 @@ class DataLabel(Data):
         return self.type_t(self.ltype, labels)
 
     def _open_attrs(self):
-        self.create_route()
-        f = h5py.File(self.url(), 'w')
-        f.attrs['path'] = self.url()
-        f.attrs['timestamp'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
-        f.attrs['author'] = self.author
-        f.attrs['transforms'] = self.transforms.to_json()
-        f.attrs['description'] = self.description
-        f.attrs['applied_transforms'] = self.apply_transforms
-        f.attrs['dtype'] = self.dtype
+        f = super(DataLabel, self)._open_attrs()
         f.attrs['ltype'] = self.ltype
-        f.attrs['compression_level'] = self.compression_level
-
-        if 0 < self.compression_level <= 9:
-            self.zip_params = {"compression": "gzip", "compression_opts": self.compression_level}
-        else:
-            self.zip_params = {}
-
-        f.create_group("data")
         return f
 
     def _preload_attrs(self):

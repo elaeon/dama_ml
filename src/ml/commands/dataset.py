@@ -5,7 +5,7 @@ from ml.utils.order import order_table_print
 from ml.utils.numeric_functions import humanize_bytesize
 from ml.clf.wrappers import DataDrive
 from ml.clf.measures import ListMeasure
-from ml.ds import DataSetBuilder, DataLabel
+from ml.ds import DataSetBuilder, DataLabel, Data
 from ml.utils.files import rm, get_models_path
 from ml.utils.files import get_date_from_file, get_models_from_dataset
 
@@ -14,7 +14,7 @@ settings = get_settings("ml")
   
 def run(args):
     if args.info:
-        dataset = DataSetBuilder(args.info)
+        dataset = Data.original_ds(args.info)
         dataset.info(classes=True)
     elif args.rm:
         try:
@@ -25,13 +25,13 @@ def run(args):
             pass
         print("Done.")
     elif args.remove_outlayers:
-        dataset = DataSetBuilder(args.remove_outlayers)
+        dataset = Data.original_ds(args.remove_outlayers)
         dataset.remove_outlayers()
     #elif args.clean:
     #    print("Done.")
-    elif args.used_in:
-        dataset = DataSetBuilder(args.used_in)
-        for _, model_path_meta in get_models_from_dataset(dataset.md5(), settings["checkpoints_path"]):
+    elif args.used_in:        
+        dataset = Data.original_ds(args.used_in)
+        for _, model_path_meta in get_models_from_dataset(dataset, settings["checkpoints_path"]):
             print("Dataset used in model: {}".format(DataDrive.read_meta("model_module", model_path_meta)))
     else:
         datasets = {}
