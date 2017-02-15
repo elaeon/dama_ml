@@ -136,22 +136,19 @@ class TSNe:
 
     #joint_probabilities
     def calculate_P(self, X):
-        from ml.utils.numeric_functions import expand_rows_cols
         print "Computing pairwise distances..."
-        n = X.shape[0]
-        P = np.zeros([n, self.batch_size])
-        for i in xrange(0, n, self.batch_size):
-            P_batch = self.x2p(X[i:i + self.batch_size])
-            P_batch[np.isnan(P_batch)] = 0
-            P_batch = (P_batch + P_batch.T) / 2.
-            P_batch = P_batch / P_batch.sum()
-            P_batch = np.maximum(P_batch, 1e-12)
-            if P_batch.shape[1] < self.batch_size:
-                P_batch = expand_rows_cols(P_batch, 
-                    n_rows=0, #self.batch_size - P_batch.shape[0], 
-                    n_cols=self.batch_size - P_batch.shape[0])
-            P[i:i + self.batch_size] = P_batch
-        return P
+        while 1:
+            n = X.shape[0]
+            P = np.zeros([n, self.batch_size])
+            for i in xrange(0, n, self.batch_size):
+                P_batch = self.x2p(X[i:i + self.batch_size])
+                P_batch[np.isnan(P_batch)] = 0
+                P_batch = (P_batch + P_batch.T) / 2.
+                P_batch = P_batch / P_batch.sum()
+                P_batch = np.maximum(P_batch, 1e-12)
+                #P[i:i + self.batch_size] = P_batch
+                yield (X[i:i + self.batch_size], P_batch)
+        #return P
 
     def KLdivergence(self, P, Y):
         dtype = P.dtype

@@ -1357,9 +1357,10 @@ class DataSetBuilder(DataLabel):
                     ds = self.to_data()
                     classif = PTsne(model_name="tsne", model_version="1", 
                         check_point_path="/tmp/", dataset=ds, dim=2)
-                    classif.train(batch_size=ds.shape[0]/80, num_steps=2)
+                    classif.train(batch_size=50, num_steps=2)
                     data = np.asarray(list(classif.predict(self.data)))
                     dl.build_dataset(data, self.labels[:])
+                    ds.destroy()
                 #else:
                 #    classif = PTsne(model_name="tsne", model_version="1", 
                 #        check_point_path="/tmp/")

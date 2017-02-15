@@ -62,8 +62,8 @@ class BaseAe(DataDrive):
 
         if ds.mode == "w":
             ds._applied_transforms = dataset.apply_transforms
-            train_data = self.reformat(dataset.data)
-            ds.build_dataset(dataset.data)
+            data = self.reformat(dataset.data)
+            ds.build_dataset(data)
         self.num_features = ds.data.shape[-1]
         ds.close_reader()
         return ds
@@ -133,13 +133,16 @@ class BaseAe(DataDrive):
 
 
 class Keras(BaseAe):
+    def default_model(self, model):
+        return MLModel(fit_fn=model.fit_generator, 
+                predictors=[model.predict],
+                load_fn=self.load_fn,
+                save_fn=model.save)
+
     def load_fn(self, path):
         from keras.models import load_model
         net_model = load_model(path)
-        self.model = MLModel(fit_fn=net_model.fit, 
-                            predictors=[net_model.predict],
-                            load_fn=self.load_fn,
-                            save_fn=net_model.save)
+        self.model = self.default_model(net_model)
 
     def preload_model(self):
         self.model = MLModel(fit_fn=None, 

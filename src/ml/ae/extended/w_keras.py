@@ -25,10 +25,7 @@ class PTsne(Keras):
         model.add(Activation('relu'))
         model.add(Dense(2))
         model.compile(optimizer='sgd', loss=self.tsne.KLdivergence)
-        self.model = MLModel(fit_fn=model.fit, 
-                            predictors=[model.predict],
-                            load_fn=self.load_fn,
-                            save_fn=model.save)
+        self.model = self.default_model(model)
 
     def train(self, batch_size=258, num_steps=50):
         from ml.utils.tf_functions import TSNe
@@ -42,10 +39,9 @@ class PTsne(Keras):
         x = self.tsne.calculate_P(X)
         z = self.tsne.calculate_P(Z)
         self.prepare_model()
-        self.model.fit(X, 
-            x,
-            nb_epoch=num_steps,
-            batch_size=batch_size,
-            shuffle=True,
-            validation_data=(Z, z))
+        self.model.fit(x,
+            batch_size,
+            num_steps,
+            validation_data=z,
+            nb_val_samples=batch_size)
         self.save_model()

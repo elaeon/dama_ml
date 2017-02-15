@@ -89,6 +89,15 @@ def expand_matrix_col(matrix, max_size, actual_size):
 
 
 def expand_rows_cols(X, n_rows=2, n_cols=2):
+    """
+    :type n_rows: int
+    :param n_rows: number of rows to add
+
+    :type n_cols: int
+    :param n_cols: number of columns to add
+
+    add a expecific number rows and columns of zeros to the array X
+    """
     if len(X.shape) == 2:
         X = np.hstack((X, np.zeros((X.shape[0], n_cols))))
         X = np.vstack((X, np.zeros((n_rows, X.shape[1]))))
