@@ -868,12 +868,19 @@ class DataLabel(Data):
         columns_name = map(lambda x: "c"+str(x), range(dataset.shape[-1])) + ["target"]
         return pd.DataFrame(data=np.column_stack((dataset, labels)), columns=columns_name)
 
-    def to_df(self):
+    def to_df(self, labels2numbers=False):
         """
         convert the dataset to a dataframe
         """
         dl = self.desfragment()
-        df = self.to_DF(dl.data[:], dl.labels[:])
+        if labels2numbers is False:
+            df = self.to_DF(dl.data[:], dl.labels[:])
+        else:
+            from sklearn.preprocessing import LabelEncoder
+            le = LabelEncoder()
+            le.fit(dl.labels[:])
+            df = self.to_DF(dl.data[:], le.transform(dl.labels[:]))
+
         dl.destroy()
         return df
 
@@ -1367,10 +1374,11 @@ class DataSetBuilder(DataLabel):
                 data = dl
 
             if data.shape[1] == 2:
-                df = data.to_df()
                 if type_g == "lm":
+                    df = data.to_df()
                     sns.lmplot(x="c0", y="c1", data=df, hue="target")
                 elif type_g == "scatter":
+                    df = data.to_df()
                     legends = []
                     for label in self.labels_info():
                         df_tmp = df[df["target"] == label]
@@ -1380,6 +1388,7 @@ class DataSetBuilder(DataLabel):
                     plt.legend(p, l, loc='lower left', ncol=3, fontsize=8, 
                         scatterpoints=1, bbox_to_anchor=(0,0))
                 elif type_g == "pairplot":
+                    df = data.to_df(labels2numbers=True)
                     sns.pairplot(df.astype("float64"), hue='target', 
                         vars=df.columns[:-1], diag_kind="kde", palette="husl")
         plt.show()
