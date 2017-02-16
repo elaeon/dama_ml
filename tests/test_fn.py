@@ -40,6 +40,9 @@ class TestFn(unittest.TestCase):
         classif = PTsne(model_name="tsne", model_version="1", 
             check_point_path="/tmp/", dataset=dataset, dim=3)
         classif.train(batch_size=8, num_steps=2)
+
+        classif = PTsne(model_name="tsne", model_version="1", 
+            check_point_path="/tmp/")
         self.assertEqual(len(list(classif.predict([X[1]]))[0]), 2)
 
 
