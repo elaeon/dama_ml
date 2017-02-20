@@ -140,8 +140,9 @@ class Keras(BaseAe):
                 save_fn=model.save)
 
     def load_fn(self, path):
-        from keras.models import load_model
-        net_model = load_model(path)
+        from keras.models import load_model        
+        from ml.utils.tf_functions import KLdivergence
+        net_model = load_model(path, custom_objects={'KLdivergence': KLdivergence})
         self.model = self.default_model(net_model)
 
     def preload_model(self):
@@ -156,7 +157,7 @@ class Keras(BaseAe):
             self.model.save('{}.ckpt'.format(path))
             self.save_meta()
 
-    def load_model(self):        
+    def load_model(self):
         self.preload_model()
         if self.check_point_path is not None:
             path = self.make_model_file()

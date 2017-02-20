@@ -10,11 +10,11 @@ class PTsne(Keras):
         super(PTsne, self).__init__(*args, **kwargs)
 
     def prepare_model(self):
-        from keras.layers import Input, Dense, Activation
-        from keras.models import Model
-        from keras import regularizers
-        from keras.layers import Dropout
+        from keras.layers import Dense, Activation
+        #from keras.layers import Dropout
         from keras.models import Sequential
+
+        from ml.utils.tf_functions import KLdivergence
 
         model = Sequential()
         model.add(Dense(500, input_shape=(self.num_features,)))
@@ -24,7 +24,7 @@ class PTsne(Keras):
         model.add(Dense(2000))
         model.add(Activation('relu'))
         model.add(Dense(2))
-        model.compile(optimizer='sgd', loss=self.tsne.KLdivergence)
+        model.compile(optimizer='sgd', loss=KLdivergence)
         self.model = self.default_model(model)
 
     def train(self, batch_size=258, num_steps=50):

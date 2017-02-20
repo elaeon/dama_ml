@@ -79,6 +79,26 @@ def Hbeta(D, beta):
     return H, P
 
 
+def KLdivergence(P, Y, low_dim=2):
+    dtype = P.dtype
+    with tf.Session() as sess:
+        alpha = low_dim - 1.
+        sum_Y = tf.reduce_sum(tf.square(Y), 1)
+        eps = tf.Variable(10e-15, dtype=dtype, name="eps").initialized_value()
+        Q = tf.reshape(sum_Y, [-1, 1]) + -2 * tf.matmul(Y, tf.transpose(Y))
+        Q = sum_Y + Q / alpha
+        Q = tf.pow(1 + Q, -(alpha + 1) / 2)
+        #Q = Q * (1 - tf.diag(tf.ones(self.batch_size, dtype=dtype)))
+        Q_d = tf.diag_part(Q)
+        Q_d = Q_d - Q_d
+        Q = tf.matrix_set_diag(Q, Q_d)
+        Q = Q / tf.reduce_sum(Q)
+        Q = tf.maximum(Q, eps)
+        C = tf.log((P + eps) / (Q + eps))
+        C = tf.reduce_sum(P * C)
+        return C
+
+
 class TSNe:
     def __init__(self, batch_size=100, perplexity=30., dim=2):
         self.batch_size = batch_size
@@ -150,21 +170,3 @@ class TSNe:
                 yield (X[i:i + self.batch_size], P_batch)
         #return P
 
-    def KLdivergence(self, P, Y):
-        dtype = P.dtype
-        with tf.Session() as sess:
-            alpha = self.low_dim - 1.
-            sum_Y = tf.reduce_sum(tf.square(Y), 1)
-            eps = tf.Variable(10e-15, dtype=dtype, name="eps").initialized_value()
-            Q = tf.reshape(sum_Y, [-1, 1]) + -2 * tf.matmul(Y, tf.transpose(Y))
-            Q = sum_Y + Q / alpha
-            Q = tf.pow(1 + Q, -(alpha + 1) / 2)
-            #Q = Q * (1 - tf.diag(tf.ones(self.batch_size, dtype=dtype)))
-            Q_d = tf.diag_part(Q)
-            Q_d = Q_d - Q_d
-            Q = tf.matrix_set_diag(Q, Q_d)
-            Q = Q / tf.reduce_sum(Q)
-            Q = tf.maximum(Q, eps)
-            C = tf.log((P + eps) / (Q + eps))
-            C = tf.reduce_sum(P * C)
-            return C
