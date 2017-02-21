@@ -28,7 +28,7 @@ def pixelate_mode(mode):
         return max
 
 
-class Transforms(object):
+class TransformsRow(object):
     """
     In this class are deposit the functions for apply to the data.
     
@@ -40,6 +40,19 @@ class Transforms(object):
     """
     def __init__(self):
         self.transforms = OrderedDict({})
+
+    def __add__(self, o):
+        all_transforms = TransformsRow.from_json(self.to_json())
+        for fn, params in o.transforms.items():
+            all_transforms.add(locate(fn), **params)
+        return all_transforms
+
+    @classmethod
+    def cls_name(cls):
+        return "{}.{}".format(cls.__module__, cls.__name__)
+
+    def type(self):
+        return "row"
 
     def add(self, fn, **params):
         """
@@ -54,17 +67,11 @@ class Transforms(object):
         fn_name = "{}.{}".format(fn.__module__, fn.__name__)
         self.transforms[fn_name] = params
 
-    def empty(self):
+    def is_empty(self):
         """
         return True if not transforms was added.
         """
         return len(self.transforms) == 0
-
-    def __add__(self, o):
-        all_transforms = Transforms.from_json(self.to_json())
-        for fn, params in o.transforms.items():
-            all_transforms.add(locate(fn), **params)
-        return all_transforms
 
     def to_json(self):
         """
@@ -79,7 +86,7 @@ class Transforms(object):
         from json format to Transform class.
         """
         transforms_dict = json.loads(json_transforms, object_pairs_hook=OrderedDict)
-        transforms = Transforms()
+        transforms = TransformsRow()
         for fn, params in transforms_dict.items():
             transforms.add(locate(fn), **params)
         return transforms
@@ -92,6 +99,133 @@ class Transforms(object):
         for fn, params in self.transforms.items():
             fn = locate(fn)
             data = fn(data, **params)
+
+        if data is None:
+            raise Exception
+        else:
+            return data
+
+
+class TransformsCol(TransformsRow):
+    
+    def __add__(self, o):
+        all_transforms = TransformsCol.from_json(self.to_json())
+        for fn, params in o.transforms.items():
+            all_transforms.add(locate(fn), **params)
+        return all_transforms
+
+    def type(self):
+        return "column"
+
+    @classmethod
+    def from_json(self, json_transforms):
+        """
+        from json format to Transform class.
+        """
+        transforms_dict = json.loads(json_transforms, object_pairs_hook=OrderedDict)
+        transforms = TransformsCol()
+        for fn, params in transforms_dict.items():
+            transforms.add(locate(fn), **params)
+        return transforms
+
+
+class Transforms(object):
+    """
+    In this class are deposit the functions for apply to the data.
+    
+    transforms = Transforms()
+
+    transforms.add(function1, {'a': 1, 'b': 0}) -> function1(a=1, b=0)
+
+    transforms.add(function2, {'x': 10}) -> function2(x=10)
+    """
+    def __init__(self):
+        self.transforms = []
+        self.types = {"row": TransformsRow, "column": TransformsCol, "fit": None}
+
+    @classmethod
+    def cls_name(cls):
+        return "{}.{}".format(cls.__module__, cls.__name__)
+
+    def add(self, fn, type="row", **params):
+        """
+        :type fn: function
+        :param fn: function to add
+
+        :type params: dict
+        :param params: the parameters of the function fn
+
+        This function add to the class the functions to use with the data.
+        """
+        t_class = self.types[type]
+        t_obj = t_class()
+        t_obj.add(fn, **params)
+        self.transforms.append(t_obj)
+
+    def is_empty(self):
+        """
+        return True if not transforms was added.
+        """
+        return len(self.transforms) == 0
+
+    def clean(self):
+        self.transforms  = []
+
+    def __add__(self, o):
+        all_transforms = Transforms.from_json(self.to_json())
+        for transform in o.transforms:
+            for fn, params in transform.transforms.items():
+                all_transforms.add(locate(fn), type=transform.type(), **params)
+        return all_transforms
+
+    def compact(self):
+        types = {}
+        compact_list = []
+        if len(self.transforms) == 1:
+            compact_list.append(self.transforms[0])
+        else:
+            for t0, t1 in zip(self.transforms, self.transforms[1:]):
+                if t0.type() == t1.type():
+                    types[t0.type()] = types.get(t0.type(), t0) + t1
+                else:
+                    compact_list.append(types.get(t0.type(), t0))
+            compact_list.append(types.get(t1.type(), t1))
+        return compact_list
+
+    def to_json(self):
+        """
+        convert this class to json format
+        """
+        import json
+        return json.dumps([{t.type(): t.transforms} for t in self.compact()])
+
+    @classmethod
+    def list2transforms(self, transforms_list, transforms):
+        for transforms_type in transforms_list:
+            for type, transforms_dict in transforms_type.items():
+                for fn, params in transforms_dict.items():
+                    transforms.add(locate(fn), type=type, **params)
+
+    @classmethod
+    def from_json(self, json_transforms):
+        """
+        from json format to Transform class.
+        """
+        transforms_list = json.loads(json_transforms, object_pairs_hook=OrderedDict)
+        transforms = Transforms()
+        for transforms_type in transforms_list:
+            for type, transforms_dict in transforms_type.items():
+                for fn, params in transforms_dict.items():
+                    transforms.add(locate(fn), type=type, **params)
+        return transforms
+
+    def apply(self, data):
+        """
+        :type data: array
+        :param data: apply the transforms added to the data
+        """
+        for t_obj in self.transforms:
+            data = t_obj.apply(data)
 
         if data is None:
             raise Exception

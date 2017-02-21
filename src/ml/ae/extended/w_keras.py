@@ -13,7 +13,6 @@ class PTsne(Keras):
         from keras.layers import Dense, Activation
         #from keras.layers import Dropout
         from keras.models import Sequential
-
         from ml.utils.tf_functions import KLdivergence
 
         model = Sequential()
