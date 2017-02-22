@@ -132,5 +132,17 @@ class TestTransforms(unittest.TestCase):
         self.assertEqual(-.1 <= result.mean() < .1, True)
         self.assertEqual(.9 <= result.std() <= 1.1, True)
 
+    def test_apply(self):
+        from ml.processing import FitStandardScaler
+        transforms = Transforms()
+        transforms.add(linear)
+        transforms.add(linear_p, b=10)
+        base_numbers = np.random.rand(1000, 2)
+        transforms.add(FitStandardScaler, type="column")
+        numbers = np.random.rand(1000, 2)
+        result = transforms.apply(numbers, base_data=None)
+        self.assertEqual(.9 <= result.std() <= 1.1, True)
+
+
 if __name__ == '__main__':
     unittest.main()

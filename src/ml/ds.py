@@ -480,26 +480,12 @@ class Data(ReadWriteData):
         execute the transformations to the data.
 
         """
-        data = self.processing_rows(data)
-        #if init is True:
-        #    return self.processing_global(data, base_data=data)
-        #elif init is False and not self.transforms.empty('global'):
-        #    base_data, _ = self.desfragment()
-        #    return self.processing_global(data, base_data=base_data)
-        #else:
-        #    return data
-        return data
-
-    def processing_rows(self, data):
-        """
-        :type data: array
-        :param data: data to be transformed
-
-        each row is transformed with the transformations defined.
-        """
         if not self.transforms.empty() and self.transforms_to_apply and data is not None:
             log.debug("Apply transforms")
-            return np.asarray([self.transforms.apply(row) for row in data])
+            if init is True:
+                return self.transforms.apply(data)
+            else:
+                return self.transforms.apply(data, base_data=self.data)
         else:
             log.debug("No transforms applied")
             return data if isinstance(data, np.ndarray) else np.asarray(data)
@@ -1251,23 +1237,6 @@ class DataSetBuilder(DataLabel):
             self.train_labels[ok_train]),
             axis=0)
         self.save()
-
-    #def processing_global(self, data, base_data=None):
-    #    if not self.transforms.empty('global') and self.apply_transforms and data is not None:
-    #        from pydoc import locate
-    #        fiter, params = self.transforms.get_transforms('global')[0]
-    #        fiter = locate(fiter)
-    #        if isinstance(params, dict):
-    #            self.fit = fiter(**params)
-    #        else:
-    #            self.fit = fiter()
-    #        print(base_data)
-    #        self.fit.fit(base_data)
-    #        return self.fit.transform(data)
-            #else:
-            #    return self.fit.transform(data)
-    #    else:
-    #        return data
 
     def build_dataset(self, data, labels, test_data=None, test_labels=None, 
                         validation_data=None, validation_labels=None, 

@@ -96,10 +96,15 @@ class TransformsRow(object):
         :type data: array
         :param data: apply the transforms added to the data
         """
-        for fn, params in self.transforms.items():
-            fn = locate(fn)
-            data = fn(data, **params)
-
+        if len(data.shape) == 1:
+            for fn, params in self.transforms.items():
+                fn = locate(fn)
+                data = fn(data, **params)
+        else:
+            for fn, params in self.transforms.items():                
+                fn = locate(fn)
+                for row in data:
+                    row = fn(row, **params)
         if data is None:
             raise Exception
         else:
