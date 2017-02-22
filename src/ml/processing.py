@@ -91,7 +91,7 @@ class TransformsRow(object):
             transforms.add(locate(fn), **params)
         return transforms
 
-    def apply(self, data):
+    def apply(self, data, base_data=None):
         """
         :type data: array
         :param data: apply the transforms added to the data
@@ -128,6 +128,28 @@ class TransformsCol(TransformsRow):
             transforms.add(locate(fn), **params)
         return transforms
 
+    def apply(self, data, base_data=None):
+        """
+        :type data: array
+        :param data: apply the transforms added to the data
+        """
+        def initial_fn(data):
+            for fn, params in self.transforms.items():
+                fn = locate(fn)
+                yield fn(data, **params)
+
+        if base_data is None:
+            for fn_fit in initial_fn(data):
+                data = fn_fit.transform(data)
+        else:
+            for fn_fit in initial_fn(base_data):
+                data = fn_fit.transform(data)
+
+        if data is None:
+            raise Exception
+        else:
+            return data
+
 
 class Transforms(object):
     """
@@ -141,7 +163,7 @@ class Transforms(object):
     """
     def __init__(self):
         self.transforms = []
-        self.types = {"row": TransformsRow, "column": TransformsCol, "fit": None}
+        self.types = {"row": TransformsRow, "column": TransformsCol}
 
     @classmethod
     def cls_name(cls):
@@ -169,6 +191,9 @@ class Transforms(object):
         return len(self.transforms) == 0
 
     def clean(self):
+        """
+        clean the transformations in the object
+        """
         self.transforms  = []
 
     def __add__(self, o):
@@ -179,6 +204,12 @@ class Transforms(object):
         return all_transforms
 
     def compact(self):
+        """
+        transforms a list of transformations to a more compact format
+
+        original = [row, row, row, col, col, row]
+        compact = [row, col, row]
+        """
         types = {}
         compact_list = []
         if len(self.transforms) == 1:
@@ -219,13 +250,13 @@ class Transforms(object):
                     transforms.add(locate(fn), type=type, **params)
         return transforms
 
-    def apply(self, data):
+    def apply(self, data, base_data=None):
         """
         :type data: array
         :param data: apply the transforms added to the data
         """
         for t_obj in self.transforms:
-            data = t_obj.apply(data)
+            data = t_obj.apply(data, base_data=base_data)
 
         if data is None:
             raise Exception
@@ -233,10 +264,9 @@ class Transforms(object):
             return data
 
 
-class FiT(object):
-    def __init__(self, **kwargs):
-        self.t = None
-        self.params = kwargs
+class Fit(object):
+    def __init__(self, data, **kwargs):
+        self.t = self.fit(data, kwargs)
 
     @classmethod
     def module_cls_name(cls):
@@ -252,17 +282,30 @@ class FiT(object):
         return self.t(self.dim_rule(data))
 
 
-class FiTScaler(FiT):
+class FitStandardScaler(Fit):
     def dim_rule(self, data):
         if len(data.shape) > 2:
             data = data.reshape(data.shape[0], -1)
         return data
 
-    def fit(self, data):
+    def fit(self, data, params):
         from sklearn.preprocessing import StandardScaler
-        scaler = StandardScaler(**self.params)
+        scaler = StandardScaler(**params)
         scaler.fit(self.dim_rule(data))
-        self.t = scaler.transform
+        return scaler.transform
+
+
+class FitRobustScaler(Fit):
+    def dim_rule(self, data):
+        if len(data.shape) > 2:
+            data = data.reshape(data.shape[0], -1)
+        return data
+
+    def fit(self, data, params):
+        from sklearn.preprocessing import RobustScaler
+        scaler = RobustScaler(**params)
+        scaler.fit(self.dim_rule(data))
+        return scaler.transform
 
 
 def poly_features(data, degree=2, interaction_only=False, include_bias=True):
