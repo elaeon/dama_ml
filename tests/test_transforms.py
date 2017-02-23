@@ -141,11 +141,11 @@ class TestTransforms(unittest.TestCase):
         base_numbers = np.random.rand(1000, 2)
         numbers = np.random.rand(1000, 2)        
         result = transforms.apply(base_numbers, base_data=None)
-        print(result.std(), result.mean())
-        self.assertEqual(.9 <= result.std() <= 1.1, True)
+        self.assertEqual(.95 <= result.std() <= 1.05, True)
+        self.assertEqual(-0.1 <= result.mean() <= 0.1, True)
         result = transforms.apply(numbers, base_data=base_numbers)
-        print(result.std(), result.mean())
-        self.assertEqual(.9 <= result.std() <= 1.1, True)
+        self.assertEqual(.95 <= result.std() <= 1.05, True)
+        self.assertEqual(-0.1 <= result.mean() <= 0.1, True)
 
 
 if __name__ == '__main__':
