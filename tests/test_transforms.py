@@ -137,10 +137,14 @@ class TestTransforms(unittest.TestCase):
         transforms = Transforms()
         transforms.add(linear)
         transforms.add(linear_p, b=10)
-        base_numbers = np.random.rand(1000, 2)
         transforms.add(FitStandardScaler, type="column")
-        numbers = np.random.rand(1000, 2)
-        result = transforms.apply(numbers, base_data=None)
+        base_numbers = np.random.rand(1000, 2)
+        numbers = np.random.rand(1000, 2)        
+        result = transforms.apply(base_numbers, base_data=None)
+        print(result.std(), result.mean())
+        self.assertEqual(.9 <= result.std() <= 1.1, True)
+        result = transforms.apply(numbers, base_data=base_numbers)
+        print(result.std(), result.mean())
         self.assertEqual(.9 <= result.std() <= 1.1, True)
 
 

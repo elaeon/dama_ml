@@ -101,10 +101,13 @@ class TransformsRow(object):
                 fn = locate(fn)
                 data = fn(data, **params)
         else:
-            for fn, params in self.transforms.items():                
+            data_n = np.empty(data.shape)
+            for fn, params in self.transforms.items():
                 fn = locate(fn)
-                for row in data:
-                    row = fn(row, **params)
+                for i, row in enumerate(data):
+                    data_n[i] = fn(row, **params)
+            data = data_n
+
         if data is None:
             raise Exception
         else:
@@ -260,8 +263,14 @@ class Transforms(object):
         :type data: array
         :param data: apply the transforms added to the data
         """
-        for t_obj in self.transforms:
-            data = t_obj.apply(data, base_data=base_data)
+        if base_data is None:
+            for t_obj in self.transforms:
+                data = t_obj.apply(data)
+        else:
+            for t0_obj, t1_obj in zip(self.transforms, self.transforms[:-1] + [None]):
+                data = t0_obj.apply(data, base_data=base_data)
+                if t1_obj is not None:
+                    base_data = t1_obj.apply(base_data)
 
         if data is None:
             raise Exception

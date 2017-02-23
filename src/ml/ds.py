@@ -186,7 +186,7 @@ class Data(ReadWriteData):
     def __init__(self, name=None, 
                 dataset_path=None,
                 transforms=None,
-                apply_transforms=True,
+                apply_transforms=False,
                 dtype='float64',
                 description='',
                 author='',
@@ -482,7 +482,7 @@ class Data(ReadWriteData):
         """
         if not self.transforms.empty() and self.transforms_to_apply and data is not None:
             log.debug("Apply transforms")
-            if init is True:
+            if initial is True:
                 return self.transforms.apply(data)
             else:
                 return self.transforms.apply(data, base_data=self.data)
@@ -636,7 +636,7 @@ class DataLabel(Data):
     def __init__(self, name=None, 
                 dataset_path=None,
                 transforms=None,
-                apply_transforms=True,
+                apply_transforms=False,
                 dtype='float64',
                 ltype='|S1',
                 description='',
@@ -998,7 +998,7 @@ class DataSetBuilder(DataLabel):
     """
     def __init__(self, name=None, 
                 dataset_path=None,
-                apply_transforms=True,
+                apply_transforms=False,
                 transforms=None,
                 train_size=.7,
                 valid_size=.1,
