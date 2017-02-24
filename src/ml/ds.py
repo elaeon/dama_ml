@@ -589,12 +589,15 @@ class Data(ReadWriteData):
         transforms a matrix of dim (n, m) to a matrix of dim (n*m, 2) where
         the rows are described as [feature_column, feature_data]
         """
-        data = np.empty((self.data.shape[0] * self.data.shape[1], 2))
-        row_i = 0
-        for row in self.data:
-            for j, col in enumerate(row):
-                data[row_i] = np.asarray([j, col])
-                row_i += 1
+        data = np.empty((self.data.shape[0] * self.data.shape[1], 3))
+        base = 0
+        for index_column in range(1, self.data.shape[1] + 1):
+            next = self.data.shape[0] + base
+            data[base:next] = np.append(
+                np.zeros((self.data.shape[0], 1)) + (index_column - 1), 
+                self.data[:, index_column-1:index_column], 
+                axis=1)
+            base = next
         return data
 
 
@@ -935,11 +938,16 @@ class DataLabel(Data):
             data = super(DataLabel, self).features2rows()
         else:
             data = np.empty((self.data.shape[0] * self.data.shape[1], 3))
-            row_i = 0
-            for i, row in enumerate(self.data):
-                for j, col in enumerate(row):
-                    data[row_i] = np.asarray([j, col, self.labels[i]])
-                    row_i += 1
+            labels = self.labels[:].reshape(1, -1)
+            base = 0
+            for index_column in range(1, self.data.shape[1] + 1):
+                tmp_data = np.append(
+                    np.zeros((self.data.shape[0], 1)) + (index_column - 1), 
+                    self.data[:, index_column-1:index_column], 
+                    axis=1)
+                next = self.data.shape[0] + base
+                data[base:next] = np.append(tmp_data, labels.T, axis=1)
+                base = next
         return data
 
     def to_data(self):
@@ -1427,10 +1435,10 @@ class DataSetBuilderImage(DataSetBuilder):
     :type data_folder_path: string
     :param data_folder_path: path to the data what you want to add to the dataset, split the data in train, test and validation. If you want manualy split the data in train and test, check test_folder_path.
     """
-    def __init__(self, name=None, image_size=None, train_folder_path=None, **kwargs):
+    def __init__(self, name=None, image_size=None, training_data_path=None, **kwargs):
         super(DataSetBuilderImage, self).__init__(name, **kwargs)
         self.image_size = image_size
-        self.train_folder_path = train_folder_path
+        self.training_data_path = training_data_path
 
     def images_from_directories(self, directories):
         if isinstance(directories, str):
@@ -1488,9 +1496,9 @@ class DataSetBuilderImage(DataSetBuilder):
 
     def build_dataset(self):
         """
-        the data is extracted from the train_folder_path, and then saved.
+        the data is extracted from the training_datar_path, and then saved.
         """
-        data, labels = self.images_to_dataset(self.train_folder_path)
+        data, labels = self.images_to_dataset(self.training_data_path)
         super(DataSetBuilderImage, self).build_dataset(data, labels)
 
     def labels_images(self, urls):
@@ -1520,34 +1528,34 @@ class DataSetBuilderFile(DataSetBuilder):
     Class for csv dataset build. Get the data from a csv's file.
     """
 
-    def __init__(self, name=None, train_folder_path=None, **kwargs):
+    def __init__(self, name=None, training_data_path=None, **kwargs):
         super(DataSetBuilderFile, self).__init__(name, **kwargs)
-        self.train_folder_path = train_folder_path
+        self.training_data_path = training_data_path
 
-    def from_csv(self, folder_path, label_column):
+    def from_csv(self, folder_path, target_column):
         """
         :type folder_path: string
         :param folder_path: path to the csv.
 
-        :type label_column: string
-        :param label_column: column's name where are the labels
+        :type target_column: string
+        :param target_column: column's name where are the labels
         """
-        data, labels = self.csv2dataset(folder_path, label_column)
+        data, labels = self.csv2dataset(folder_path, target_column)
         return data, labels
 
     @classmethod
-    def csv2dataset(self, path, label_column):
+    def csv2dataset(self, path, target_column):
         df = pd.read_csv(path)
-        dataset = df.drop([label_column], axis=1).as_matrix()
-        labels = df[label_column].as_matrix()
+        dataset = df.drop([target_column], axis=1).as_matrix()
+        labels = df[target_column].as_matrix()
         return dataset, labels        
 
-    def build_dataset(self, label_column=None):
+    def build_dataset(self, target_column=None):
         """
-         :type label_column: string
-         :param label_column: column's name where are the labels
+         :type target_column: string
+         :param target_column: column's name where are the labels
         """
-        data, labels = self.from_csv(self.train_folder_path, label_column)
+        data, labels = self.from_csv(self.training_data_path, target_column)
         super(DataSetBuilderFile, self).build_dataset(data, labels)
 
     @classmethod
