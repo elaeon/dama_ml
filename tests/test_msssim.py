@@ -21,12 +21,12 @@ class TestMsssiM(unittest.TestCase):
         from skimage import io, img_as_float
 
         image_path = self.img1
-        image = io.imread(image_path)
+        image = np.expand_dims(io.imread(image_path), axis=0)
         transforms = Transforms()
         transforms.add(rgb2gray)
         transforms.add(merge_offset)
         image = transforms.apply(image)
-        img = img_as_float(image)
+        img = img_as_float(image[0])
         rows, cols = img.shape
 
         noise = np.ones_like(img) * 0.2 * (img.max() - img.min())
@@ -50,7 +50,7 @@ class TestMsssiM(unittest.TestCase):
         msssim_index = tf.reduce_mean(msssim(image4d_1, image4d_2, level=5, size=4))
 
         with tf.Session() as sess:
-            sess.run(tf.initialize_all_variables())
+            sess.run(tf.global_variables_initializer())
             tf_ssim_none = sess.run(ssim_index,
                                     feed_dict={image1: img, image2: img})
             tf_ssim_noise = sess.run(ssim_index,
@@ -72,17 +72,17 @@ class TestMsssiM(unittest.TestCase):
         image_path1 = self.img2
         image_path2 = self.img3
 
-        image1 = io.imread(image_path1)
+        image1 = np.expand_dims(io.imread(image_path1), axis=0)
         transforms = Transforms()
         transforms.add(rgb2gray)
         transforms.add(merge_offset)
         image1 = transforms.apply(image1)
-        img1 = img_as_float(image1)
+        img1 = img_as_float(image1[0])
         rows1, cols1 = img1.shape
 
-        image2 = io.imread(image_path2)
+        image2 = np.expand_dims(io.imread(image_path2), axis=0)
         image2 = transforms.apply(image2)
-        img2 = img_as_float(image2)
+        img2 = img_as_float(image2[0])
         rows2, cols2 = img2.shape
 
         image1 = tf.placeholder(tf.float32, shape=[rows1, cols1])
@@ -99,7 +99,7 @@ class TestMsssiM(unittest.TestCase):
         msssim_index = tf.reduce_mean(msssim(image4d_1, image4d_2, level=5, size=6))
 
         with tf.Session() as sess:
-            sess.run(tf.initialize_all_variables())
+            sess.run(tf.global_variables_initializer())
             tf_msssim_1 = sess.run(msssim_index,
                                     feed_dict={image1: img1, image2: img1})
             tf_msssim_2 = sess.run(msssim_index,

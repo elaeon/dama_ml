@@ -480,7 +480,7 @@ class Data(ReadWriteData):
         execute the transformations to the data.
 
         """
-        if not self.transforms.empty() and self.transforms_to_apply and data is not None:
+        if not self.transforms.is_empty() and self.transforms_to_apply and data is not None:
             log.debug("Apply transforms")
             if initial is True:
                 return self.transforms.apply(data)

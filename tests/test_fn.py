@@ -20,7 +20,7 @@ class TestFn(unittest.TestCase):
         df = pd.DataFrame(data=scale(df))
         clf = IsolationForest(max_samples=10,
             contamination=.20,
-            random_state=rng,
+            random_state=40,
             n_jobs=-1)
         matrix = df.as_matrix()
         clf.fit(matrix)

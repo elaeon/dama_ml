@@ -101,13 +101,12 @@ class TransformsRow(object):
                 fn = locate(fn)
                 data = fn(data, **params)
         else:
-            data_n = np.empty(data.shape)
+            data_n = [] #np.empty(data.shape)
             for fn, params in self.transforms.items():
                 fn = locate(fn)
-                for i, row in enumerate(data):
-                    data_n[i] = fn(row, **params)
-            data = data_n
-
+                for row in data:
+                    data_n.append(fn(row, **params))
+            data = np.asarray(data_n)
         if data is None:
             raise Exception
         else:
@@ -218,11 +217,13 @@ class Transforms(object):
         original = [row, row, row, col, col, row]
         compact = [row, col, row]
         """
-        types = {}
-        compact_list = []
         if len(self.transforms) == 1:
-            compact_list.append(self.transforms[0])
+            compact_list = [self.transforms[0]]
+        elif len(self.transforms) == 0:
+            compact_list = []
         else:
+            types = {}
+            compact_list = []
             for t0, t1 in zip(self.transforms, self.transforms[1:]):
                 if t0.type() == t1.type():
                     types[t0.type()] = types.get(t0.type(), t0) + t1
