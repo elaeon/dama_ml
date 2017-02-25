@@ -17,9 +17,11 @@ def check_or_create_path_dir(path, dirname):
 
 
 def set_up_cfg(filepath):
+    import pkg_resources
+    setting_expl = pkg_resources.resource_filename('ml', 'data/settings.cfg.example')
     base = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
     home = os.path.expanduser("~")
-    setting_expl = os.path.join(base, "settings.cfg.example")
+    #setting_expl = os.path.join(base, "settings.cfg.example")
     with open(setting_expl, 'rb') as f:
         cfg = f.read()
         cfg = cfg.format(home=home, base=base)

@@ -14,7 +14,7 @@ install_requires = [
     'scipy>=0.18.1',
     'tabulate>=0.7.5',
     'tensorflow>=0.12.1',
-    'tflearn>=0.2.1',
+    'tflearn==0.2.1',
     'tqdm>=4.5.0',
     'h5py>=2.6.0',
     'GPy>=1.5.6',
@@ -55,8 +55,9 @@ setup(
         ]
     },
     package_dir={'': 'src'},
-    packages=find_packages('src', exclude=['docs', 'tests*']),
-    include_package_data=True,
+    packages=find_packages('src', exclude=['docs', 'tests*']),  
+    package_data = {'ml': ['data/settings.cfg.example'],},
+    #include_package_data=True,
 
     license='Apache',
     classifiers=[
