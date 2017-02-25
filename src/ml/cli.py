@@ -24,6 +24,7 @@ model_parser.set_defaults(func=models.run)
 
 plot_parser = subparsers.add_parser('plot')
 plot_parser.add_argument("--dataset", type=str, help="dataset to plot")
+plot_parser.add_argument("--view", type=str, help="analyze column or row")
 plot_parser.add_argument("--type-g", type=str, help="graph type")
 plot_parser.set_defaults(func=plot.run)
 

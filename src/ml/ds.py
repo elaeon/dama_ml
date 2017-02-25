@@ -959,6 +959,61 @@ class DataLabel(Data):
         dl.destroy()
         return data
 
+    def plot(self, view="columns", type_g=None):        
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+
+        if view == "columns":
+            sns.set(style="whitegrid", palette="pastel", color_codes=True)
+            data = self.features2rows(labels=True)
+            if type_g == 'box':
+                sns.boxplot(x=data[:,0], y=data[:,1], hue=data[:,2], palette="PRGn")
+            elif type_g == "violin":
+                sns.violinplot(x=data[:,0], y=data[:,1], hue=data[:,2], palette="PRGn", inner="box")
+            sns.despine(offset=10, trim=True)
+        else:
+            data = self
+            if data.shape[1] > 2:
+                from ml.ae.extended.w_keras import PTsne
+                dl = DataLabel(name=self.name+"_2d_", 
+                        dataset_path=self.dataset_path,
+                        transforms=None,
+                        apply_transforms=False,
+                        dtype=self.dtype,
+                        ltype=self.ltype,
+                        compression_level=9,
+                        rewrite=False)
+
+                if not dl.exists():
+                    ds = self.to_data()
+                    classif = PTsne(model_name="tsne", model_version="1", 
+                        check_point_path="/tmp/", dataset=ds, dim=2)
+                    classif.train(batch_size=50, num_steps=2)
+                    data = np.asarray(list(classif.predict(self.data)))
+                    dl.build_dataset(data, self.labels[:])
+                    ds.destroy()
+                data = dl
+
+            if data.shape[1] == 2:
+                if type_g == "lm":
+                    df = data.to_df()
+                    sns.lmplot(x="c0", y="c1", data=df, hue="target")
+                elif type_g == "scatter":
+                    df = data.to_df()
+                    legends = []
+                    for label in self.labels_info():
+                        df_tmp = df[df["target"] == label]
+                        legends.append((plt.scatter(df_tmp["c0"].astype("float64"), 
+                            df_tmp["c1"].astype("float64")), label))
+                    p, l = zip(*legends)
+                    plt.legend(p, l, loc='lower left', ncol=3, fontsize=8, 
+                        scatterpoints=1, bbox_to_anchor=(0,0))
+                elif type_g == "pairplot":
+                    df = data.to_df(labels2numbers=True)
+                    sns.pairplot(df.astype("float64"), hue='target', 
+                        vars=df.columns[:-1], diag_kind="kde", palette="husl")
+        plt.show()
+
 
 class DataSetBuilder(DataLabel):
     """
@@ -1311,64 +1366,6 @@ class DataSetBuilder(DataLabel):
         classif.train()
         measure = "auc"
         return classif.load_meta().get("score", {measure, None}).get(measure, None) 
-
-    def plot(self, view="columns", type_g=None):        
-        import seaborn as sns
-        import matplotlib.pyplot as plt
-
-        if view == "columns":
-            sns.set(style="whitegrid", palette="pastel", color_codes=True)
-            data = self.features2rows(labels=True)
-            if type_g == 'box':
-                sns.boxplot(x=data[:,0], y=data[:,1], hue=data[:,2], palette="PRGn")
-            elif type_g == "violin":
-                sns.violinplot(x=data[:,0], y=data[:,1], hue=data[:,2], palette="PRGn", inner="box")
-            sns.despine(offset=10, trim=True)
-        else:
-            data = self
-            if data.shape[1] > 2:
-                from ml.ae.extended.w_keras import PTsne
-                dl = DataLabel(name=self.name+"_2d_", 
-                        dataset_path=self.dataset_path,
-                        transforms=None,
-                        apply_transforms=False,
-                        dtype=self.dtype,
-                        ltype=self.ltype,
-                        compression_level=9,
-                        rewrite=False)
-
-                if not dl.exists():
-                    ds = self.to_data()
-                    classif = PTsne(model_name="tsne", model_version="1", 
-                        check_point_path="/tmp/", dataset=ds, dim=2)
-                    classif.train(batch_size=50, num_steps=2)
-                    data = np.asarray(list(classif.predict(self.data)))
-                    dl.build_dataset(data, self.labels[:])
-                    ds.destroy()
-                #else:
-                #    classif = PTsne(model_name="tsne", model_version="1", 
-                #        check_point_path="/tmp/")
-                data = dl
-
-            if data.shape[1] == 2:
-                if type_g == "lm":
-                    df = data.to_df()
-                    sns.lmplot(x="c0", y="c1", data=df, hue="target")
-                elif type_g == "scatter":
-                    df = data.to_df()
-                    legends = []
-                    for label in self.labels_info():
-                        df_tmp = df[df["target"] == label]
-                        legends.append((plt.scatter(df_tmp["c0"].astype("float64"), 
-                            df_tmp["c1"].astype("float64")), label))
-                    p, l = zip(*legends)
-                    plt.legend(p, l, loc='lower left', ncol=3, fontsize=8, 
-                        scatterpoints=1, bbox_to_anchor=(0,0))
-                elif type_g == "pairplot":
-                    df = data.to_df(labels2numbers=True)
-                    sns.pairplot(df.astype("float64"), hue='target', 
-                        vars=df.columns[:-1], diag_kind="kde", palette="husl")
-        plt.show()
 
     def convert(self, name, dtype='float64', ltype='|S1', apply_transforms=False, 
                 percentaje=1):

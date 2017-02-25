@@ -60,8 +60,8 @@ class LogisticRegression(SKLP):
     def prepare_model(self):
         from sklearn.linear_model import LogisticRegression
         reg = CalibratedClassifierCV(
-            LogisticRegression(solver="lbfgs", multi_class="multinomial")#"newton-cg")
-            , method="sigmoid")
+            LogisticRegression(solver="lbfgs", multi_class="multinomial", n_jobs=-1), 
+            method="sigmoid")
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
