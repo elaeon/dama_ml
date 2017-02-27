@@ -32,6 +32,8 @@ src/ml/clf/extended/w_tflearn.py
 src/ml/commands/__init__.py
 src/ml/commands/dataset.py
 src/ml/commands/models.py
+src/ml/commands/plot.py
+src/ml/data/settings.cfg.example
 src/ml/utils/__init__.py
 src/ml/utils/camera_client.py
 src/ml/utils/camera_img_stream_server.py
@@ -44,16 +46,9 @@ src/ml/utils/order.py
 src/ml/utils/seq.py
 src/ml/utils/tf_functions.py
 tests/__init__.py
-tests/__init__.pyc
 tests/test_clf.py
-tests/test_clf.pyc
 tests/test_dataset.py
-tests/test_dataset.pyc
 tests/test_fn.py
-tests/test_fn.pyc
 tests/test_measure.py
-tests/test_measure.pyc
 tests/test_msssim.py
-tests/test_msssim.pyc
 tests/test_transforms.py
-tests/test_transforms.pyc
