@@ -96,16 +96,17 @@ class TransformsRow(object):
         :type data: array
         :param data: apply the transforms added to the data
         """
-        if len(data.shape) == 1:
+        if not isinstance(data, list) and len(data.shape) == 1:
             for fn, params in self.transforms.items():
                 fn = locate(fn)
                 data = fn(data, **params)
         else:
-            data_n = [] #np.empty(data.shape)
-            for fn, params in self.transforms.items():
-                fn = locate(fn)
-                for row in data:
-                    data_n.append(fn(row, **params))
+            data_n = []
+            for row in data:
+                for fn, params in self.transforms.items():
+                    fn = locate(fn)
+                    row = fn(row, **params)
+                data_n.append(row)
             data = np.asarray(data_n)
         if data is None:
             raise Exception
@@ -264,11 +265,12 @@ class Transforms(object):
         :type data: array
         :param data: apply the transforms added to the data
         """
+        transforms = self.compact()
         if base_data is None:
-            for t_obj in self.transforms:
+            for t_obj in transforms:
                 data = t_obj.apply(data)
         else:
-            for t0_obj, t1_obj in zip(self.transforms, self.transforms[:-1] + [None]):
+            for t0_obj, t1_obj in zip(transforms, transforms[:-1] + [None]):
                 data = t0_obj.apply(data, base_data=base_data)
                 if t1_obj is not None:
                     base_data = t1_obj.apply(base_data)

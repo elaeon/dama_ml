@@ -1,7 +1,7 @@
 import argparse
 from ml.ds import DataSetBuilderImage
 from ml.utils.config import get_settings
-from ml.processing import FiTScaler, Transforms
+from ml.processing import Transforms
 from ml.processing import rgb2gray, resize, threshold, merge_offset
 from ml.clf.extended.w_sklearn import RandomForest
 from skimage import io
@@ -34,17 +34,18 @@ if __name__ == '__main__':
 
     if args.build_dataset:
         if args.from_detector:
-            train_folder_path=[settings["numbers_detector"]]
+            training_data_path=[settings["numbers_detector"]]
         elif args.from_xml:
-            train_folder_path = [settings["numbers_xml"]]
+            training_data_path = [settings["numbers_xml"]]
         else:
-            train_folder_path = [settings["numbers_xml"]]
+            training_data_path = [settings["numbers_xml"]]
 
         ds_builder = DataSetBuilderImage(
             args.dataset_name, 
             image_size=int(settings["image_size"]), 
-            train_folder_path=train_folder_path,
+            training_data_path=training_data_path,
             transforms=transforms,
+            apply_transforms=True,
             compression_level=9,
             rewrite=True)
         ds_builder.build_dataset()

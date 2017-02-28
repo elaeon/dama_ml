@@ -11,17 +11,22 @@ from ml.ds import Data
 settings = get_settings("ml")
 
 logging.basicConfig()
+console = logging.StreamHandler()
+console.setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
+log.addHandler(console)
 
 
 class BaseAe(DataDrive):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
                 model_version=None, dataset_train_limit=None, info=True, 
-                auto_load=True, group_name=None):
+                auto_load=True, group_name=None, latent_dim=2):
         self.model = None
         self.dataset_train_limit = dataset_train_limit
         self.print_info = info
         self._original_dataset_md5 = None
+        self.latent_dim = latent_dim
         super(BaseAe, self).__init__(
             check_point_path=check_point_path,
             model_version=model_version,
@@ -49,7 +54,6 @@ class BaseAe(DataDrive):
 
     def reformat_all(self, dataset):
         log.info("Reformating {}...".format(self.cls_name()))
-        log.info("Labels encode finished")
         ds = Data(
             name=dataset.name+"_"+self.model_name+"_"+self.cls_name(),
             dataset_path=settings["dataset_model_path"],
@@ -120,10 +124,15 @@ class BaseAe(DataDrive):
                 "model_version": self.model_version}
 
     def get_dataset(self):
-        from ml.ds import DataSetBuilder
+        from ml.ds import DataSetBuilder, Data
         meta = self.load_meta()
-        dataset = DataSetBuilder(meta["dataset_name"], dataset_path=meta["dataset_path"],
-            apply_transforms=False)
+        #dataset = Data.original_ds(meta["dataset_name"])
+        dataset = DataSetBuilder(meta["dataset_name"], dataset_path=meta["dataset_path"])
+        print(dataset.name, meta["dataset_path"])
+        f = dataset._open_attrs()
+        print(f.attrs.items())
+        f.close()
+        print(dataset.md5(), meta["md5"])
         self._original_dataset_md5 = meta["md5"]
         self.group_name = meta.get('group_name', None)
         if meta.get('md5', None) != dataset.md5():
@@ -140,9 +149,8 @@ class Keras(BaseAe):
                 save_fn=model.save)
 
     def load_fn(self, path):
-        from keras.models import load_model        
-        from ml.utils.tf_functions import KLdivergence
-        net_model = load_model(path, custom_objects={'KLdivergence': KLdivergence})
+        from keras.models import load_model
+        net_model = load_model(path, custom_objects=self.custom_objects())
         self.model = self.default_model(net_model)
 
     def preload_model(self):

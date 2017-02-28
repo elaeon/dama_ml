@@ -531,8 +531,14 @@ class Data(ReadWriteData):
             max_samples=max_samples,
             n_jobs=-1)
         
-        clf.fit(self.data)
-        y_pred = clf.predict(self.data)
+        if len(self.data.shape) > 2:
+            log.debug("outlayers transform shape...")
+            data = self.data[:].reshape(-1, 1)
+            clf.fit(data)
+            y_pred = clf.predict(data)
+        else:
+            clf.fit(self.data)
+            y_pred = clf.predict(self.data)
         return (i for i, v in enumerate(y_pred) if v == -1)
 
     def add_transforms(self, name, transforms):
@@ -987,7 +993,7 @@ class DataLabel(Data):
                 if not dl.exists():
                     ds = self.to_data()
                     classif = PTsne(model_name="tsne", model_version="1", 
-                        check_point_path="/tmp/", dataset=ds, dim=2)
+                        check_point_path="/tmp/", dataset=ds, latent_dim=2)
                     classif.train(batch_size=50, num_steps=2)
                     data = np.asarray(list(classif.predict(self.data)))
                     dl.build_dataset(data, self.labels[:])
@@ -1515,9 +1521,9 @@ class DataSetBuilderImage(DataSetBuilder):
         dataset.image_size = self.image_size
         return dataset
 
-    def info(self):
-        super(DataSetBuilderImage, self).info()
-        print('Image Size {}x{}'.format(self.image_size, self.image_size))
+    def info(self, classes=True):
+        super(DataSetBuilderImage, self).info(classes=classes)
+        #print('Image Size {}x{}'.format(self.image_size, self.image_size))
 
 
 class DataSetBuilderFile(DataSetBuilder):
