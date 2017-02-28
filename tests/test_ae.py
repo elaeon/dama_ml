@@ -1,0 +1,59 @@
+import unittest
+import numpy as np
+
+
+class TestAE(unittest.TestCase):
+    def setUp(self):
+        pass
+        
+    def tearDown(self):
+        pass
+
+    def test_parametric_tsne(self):
+        from ml.ds import Data
+        from ml.ae.extended.w_keras import PTsne
+
+        dataset = Data(
+            name="tsne", 
+            dataset_path="/tmp/")
+        X = np.random.rand(100, 10)
+        Y = np.sin(6*X)
+        dataset.build_dataset(Y)
+        classif = PTsne(model_name="tsne", model_version="1", 
+            check_point_path="/tmp/", dataset=dataset, latent_dim=2)
+        classif.train(batch_size=8, num_steps=2)
+
+        classif = PTsne(model_name="tsne", model_version="1", 
+            check_point_path="/tmp/")
+        self.assertEqual(len(list(classif.predict([X[1]]))[0]), 2)
+
+    def test_vae(self):
+        from ml.ae.extended.w_keras import VAE
+        from ml.ds import DataSetBuilder
+
+        X = np.random.rand(10, 10)
+        X = (X * 10) % 2
+        X = X.astype(int)
+        Y = sum(X) % 2
+        Y = Y.astype(int)
+        dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+            ltype='int', rewrite=True)
+        dataset.build_dataset(X, Y)
+
+        vae = VAE(dataset=dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/",
+            intermediate_dim=5)
+        vae.train(batch_size=6, num_steps=1)
+
+        vae = VAE( 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        print(list(vae.predict([X[0]])))
+
+
+
+if __name__ == '__main__':
+    unittest.main()

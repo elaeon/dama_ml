@@ -44,6 +44,27 @@ class PTsne(Keras):
         self.save_model()
 
 
+def sampling(args):
+    from keras import backend as K
+    z_mean, z_log_var = args
+    batch_size = 1
+    latent_dim = 2
+    epsilon_std = 1.0
+    epsilon = K.random_normal(shape=(batch_size, latent_dim), 
+        mean=0., std=epsilon_std)
+    return z_mean + K.exp(z_log_var / 2) * epsilon
+
+
+def vae_loss(x, x_decoded_mean):
+    from keras import objectives
+    from keras import backend as K
+
+    num_features = 10
+    xent_loss = num_features * objectives.binary_crossentropy(x, x_decoded_mean)
+    #kl_loss = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
+    return xent_loss #+kl_loss 
+
+
 class VAE(Keras):
     def __init__(self, *args, **kwargs):
         if 'intermediate_dim' in kwargs:            
@@ -53,41 +74,27 @@ class VAE(Keras):
         super(VAE, self).__init__(*args, **kwargs)
 
     def custom_objects(self):
-        return {'vae_loss': self.vae_loss, 'sampling': self.sampling}
-
-    def sampling(self, args):
-        from keras import backend as K
-        z_mean, z_log_var = args
-        epsilon = K.random_normal(shape=(self.batch_size, self.latent_dim), mean=0.,
-                              std=self.epsilon_std)
-        return z_mean + K.exp(z_log_var / 2) * epsilon
-
-    def vae_loss(self, x, x_decoded_mean):
-        from keras import objectives
-        from keras import backend as K
-
-        xent_loss = self.num_features * objectives.binary_crossentropy(x, x_decoded_mean)
-        kl_loss = - 0.5 * K.sum(1 + self.z_log_var - K.square(self.z_mean) - K.exp(self.z_log_var), axis=-1)
-        return xent_loss + kl_loss
+        return {'vae_loss': vae_loss, 'sampling': sampling}
 
     def prepare_model(self):
-        from keras.layers import Input, Dense, Lambda
-        from keras.models import Model
+        from keras.layers import Input, Dense, Lambda, Merge
+        from keras.models import Model, Sequential
 
         x = Input(batch_shape=(self.batch_size, self.num_features))
         h = Dense(self.intermediate_dim, activation='relu')(x)
-        self.z_mean = Dense(self.latent_dim)(h)
-        self.z_log_var = Dense(self.latent_dim)(h)
-
-        z = Lambda(self.sampling)([self.z_mean, self.z_log_var])
+        
+        z_mean = Dense(self.latent_dim)(h)
+        z_log_var = Dense(self.latent_dim)(h)
+        z = Lambda(sampling)([z_mean, z_log_var])
 
         decoder_h = Dense(self.intermediate_dim, activation='relu')
         decoder_mean = Dense(self.num_features, activation='sigmoid')
+
         h_decoded = decoder_h(z)
         x_decoded_mean = decoder_mean(h_decoded)
 
         model = Model(x, x_decoded_mean)
-        model.compile(optimizer='rmsprop', loss=self.vae_loss)
+        model.compile(optimizer='rmsprop', loss=vae_loss)
         self.model = self.default_model(model)
 
     def calculate_batch(self, X):
@@ -98,15 +105,23 @@ class VAE(Keras):
                 yield (X[i:i + self.batch_size], X[i:i + self.batch_size])
 
     def train(self, batch_size=100, num_steps=50):
-        self.batch_size = batch_size
-        self.prepare_model()
         limit = int(round(self.dataset.data.shape[0] * .9))
-        x = self.calculate_batch(self.dataset.data[:limit])
-        z = self.calculate_batch(self.dataset.data[limit:])
+        X = self.dataset.data[:limit]
+        Z = self.dataset.data[limit:]
+        batch_size_x = min(X.shape[0], batch_size)
+        batch_size_z = min(Z.shape[0], batch_size)
+        self.batch_size = min(batch_size_x, batch_size_z)
+        self.prepare_model()
+        x = self.calculate_batch(X)
+        z = self.calculate_batch(Z)
         self.model.fit(x,
-            batch_size,
+            self.batch_size,
             num_steps,
             validation_data=z,
-            nb_val_samples=batch_size)
+            nb_val_samples=self.batch_size)
         self.save_model()
         
+    def _metadata(self):
+        meta = super(VAE, self)._metadata()
+        meta["intermediate_dim"] = self.intermediate_dim
+        return meta

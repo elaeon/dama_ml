@@ -27,24 +27,6 @@ class TestFn(unittest.TestCase):
         y_pred = clf.predict(matrix)
         self.assertItemsEqual(y_pred, outlayers)
 
-    def parametric_tsne(self):
-        from ml.ds import Data
-        from ml.ae.extended.w_keras import PTsne
-
-        dataset = Data(
-            name="tsne", 
-            dataset_path="/tmp/")
-        X = np.random.rand(100, 10)
-        Y = np.sin(6*X)
-        dataset.build_dataset(Y)
-        classif = PTsne(model_name="tsne", model_version="1", 
-            check_point_path="/tmp/", dataset=dataset, dim=3)
-        classif.train(batch_size=8, num_steps=2)
-
-        classif = PTsne(model_name="tsne", model_version="1", 
-            check_point_path="/tmp/")
-        self.assertEqual(len(list(classif.predict([X[1]]))[0]), 2)
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -80,6 +80,7 @@ class BaseClassif(DataDrive):
         self.dataset_train_limit = dataset_train_limit
         self.base_labels = None
         self._original_dataset_md5 = None
+        self.dataset = None
         super(BaseClassif, self).__init__(
             check_point_path=check_point_path,
             model_version=model_version,

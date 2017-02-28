@@ -23,9 +23,10 @@ class BaseAe(DataDrive):
                 model_version=None, dataset_train_limit=None, info=True, 
                 auto_load=True, group_name=None, latent_dim=2):
         self.model = None
-        self.dataset_train_limit = dataset_train_limit
+        #self.dataset_train_limit = dataset_train_limit
         self.print_info = info
-        self._original_dataset_md5 = None
+        self.original_dataset = None
+        self.dataset = None
         self.latent_dim = latent_dim
         super(BaseAe, self).__init__(
             check_point_path=check_point_path,
@@ -62,7 +63,7 @@ class BaseAe(DataDrive):
             dtype=dataset.dtype,
             transforms=dataset.transforms,
             chunks=1000,
-            rewrite=False)
+            rewrite=True)
 
         if ds.mode == "w":
             ds._applied_transforms = dataset.apply_transforms
@@ -79,7 +80,7 @@ class BaseAe(DataDrive):
             self.set_dataset(dataset)
 
     def set_dataset(self, dataset):
-        self._original_dataset_md5 = dataset.md5()
+        self.original_dataset = dataset
         self.dataset = self.reformat_all(dataset)
         
     def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False):
@@ -115,27 +116,25 @@ class BaseAe(DataDrive):
             return self._predict(data, raw=raw)
 
     def _metadata(self):
+        log.info("Generating metadata...")
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
-                "md5": self._original_dataset_md5, #not reformated dataset
+                "o_dataset_path": self.original_dataset.dataset_path,
+                "o_dataset_name": self.original_dataset.name,
+                "md5": self.original_dataset.md5(), #not reformated dataset
                 "group_name": self.group_name,
                 "model_module": self.module_cls_name(),
                 "model_name": self.model_name,
                 "model_version": self.model_version}
 
     def get_dataset(self):
-        from ml.ds import DataSetBuilder, Data
+        from ml.ds import Data
         meta = self.load_meta()
-        #dataset = Data.original_ds(meta["dataset_name"])
-        dataset = DataSetBuilder(meta["dataset_name"], dataset_path=meta["dataset_path"])
-        print(dataset.name, meta["dataset_path"])
-        f = dataset._open_attrs()
-        print(f.attrs.items())
-        f.close()
-        print(dataset.md5(), meta["md5"])
-        self._original_dataset_md5 = meta["md5"]
+        self.original_dataset = Data.original_ds(meta["o_dataset_name"], 
+            dataset_path=meta["o_dataset_path"])
+        dataset = Data.original_ds(meta["dataset_name"], dataset_path=meta["dataset_path"])
         self.group_name = meta.get('group_name', None)
-        if meta.get('md5', None) != dataset.md5():
+        if meta.get('md5', None) != self.original_dataset.md5():
             log.warning("The dataset md5 is not equal to the model '{}'".format(
                 self.__class__.__name__))
         return dataset
@@ -150,6 +149,7 @@ class Keras(BaseAe):
 
     def load_fn(self, path):
         from keras.models import load_model
+        #print(self.custom_objects())
         net_model = load_model(path, custom_objects=self.custom_objects())
         self.model = self.default_model(net_model)
 
