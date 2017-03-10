@@ -42,13 +42,13 @@ class TestAE(unittest.TestCase):
             model_version="1",
             check_point_path="/tmp/",
             intermediate_dim=5)
-        vae.train(batch_size=10, num_steps=10)
+        vae.train(batch_size=1, num_steps=10)
 
         vae = VAE( 
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
-        print(list(vae.predict(X[0:10], chunk_size=10)))
+        print(list(vae.predict(X[0:1], chunk_size=10)))
 
 
 if __name__ == '__main__':

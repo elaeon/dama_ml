@@ -214,5 +214,7 @@ class Keras(BaseAe):
 
     def _predict(self, data, raw=False):
         print(data)
+        #z_sample = data * 1.0
+        #print(self.decoder_m.predict(z_sample))
         for prediction in self.model.predict(data):
             yield prediction
