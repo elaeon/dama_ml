@@ -29,8 +29,6 @@ class PTsne(Keras):
         import numpy as np
         self.tsne = TSNe(batch_size=batch_size, perplexity=30., dim=self.latent_dim)
         limit = int(round(self.dataset.data.shape[0] * .9))
-        #diff = limit % batch_size
-        #diff2 = (limit - self.dataset.data.shape[0]) % batch_size
         X = self.dataset.data[:limit]
         Z = self.dataset.data[limit:]
         x = self.tsne.calculate_P(X)
@@ -55,14 +53,17 @@ def sampling(args):
     return z_mean + K.exp(z_log_var / 2) * epsilon
 
 
-def vae_loss(x, x_decoded_mean):
+def vae_loss(num_features=None, z_log_var=None, z_mean=None):
     from keras import objectives
     from keras import backend as K
 
-    num_features = 10
-    xent_loss = num_features * objectives.binary_crossentropy(x, x_decoded_mean)
-    #kl_loss = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
-    return xent_loss #+kl_loss 
+    def vae_loss(x, x_decoded_mean):
+        xent_loss = num_features * objectives.binary_crossentropy(x, x_decoded_mean)
+        kl_loss = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
+        #print(xent_loss.get_shape(), kl_loss.get_shape(), z_log_var.get_shape(), z_mean.get_shape())
+        return xent_loss + kl_loss 
+
+    return vae_loss
 
 
 class VAE(Keras):
@@ -74,35 +75,49 @@ class VAE(Keras):
         super(VAE, self).__init__(*args, **kwargs)
 
     def custom_objects(self):
-        return {'vae_loss': vae_loss, 'sampling': sampling}
+        x, z_mean, z_log_var = self.encoder()
+        return {'sampling': sampling, 
+            'vae_loss': vae_loss(num_features=self.num_features, z_log_var=z_log_var, z_mean=z_mean)}
 
-    def prepare_model(self):
-        from keras.layers import Input, Dense, Lambda, Merge
-        from keras.models import Model, Sequential
-
-        x = Input(batch_shape=(self.batch_size, self.num_features))
+    def encoder(self):
+        from keras.layers import Input, Dense
+        #x = Input(batch_shape=(self.batch_size, self.num_features))
+        x = Input(shape=(self.num_features,))
         h = Dense(self.intermediate_dim, activation='relu')(x)
         
         z_mean = Dense(self.latent_dim)(h)
         z_log_var = Dense(self.latent_dim)(h)
-        z = Lambda(sampling)([z_mean, z_log_var])
 
+        return x, z_mean, z_log_var
+ 
+    def decoder(self, z):
+        from keras.layers import Dense
         decoder_h = Dense(self.intermediate_dim, activation='relu')
         decoder_mean = Dense(self.num_features, activation='sigmoid')
 
         h_decoded = decoder_h(z)
         x_decoded_mean = decoder_mean(h_decoded)
+        return x_decoded_mean
+
+    def prepare_model(self):
+        from keras.layers import Lambda
+        from keras.models import Model
+
+        x, z_mean, z_log_var = self.encoder()
+        z = Lambda(sampling)([z_mean, z_log_var])
+        x_decoded_mean = self.decoder(z)        
 
         model = Model(x, x_decoded_mean)
-        model.compile(optimizer='rmsprop', loss=vae_loss)
+        model.compile(optimizer='rmsprop', 
+            loss=vae_loss(num_features=self.num_features, z_log_var=z_log_var, z_mean=z_mean))
         self.model = self.default_model(model)
 
-    def calculate_batch(self, X):
+    def calculate_batch(self, X, batch_size=1):
         print("Computing batches...")
         while 1:
             n = X.shape[0]
-            for i in xrange(0, n, self.batch_size):
-                yield (X[i:i + self.batch_size], X[i:i + self.batch_size])
+            for i in xrange(0, n, batch_size):
+                yield (X[i:i + batch_size], X[i:i + batch_size])
 
     def train(self, batch_size=100, num_steps=50):
         limit = int(round(self.dataset.data.shape[0] * .9))
@@ -112,16 +127,21 @@ class VAE(Keras):
         batch_size_z = min(Z.shape[0], batch_size)
         self.batch_size = min(batch_size_x, batch_size_z)
         self.prepare_model()
-        x = self.calculate_batch(X)
-        z = self.calculate_batch(Z)
+        x = self.calculate_batch(X, batch_size=self.batch_size)
+        z = self.calculate_batch(Z, batch_size=self.batch_size)
         self.model.fit(x,
             self.batch_size,
             num_steps,
             validation_data=z,
-            nb_val_samples=self.batch_size)
+            nb_val_samples=batch_size_z)
         self.save_model()
         
     def _metadata(self):
         meta = super(VAE, self)._metadata()
         meta["intermediate_dim"] = self.intermediate_dim
         return meta
+
+    def get_dataset(self):
+        meta = self.load_meta()
+        self.intermediate_dim = meta["intermediate_dim"]
+        return super(VAE, self).get_dataset()

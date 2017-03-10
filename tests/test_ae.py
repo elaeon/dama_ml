@@ -29,30 +29,26 @@ class TestAE(unittest.TestCase):
 
     def test_vae(self):
         from ml.ae.extended.w_keras import VAE
-        from ml.ds import DataSetBuilder
+        from ml.ds import Data
 
-        X = np.random.rand(10, 10)
+        X = np.random.rand(1000, 10)
         X = (X * 10) % 2
         X = X.astype(int)
-        Y = sum(X) % 2
-        Y = Y.astype(int)
-        dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
-            ltype='int', rewrite=True)
-        dataset.build_dataset(X, Y)
+        dataset = Data(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset.build_dataset(X)
 
         vae = VAE(dataset=dataset, 
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/",
             intermediate_dim=5)
-        vae.train(batch_size=6, num_steps=1)
+        vae.train(batch_size=10, num_steps=10)
 
         vae = VAE( 
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
-        print(list(vae.predict([X[0]])))
-
+        print(list(vae.predict(X[0:10], chunk_size=10)))
 
 
 if __name__ == '__main__':

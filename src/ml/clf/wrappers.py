@@ -198,7 +198,6 @@ class BaseClassif(DataDrive):
                                         self.le.transform(dataset.validation_labels))
             dsb.build_dataset(train_data, train_labels, test_data, test_labels,
                             validation_data, validation_labels)
-        self.num_features = dsb.data.shape[-1]
         dsb.close_reader()
         return dsb
 
@@ -207,6 +206,7 @@ class BaseClassif(DataDrive):
             self.dataset = self.get_dataset()
         else:
             self.set_dataset(dataset)
+        self.num_features = self.dataset.num_features()
 
     def set_dataset(self, dataset):
         self._original_dataset_md5 = dataset.md5()

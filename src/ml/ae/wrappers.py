@@ -69,7 +69,6 @@ class BaseAe(DataDrive):
             ds._applied_transforms = dataset.apply_transforms
             data = self.reformat(dataset.data)
             ds.build_dataset(data)
-        self.num_features = ds.data.shape[-1]
         ds.close_reader()
         return ds
 
@@ -77,7 +76,8 @@ class BaseAe(DataDrive):
         if dataset is None:
             self.dataset = self.get_dataset()
         else:
-            self.set_dataset(dataset)
+            self.set_dataset(dataset)        
+        self.num_features = self.dataset.num_features()
 
     def set_dataset(self, dataset):
         self.original_dataset = dataset
@@ -140,6 +140,45 @@ class BaseAe(DataDrive):
         return dataset
 
 
+class TF(BaseAe):
+    def default_model(self, model):
+        return MLModel(fit_fn=model.fit, 
+                predictors=[model.predict],
+                load_fn=self.load_fn,
+                save_fn=model.save)
+
+    def load_fn(self, path):
+        #from keras.models import load_model
+        #net_model = load_model(path, custom_objects=self.custom_objects())
+        self.model = self.default_model(net_model)
+
+
+    def preload_model(self):
+        self.model = MLModel(fit_fn=None, 
+                            predictors=None,
+                            load_fn=self.load_fn,
+                            save_fn=None)
+
+    def save_model(self):
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            self.model.save('{}.ckpt'.format(path))
+            self.save_meta()
+
+    def load_model(self):
+        self.preload_model()
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            self.model.load('{}.ckpt'.format(path))
+
+    def predict(self, data, raw=False, transform=True, chunk_size=1):
+        return super(TF, self).predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
+
+    def _predict(self, data, raw=False):
+        for prediction in self.model.predict(data):
+            yield prediction
+
+
 class Keras(BaseAe):
     def default_model(self, model):
         return MLModel(fit_fn=model.fit_generator, 
@@ -149,7 +188,6 @@ class Keras(BaseAe):
 
     def load_fn(self, path):
         from keras.models import load_model
-        #print(self.custom_objects())
         net_model = load_model(path, custom_objects=self.custom_objects())
         self.model = self.default_model(net_model)
 
@@ -175,5 +213,6 @@ class Keras(BaseAe):
         return super(Keras, self).predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
 
     def _predict(self, data, raw=False):
+        print(data)
         for prediction in self.model.predict(data):
             yield prediction
