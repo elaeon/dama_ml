@@ -5,7 +5,6 @@ import logging
 
 from ml.utils.config import get_settings
 from ml.models import MLModel
-from ml.clf.wrappers import DataDrive
 from ml.ds import Data
 
 settings = get_settings("ml")
@@ -18,12 +17,74 @@ log.setLevel(logging.DEBUG)
 log.addHandler(console)
 
 
+class DataDrive(object):
+    def __init__(self, check_point_path=None, model_version=None, model_name=None,
+                group_name=None):
+        if check_point_path is None:
+            self.check_point_path = settings["checkpoints_path"]
+        else:
+            self.check_point_path = check_point_path
+        self.model_version = model_version
+        self.model_name = model_name
+        self.group_name = group_name
+        self.models_path = None
+
+    def _metadata(self):
+        pass
+
+    def save_meta(self):
+        from ml.ds import save_metadata
+        if self.check_point_path is not None:
+            paths = self.make_model_file()
+            save_metadata(paths[0]+".xmeta", self._metadata())
+
+    def load_meta(self):
+        from ml.ds import load_metadata
+        if self.check_point_path is not None:
+            paths = self.make_model_file()
+            return load_metadata(paths[0]+".xmeta")
+
+    @classmethod
+    def read_meta(self, data_name, path):        
+        from ml.ds import load_metadata
+        if data_name is not None:
+            return load_metadata(path+".xmeta").get(data_name, None)
+        return load_metadata(path+".xmeta")
+
+    def get_model_path(self):
+        model_name_v = self.get_model_name_v()
+        path = os.path.join(self.check_point_path, self.__class__.__name__)
+        return os.path.join(path, model_name_v)
+
+    def get_model_name_v(self):
+        if self.model_version is None:
+            id_ = "0"
+        else:
+            id_ = self.model_version
+        return "{}.{}".format(self.model_name, id_)
+
+    def make_model_file(self):
+        from ml.utils.files import check_or_create_path_dir
+        model_name_v = self.get_model_name_v()
+        check_point = check_or_create_path_dir(self.check_point_path, self.__class__.__name__)
+        models_path = []
+        for model_name in ["", ".encoder", ".decoder"]:
+            full_name = model_name_v + model_name
+            destination = check_or_create_path_dir(check_point, full_name)
+            models_path.append(os.path.join(check_point, model_name_v, full_name))
+        return models_path
+
+    def print_meta(self):
+        print(self.load_meta())
+
+
 class BaseAe(DataDrive):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
                 model_version=None, dataset_train_limit=None, info=True, 
                 auto_load=True, group_name=None, latent_dim=2):
         self.model = None
-        #self.dataset_train_limit = dataset_train_limit
+        self.model_encoder = None
+        self.model_decoder = None
         self.print_info = info
         self.original_dataset = None
         self.dataset = None
@@ -83,18 +144,19 @@ class BaseAe(DataDrive):
         self.original_dataset = dataset
         self.dataset = self.reformat_all(dataset)
         
-    def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False):
+    def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False, decoder=True):
         from ml.utils.seq import grouper_chunk
         for chunk in grouper_chunk(chunk_size, data):
             data = np.asarray(list(chunk))
             size = data.shape[0]
-            for prediction in self._predict(transform_fn(data, size), raw=uncertain):
+            for prediction in self._predict(transform_fn(data, size), raw=uncertain, decoder=decoder):
                 yield prediction
 
-    def predict(self, data, raw=False, transform=True, chunk_size=1):
+    def predict(self, data, raw=False, transform=True, chunk_size=1, model_type="decoder"):
         if self.model is None:
             self.load_model()
 
+        decoder = model_type == "decoder"
         if not isinstance(chunk_size, int):
             log.warning("The parameter chunk_size must be an integer.")            
             log.warning("Chunk size is set to 1")
@@ -103,17 +165,17 @@ class BaseAe(DataDrive):
         if transform is True and chunk_size > 0:
             fn = lambda x, s: self.transform_shape(
                 self.dataset.processing(x, initial=False), size=s)
-            return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)
+            return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw, decoder=decoder)
         elif transform is True and chunk_size == 0:
             data = self.transform_shape(self.dataset.processing(data, initial=False))
-            return self._predict(data, raw=raw)
+            return self._predict(data, raw=raw, decoder=decoder)
         elif transform is False and chunk_size > 0:
             fn = lambda x, s: self.transform_shape(x, size=s)
-            return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw)
+            return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw, decoder=decoder)
         elif transform is False and chunk_size == 0:
             if len(data.shape) == 1:
                 data = self.transform_shape(data)
-            return self._predict(data, raw=raw)
+            return self._predict(data, raw=raw, decoder=decoder)
 
     def _metadata(self):
         log.info("Generating metadata...")
@@ -125,7 +187,8 @@ class BaseAe(DataDrive):
                 "group_name": self.group_name,
                 "model_module": self.module_cls_name(),
                 "model_name": self.model_name,
-                "model_version": self.model_version}
+                "model_version": self.model_version,
+                "models_path": self.models_path}
 
     def get_dataset(self):
         from ml.ds import Data
@@ -140,81 +203,65 @@ class BaseAe(DataDrive):
         return dataset
 
 
-class TF(BaseAe):
-    def default_model(self, model):
-        return MLModel(fit_fn=model.fit, 
-                predictors=[model.predict],
-                load_fn=self.load_fn,
-                save_fn=model.save)
-
-    def load_fn(self, path):
-        #from keras.models import load_model
-        #net_model = load_model(path, custom_objects=self.custom_objects())
-        self.model = self.default_model(net_model)
-
-
-    def preload_model(self):
-        self.model = MLModel(fit_fn=None, 
-                            predictors=None,
-                            load_fn=self.load_fn,
-                            save_fn=None)
-
-    def save_model(self):
-        if self.check_point_path is not None:
-            path = self.make_model_file()
-            self.model.save('{}.ckpt'.format(path))
-            self.save_meta()
-
-    def load_model(self):
-        self.preload_model()
-        if self.check_point_path is not None:
-            path = self.make_model_file()
-            self.model.load('{}.ckpt'.format(path))
-
-    def predict(self, data, raw=False, transform=True, chunk_size=1):
-        return super(TF, self).predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
-
-    def _predict(self, data, raw=False):
-        for prediction in self.model.predict(data):
-            yield prediction
-
-
 class Keras(BaseAe):
-    def default_model(self, model):
+    def default_model(self, model, load_fn):
         return MLModel(fit_fn=model.fit_generator, 
                 predictors=[model.predict],
-                load_fn=self.load_fn,
+                load_fn=load_fn,
                 save_fn=model.save)
 
     def load_fn(self, path):
         from keras.models import load_model
-        net_model = load_model(path, custom_objects=self.custom_objects())
-        self.model = self.default_model(net_model)
+        model = load_model(path, custom_objects=self.custom_objects())
+        self.model = self.default_model(model, self.load_fn)
+
+    def load_d_fn(self, path):
+        from keras.models import load_model
+        model = load_model(path, custom_objects=self.custom_objects())
+        self.decoder_m = self.default_model(model, self.load_d_fn)
+
+    def load_e_fn(self, path):
+        from keras.models import load_model
+        model = load_model(path, custom_objects=self.custom_objects())
+        self.encoder_m = self.default_model(model, self.load_e_fn)
 
     def preload_model(self):
         self.model = MLModel(fit_fn=None, 
                             predictors=None,
                             load_fn=self.load_fn,
                             save_fn=None)
+        self.encoder_m = MLModel(fit_fn=None, 
+                            predictors=None,
+                            load_fn=self.load_e_fn,
+                            save_fn=None)
+        self.decoder_m = MLModel(fit_fn=None, 
+                            predictors=None,
+                            load_fn=self.load_d_fn,
+                            save_fn=None)
+
+        return [self.model, self.encoder_m, self.decoder_m]
 
     def save_model(self):
         if self.check_point_path is not None:
-            path = self.make_model_file()
-            self.model.save('{}.ckpt'.format(path))
+            self.models_path = self.make_model_file()
+            for path in self.models_path:
+                self.model.save('{}.ckpt'.format(path))
             self.save_meta()
 
     def load_model(self):
-        self.preload_model()
+        log.info("loading models...")
+        models = self.preload_model()
         if self.check_point_path is not None:
-            path = self.make_model_file()
-            self.model.load('{}.ckpt'.format(path))
+            meta_path = os.path.join(self.get_model_path(), self.get_model_name_v())
+            paths = self.read_meta("models_path", meta_path)
+            for model, path in zip(models, paths):
+                model.load('{}.ckpt'.format(path))
 
-    def predict(self, data, raw=False, transform=True, chunk_size=1):
-        return super(Keras, self).predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
+    def _predict(self, data, raw=False, decoder=True):
+        if decoder is True:
+            model = self.decoder_m
+        else:
+            model = self.encoder_m
 
-    def _predict(self, data, raw=False):
-        print(data)
-        #z_sample = data * 1.0
-        #print(self.decoder_m.predict(z_sample))
-        for prediction in self.model.predict(data):
+        for prediction in model.predict(data):
             yield prediction

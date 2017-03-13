@@ -90,7 +90,8 @@ class VAE(Keras):
         z_mean = Dense(self.latent_dim)(h)
         z_log_var = Dense(self.latent_dim)(h)
 
-        self.encoder_m = Model(x, z_mean)
+        model = Model(x, z_mean)
+        self.encoder_m = self.default_model(model, self.load_e_fn)
         return x, z_mean, z_log_var
  
     def decoder(self, z_mean, z_log_var):
@@ -108,7 +109,8 @@ class VAE(Keras):
         decoder_input = Input(shape=(self.latent_dim,))
         _h_decoded = decoder_h(decoder_input)
         _x_decoded_mean = decoder_mean(_h_decoded)
-        self.decoder_m = Model(decoder_input, _x_decoded_mean)
+        model = Model(decoder_input, _x_decoded_mean)
+        self.decoder_m = self.default_model(model, self.load_d_fn)
         return x_decoded_mean
 
     def prepare_model(self):
@@ -120,7 +122,7 @@ class VAE(Keras):
         model = Model(x, x_decoded_mean)
         model.compile(optimizer='rmsprop', 
             loss=vae_loss(num_features=self.num_features, z_log_var=z_log_var, z_mean=z_mean))
-        self.model = self.default_model(model)
+        self.model = self.default_model(model, self.load_fn)
 
     def calculate_batch(self, X, batch_size=1):
         print("Computing batches...")

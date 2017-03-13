@@ -48,8 +48,8 @@ class TestAE(unittest.TestCase):
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
-        print(list(vae.predict(X[0:1], chunk_size=10)))
-
+        print(list(vae.predict(X[0:10], chunk_size=5, model_type="encoder")))
+        print(list(vae.predict(X[0:10], chunk_size=5, model_type="decoder")))
 
 if __name__ == '__main__':
     unittest.main()

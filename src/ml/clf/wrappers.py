@@ -46,6 +46,11 @@ class DataDrive(object):
             path = self.make_model_file()
             return load_metadata(path+".xmeta")
 
+    def get_model_path(self):
+        model_name_v = self.get_model_name_v()
+        path = os.path.join(self.check_point_path, self.__class__.__name__)
+        return os.path.join(path, model_name_v)
+
     @classmethod
     def read_meta(self, data_name, path):        
         from ml.ds import load_metadata
