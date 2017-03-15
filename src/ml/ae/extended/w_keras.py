@@ -23,6 +23,7 @@ class PTsne(Keras):
         model.add(Dense(2))
         model.compile(optimizer='sgd', loss=KLdivergence)
         self.model = self.default_model(model, self.load_fn)
+        self.decoder_m = self.model
 
     def train(self, batch_size=258, num_steps=50):
         from ml.utils.tf_functions import TSNe

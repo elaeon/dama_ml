@@ -254,7 +254,7 @@ class Keras(BaseAe):
 
     def _predict(self, data, raw=False, decoder=True):
         if decoder is True:
-            model = self.decoder_m
+            model = self.model if not hasattr(self, 'decoder_m') else self.decoder_m
         else:
             model = self.encoder_m
 

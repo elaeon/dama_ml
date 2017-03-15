@@ -968,6 +968,7 @@ class DataLabel(Data):
     def plot(self, view="columns", type_g=None):        
         import seaborn as sns
         import matplotlib.pyplot as plt
+        import matplotlib.cm as cm
 
         if view == "columns":
             sns.set(style="whitegrid", palette="pastel", color_codes=True)
@@ -994,7 +995,7 @@ class DataLabel(Data):
                     ds = self.to_data()
                     classif = PTsne(model_name="tsne", model_version="1", 
                         check_point_path="/tmp/", dataset=ds, latent_dim=2)
-                    classif.train(batch_size=50, num_steps=2)
+                    classif.train(batch_size=50, num_steps=100)
                     data = np.asarray(list(classif.predict(self.data)))
                     dl.build_dataset(data, self.labels[:])
                     ds.destroy()
@@ -1007,10 +1008,12 @@ class DataLabel(Data):
                 elif type_g == "scatter":
                     df = data.to_df()
                     legends = []
-                    for label in self.labels_info():
+                    labels = self.labels_info()
+                    colors = cm.rainbow(np.linspace(0, 1, len(labels)))
+                    for color, label in zip(colors, labels):
                         df_tmp = df[df["target"] == label]
                         legends.append((plt.scatter(df_tmp["c0"].astype("float64"), 
-                            df_tmp["c1"].astype("float64")), label))
+                            df_tmp["c1"].astype("float64"), color=color), label))
                     p, l = zip(*legends)
                     plt.legend(p, l, loc='lower left', ncol=3, fontsize=8, 
                         scatterpoints=1, bbox_to_anchor=(0,0))
