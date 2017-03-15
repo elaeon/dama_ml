@@ -35,14 +35,14 @@ class DataDrive(object):
     def save_meta(self):
         from ml.ds import save_metadata
         if self.check_point_path is not None:
-            paths = self.make_model_file()
-            save_metadata(paths[0]+".xmeta", self._metadata())
+            path = self.make_model_file()
+            save_metadata(path+".xmeta", self._metadata())
 
     def load_meta(self):
         from ml.ds import load_metadata
         if self.check_point_path is not None:
-            paths = self.make_model_file()
-            return load_metadata(paths[0]+".xmeta")
+            path = self.make_model_file()
+            return load_metadata(path+".xmeta")
 
     @classmethod
     def read_meta(self, data_name, path):        
@@ -67,12 +67,8 @@ class DataDrive(object):
         from ml.utils.files import check_or_create_path_dir
         model_name_v = self.get_model_name_v()
         check_point = check_or_create_path_dir(self.check_point_path, self.__class__.__name__)
-        models_path = []
-        for model_name in ["", ".encoder", ".decoder"]:
-            full_name = model_name_v + model_name
-            destination = check_or_create_path_dir(check_point, full_name)
-            models_path.append(os.path.join(check_point, model_name_v, full_name))
-        return models_path
+        destination = check_or_create_path_dir(check_point, model_name_v)
+        return os.path.join(check_point, model_name_v, model_name_v)
 
     def print_meta(self):
         print(self.load_meta())
@@ -244,8 +240,7 @@ class Keras(BaseAe):
     def save_model(self):
         if self.check_point_path is not None:
             self.models_path = self.make_model_file()
-            for path in self.models_path:
-                self.model.save('{}.ckpt'.format(path))
+            self.model.save('{}.ckpt'.format(self.models_path))
             self.save_meta()
 
     def load_model(self):
@@ -253,8 +248,8 @@ class Keras(BaseAe):
         models = self.preload_model()
         if self.check_point_path is not None:
             meta_path = os.path.join(self.get_model_path(), self.get_model_name_v())
-            paths = self.read_meta("models_path", meta_path)
-            for model, path in zip(models, paths):
+            path = self.read_meta("models_path", meta_path)
+            for model in models:
                 model.load('{}.ckpt'.format(path))
 
     def _predict(self, data, raw=False, decoder=True):

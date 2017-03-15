@@ -22,7 +22,7 @@ class PTsne(Keras):
         model.add(Activation('relu'))
         model.add(Dense(2))
         model.compile(optimizer='sgd', loss=KLdivergence)
-        self.model = self.default_model(model)
+        self.model = self.default_model(model, self.load_fn)
 
     def train(self, batch_size=258, num_steps=50):
         from ml.utils.tf_functions import TSNe
@@ -77,8 +77,11 @@ class VAE(Keras):
         x, z_mean, z_log_var = self.encoder()
         self.batch_size = 1
         self.decoder(z_mean, z_log_var)
-        return {'sampling': sampling, 
-            'vae_loss': vae_loss(num_features=self.num_features, z_log_var=z_log_var, z_mean=z_mean)}
+        return {
+            'sampling': sampling, 
+            'vae_loss': vae_loss(num_features=self.num_features, 
+                                z_log_var=z_log_var, z_mean=z_mean)
+        }
 
     def encoder(self):
         from keras.layers import Input, Dense
