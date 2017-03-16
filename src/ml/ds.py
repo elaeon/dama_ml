@@ -1023,6 +1023,26 @@ class DataLabel(Data):
                         vars=df.columns[:-1], diag_kind="kde", palette="husl")
         plt.show()
 
+    def labels2num(self):
+        from sklearn.preprocessing import LabelEncoder
+        le = LabelEncoder()
+        le.fit(self.labels)
+        return le
+
+    def to_libsvm(self, name=None, save_to=None):
+        """
+        tranforms the dataset into libsvm format
+        """
+        from ml.utils.seq import libsvm_row
+        le = self.labels2num()
+        name = self.name+".txt" if name is None else name
+        file_path = os.path.join(save_to, name)
+        with open(file_path, 'w') as f:
+            for row in libsvm_row(self.labels, self.data, le):
+                f.write(" ".join(row))
+                f.write("\n")
+
+
 
 class DataSetBuilder(DataLabel):
     """
@@ -1427,6 +1447,27 @@ class DataSetBuilder(DataLabel):
             rewrite=self.rewrite)
         dsb._applied_transforms = self.apply_transforms
         return dsb
+
+    def to_libsvm(self, name=None, save_to=None, validation=True):
+        """
+        tranforms the dataset into libsvm format
+        """
+        from ml.utils.seq import libsvm_row
+        le = self.labels2num()
+        f_names = ["train", "test"]
+        if validation is True:
+            f_names.append("validation")
+        
+        for f_name in f_names:
+            n_name = self.name if name is None else name
+            n_name = "{}.{}.txt".format(n_name, f_name)
+            file_path = os.path.join(save_to, n_name)
+            with open(file_path, 'w') as f:
+                labels = getattr(self, f_name+"_labels")
+                data = getattr(self, f_name+"_data")
+                for row in libsvm_row(labels, data, le):
+                    f.write(" ".join(row))
+                    f.write("\n")
 
 
 class DataSetBuilderImage(DataSetBuilder):

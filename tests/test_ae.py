@@ -50,8 +50,6 @@ class TestAE(unittest.TestCase):
             check_point_path="/tmp/")
         encoder = np.asarray(list(vae.predict(X[0:1], chunk_size=10, model_type="encoder")))
         decoder = np.asarray(list(vae.predict(X[0:1], chunk_size=10, model_type="decoder")))
-        print(encoder)        
-        print(decoder)
         self.assertEqual(encoder.shape, (1, 2))
         self.assertEqual(decoder.shape, (1, 10))
 

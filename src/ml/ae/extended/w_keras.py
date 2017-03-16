@@ -3,7 +3,11 @@ from ml.models import MLModel
 import tensorflow as tf
 
 class PTsne(Keras):
-    
+    def __init__(self, perplexity=30., epsilon_std=1.0, **kwargs):
+        self.pesplexity = perplexity
+        self.epsilon_std = epsilon_std
+        super(VAE, self).__init__(**kwargs)
+
     def custom_objects(self):
         from ml.utils.tf_functions import KLdivergence
         return {'KLdivergence': KLdivergence}
@@ -28,7 +32,7 @@ class PTsne(Keras):
     def train(self, batch_size=258, num_steps=50):
         from ml.utils.tf_functions import TSNe
         import numpy as np
-        self.tsne = TSNe(batch_size=batch_size, perplexity=30., dim=self.latent_dim)
+        self.tsne = TSNe(batch_size=batch_size, perplexity=self.perplexity, dim=self.latent_dim)
         limit = int(round(self.dataset.data.shape[0] * .9))
         X = self.dataset.data[:limit]
         Z = self.dataset.data[limit:]
@@ -67,12 +71,10 @@ def vae_loss(num_features=None, z_log_var=None, z_mean=None):
 
 
 class VAE(Keras):
-    def __init__(self, *args, **kwargs):
-        if 'intermediate_dim' in kwargs:            
-            self.intermediate_dim = kwargs['intermediate_dim']
-            del kwargs['intermediate_dim']
-        self.epsilon_std = 1.0
-        super(VAE, self).__init__(*args, **kwargs)
+    def __init__(self, intermediate_dim=5, epsilon_std=1.0,**kwargs):
+        self.intermediate_dim = intermediate_dim
+        self.epsilon_std = epsilon_std
+        super(VAE, self).__init__(**kwargs)
 
     def custom_objects(self):
         x, z_mean, z_log_var = self.encoder()

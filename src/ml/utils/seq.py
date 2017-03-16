@@ -22,3 +22,11 @@ def grouper_chunk(n, iterable):
         except StopIteration:
             return
         yield chain((first_el,), chunk)
+
+
+def libsvm_row(labels, data, le):
+    for label, row in zip(labels, data):
+        row = [str(i)+':'+str(x) for i, x in enumerate(row, 1) if x > 0]
+        if len(row) > 0:
+            row.insert(0, str(le.transform([label])[0]))
+        yield row

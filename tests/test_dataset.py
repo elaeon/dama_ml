@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import csv
 
-from ml.ds import DataSetBuilder, DataSetBuilderFile, DataSetBuilderFold
+from ml.ds import DataSetBuilder, DataSetBuilderFile, DataSetBuilderFold, DataLabel
 from ml.processing import Transforms
 
 
@@ -133,6 +133,44 @@ class TestDataset(unittest.TestCase):
         #dataset.plot(view="columns", type_g="violin")
         #dataset.plot(view="rows", type_g="pairplot")
         dataset.plot(view="rows", type_g="scatter")
+        dataset.destroy()
+
+    def test_to_libsvm(self):
+        def check(path):
+            with open(path, "r") as f:
+                row = f.readline()
+                row = row.split(" ")
+                self.assertEqual(row[0] in ["0", "1", "2"], True)
+                self.assertEqual(len(row), 3)
+                elem1 = row[1].split(":")
+                elem2 = row[2].split(":")
+                self.assertEqual(int(elem1[0]), 1)
+                self.assertEqual(int(elem2[0]), 2)
+                self.assertEqual(2 == len(elem1) == len(elem2), True)
+
+        X = np.random.rand(100, 2)
+        Y = np.asarray([0 if .5 < sum(e) <= 1 else -1 if 0 < sum(e) < .5 else 1 for e in X])
+        dataset = DataLabel(
+            name="test_ds_1",
+            dataset_path="/tmp/",
+            ltype='int',
+            rewrite=True)
+        dataset.build_dataset(X, Y)
+        dataset.to_libsvm(name="test.txt", save_to="/tmp")
+        check("/tmp/test.txt")
+        dataset.destroy()
+
+        dataset = DataSetBuilder(
+            name="test_ds_1",
+            dataset_path="/tmp/",
+            ltype='int',
+            validator="cross",
+            rewrite=True)
+        dataset.build_dataset(X, Y)
+        dataset.to_libsvm(name="test", save_to="/tmp")
+        check("/tmp/test.train.txt")
+        check("/tmp/test.test.txt")
+        check("/tmp/test.validation.txt")
         dataset.destroy()
 
 
