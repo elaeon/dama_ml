@@ -211,5 +211,34 @@ class TestBagging(unittest.TestCase):
         self.classif.scores().print_scores()
 
 
+class TestXgboost(unittest.TestCase):
+    def setUp(self):
+        from ml.ds import DataSetBuilder
+        from ml.clf.extended.w_xgboost import Xgboost
+
+        X = np.random.rand(20, 2)
+        Y = X.sum(axis=1)
+        self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+            ltype='int', rewrite=True)
+        self.dataset.build_dataset(X, Y)
+        classif = Xgboost(dataset=self.dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/",
+            libsvm_path="/tmp/",
+            params={'max_depth':2, 'eta':1, 'silent':1, 'objective':'binary:logistic'})
+        classif.train(num_steps=1)
+
+    def tearDown(self):
+        self.dataset.destroy()
+
+    def test_predict(self):
+        classif = Xgboost(
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif.predict(self.dataset.test_data[0:1])
+
+
 if __name__ == '__main__':
     unittest.main()

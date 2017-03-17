@@ -191,7 +191,7 @@ class BaseClassif(DataDrive):
             ltype='int',
             validator='',
             chunks=1000,
-            rewrite=False)
+            rewrite=True)
 
         if dsb.mode == "w":
             dsb._applied_transforms = dataset.apply_transforms
@@ -311,7 +311,7 @@ class BaseClassif(DataDrive):
     def load_model(self):        
         self.preload_model()
         if self.check_point_path is not None:
-            path = self.make_model_file()
+            path = self.get_model_path()
             self.model.load('{}.ckpt'.format(path))
 
     def _predict(self, data, raw=False):
