@@ -48,7 +48,7 @@ class DataDrive(object):
 
     def get_model_path(self):
         model_name_v = self.get_model_name_v()
-        path = os.path.join(self.check_point_path, self.__class__.__name__)
+        path = os.path.join(self.check_point_path, self.__class__.__name__, model_name_v)
         return os.path.join(path, model_name_v)
 
     @classmethod
@@ -74,6 +74,10 @@ class DataDrive(object):
 
     def print_meta(self):
         print(self.load_meta())
+
+    def destroy(self):
+        """remove the dataset associated to the model and his checkpoints"""
+        pass
 
 
 class BaseClassif(DataDrive):
@@ -191,7 +195,7 @@ class BaseClassif(DataDrive):
             ltype='int',
             validator='',
             chunks=1000,
-            rewrite=True)
+            rewrite=False)
 
         if dsb.mode == "w":
             dsb._applied_transforms = dataset.apply_transforms
