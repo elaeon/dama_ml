@@ -1,12 +1,12 @@
-from ml.clf.wrappers import SKL
+from ml.clf.wrappers import SKLP
 from ml.models import MLModel
 
 import xgboost as xgb
 import os
 
-class Xgboost(SKL):
+class Xgboost(SKLP):
     def __init__(self, params={}, **kwargs):
-        super(SKL, self).__init__(**kwargs)
+        super(SKLP, self).__init__(**kwargs)
 
     def prepare_model(self):
         from sklearn.calibration import CalibratedClassifierCV
