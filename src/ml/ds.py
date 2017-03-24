@@ -1005,6 +1005,8 @@ class DataLabel(Data):
                 if type_g == "lm":
                     df = data.to_df()
                     sns.lmplot(x="c0", y="c1", data=df, hue="target")
+                elif type_g == "hist":
+                    sns.distplot(self.data[:, 0], bins=50, kde=False, rug=True)
                 elif type_g == "scatter":
                     df = data.to_df()
                     legends = []
