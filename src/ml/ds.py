@@ -702,14 +702,30 @@ class DataLabel(Data):
         """
         try:
             dl = self.desfragment()
-            s_labels = set(labels)
-            dataset, n_labels = zip(*filter(lambda x: x[1] in s_labels, zip(dl.data, dl.labels)))
+            dataset, n_labels = self.only_labels_per_data(dl, labels)
             dl.destroy()
         except ValueError:
             label = labels[0] if len(labels) > 0 else None
             log.warning("label {} is not found in the labels set".format(label))
             return np.asarray([]), np.asarray([])
         return np.asarray(dataset), np.asarray(n_labels)
+
+    def is_binary(self):
+        return len(self.labels_info().keys()) == 2
+
+    @classmethod
+    def only_labels_from_data(self, ds, labels):
+        """
+        :type ds: dataset
+        :param ds: dataset to select the data
+
+        :type labels: list
+        :type labels: list of labels to filter data
+
+        return a tuple (data, labels) with the data filtered.
+        """
+        s_labels = set(labels)
+        return zip(*filter(lambda x: x[1] in s_labels, zip(ds.data, ds.labels)))
 
     def ltype_t(self, labels):
         """
@@ -971,13 +987,45 @@ class DataLabel(Data):
         import matplotlib.cm as cm
 
         if view == "columns":
-            sns.set(style="whitegrid", palette="pastel", color_codes=True)
-            data = self.features2rows(labels=True)
             if type_g == 'box':
+                sns.set(style="whitegrid", palette="pastel", color_codes=True)
+                data = self.features2rows(labels=True)
                 sns.boxplot(x=data[:,0], y=data[:,1], hue=data[:,2], palette="PRGn")
+                sns.despine(offset=10, trim=True)
             elif type_g == "violin":
+                sns.set(style="whitegrid", palette="pastel", color_codes=True)
+                data = self.features2rows(labels=True)
                 sns.violinplot(x=data[:,0], y=data[:,1], hue=data[:,2], palette="PRGn", inner="box")
-            sns.despine(offset=10, trim=True)
+                sns.despine(offset=10, trim=True)
+            elif type_g == "hist":
+                size = int(round(self.num_features() ** .5))
+                f, axarr = plt.subplots(size, size, sharey=True, sharex=True)
+                base = 0
+                for i in range(size):
+                    for j in range(size):
+                        axarr[i, j].set_title('Feature {}'.format(base+1))
+                        sns.distplot(self.data[:, base:base+1], bins=50, 
+                            kde=False, rug=False, color="b", ax=axarr[i, j])
+                        base += 1
+            elif type_g == "hist_label" and self.is_binary():
+                labels_info = self.labels_info()
+                label_0 = labels_info.keys()[0]
+                label_1 = labels_info.keys()[1]
+                ds0, _ = self.only_labels_from_data(self, [label_0])
+                ds1, _ = self.only_labels_from_data(self, [label_1])
+                ds0 = np.asarray(ds0)
+                ds1 = np.asarray(ds1)
+                size = int(round(self.num_features() ** .5))
+                f, axarr = plt.subplots(size, size, sharey=True, sharex=True)
+                base = 0
+                for i in range(size):
+                    for j in range(size):
+                        axarr[i, j].set_title('Feature {}'.format(base+1))
+                        sns.distplot(ds0[:, base:base+1], bins=50, 
+                            kde=False, rug=False, color="b", ax=axarr[i, j])
+                        sns.distplot(ds1[:, base:base+1], bins=50, 
+                            kde=False, rug=False, color="r", ax=axarr[i, j])
+                        base += 1
         else:
             data = self
             if data.shape[1] > 2:
@@ -1005,8 +1053,6 @@ class DataLabel(Data):
                 if type_g == "lm":
                     df = data.to_df()
                     sns.lmplot(x="c0", y="c1", data=df, hue="target")
-                elif type_g == "hist":
-                    sns.distplot(self.data[:, 0], bins=50, kde=False, rug=True)
                 elif type_g == "scatter":
                     df = data.to_df()
                     legends = []
