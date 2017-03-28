@@ -997,7 +997,7 @@ class DataLabel(Data):
                 data = self.features2rows(labels=True)
                 sns.violinplot(x=data[:,0], y=data[:,1], hue=data[:,2], palette="PRGn", inner="box")
                 sns.despine(offset=10, trim=True)
-            elif type_g == "hist":
+            elif type_g == "hist" and self.num_features() <= 64:
                 size = int(round(self.num_features() ** .5))
                 f, axarr = plt.subplots(size, size, sharey=True, sharex=True)
                 base = 0
@@ -1007,7 +1007,7 @@ class DataLabel(Data):
                         sns.distplot(self.data[:, base:base+1], bins=50, 
                             kde=False, rug=False, color="b", ax=axarr[i, j])
                         base += 1
-            elif type_g == "hist_label" and self.is_binary():
+            elif type_g == "hist_label" and self.is_binary() and self.num_features() <= 64:
                 labels_info = self.labels_info()
                 label_0 = labels_info.keys()[0]
                 label_1 = labels_info.keys()[1]
@@ -1090,6 +1090,14 @@ class DataLabel(Data):
                 f.write(" ".join(row))
                 f.write("\n")
 
+
+    #def __add__(self, o):
+    #    if type(self) == DataLabel and type(o) == DataLabel:
+    #        pass
+    #    elif type(self) == DataSetBuilder and type(o) == DataLabel:
+    #        if self._applied_transforms == o._applied_transforms and\
+    #            o.shape[0] == self.shape[0]:
+    #            print("OK")
 
 
 class DataSetBuilder(DataLabel):

@@ -59,8 +59,11 @@ class Grid(DataDrive):
     
     def all_clf_scores(self, measures=None):
         from operator import add
-        return reduce(add, (classif.scores(measures=measures) 
-            for classif in self.load_models(self.dataset)))
+        try:
+            return reduce(add, (classif.scores(measures=measures) 
+                for classif in self.load_models(self.dataset) if hasattr(classif, 'score')))
+        except TypeError:
+            return ListMeasure()
 
     def scores(self, measures=None, namespace=None):
         return self.all_clf_scores(measures=measures)
@@ -81,12 +84,8 @@ class Grid(DataDrive):
         return self.params.get(model_cls, {})
 
     def ordered_best_predictors(self, measure="logloss"):
-        #from functools import cmp_to_key
         list_measure = self.all_clf_scores(measures=measure)
-        #print(list_measure.print_scores())
-        #print("MEASURES", list_measure.measures)
         column_measures = list_measure.get_measure(measure)
-        #print(column_measures)
         class DTuple:
             def __init__(self, counter, elem):
                 self.elem = elem
@@ -95,7 +94,6 @@ class Grid(DataDrive):
             def __sub__(self, other):
                 if self.elem is None or other is None:
                     return 0
-                #print(self.elem, other.elem)
                 return self.elem - other.elem
 
             def __str__(self):

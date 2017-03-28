@@ -4,9 +4,9 @@ import tensorflow as tf
 
 class PTsne(Keras):
     def __init__(self, perplexity=30., epsilon_std=1.0, **kwargs):
-        self.pesplexity = perplexity
+        self.perplexity = perplexity
         self.epsilon_std = epsilon_std
-        super(VAE, self).__init__(**kwargs)
+        super(PTsne, self).__init__(**kwargs)
 
     def custom_objects(self):
         from ml.utils.tf_functions import KLdivergence

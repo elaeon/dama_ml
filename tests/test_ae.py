@@ -53,6 +53,23 @@ class TestAE(unittest.TestCase):
         self.assertEqual(encoder.shape, (1, 2))
         self.assertEqual(decoder.shape, (1, 10))
 
+    def test_ensemble(self):
+        from ml.clf.ensemble import Bagging
+        from ml.ae.extended.w_keras import PTsne
+        from ml.clf.extended.w_sklearn import RandomForest
+        from ml.ds import DataSetBuilder
+
+        X = np.asarray([1, 0]*1000)
+        Y = X*1
+        dataset = DataSetBuilder("test_ae_ensemble", dataset_path="/tmp/", rewrite=False)
+        dataset.build_dataset(X, Y)
+        bagging = Bagging(RandomForest, {"0": [PTsne]},
+                dataset=dataset,
+                model_name="test_bag",
+                model_version="1")
+        bagging.train(batch_size=50, num_steps=1)
+        bagging.scores().print_scores()
+        dataset.destroy()
 
 if __name__ == '__main__':
     unittest.main()

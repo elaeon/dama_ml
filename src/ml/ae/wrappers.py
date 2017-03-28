@@ -77,7 +77,7 @@ class DataDrive(object):
 class BaseAe(DataDrive):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
                 model_version=None, dataset_train_limit=None, info=True, 
-                auto_load=True, group_name=None, latent_dim=2):
+                autoload=True, group_name=None, latent_dim=2):
         self.model = None
         self.model_encoder = None
         self.model_decoder = None
@@ -90,7 +90,7 @@ class BaseAe(DataDrive):
             model_version=model_version,
             model_name=model_name,
             group_name=group_name)
-        if auto_load is True:
+        if autoload is True:
             self.load_dataset(dataset)
 
     @classmethod
@@ -120,7 +120,7 @@ class BaseAe(DataDrive):
             dtype=dataset.dtype,
             transforms=dataset.transforms,
             chunks=1000,
-            rewrite=True)
+            rewrite=False)
 
         if ds.mode == "w":
             ds._applied_transforms = dataset.apply_transforms
