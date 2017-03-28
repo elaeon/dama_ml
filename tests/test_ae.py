@@ -63,11 +63,16 @@ class TestAE(unittest.TestCase):
         Y = X*1
         dataset = DataSetBuilder("test_ae_ensemble", dataset_path="/tmp/", rewrite=False)
         dataset.build_dataset(X, Y)
-        bagging = Bagging(RandomForest, {"0": [PTsne]},
+        bagging = Bagging(RandomForest, {"0": [PTsne, PTsne]},
                 dataset=dataset,
                 model_name="test_bag",
                 model_version="1")
-        bagging.train(batch_size=50, num_steps=1)
+        bagging.add_params("PTsne", 0, perplexity=50)
+        bagging.add_params("PTsne", 1, perplexity=30)
+        model_base_args = {"batch_size": 50, "num_steps": 1}
+        others_models_args = {"PTsne": 
+            [{"batch_size": 50, "num_steps": 2}, {"batch_size": 50, "num_steps": 3}]}
+        bagging.train(model_base_args=model_base_args, others_models_args=others_models_args)
         bagging.scores().print_scores()
         dataset.destroy()
 

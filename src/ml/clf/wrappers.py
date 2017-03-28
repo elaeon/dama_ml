@@ -217,10 +217,14 @@ class BaseClassif(DataDrive):
             self.set_dataset(dataset)
         self.num_features = self.dataset.num_features()
 
-    def set_dataset(self, dataset):
+    def set_dataset(self, dataset, auto=True):
         self._original_dataset_md5 = dataset.md5()
-        self.dataset = self.reformat_all(dataset)
-        
+        if auto is True:
+            self.dataset = self.reformat_all(dataset)
+        else:
+            self.dataset = dataset
+            self.labels_encode(dataset.labels)
+
     def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False):
         from ml.utils.seq import grouper_chunk
         for chunk in grouper_chunk(chunk_size, data):

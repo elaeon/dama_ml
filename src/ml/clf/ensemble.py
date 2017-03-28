@@ -38,19 +38,19 @@ class Grid(DataDrive):
             return "{}.{}".format(self.model_name, namespace)
 
     def load_models(self, dataset=None, autoload=True):
-        for namespace, classifs in self.classifs.items():
+        for index, (namespace, classifs) in enumerate(self.classifs.items()):
             for classif in classifs:
                 yield self.load_model(classif, dataset=dataset, 
-                    namespace=namespace, autoload=autoload)
+                    namespace=namespace, autoload=autoload, index=index)
 
-    def load_model(self, model, dataset=None, namespace=None, autoload=True):
+    def load_model(self, model, dataset=None, namespace=None, autoload=True, index=0):
         namespace = self.model_namespace2str("" if namespace is None else namespace)
         return model(dataset=dataset, 
                 model_name=namespace, 
                 model_version=self.model_version, 
                 check_point_path=self.check_point_path,
                 autoload=autoload,
-                **self.get_params(model.cls_name()))
+                **self.get_params(model.cls_name(), index))
 
     def train(self, batch_size=128, num_steps=1):
         for classif in self.load_models(self.dataset):
@@ -76,12 +76,13 @@ class Grid(DataDrive):
         classif = classifs_reader.next()
         list_measure.print_matrix(classif.base_labels)
 
-    def add_params(self, model_cls, **params):
-        self.params.setdefault(model_cls, params)
-        self.params[model_cls].update(params)
+    def add_params(self, model_cls, index, **params):
+        self.params.setdefault(model_cls, {index: params})
+        self.params[model_cls][index] = params
 
-    def get_params(self, model_cls):
-        return self.params.get(model_cls, {})
+    def get_params(self, model_cls, index):
+        params = self.params.get(model_cls, {})
+        return params.get(index, {})
 
     def ordered_best_predictors(self, measure="logloss"):
         list_measure = self.all_clf_scores(measures=measure)
@@ -440,10 +441,13 @@ class Bagging(Ensemble):
             path = self.make_model_file()
             self.save_meta()
 
-    def train(self, batch_size=128, num_steps=1):
+    def train(self, model_base_args={"batch_size": 128, "num_steps": 1}, 
+            others_models_args={}):
+        default_params = model_base_args
         for classif in self.load_models(self.dataset):
             print("Training [{}]".format(classif.__class__.__name__))
-            classif.train(batch_size=batch_size, num_steps=num_steps)
+            params = others_models_args.get(classif.cls_name(), [default_params]).pop(0)
+            classif.train(**params)
         model_base = self.load_model(self.classif, dataset=self.dataset, 
                                     namespace=self.meta_name)
         self.le = model_base.le
@@ -459,9 +463,9 @@ class Bagging(Ensemble):
                 transform=False, chunk_size=256),
             validation_labels=model_base.numerical_labels2classes(
                 model_base.dataset.validation_labels[:]))
-        model_base.set_dataset(dsb)
+        model_base.set_dataset(dsb, auto=False)
         print("Done...")
-        model_base.train(batch_size=batch_size, num_steps=num_steps)
+        model_base.train(**model_base_args)
         self.save_model()
 
     def prepare_data(self, data, transform=True, chunk_size=1):
