@@ -9,5 +9,5 @@ def run(args):
     if args.dataset:
         dataset = Data.original_ds(args.dataset)
 
-    dataset.plot(view=args.view, type_g=args.type_g)
+    dataset.plot(view=args.view, type_g=args.type_g, columns=args.columns)
     dataset.close_reader()
