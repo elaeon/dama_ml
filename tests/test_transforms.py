@@ -147,6 +147,29 @@ class TestTransforms(unittest.TestCase):
         self.assertEqual(.95 <= result.std() <= 1.05, True)
         self.assertEqual(-0.1 <= result.mean() <= 0.1, True)
 
+    def test_apply_to_clf(self):
+        from ml.ds import DataSetBuilder
+        from ml.clf.extended.w_sklearn import RandomForest
+        from ml.processing import FitStandardScaler
+
+        transforms = Transforms()
+        transforms.add(linear)
+        transforms.add(linear_p, b=10)
+        transforms.add(FitStandardScaler, type="column")
+        X = np.asarray([1, 0]*10)
+        Y = X*1
+        dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+            ltype='int', transforms=transforms, rewrite=True)
+        dataset.build_dataset(X, Y)
+        classif = RandomForest(dataset=dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif.train(num_steps=1)
+        self.assertEqual(classif.dataset.apply_transforms, True)
+        dataset.destroy()
+        classif.dataset.destroy()
+
 
 if __name__ == '__main__':
     unittest.main()

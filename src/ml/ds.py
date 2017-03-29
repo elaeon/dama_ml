@@ -58,11 +58,11 @@ class ReadWriteData(object):
             return np.dtype(ttype)
 
     def _set_space_shape(self, f, name, shape, label=False):
-        dtype = self.auto_dtype(None, self.dtype) if label is False else self.auto_dtype(None, self.ltype)
+        dtype = self.auto_dtype(None, self.dtype) if label == False else self.auto_dtype(None, self.ltype)
         f['data'].create_dataset(name, shape, dtype=dtype, chunks=True, **self.zip_params)
 
     def _set_space_data(self, f, name, data, label=False):
-        dtype = self.auto_dtype(data, self.dtype) if label is False else self.auto_dtype(data, self.ltype)
+        dtype = self.auto_dtype(data, self.dtype) if label == False else self.auto_dtype(data, self.ltype)
         f['data'].create_dataset(name, data.shape, dtype=dtype, data=data, chunks=True, **self.zip_params)
 
     def _set_data(self, f, name, data):
@@ -206,7 +206,7 @@ class Data(ReadWriteData):
         if transforms is None:
             transforms = Transforms()
 
-        if not self._preload_attrs() or self.rewrite is True:
+        if not self._preload_attrs() or self.rewrite == True:
             self.apply_transforms = apply_transforms
             self.author = author
             self.description = description
@@ -482,7 +482,7 @@ class Data(ReadWriteData):
         """
         if not self.transforms.is_empty() and self.transforms_to_apply and data is not None:
             log.debug("Apply transforms")
-            if initial is True:
+            if initial == True:
                 return self.transforms.apply(data)
             else:
                 return self.transforms.apply(data, base_data=self.data)
@@ -492,7 +492,7 @@ class Data(ReadWriteData):
 
     @property
     def transforms_to_apply(self):
-        return self.apply_transforms and self._applied_transforms is False
+        return self.apply_transforms and not self._applied_transforms
 
     @classmethod
     def to_DF(self, dataset):
@@ -549,7 +549,7 @@ class Data(ReadWriteData):
         :type transforms: Transform
         :param transforms: transforms to apply in the new dataset
         """
-        if self.apply_transforms is True:
+        if self.apply_transforms == True:
             dsb_c = self.copy()
             dsb_c.apply_transforms = False
             dsb_c.transforms = transforms
@@ -666,7 +666,7 @@ class DataLabel(Data):
         if transforms is None:
             transforms = Transforms()
 
-        if not self._preload_attrs() or self.rewrite is True:
+        if not self._preload_attrs() or self.rewrite == True:
             self.apply_transforms = apply_transforms
             self.author = author
             self.description = description
@@ -884,7 +884,7 @@ class DataLabel(Data):
         convert the dataset to a dataframe
         """
         dl = self.desfragment()
-        if labels2numbers is False:
+        if labels2numbers == False:
             df = self.to_DF(dl.data[:], dl.labels[:])
         else:
             from sklearn.preprocessing import LabelEncoder
@@ -907,7 +907,7 @@ class DataLabel(Data):
         :type transforms: Transform
         :param transforms: transforms to apply in the new dataset
         """
-        if self.apply_transforms is True:
+        if self.apply_transforms == True:
             dsb_c = self.copy()
             dsb_c.apply_transforms = False
             dsb_c.transforms = transforms
@@ -956,7 +956,7 @@ class DataLabel(Data):
         transforms a matrix of dim (n, m) to a matrix of dim (n*m, 2) or (n*m, 3) where
         the rows are described as [feature_column, feature_data]
         """
-        if labels is False:
+        if labels == False:
             data = super(DataLabel, self).features2rows()
         else:
             data = np.empty((self.data.shape[0] * self.data.shape[1], 3))
@@ -1026,6 +1026,16 @@ class DataLabel(Data):
                         sns.distplot(ds1[:, base:base+1], bins=50, 
                             kde=False, rug=False, color="r", ax=axarr[i, j])
                         base += 1
+            elif type_g == "corr":
+                df = self.to_df()
+                df = df.iloc[:, 0:self.num_features()].astype(np.float64) 
+                corr = df.corr()
+                mask = np.zeros_like(corr, dtype=np.bool)
+                mask[np.triu_indices_from(mask)] = True
+                cmap = sns.diverging_palette(220, 10, as_cmap=True)
+                sns.heatmap(corr, mask=mask, cmap=cmap, vmax=.3,
+                    square=True, xticklabels=5, yticklabels=5,
+                    linewidths=.5, cbar_kws={"shrink": .5})
         else:
             data = self
             if data.shape[1] > 2:
@@ -1171,7 +1181,7 @@ class DataSetBuilder(DataLabel):
         if transforms is None:
             transforms = Transforms()
 
-        if not self._preload_attrs() or self.rewrite is True:
+        if not self._preload_attrs() or self.rewrite == True:
             self.dtype = dtype
             self.ltype = ltype
             self.transforms = transforms
@@ -1330,7 +1340,7 @@ class DataSetBuilder(DataLabel):
                 self.test_labels.size])
             order_table_print(headers, table, "shape")
 
-        if classes is True:
+        if classes == True:
             headers = ["class", "# items"]
             order_table_print(headers, self.labels_info().items(), "# items")
 
@@ -1404,7 +1414,7 @@ class DataSetBuilder(DataLabel):
 
         f = self._open_attrs()
 
-        if self.validator == '' or use_validator is False and test_data is not None\
+        if self.validator == '' or use_validator == False and test_data is not None\
             and test_labels is not None and validation_data is not None\
             and validation_labels is not None:
                 data_labels = [
@@ -1511,7 +1521,7 @@ class DataSetBuilder(DataLabel):
         from ml.utils.seq import libsvm_row
         le = self.labels2num()
         f_names = ["train", "test"]
-        if validation is True:
+        if validation == True:
             f_names.append("validation")
         
         for f_name in f_names:

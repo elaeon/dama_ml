@@ -325,6 +325,19 @@ class FitRobustScaler(Fit):
         return scaler.transform
 
 
+class FitTruncatedSVD(Fit):
+    def dim_rule(self, data):
+        if len(data.shape) > 2:
+            data = data.reshape(data.shape[0], -1)
+        return data
+
+    def fit(self, data, params):
+        from sklearn.decomposition import TruncatedSVD
+        svd = TruncatedSVD(**params)
+        svd.fit(self.dim_rule(data))
+        return svd.transform
+
+
 def poly_features(data, degree=2, interaction_only=False, include_bias=True):
     if len(data.shape) == 1:
         data = data.reshape(1, -1)
