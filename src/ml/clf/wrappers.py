@@ -328,6 +328,9 @@ class BaseClassif(DataDrive):
                 prediction = np.asarray(prediction)
             yield self.convert_label(prediction, raw=raw)
 
+    def train_folds(self, batch_size=0, num_steps=0, n_folds=2):
+        pass
+
 
 class SKL(BaseClassif):
     def convert_label(self, label, raw=False):

@@ -3,7 +3,6 @@ import argparse
 from ml.ds import DataSetBuilderFile
 from ml.utils.config import get_settings
 from ml.utils.numeric_functions import le
-#from ml.processing import Preprocessing, FiTScaler
 from ml.processing import Transforms
 from ml.clf.extended import w_sklearn
 from ml.clf.extended import w_tflearn
@@ -169,8 +168,3 @@ if __name__ == '__main__':
                 model_version=args.model_version)
         predict(classif, settings["numerai_test"], "t_id")
         print("Predictions writed in {}".format(settings["predictions_file_path"]))
-
-    #if args.plot:
-    #    dataset = DataSetBuilderFile.load_dataset(args.model_name)
-    #    print("DENSITY: ", dataset.density())
-    #    dataset.plot()
