@@ -328,8 +328,15 @@ class BaseClassif(DataDrive):
                 prediction = np.asarray(prediction)
             yield self.convert_label(prediction, raw=raw)
 
-    def train_folds(self, batch_size=0, num_steps=0, n_folds=2):
-        pass
+    def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2):
+        from sklearn.model_selection import StratifiedKFold
+        self.model = self.prepare_model_k()
+        cv = StratifiedKFold(n_splits=n_splits)
+        dl = self.dataset.desfragment()
+        for k, (train, test) in enumerate(cv.split(dl.data, dl.labels), 1):
+            self.model.fit(dl.data.value[train], dl.labels.value[train])
+            print("fold ", k)
+        dl.destroy()
 
 
 class SKL(BaseClassif):
@@ -341,16 +348,11 @@ class SKL(BaseClassif):
         else:
             return self.le.inverse_transform(self.position_index(label))
 
-    def train(self, batch_size=0, num_steps=0):
-        from sklearn.externals import joblib
-        model = self.prepare_model()
-        if not isinstance(model, MLModel):
-            self.model = MLModel(fit_fn=model.fit, 
-                            predictors=[model.predict],
-                            load_fn=self.load_fn,
-                            save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
+    def train(self, batch_size=0, num_steps=0, n_splits=None):
+        if n_splits is not None:
+            self.train_kfolds(batch_size=batch_size, num_steps=num_steps, n_splits=n_splits)
         else:
-            self.model = model
+            self.model = self.prepare_model()
         self.save_model()
 
     def load_fn(self, path):
@@ -366,16 +368,11 @@ class SKLP(BaseClassif):
     def __init__(self, *args, **kwargs):
         super(SKLP, self).__init__(*args, **kwargs)
 
-    def train(self, batch_size=0, num_steps=0):
-        from sklearn.externals import joblib
-        model = self.prepare_model()
-        if not isinstance(model, MLModel):
-            self.model = MLModel(fit_fn=model.fit, 
-                                predictors=[model.predict_proba],
-                                load_fn=self.load_fn,
-                                save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
+    def train(self, batch_size=0, num_steps=0, n_splits=None):
+        if n_splits is not None:
+            self.train_kfolds(batch_size=batch_size, num_steps=num_steps, n_splits=n_splits)
         else:
-            self.model = model
+            self.model = self.prepare_model()
         self.save_model()
 
     def load_fn(self, path):
