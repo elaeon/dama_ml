@@ -54,6 +54,7 @@ class TestClf(unittest.TestCase):
 
     def tearDown(self):
         self.dataset.destroy()
+        self.classif.destroy()
 
     def test_only_is(self):
         self.assertEqual(self.classif.erroneous_clf(), None)
@@ -109,6 +110,7 @@ class TestGrid(unittest.TestCase):
 
     def tearDown(self):
         self.dataset.destroy()
+        self.classif.destroy()
 
     def test_load_meta(self):
         self.assertEqual(type(self.classif.load_meta()), type({}))
@@ -142,6 +144,7 @@ class TestBoosting(unittest.TestCase):
 
     def tearDown(self):
         self.dataset.destroy()
+        self.classif.destroy()
 
     def test_load_meta(self):
         self.assertEqual(type(self.classif.load_meta()), type({}))
@@ -173,6 +176,7 @@ class TestStacking(unittest.TestCase):
 
     def tearDown(self):
         self.dataset.destroy()
+        self.classif.destroy()
 
     def test_load_meta(self):
         self.assertEqual(type(self.classif.load_meta()), type({}))
@@ -199,10 +203,11 @@ class TestBagging(unittest.TestCase):
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
-        self.classif.train(num_steps=1)
+        self.classif.train()
 
     def tearDown(self):
         self.dataset.destroy()
+        self.classif.destroy()
 
     def test_load_meta(self):
         from ml.clf.ensemble import Bagging
@@ -245,6 +250,7 @@ class TestXgboost(unittest.TestCase):
             model_version="1",
             check_point_path="/tmp/")
         classif.predict(self.dataset.test_data[0:1])
+        classif.destroy()
 
 
 if __name__ == '__main__':

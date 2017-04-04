@@ -1,7 +1,6 @@
 from sklearn.calibration import CalibratedClassifierCV
 from ml.clf.wrappers import SKL, SKLP
 from ml.models import MLModel
-from sklearn.externals import joblib
 
 
 class SVC(SKL):
@@ -13,20 +12,14 @@ class SVC(SKL):
         reg = reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
-        return MLModel(fit_fn=sig_clf.fit, 
-                        predictors=[sig_clf.predict],
-                        load_fn=self.load_fn,
-                        save_fn=lambda path: joblib.dump(sig_clf, '{}.pkl'.format(path)))
+        return self.ml_model(sig_clf)
 
     def prepare_model_k(self):
         from sklearn import svm
         
         model = CalibratedClassifierCV(
             svm.LinearSVC(C=1, max_iter=1000), method="sigmoid")
-        return MLModel(fit_fn=model.fit, 
-                        predictors=[model.predict],
-                        load_fn=self.load_fn,
-                        save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
+        return self.ml_model(model)
 
 
 class RandomForest(SKLP):
@@ -38,10 +31,7 @@ class RandomForest(SKLP):
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
-        return MLModel(fit_fn=sig_clf.fit, 
-                        predictors=[sig_clf.predict],
-                        load_fn=self.load_fn,
-                        save_fn=lambda path: joblib.dump(sig_clf, '{}.pkl'.format(path)))
+        return self.ml_model(sig_clf)
 
 
 class ExtraTrees(SKLP):
@@ -53,10 +43,7 @@ class ExtraTrees(SKLP):
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
-        return MLModel(fit_fn=sig_clf.fit, 
-                        predictors=[sig_clf.predict],
-                        load_fn=self.load_fn,
-                        save_fn=lambda path: joblib.dump(sig_clf, '{}.pkl'.format(path)))
+        return self.ml_model(sig_clf)
 
 
 class LogisticRegression(SKLP):
@@ -69,10 +56,7 @@ class LogisticRegression(SKLP):
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
-        return MLModel(fit_fn=sig_clf.fit, 
-                        predictors=[sig_clf.predict],
-                        load_fn=self.load_fn,
-                        save_fn=lambda path: joblib.dump(sig_clf, '{}.pkl'.format(path)))
+        return self.ml_model(sig_clf)
 
 
 class SGDClassifier(SKLP):
@@ -85,10 +69,7 @@ class SGDClassifier(SKLP):
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
-        return MLModel(fit_fn=sig_clf.fit, 
-                        predictors=[sig_clf.predict],
-                        load_fn=self.load_fn,
-                        save_fn=lambda path: joblib.dump(sig_clf, '{}.pkl'.format(path)))
+        return self.ml_model(sig_clf)
 
 
 class AdaBoost(SKLP):
@@ -100,10 +81,7 @@ class AdaBoost(SKLP):
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
-        return MLModel(fit_fn=sig_clf.fit, 
-                        predictors=[sig_clf.predict],
-                        load_fn=self.load_fn,
-                        save_fn=lambda path: joblib.dump(sig_clf, '{}.pkl'.format(path)))
+        return self.ml_model(sig_clf)
 
 
 class GradientBoost(SKLP):
@@ -115,7 +93,4 @@ class GradientBoost(SKLP):
         reg.fit(self.dataset.train_data, self.dataset.train_labels)
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
-        return MLModel(fit_fn=sig_clf.fit, 
-                        predictors=[sig_clf.predict],
-                        load_fn=self.load_fn,
-                        save_fn=lambda path: joblib.dump(sig_clf, '{}.pkl'.format(path)))
+        return self.ml_model(sig_clf)

@@ -1,5 +1,6 @@
 import numpy as np
-from ml.clf.wrappers import DataDrive, ListMeasure
+from ml.clf.wrappers import DataDrive
+from ml.clf.measures import ListMeasure
 from ml.ds import DataSetBuilder
 
 
@@ -61,7 +62,7 @@ class Grid(DataDrive):
         from operator import add
         try:
             return reduce(add, (classif.scores(measures=measures) 
-                for classif in self.load_models(self.dataset) if hasattr(classif, 'score')))
+                for classif in self.load_models(self.dataset) if hasattr(classif, 'scores')))
         except TypeError:
             return ListMeasure()
 
@@ -125,6 +126,9 @@ class Grid(DataDrive):
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         for classif in self.load_models(self.dataset):
             yield classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
+
+    def destroy(self):
+        pass
 
 
 class Ensemble(Grid):

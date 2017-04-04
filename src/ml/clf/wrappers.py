@@ -6,7 +6,7 @@ import logging
 from sklearn.preprocessing import LabelEncoder
 from ml.utils.config import get_settings
 from ml.models import MLModel
-from ml.ds import DataSetBuilder
+from ml.ds import DataSetBuilder, Data
 from ml.clf.measures import ListMeasure
 
 
@@ -77,7 +77,9 @@ class DataDrive(object):
 
     def destroy(self):
         """remove the dataset associated to the model and his checkpoints"""
-        pass
+        from ml.utils.files import rm
+        self.dataset.destroy()
+        rm(self.get_model_path())
 
 
 class BaseClassif(DataDrive):
@@ -90,6 +92,7 @@ class BaseClassif(DataDrive):
         self.base_labels = None
         self._original_dataset_md5 = None
         self.dataset = None
+        self.dl = None
         super(BaseClassif, self).__init__(
             check_point_path=check_point_path,
             model_version=model_version,
@@ -181,10 +184,6 @@ class BaseClassif(DataDrive):
 
     def reformat_all(self, dataset):
         log.info("Reformating {}...".format(self.cls_name()))
-        dl = dataset.desfragment()
-        self.labels_encode(dl.labels)
-        dl.destroy()
-        log.info("Labels encode finished")
         dsb = DataSetBuilder(
             name=dataset.name+"_"+self.model_name+"_"+self.cls_name(),
             dataset_path=settings["dataset_model_path"],
@@ -197,6 +196,8 @@ class BaseClassif(DataDrive):
             chunks=1000,
             rewrite=False)
 
+        self.labels_encode(dataset.labels)
+        log.info("Labels encode finished")
         if dsb.mode == "w":
             dsb._applied_transforms = dataset.apply_transforms
             train_data, train_labels = self.reformat(dataset.train_data, 
@@ -207,6 +208,8 @@ class BaseClassif(DataDrive):
                                         self.le.transform(dataset.validation_labels))
             dsb.build_dataset(train_data, train_labels, test_data, test_labels,
                             validation_data, validation_labels)
+
+        self.dl = dsb.desfragment(dataset_path=settings["dataset_model_path"])        
         dsb.close_reader()
         return dsb
 
@@ -283,22 +286,25 @@ class BaseClassif(DataDrive):
         list_measure = self.scores()
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
-                "md5": self._original_dataset_md5, #not reformated dataset
+                "md5": self.dataset.md5(),
+                "original_ds_md5": self._original_dataset_md5, #not reformated dataset
                 "group_name": self.group_name,
                 "model_module": self.module_cls_name(),
                 "model_name": self.model_name,
                 "model_version": self.model_version,
                 "score": list_measure.measures_to_dict(),
-                "base_labels": list(self.base_labels)}
+                "base_labels": list(self.base_labels),
+                "dl": self.dl.name}
         
     def get_dataset(self):
-        from ml.ds import DataSetBuilder
+        from ml.ds import DataSetBuilder, Data
         meta = self.load_meta()
         dataset = DataSetBuilder(meta["dataset_name"], dataset_path=meta["dataset_path"],
             apply_transforms=False)
-        self._original_dataset_md5 = meta["md5"]
+        self._original_dataset_md5 = meta["original_ds_md5"]
         self.labels_encode(meta["base_labels"])
         self.group_name = meta.get('group_name', None)
+        self.dl = Data.original_ds(name=meta["dl"], dataset_path=meta["dataset_path"])
         if meta.get('md5', None) != dataset.md5():
             log.warning("The dataset md5 is not equal to the model '{}'".format(
                 self.__class__.__name__))
@@ -332,11 +338,24 @@ class BaseClassif(DataDrive):
         from sklearn.model_selection import StratifiedKFold
         self.model = self.prepare_model_k()
         cv = StratifiedKFold(n_splits=n_splits)
-        dl = self.dataset.desfragment()
+        
+        if self.dl is None:
+            log.warning("The dataset dl is not set in the path, rebuilding...".format(
+                self.__class__.__name__))
+            dl = self.dataset.desfragment(dataset_path=settings["dataset_model_path"])
+        else:
+            dl = self.dl
+
         for k, (train, test) in enumerate(cv.split(dl.data, dl.labels), 1):
             self.model.fit(dl.data.value[train], dl.labels.value[train])
             print("fold ", k)
-        dl.destroy()
+
+    def train(self, batch_size=0, num_steps=0, n_splits=None):
+        if n_splits is not None:
+            self.train_kfolds(batch_size=batch_size, num_steps=num_steps, n_splits=n_splits)
+        else:
+            self.model = self.prepare_model()
+        self.save_model()
 
 
 class SKL(BaseClassif):
@@ -348,40 +367,33 @@ class SKL(BaseClassif):
         else:
             return self.le.inverse_transform(self.position_index(label))
 
-    def train(self, batch_size=0, num_steps=0, n_splits=None):
-        if n_splits is not None:
-            self.train_kfolds(batch_size=batch_size, num_steps=num_steps, n_splits=n_splits)
-        else:
-            self.model = self.prepare_model()
-        self.save_model()
-
-    def load_fn(self, path):
+    def ml_model(self, model):        
         from sklearn.externals import joblib
-        model = joblib.load('{}.pkl'.format(path))
-        self.model = MLModel(fit_fn=model.fit, 
+        return MLModel(fit_fn=model.fit, 
                             predictors=[model.predict],
                             load_fn=self.load_fn,
                             save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
+
+    def load_fn(self, path):
+        model = joblib.load('{}.pkl'.format(path))
+        self.model = self.ml_model(model)
 
 
 class SKLP(BaseClassif):
     def __init__(self, *args, **kwargs):
         super(SKLP, self).__init__(*args, **kwargs)
 
-    def train(self, batch_size=0, num_steps=0, n_splits=None):
-        if n_splits is not None:
-            self.train_kfolds(batch_size=batch_size, num_steps=num_steps, n_splits=n_splits)
-        else:
-            self.model = self.prepare_model()
-        self.save_model()
+    def ml_model(self, model):        
+        from sklearn.externals import joblib
+        return MLModel(fit_fn=model.fit, 
+                            predictors=[model.predict_proba],
+                            load_fn=self.load_fn,
+                            save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
 
     def load_fn(self, path):
         from sklearn.externals import joblib
         model = joblib.load('{}.pkl'.format(path))
-        self.model = MLModel(fit_fn=model.fit, 
-                            predictors=[model.predict_proba],
-                            load_fn=self.load_fn,
-                            save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
+        self.model = self.ml_model(model)
 
 
 class TFL(BaseClassif):
@@ -403,16 +415,9 @@ class TFL(BaseClassif):
         with tf.Graph().as_default():
             return super(TFL, self).predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
 
-    def train(self, batch_size=10, num_steps=1000):
+    def train(self, batch_size=10, num_steps=1000, n_splits=None):
         with tf.Graph().as_default():
-            model = self.prepare_model()
-            if not isinstance(model, MLModel):
-                self.model = MLModel(fit_fn=model.fit, 
-                                predictors=[model.predict],
-                                load_fn=self.load_fn,
-                                save_fn=model.save)
-            else:
-                self.model = model
+            self.model = self.prepare_model()
             self.model.fit(self.dataset.train_data, 
                 self.dataset.train_labels, 
                 n_epoch=num_steps, 
@@ -427,30 +432,43 @@ class Keras(BaseClassif):
     def load_fn(self, path):
         from keras.models import load_model
         model = load_model(path)
-        self.model = MLModel(fit_fn=model.fit, 
-                            predictors=[model.predict],
-                            load_fn=self.load_fn,
-                            save_fn=model.save)
+        self.model = self.ml_model(model)
+
+    def ml_model(self, model):
+        return MLModel(fit_fn=model.fit, 
+                        predictors=[model.predict],
+                        load_fn=self.load_fn,
+                        save_fn=model.save)
 
     def reformat(self, data, labels):
         data = self.transform_shape(data)
         labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
         return data, labels_m
 
+    def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2):
+        from sklearn.model_selection import StratifiedKFold
+        self.model = self.prepare_model_k()
+        cv = StratifiedKFold(n_splits=n_splits)
+        dl = self.dataset.desfragment()
+        for k, (train, test) in enumerate(cv.split(dl.data, dl.labels), 1):
+            self.model.fit(dl.data.value[train], 
+                dl.labels.value[train],
+                nb_epoch=num_steps,
+                batch_size=batch_size,
+                shuffle=True)
+            print("fold ", k)
+        dl.destroy()
 
-    def train(self, batch_size=258, num_steps=50):
-        model = self.prepare_model()
-        if not isinstance(model, MLModel):
-            self.model = MLModel(fit_fn=model.fit, 
-                            predictors=[model.predict],
-                            load_fn=self.load_fn,
-                            save_fn=model.save)
+    def train(self, batch_size=0, num_steps=0, n_splits=None):
+        if n_splits is not None:
+            self.train_kfolds(batch_size=batch_size, num_steps=num_steps, n_splits=n_splits)
         else:
-            self.model = model
-        self.model.fit(self.dataset.train_data, 
-            self.dataset.train_labels,
-            nb_epoch=num_steps,
-            batch_size=batch_size,
-            shuffle=True,
-            validation_data=(self.dataset.validation_data, self.dataset.validation_labels))
+            self.model = self.prepare_model()
+            self.model.fit(self.dataset.train_data, 
+                self.dataset.train_labels,
+                nb_epoch=num_steps,
+                batch_size=batch_size,
+                shuffle="batch",
+                validation_data=(self.dataset.validation_data, self.dataset.validation_labels))
         self.save_model()
+

@@ -5,7 +5,7 @@ from ml.utils.order import order_table_print
 from ml.clf.wrappers import DataDrive
 from ml.clf.measures import ListMeasure
 from ml.utils.files import get_models_path, get_models_from_dataset, rm
-from ml.ds import DataSetBuilder
+from ml.ds import Data
 
 settings = get_settings("ml")
 
@@ -53,11 +53,9 @@ def run(args):
         model_path_meta = os.path.join(settings["checkpoints_path"], clf, name_version, name_version)
         model_path = os.path.join(settings["checkpoints_path"], clf, name_version)    
         dataset_name = DataDrive.read_meta("dataset_name", model_path_meta)
-        dataset = DataSetBuilder(name=dataset_name, dataset_path=settings["dataset_model_path"])
-        models_path = get_models_from_dataset(dataset, settings["checkpoints_path"])
-        if len(list(models_path)) == 1:
-            print("Delete dataset: {}".format(dataset.url()))
-            rm(dataset.url())        
+        dataset = Data.original_ds(name=dataset_name, dataset_path=settings["dataset_model_path"])
+        dataset.destroy()
+        print("Delete dataset: {}".format(dataset.url()))
         print("Delete model: {}".format(model_path))
         rm(model_path)
         print("Done.")

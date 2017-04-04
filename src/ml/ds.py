@@ -239,13 +239,15 @@ class Data(ReadWriteData):
         "return the shape of the dataset"
         return self.data.shape
 
-    def desfragment(self):
+    def desfragment(self, dataset_path=None):
         """
         Concatenate the train, valid and test data in a data array.
         Concatenate the train, valid, and test labels in another array.
         return DataLabel
         """
-        return self.copy()
+        log.debug("Desfragment...Data")
+        dataset_path = self.dataset_path if dataset_path is None else dataset_path
+        return self.copy(dataset_path=dataset_path)
 
     def type_t(self, ttype, data):
         """
@@ -425,12 +427,12 @@ class Data(ReadWriteData):
         f.close()
         self._set_attr("md5", self.calc_md5())
 
-    def empty(self, name, dtype='float64', apply_transforms=False):
+    def empty(self, name, dataset_path=None, dtype='float64', apply_transforms=False):
         """
         build an empty DataLabel with the default parameters
         """
         data = Data(name=name, 
-            dataset_path=self.dataset_path,
+            dataset_path=dataset_path,
             transforms=self.transforms,
             apply_transforms=apply_transforms,
             dtype=dtype,
@@ -443,19 +445,20 @@ class Data(ReadWriteData):
         return data
 
     def convert(self, name, dtype='float64', apply_transforms=False, 
-                percentaje=1):
+                percentaje=1, dataset_path=None):
         """
         :type dtype: string
         :param dtype: cast the data to the defined type
 
         dataset_path is not necesary to especify, this info is obtained from settings.cfg
         """
-        data = self.empty(name, dtype=dtype, ltype=ltype, apply_transforms=apply_transforms)
-        ddata.build_dataset(calc_nshape(self.data, percentaje))
+        data = self.empty(name, dataset_path=dataset_path, dtype=dtype, 
+            ltype=ltype, apply_transforms=apply_transforms)
+        data.build_dataset(calc_nshape(self.data, percentaje))
         data.close_reader()
         return data
 
-    def copy(self, percentaje=1):
+    def copy(self, dataset_path=None, percentaje=1):
         """
         :type percentaje: float
         :param percentaje: value between [0, 1], this value represent the size of the dataset to copy.
@@ -465,7 +468,7 @@ class Data(ReadWriteData):
         name = self.name + "_copy_" + uuid.uuid4().hex
         data = self.convert(name, dtype=self.dtype,
                         apply_transforms=self.apply_transforms, 
-                        percentaje=percentaje)
+                        percentaje=percentaje, dataset_path=dataset_path)
         return data
 
     def processing(self, data, initial=True):
@@ -1274,34 +1277,28 @@ class DataSetBuilder(DataLabel):
         else:
             return True
 
-    def desfragment(self):
+    def desfragment(self, dataset_path=None):
         """
         Concatenate the train, valid and test data in a data array.
         Concatenate the train, valid, and test labels in another array.
         return data, labels
         """
+        log.debug("Desfragment...DSB")
+        dataset_path = self.dataset_path if dataset_path is None else dataset_path
         id_ = uuid.uuid4().hex
         dl = DataLabel(
             name=self.name+id_,
-            dataset_path=self.dataset_path,
+            dataset_path=dataset_path,
             transforms=self.transforms,
             apply_transforms=self.apply_transforms,
             dtype=self.dtype,
             ltype=self.ltype,
             description=self.description,
             author=self.author,
+            chunks=1000,
             compression_level=self.compression_level)
         dl.build_dataset_from_dsb(self)
         return dl
-
-    def calc_md5(self):
-        """
-        calculate the md5 from the data.
-        """
-        dl = self.desfragment()
-        md5 = dl.calc_md5()
-        dl.destroy()
-        return md5
 
     def info(self, classes=False):
         """
