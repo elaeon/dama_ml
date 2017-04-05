@@ -33,6 +33,13 @@ class RandomForest(SKLP):
         sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
         return self.ml_model(sig_clf)
 
+    def prepare_model_k(self):
+        from sklearn.ensemble import RandomForestClassifier
+        
+        model = CalibratedClassifierCV(
+            RandomForestClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
+        return self.ml_model(model)
+    
 
 class ExtraTrees(SKLP):
     def prepare_model(self):

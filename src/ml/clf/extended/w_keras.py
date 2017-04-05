@@ -21,3 +21,6 @@ class FCNet(Keras):
         model.compile(optimizer='sgd', loss='categorical_crossentropy')
         return self.ml_model(model)
 
+    def prepare_model_k(self):
+        return self.prepare_model()
+

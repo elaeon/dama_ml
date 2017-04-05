@@ -79,6 +79,8 @@ class DataDrive(object):
         """remove the dataset associated to the model and his checkpoints"""
         from ml.utils.files import rm
         self.dataset.destroy()
+        if hasattr(self, 'dl') and self.dl is not None:
+            self.dl.destroy()
         rm(self.get_model_path())
 
 
@@ -449,15 +451,22 @@ class Keras(BaseClassif):
         from sklearn.model_selection import StratifiedKFold
         self.model = self.prepare_model_k()
         cv = StratifiedKFold(n_splits=n_splits)
-        dl = self.dataset.desfragment()
-        for k, (train, test) in enumerate(cv.split(dl.data, dl.labels), 1):
+        
+        if self.dl is None:
+            log.warning("The dataset dl is not set in the path, rebuilding...".format(
+                self.__class__.__name__))
+            dl = self.dataset.desfragment(dataset_path=settings["dataset_model_path"])
+        else:
+            dl = self.dl
+
+        for k, (train, test) in enumerate(cv.split(dl.data, self.numerical_labels2classes(dl.labels)), 1):
             self.model.fit(dl.data.value[train], 
                 dl.labels.value[train],
                 nb_epoch=num_steps,
                 batch_size=batch_size,
-                shuffle=True)
+                shuffle="batch",
+                validation_data=(dl.data.value[test], dl.labels.value[test]))
             print("fold ", k)
-        dl.destroy()
 
     def train(self, batch_size=0, num_steps=0, n_splits=None):
         if n_splits is not None:

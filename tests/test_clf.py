@@ -253,5 +253,32 @@ class TestXgboost(unittest.TestCase):
         classif.destroy()
 
 
+class TestKFold(unittest.TestCase):
+    def setUp(self):
+        from ml.ds import DataSetBuilder
+        from ml.clf.extended.w_keras import FCNet
+        X = np.asarray([1, 0]*10)
+        Y = X*1
+        self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+            ltype='int', rewrite=True)
+        self.dataset.build_dataset(X, Y)
+        classif = FCNet(dataset=self.dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif.train(num_steps=1, batch_size=128, n_splits=4)
+
+    def tearDown(self):
+        self.dataset.destroy()
+
+    def test_predict(self):
+        from ml.clf.extended.w_keras import FCNet
+        classif = FCNet(
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif.predict(self.dataset.test_data[0:1])
+        classif.destroy()
+
 if __name__ == '__main__':
     unittest.main()
