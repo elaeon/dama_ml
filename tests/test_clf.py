@@ -36,7 +36,7 @@ class TestSeq(unittest.TestCase):
         self.assertEqual(sizes(seq), [7, 3])
 
 
-class TestClf(unittest.TestCase):
+class TestSKL(unittest.TestCase):
     def setUp(self):
         from ml.ds import DataSetBuilder
         from ml.clf.extended.w_sklearn import RandomForest
@@ -88,6 +88,39 @@ class TestMLP(unittest.TestCase):
     def test_labels(self):
         pass
         #self.assertEqual(type(self.classif.load_meta()), type({}))
+
+
+class TestGpy(unittest.TestCase):
+    def setUp(self):
+        from ml.ds import DataSetBuilder
+        from ml.clf.extended.w_gpy import SVGPC, GPC
+
+        X = np.asarray([1, 0]*10)
+        Y = X*1
+        self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+            ltype='int', rewrite=True)
+        self.dataset.build_dataset(X, Y)
+        self.classif = SVGPC(dataset=self.dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        self.classif2 = GPC(dataset=self.dataset, 
+            model_name="test2", 
+            model_version="1",
+            check_point_path="/tmp/")
+        self.classif.train(num_steps=2, batch_size=128)
+        self.classif2.train(num_steps=2, batch_size=128)
+
+    def tearDown(self):
+        self.dataset.destroy()
+        self.classif.destroy()
+        self.classif2.destroy()
+
+    def test_load_meta(self):
+        list(self.classif.predict(self.dataset.data[:2]))
+        list(self.classif2.predict(self.dataset.data[:2]))
+        self.assertEqual(type(self.classif.load_meta()), type({}))
+        self.assertEqual(type(self.classif2.load_meta()), type({}))
 
 
 class TestGrid(unittest.TestCase):

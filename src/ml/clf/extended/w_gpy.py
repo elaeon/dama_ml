@@ -13,12 +13,15 @@ class GPC(SKLP):
         kernel_f = kernel if kernel is not None else GPy.kern.RBF
         self.k = kernel_f(self.dim, **k_params)
         self.optimizer = optimizer
+        self.ext = "npy"
         #bfgs
         #Adadelta
 
-    def train(self, batch_size=128, num_steps=1):
+    def train(self, batch_size=128, num_steps=1, n_splits=None):
         from tqdm import tqdm
-        self.prepare_model(batch_size=batch_size)
+        
+        self.batch_size = batch_size
+        self.prepare_model()
         pbar = tqdm(range(1, num_steps + 1))
         for label in pbar:
             self.model.optimize(self.optimizer, max_iters=100, messages=False)
@@ -28,7 +31,7 @@ class GPC(SKLP):
         self.load_model()
         self.save_model()
 
-    def prepare_model(self, batch_size=128):
+    def prepare_model(self):
         self.model = GPy.core.GP(
                     X=self.dataset.train_data,
                     Y=self.dataset.train_labels[:].reshape(-1, 1), 
@@ -68,7 +71,7 @@ class SVGPC(GPC):
         super(SVGPC, self).__init__(kernel=kernel, optimizer=optimizer, 
                                     k_params=k_params, **kwargs)
 
-    def prepare_model(self, batch_size=128):
+    def prepare_model(self):
         Z = np.random.rand(100, self.dataset.train_data.shape[1])
         self.model = GPy.core.SVGP(
             X=self.dataset.train_data, 
@@ -76,5 +79,5 @@ class SVGPC(GPC):
             Z=Z, 
             kernel=self.k + GPy.kern.White(self.dataset.num_features(), variance=1e-5), 
             likelihood=GPy.likelihoods.Bernoulli(),
-            batchsize=batch_size)
+            batchsize=self.batch_size)
         self.model.kern.white.fix()

@@ -81,7 +81,8 @@ class DataDrive(object):
         self.dataset.destroy()
         if hasattr(self, 'dl') and self.dl is not None:
             self.dl.destroy()
-        rm(self.get_model_path())
+        rm(self.get_model_path()+"."+self.ext)
+        rm(self.get_model_path()+".xmeta")
 
 
 class BaseClassif(DataDrive):
@@ -95,6 +96,7 @@ class BaseClassif(DataDrive):
         self._original_dataset_md5 = None
         self.dataset = None
         self.dl = None
+        self.ext = "ckpt.pkl"
         super(BaseClassif, self).__init__(
             check_point_path=check_point_path,
             model_version=model_version,
@@ -321,14 +323,14 @@ class BaseClassif(DataDrive):
     def save_model(self):
         if self.check_point_path is not None:
             path = self.make_model_file()
-            self.model.save('{}.ckpt'.format(path))
+            self.model.save('{}.{}'.format(path, self.ext))
             self.save_meta()
 
     def load_model(self):        
         self.preload_model()
         if self.check_point_path is not None:
             path = self.get_model_path()
-            self.model.load('{}.ckpt'.format(path))
+            self.model.load('{}.{}'.format(path, self.ext))
 
     def _predict(self, data, raw=False):
         for prediction in self.model.predict(data):
@@ -374,10 +376,10 @@ class SKL(BaseClassif):
         return MLModel(fit_fn=model.fit, 
                             predictors=[model.predict],
                             load_fn=self.load_fn,
-                            save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
+                            save_fn=lambda path: joblib.dump(model, '{}'.format(path)))
 
     def load_fn(self, path):
-        model = joblib.load('{}.pkl'.format(path))
+        model = joblib.load('{}'.format(path))
         self.model = self.ml_model(model)
 
 
@@ -390,11 +392,11 @@ class SKLP(BaseClassif):
         return MLModel(fit_fn=model.fit, 
                             predictors=[model.predict_proba],
                             load_fn=self.load_fn,
-                            save_fn=lambda path: joblib.dump(model, '{}.pkl'.format(path)))
+                            save_fn=lambda path: joblib.dump(model, '{}'.format(path)))
 
     def load_fn(self, path):
         from sklearn.externals import joblib
-        model = joblib.load('{}.pkl'.format(path))
+        model = joblib.load('{}'.format(path))
         self.model = self.ml_model(model)
 
 
@@ -431,6 +433,10 @@ class TFL(BaseClassif):
 
 
 class Keras(BaseClassif):
+    def __init__(self):
+        super(Keras, self).__init__(**kwargs)
+        self.ext = "ckpt"
+
     def load_fn(self, path):
         from keras.models import load_model
         model = load_model(path)
