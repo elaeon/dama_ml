@@ -513,7 +513,7 @@ class Data(ReadWriteData):
         data.destroy()
         return df
 
-    def outlayers(self, n_estimators=25, max_samples=.9, contamination=.2):
+    def outlayers(self, type_detector="isolation", n_estimators=25, max_samples=10, contamination=.2):
         """
         :type n_estimators: int
         :params n_estimators: number of estimators for IsolationForest
@@ -526,22 +526,29 @@ class Data(ReadWriteData):
 
         return the indexes of the data who are outlayers
         """
-        from sklearn.ensemble import IsolationForest
-        
-        clf = IsolationForest(n_estimators=n_estimators,
-            contamination=contamination,
-            random_state=np.random.RandomState(42),
-            max_samples=max_samples,
-            n_jobs=-1)
-        
-        if len(self.data.shape) > 2:
-            log.debug("outlayers transform shape...")
-            data = self.data[:].reshape(-1, 1)
+        if type_detector == "robust":
+            from sklearn.covariance import MinCovDet
+            robust_cov = MinCovDet().fit(self.data[:])
+            robust_mahal = robust_cov.mahalanobis(self.data[:] - robust_cov.location_)
+            limit = int(round(len(robust_mahal)*contamination))
+            threshold = sorted(robust_mahal, reverse=True)[limit]
+            y_pred = (1 if val < threshold else -1 for val in robust_mahal)
+        else:
+            from sklearn.ensemble import IsolationForest
+            clf = IsolationForest(n_estimators=n_estimators,
+                contamination=contamination,
+                random_state=np.random.RandomState(42),
+                max_samples=max_samples,
+                n_jobs=-1)
+            
+            if len(self.data.shape) > 2:
+                log.debug("outlayers transform shape...")
+                data = self.data[:].reshape(-1, 1)
+            else:
+                data = self.data
+
             clf.fit(data)
             y_pred = clf.predict(data)
-        else:
-            clf.fit(self.data)
-            y_pred = clf.predict(self.data)
         return (i for i, v in enumerate(y_pred) if v == -1)
 
     def add_transforms(self, name, transforms):
@@ -565,11 +572,11 @@ class Data(ReadWriteData):
             dsb.transforms += transforms
         return dsb
         
-    def remove_outlayers(self):
+    def remove_outlayers(self, outlayers):
         """
         removel the outlayers of the data
         """
-        outlayers = list(self.outlayers())
+        outlayers = list(self.outlayers(type_detector=type_detector))
         dl = self.desfragment()
         dl_ol = self.empty(self.name+"_n_outlayer", dtype=self.dtype, 
             apply_transforms=self.apply_transforms)
@@ -923,11 +930,10 @@ class DataLabel(Data):
             dsb.transforms += transforms
         return dsb
         
-    def remove_outlayers(self):
+    def remove_outlayers(self, outlayers):
         """
         removel the outlayers of the data
         """
-        outlayers = list(self.outlayers())
         dl = self.desfragment()
         dl_ol = self.empty(self.name+"_n_outlayer", dtype=self.dtype, ltype=self.ltype, 
             apply_transforms=self.apply_transforms)
@@ -1364,40 +1370,41 @@ class DataSetBuilder(DataLabel):
         y_train = y_train[valid_size_index:]
         return X_train, X_validation, X_test, y_train, y_validation, y_test
 
-    def adversarial_validator(self, train_data, train_labels, test_data, test_labels):
-        self.train_data = train_data
-        self.test_data = test_data
-        self.train_labels = train_labels
-        self.test_labels = test_labels
-        self.valid_data = train_data[0:1]
-        self.valid_labels = train_labels[0:1]
+    #### pending
+    #def adversarial_validator(self, train_data, train_labels, test_data, test_labels):
+    #    self.train_data = train_data
+    #    self.test_data = test_data
+    #    self.train_labels = train_labels
+    #    self.test_labels = test_labels
+    #    self.valid_data = train_data[0:1]
+    #    self.valid_labels = train_labels[0:1]
 
         # train class is labeled as 1 
-        train_test_data_clf = self._clf()
-        train_test_data_clf.train()
-        class_train = np.argmax(train_test_data_clf.model.classes_)
-        predictions = [p[class_train] 
-            for p in train_test_data_clf.predict(self.train_data, raw=True, transform=False)]
-        predictions = sorted(enumerate(predictions), key=lambda x: x[1], reverse=False)
+    #    train_test_data_clf = self._clf()
+    #    train_test_data_clf.train()
+    #    class_train = np.argmax(train_test_data_clf.model.classes_)
+    #    predictions = [p[class_train] 
+    #        for p in train_test_data_clf.predict(self.train_data, raw=True, transform=False)]
+    #    predictions = sorted(enumerate(predictions), key=lambda x: x[1], reverse=False)
         #print([(pred, index) for index, pred in predictions if pred < .5])
         #because all targets are ones (train data) is not necessary compare it
-        false_test = [index for index, pred in predictions if pred < .5] # is a false test 
-        ok_train = [index for index, pred in predictions if pred >= .5]
+    #    false_test = [index for index, pred in predictions if pred < .5] # is a false test 
+    #    ok_train = [index for index, pred in predictions if pred >= .5]
  
-        valid_data = self.train_data[false_test]
-        valid_labels = self.train_labels[false_test]
-        valid_size = int(round(self.train_data.shape[0] * self.valid_size))
-        self.valid_data = valid_data[:int(round(valid_size))]
-        self.valid_labels = valid_labels[:int(round(valid_size))]
-        self.train_data = np.concatenate((
-            valid_data[int(round(valid_size)):], 
-            self.train_data[ok_train]),
-            axis=0)
-        self.train_labels = np.concatenate((
-            valid_labels[int(round(valid_size)):],
-            self.train_labels[ok_train]),
-            axis=0)
-        self.save()
+    #    valid_data = self.train_data[false_test]
+    #    valid_labels = self.train_labels[false_test]
+    #    valid_size = int(round(self.train_data.shape[0] * self.valid_size))
+    #    self.valid_data = valid_data[:int(round(valid_size))]
+    #    self.valid_labels = valid_labels[:int(round(valid_size))]
+    #    self.train_data = np.concatenate((
+    #        valid_data[int(round(valid_size)):], 
+    #        self.train_data[ok_train]),
+    #        axis=0)
+    #    self.train_labels = np.concatenate((
+    #        valid_labels[int(round(valid_size)):],
+    #        self.train_labels[ok_train]),
+    #        axis=0)
+    #    self.save()
 
     def build_dataset(self, data, labels, test_data=None, test_labels=None, 
                         validation_data=None, validation_labels=None, 

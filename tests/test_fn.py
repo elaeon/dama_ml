@@ -2,7 +2,8 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from sklearn.preprocessing import scale
+from ml.processing import Transforms, FitStandardScaler
+from ml.ds import DataLabel
 
 
 class TestLinearOutLayer(unittest.TestCase):
@@ -18,27 +19,26 @@ class TestLinearOutLayer(unittest.TestCase):
     def test_linear_outlayer1(self):
         from sklearn.ensemble import IsolationForest
         df = pd.DataFrame(data=self.data)
-        df = pd.DataFrame(data=scale(df))
-        clf = IsolationForest(max_samples=10,
-            contamination=self.contamination,
-            random_state=40,
-            n_jobs=-1)
-        matrix = df.as_matrix()
-        clf.fit(matrix)
-        y_pred = clf.predict(matrix)
-        self.assertItemsEqual(y_pred, self.outlayers)
+        transforms = Transforms()
+        transforms.add(FitStandardScaler, type="column")
+        ds = DataLabel(name="test", dataset_path="/tmp", transforms=transforms, 
+            apply_transforms=True)
+        ds.build_dataset(df.as_matrix(), np.asarray(self.outlayers))
+        outlayers = ds.outlayers(type_detector='isolation', n_estimators=25, max_samples=10, 
+            contamination=self.contamination)
+        ds.destroy()
+        self.assertItemsEqual(list(outlayers), [0, 1, 13, 15])
 
     def test_linear_outlayer2(self):
-        from sklearn.covariance import EmpiricalCovariance, MinCovDet
         df = pd.DataFrame(data=self.data)
-        df = pd.DataFrame(data=scale(df))
-        matrix = df.as_matrix()
-        robust_cov = MinCovDet().fit(matrix)
-        robust_mahal = robust_cov.mahalanobis(matrix - robust_cov.location_)
-        limit = int(round(len(robust_mahal)*self.contamination))
-        threshold = sorted(robust_mahal, reverse=True)[limit]
-        outlayers = [1 if val < threshold else -1 for val in robust_mahal]
-        self.assertItemsEqual(outlayers, self.outlayers)
+        transforms = Transforms()
+        transforms.add(FitStandardScaler, type="column")
+        ds = DataLabel(name="test", dataset_path="/tmp", transforms=transforms, 
+            apply_transforms=True)
+        ds.build_dataset(df.as_matrix(), np.asarray(self.outlayers))
+        outlayers = ds.outlayers(type_detector='robust', contamination=self.contamination)
+        ds.destroy()
+        self.assertItemsEqual(list(outlayers), [0, 8, 13, 15])
 
 
 if __name__ == '__main__':
