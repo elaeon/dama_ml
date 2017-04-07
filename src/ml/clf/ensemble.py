@@ -6,11 +6,13 @@ from ml.ds import DataSetBuilder
 
 class Grid(DataDrive):
     def __init__(self, classifs, model_name=None, dataset=None, 
-            check_point_path=None, model_version=None, meta_name=""):
+            check_point_path=None, model_version=None, meta_name="", 
+            group_name=None):
         super(Grid, self).__init__(
             check_point_path=check_point_path,
             model_version=model_version,
-            model_name=model_name)        
+            model_name=model_name,
+            group_name=group_name)        
         self.model = None
         self.dataset = dataset        
         self.meta_name = meta_name
@@ -50,13 +52,17 @@ class Grid(DataDrive):
                 model_name=namespace, 
                 model_version=self.model_version, 
                 check_point_path=self.check_point_path,
+                group_name=self.group_name,
                 autoload=autoload,
                 **self.get_params(model.cls_name(), index))
 
-    def train(self, batch_size=128, num_steps=1):
+    def train(self, others_models_args={}):
+        default_params = others_models_args
         for classif in self.load_models(self.dataset):
             print("Training [{}]".format(classif.__class__.__name__))
-            classif.train(batch_size=batch_size, num_steps=num_steps)
+            params = others_models_args.get(classif.cls_name(), [default_params]).pop(0)
+            classif.train(**params)
+        self.save_model()
     
     def all_clf_scores(self, measures=None):
         from operator import add
@@ -129,6 +135,22 @@ class Grid(DataDrive):
 
     def destroy(self):
         pass
+
+    def _metadata(self, score=None):
+        return {"dataset_path": self.dataset.dataset_path,
+                "dataset_name": self.dataset.name,
+                "models": self.clf_models_namespace,
+                "model_name": self.model_name,
+                "md5": self.dataset.md5(),
+                "score": None}
+
+    def save_model(self):
+        self.clf_models_namespace = self.load_namespaces(
+            self.classifs, 
+            lambda x: x.module_cls_name())
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            self.save_meta()
 
 
 class Ensemble(Grid):

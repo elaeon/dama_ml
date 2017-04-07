@@ -52,6 +52,13 @@ class ExtraTrees(SKLP):
         sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
         return self.ml_model(sig_clf)
 
+    def prepare_model_k(self):
+        from sklearn.ensemble import ExtraTreesClassifier
+        
+        model = CalibratedClassifierCV(
+            ExtraTreesClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
+        return self.ml_model(model)
+
 
 class LogisticRegression(SKLP):
     def prepare_model(self):
@@ -64,6 +71,14 @@ class LogisticRegression(SKLP):
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
         return self.ml_model(sig_clf)
+
+    def prepare_model_k(self):
+        from sklearn.linear_model import LogisticRegression
+        
+        model = CalibratedClassifierCV(
+            LogisticRegression(solver="lbfgs", multi_class="multinomial", n_jobs=-1), 
+            method="sigmoid")
+        return self.ml_model(model)
 
 
 class SGDClassifier(SKLP):
@@ -78,6 +93,14 @@ class SGDClassifier(SKLP):
         sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
         return self.ml_model(sig_clf)
 
+    def prepare_model_k(self):
+        from sklearn.linear_model import SGDClassifier
+        
+        model = CalibratedClassifierCV(
+            SGDClassifier(loss='log', penalty='elasticnet', 
+            alpha=.0001, n_iter=100, n_jobs=-1), method="sigmoid")
+        return self.ml_model(model)
+
 
 class AdaBoost(SKLP):
     def prepare_model(self):
@@ -90,6 +113,13 @@ class AdaBoost(SKLP):
         sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
         return self.ml_model(sig_clf)
 
+    def prepare_model_k(self):
+        from sklearn.ensemble import AdaBoostClassifier
+        
+        model = CalibratedClassifierCV(
+            AdaBoostClassifier(n_estimators=25, learning_rate=1.0), method="sigmoid")
+        return self.ml_model(model)
+
 
 class GradientBoost(SKLP):
     def prepare_model(self):
@@ -101,3 +131,29 @@ class GradientBoost(SKLP):
         sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
         sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
         return self.ml_model(sig_clf)
+    
+    def prepare_model_k(self):
+        from sklearn.ensemble import GradientBoostingClassifier
+        
+        model = CalibratedClassifierCV(
+            GradientBoostingClassifier(n_estimators=25, learning_rate=1.0), method="sigmoid")
+        return self.ml_model(model)
+
+
+class KNN(SKLP):
+    def prepare_model(self):
+        from sklearn.neighbors import KNeighborsClassifier
+
+        reg = CalibratedClassifierCV(
+            KNeighborsClassifier(n_neighbors=2, weights='distance', algorithm='auto'), method="sigmoid")
+        reg.fit(self.dataset.train_data, self.dataset.train_labels)
+        sig_clf = CalibratedClassifierCV(reg, method="sigmoid", cv="prefit")
+        sig_clf.fit(self.dataset.validation_data, self.dataset.validation_labels)
+        return self.ml_model(sig_clf)
+    
+    def prepare_model_k(self):
+        from sklearn.neighbors import KNeighborsClassifier
+        
+        model = CalibratedClassifierCV(
+            KNeighborsClassifier(n_neighbors=2, weights='distance', algorithm='auto'), method="sigmoid")
+        return self.ml_model(model)

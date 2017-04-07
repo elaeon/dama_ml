@@ -133,19 +133,22 @@ class TestGrid(unittest.TestCase):
         Y = X*1
         self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
         self.dataset.build_dataset(X, Y)
+        others_models_args = {"RandomForest": [{"batch_size": 50, "num_steps": 100, "n_splits": 2}],
+            "AdaBoost": [{"batch_size": 50, "num_steps": 100}]}
 
         self.classif = Grid({0: [RandomForest, AdaBoost]},
             dataset=self.dataset, 
             model_name="test_grid", 
             model_version="1",
             check_point_path="/tmp/")
-        self.classif.train(num_steps=1)
+        self.classif.train(others_models_args=others_models_args)
 
     def tearDown(self):
         self.dataset.destroy()
         self.classif.destroy()
 
     def test_load_meta(self):
+        print(self.classif.load_meta())
         self.assertEqual(type(self.classif.load_meta()), type({}))
         self.classif.scores().print_scores()
 
