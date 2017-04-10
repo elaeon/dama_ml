@@ -1,7 +1,9 @@
 import numpy as np
 from ml.clf.wrappers import DataDrive
 from ml.clf.measures import ListMeasure
-from ml.ds import DataSetBuilder
+from ml.ds import DataSetBuilder, Data
+
+from pydoc import locate
 
 
 class Grid(DataDrive):
@@ -12,20 +14,59 @@ class Grid(DataDrive):
             check_point_path=check_point_path,
             model_version=model_version,
             model_name=model_name,
-            group_name=group_name)        
-        self.model = None
-        self.dataset = dataset        
+            group_name=group_name)
+        
+        self.model = None        
         self.meta_name = meta_name
-        self.classifs = self.rename_namespaces(classifs)
+        if len(classifs) == 0 and dataset is None:
+            meta = self.load_meta()
+            self.individual_ds = meta.get('individual_ds', None)
+            classifs_layers = meta.get('models', {})
+            if self.individual_ds == True:
+                for layer, classifs in classifs_layers.items():
+                    data = [(classif, None) for classif in classifs]
+                    classifs_layers[layer] = data
+            classifs_layers = self.load_namespaces(classifs_layers, fn=locate)
+            self.classifs = classifs_layers
+        else:
+            classifs_layers = self.rename_namespaces(classifs)
+            self.individual_ds = self.check_layers(classifs_layers)
+            if self.individual_ds == True:
+                dataset = None
+            else:
+                classifs_layers = self.load_namespaces(classifs_layers, dataset=dataset,
+                    fn=lambda x: x)               
+                
+            self.classifs = classifs_layers
+        self.dataset = dataset
         self.params = {}
 
-    def load_namespaces(self, classifs, fn):
+    def check_layers(self, classifs):
+        try:
+            for layer, classifs in classifs.items():
+                for classif, dataset in classifs:
+                    continue
+            return True
+        except TypeError:
+            return False
+        except ValueError:
+            return False
+
+    def string_namespaces(self, classifs):
         namespaces = {}
         for namespace, models in classifs.items():
-            for model in models:        
-                namespaces.setdefault(namespace, [])
-                namespaces[namespace].append(fn(model))
+            namespaces[namespace] = [model.module_cls_name() for model, dataset in models]
         return namespaces
+
+    def load_namespaces(self, classifs_layers, dataset=None, fn=None):
+        clf_layers = {}
+        if self.individual_ds == False:
+            for layer, classifs in classifs_layers.items():
+                clf_layers[layer] = [(fn(classif), dataset) for classif in classifs]
+        else:
+            for layer, classifs in classifs_layers.items():
+                clf_layers[layer] = [(fn(classif), dataset) for classif, dataset in classifs]
+        return clf_layers
 
     def rename_namespaces(self, classifs):
         namespaces = {}
@@ -40,9 +81,9 @@ class Grid(DataDrive):
         else:
             return "{}.{}".format(self.model_name, namespace)
 
-    def load_models(self, dataset=None, autoload=True):
+    def load_models(self, autoload=True):
         for index, (namespace, classifs) in enumerate(self.classifs.items()):
-            for classif in classifs:
+            for classif, dataset in classifs:
                 yield self.load_model(classif, dataset=dataset, 
                     namespace=namespace, autoload=autoload, index=index)
 
@@ -58,7 +99,7 @@ class Grid(DataDrive):
 
     def train(self, others_models_args={}):
         default_params = others_models_args
-        for classif in self.load_models(self.dataset):
+        for classif in self.load_models():
             print("Training [{}]".format(classif.__class__.__name__))
             params = others_models_args.get(classif.cls_name(), [default_params]).pop(0)
             classif.train(**params)
@@ -68,7 +109,7 @@ class Grid(DataDrive):
         from operator import add
         try:
             return reduce(add, (classif.scores(measures=measures) 
-                for classif in self.load_models(self.dataset) if hasattr(classif, 'scores')))
+                for classif in self.load_models() if hasattr(classif, 'scores')))
         except TypeError:
             return ListMeasure()
 
@@ -78,8 +119,8 @@ class Grid(DataDrive):
     def print_confusion_matrix(self, namespace=None):
         from operator import add
         list_measure = reduce(add, (classif.confusion_matrix() 
-            for classif in self.load_models(self.dataset)))
-        classifs_reader = self.load_models(self.dataset)
+            for classif in self.load_models()))
+        classifs_reader = self.load_models()
         classif = classifs_reader.next()
         list_measure.print_matrix(classif.base_labels)
 
@@ -126,28 +167,32 @@ class Grid(DataDrive):
 
     def best_predictor(self, measure="logloss"):
         best = self.ordered_best_predictors(measure=measure)[0].counter
-        #self.load_model(self.classifs[best], info=False)
         return best
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        for classif in self.load_models(self.dataset):
+        for classif in self.load_models():
             yield classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
 
     def destroy(self):
         pass
 
     def _metadata(self, score=None):
-        return {"dataset_path": self.dataset.dataset_path,
-                "dataset_name": self.dataset.name,
+        if self.dataset is not None:
+            dataset_path = self.dataset.dataset_path
+            dataset_name = self.dataset.name
+        else:
+            dataset_path = None
+            dataset_name = None
+        return {
+                "dataset_path": dataset_path,
+                "dataset_name": dataset_name,
                 "models": self.clf_models_namespace,
                 "model_name": self.model_name,
-                "md5": self.dataset.md5(),
+                "individual_ds": self.individual_ds,
                 "score": None}
 
     def save_model(self):
-        self.clf_models_namespace = self.load_namespaces(
-            self.classifs, 
-            lambda x: x.module_cls_name())
+        self.clf_models_namespace = self.string_namespaces(self.classifs)
         if self.check_point_path is not None:
             path = self.make_model_file()
             self.save_meta()
@@ -175,34 +220,25 @@ class Ensemble(Grid):
 
 
 class Boosting(Ensemble):
-    def __init__(self, classifs, weights=None, election='best', num_max_clfs=1, **kwargs):
-        kwargs["meta_name"] = "boosting"
-        super(Boosting, self).__init__(classifs, **kwargs)
+    def __init__(self, classifs, weights=None, election='best', num_max_clfs=1, 
+            **kwargs):
+        super(Boosting, self).__init__(classifs, meta_name="boosting", **kwargs)
         if len(classifs) > 0:
             self.weights = self.set_weights(0, classifs["0"], weights)
-            self.classifs_p = None
-            self.weights_p = None
             self.election = election
             self.num_max_clfs = num_max_clfs
         else:
             meta = self.load_meta()
-            self.set_boosting_values(meta.get('models', {}), meta['weights'])
-            self.classifs = self.classifs_p
-            self.weights = self.weights_p
+            self.weights = self.get_boosting_values(meta['weights'])
             self.election = meta["election"]
             self.model_name = meta["model_name"]
-            self.dataset = DataSetBuilder(
-                meta["dataset_name"], 
-                dataset_path=meta["dataset_path"])
 
-        for classif in self.load_models(self.dataset):
+        for classif in self.load_models():
             self.le = classif.le
             break
 
-    def set_boosting_values(self, models, weights):
-        from pydoc import locate
-        self.classifs_p = self.load_namespaces(models, lambda x: locate(x))
-        self.weights_p = {index: w for index, w in enumerate(weights)}
+    def get_boosting_values(self, weights):
+        return {index: w for index, w in enumerate(weights)}
 
     def avg_prediction(self, predictions, weights, uncertain=True):
         from itertools import izip
@@ -217,7 +253,7 @@ class Boosting(Ensemble):
 
     def train(self, batch_size=128, num_steps=1, only_voting=False):
         if only_voting is False:
-            for classif in self.load_models(self.dataset):
+            for classif in self.load_models():
                 print("Training [{}]".format(classif.__class__.__name__))
                 classif.train(batch_size=batch_size, num_steps=num_steps)
 
@@ -241,21 +277,25 @@ class Boosting(Ensemble):
 
     def _metadata(self, score=None):
         list_measure = self.scores(all_clf=False)
-        return {"dataset_path": self.dataset.dataset_path,
-                "dataset_name": self.dataset.name,
+        if self.dataset is not None:
+            dataset_path = self.dataset.dataset_path
+            dataset_name = self.dataset.name
+        else:
+            dataset_path = None
+            dataset_name = None
+        return {"dataset_path": dataset_path,
+                "dataset_name": dataset_name,
                 "models": self.clf_models_namespace,
                 "weights": self.clf_weights,
                 "model_name": self.model_name,
-                "md5": self.dataset.md5(),
                 "election": self.election,
+                "individual_ds": self.individual_ds,
                 "score": list_measure.measures_to_dict()}
 
     def save_model(self, models, weights):
-        self.clf_models_namespace = self.load_namespaces(
-            models, 
-            lambda x: x.module_cls_name())
+        self.clf_models_namespace = self.string_namespaces(models)
         self.clf_weights = weights
-        self.set_boosting_values(self.clf_models_namespace, self.clf_weights)
+        self.weights = self.get_boosting_values(self.clf_weights)
         if self.check_point_path is not None:
             path = self.make_model_file()
             self.save_meta()
@@ -275,8 +315,8 @@ class Boosting(Ensemble):
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         models = (self.load_model(classif, namespace=self.meta_name+".0") 
-                    for classif in self.classifs_p[self.meta_name+".0"])
-        weights = [w for i, w in sorted(self.weights_p.items(), key=lambda x:x[0])]
+                    for classif, _ in self.classifs[self.meta_name+".0"])
+        weights = [w for i, w in sorted(self.weights.items(), key=lambda x:x[0])]
         predictions = (
             classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
             for classif in models)
@@ -293,8 +333,8 @@ class Boosting(Ensemble):
         def predictions_fn():
             predictions = {}
             for index, _ in self.best_predictor_threshold(limit=self.num_max_clfs):
-                classif = self.load_model(self.classifs[self.meta_name+".0"][index], 
-                    namespace=self.meta_name+".0")
+                clf_class, _ = self.classifs[self.meta_name+".0"][index]
+                classif = self.load_model(clf_class, namespace=self.meta_name+".0")
                 predictions[index] = np.asarray(list(classif.predict(
                     classif.dataset.test_data, raw=None, transform=False, chunk_size=258)))
                 best_predictors.append(index)
@@ -326,24 +366,17 @@ class Boosting(Ensemble):
 
 class Stacking(Ensemble):
     def __init__(self, classifs, n_splits=2, **kwargs):
-        kwargs["meta_name"] = "stacking"
-        super(Stacking, self).__init__(classifs, **kwargs)
+        super(Stacking, self).__init__(classifs, meta_name="stacking", **kwargs)
         self.dataset_blend = None
         self.n_splits = n_splits
         if len(classifs) == 0:
             meta = self.load_meta()
-            from pydoc import locate
-            self.classifs = self.load_namespaces(
-                meta.get('models', {}), lambda x: locate(x))
             self.iterations = meta["iterations"]
             self.model_name = meta["model_name"]
-            self.dataset = DataSetBuilder(
-                meta["dataset_name"], 
-                dataset_path=meta["dataset_path"])
         else:
             self.iterations = 0
 
-        for classif in self.load_models(self.dataset):
+        for classif in self.load_models():
             self.le = classif.le
             break
 
@@ -355,19 +388,23 @@ class Stacking(Ensemble):
 
     def _metadata(self):
         list_measure = self.scores(all_clf=False)
-        return {"dataset_path": self.dataset.dataset_path,
-                "dataset_name": self.dataset.name,
+        if self.dataset is not None:
+            dataset_path = self.dataset.dataset_path
+            dataset_name = self.dataset.name
+        else:
+            dataset_path = None
+            dataset_name = None
+        return {"dataset_path": dataset_path,
+                "dataset_name": dataset_name,
                 "models": self.clf_models_namespace,
                 "model_name": self.model_name,
-                "md5": self.dataset.md5(),
                 "iterations": self.iterations,
+                "individual_ds": self.individual_ds,
                 "score": list_measure.measures_to_dict()}
 
     def save_model(self, dataset_blend):
         from sklearn.externals import joblib
-        self.clf_models_namespace = self.load_namespaces(
-            self.classifs, 
-            lambda x: x.module_cls_name())
+        self.clf_models_namespace = self.string_namespaces(self.classifs)
         if self.check_point_path is not None:
             path = self.make_model_file()            
             joblib.dump(dataset_blend, '{}.pkl'.format(path))
@@ -411,7 +448,7 @@ class Stacking(Ensemble):
         if self.dataset_blend is None:
             self.load_blend()
 
-        clf_b = self.load_models(self.dataset).next()
+        clf_b = self.load_models().next()
         size = data.shape[0]
         num_classes = clf_b.num_labels
         dataset_blend_test = np.zeros((size, len(self.classifs[self.meta_name+".0"]), num_classes))
@@ -435,8 +472,7 @@ class Bagging(Ensemble):
     def __init__(self, classif, classifs_rbm, **kwargs):
         kwargs["meta_name"] = "bagging"
         super(Bagging, self).__init__(classifs_rbm, **kwargs)
-        if classif is None:          
-            from pydoc import locate
+        if classif is None:
             meta = self.load_meta()
             self.classifs = self.load_namespaces(
                 meta.get('models', {}), lambda x: locate(x))

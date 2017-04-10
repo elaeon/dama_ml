@@ -144,6 +144,13 @@ class ReadWriteData(object):
             return False
 
     @classmethod
+    def url_to_name(self, url):
+        dataset_url = url.split("/")
+        name = dataset_url[-1]
+        path = "/".join(dataset_url[:-1])
+        return name, path
+
+    @classmethod
     def original_ds(self, name, dataset_path=None):
         from pydoc import locate
         meta_dataset = Data(name=name, dataset_path=dataset_path)

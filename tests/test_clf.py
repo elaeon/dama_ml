@@ -127,30 +127,60 @@ class TestGrid(unittest.TestCase):
     def setUp(self):
         from ml.ds import DataSetBuilder
         from ml.clf.ensemble import Grid
-        from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
 
         X = np.asarray([1, 0]*1000)
         Y = X*1
-        self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
-        self.dataset.build_dataset(X, Y)
-        others_models_args = {"RandomForest": [{"batch_size": 50, "num_steps": 100, "n_splits": 2}],
+        self.others_models_args = {"RandomForest": [{"batch_size": 50, "num_steps": 100, "n_splits": 2}],
             "AdaBoost": [{"batch_size": 50, "num_steps": 100}]}
+        dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
+        dataset.build_dataset(X, Y)
+        self.dataset = dataset#{"RandomForest": [dataset], "AdaBoost": [dataset]}
 
-        self.classif = Grid({0: [RandomForest, AdaBoost]},
+    def tearDown(self):
+        self.dataset.destroy()
+
+    def test_load_meta(self):
+        from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
+        from ml.clf.ensemble import Grid
+
+        classif = Grid({0: [RandomForest, AdaBoost]},
             dataset=self.dataset, 
             model_name="test_grid", 
             model_version="1",
             check_point_path="/tmp/")
-        self.classif.train(others_models_args=others_models_args)
+        classif.train(others_models_args=self.others_models_args)
+        classif.scores().print_scores()
+        self.assertEqual(type(classif.load_meta()), type({}))
+        classif.destroy()
 
-    def tearDown(self):
-        self.dataset.destroy()
-        self.classif.destroy()
+        classif = Grid({}, 
+            model_name="test_grid", 
+            model_version="1",
+            check_point_path="/tmp/")
+        
+        for p in classif.predict(self.dataset.data[:1], raw=True):
+            print(list(p))
 
-    def test_load_meta(self):
-        print(self.classif.load_meta())
-        self.assertEqual(type(self.classif.load_meta()), type({}))
-        self.classif.scores().print_scores()
+    def test_load_meta2(self):
+        from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
+        from ml.clf.ensemble import Grid
+
+        classif = Grid({0: [(RandomForest, self.dataset), (AdaBoost, self.dataset)]}, 
+            model_name="test_grid", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif.train(others_models_args=self.others_models_args)
+        classif.scores().print_scores()
+        self.assertEqual(type(classif.load_meta()), type({}))
+        classif.destroy()
+
+        classif = Grid({}, 
+            model_name="test_grid", 
+            model_version="1",
+            check_point_path="/tmp/")
+        
+        for p in classif.predict(self.dataset.data[:1], raw=True):
+            print(list(p))
 
 
 class TestBoosting(unittest.TestCase):
@@ -170,7 +200,7 @@ class TestBoosting(unittest.TestCase):
             RandomForest,
             AdaBoost]},
             dataset=self.dataset, 
-            model_name="test", 
+            model_name="test_boosting", 
             model_version="1",
             check_point_path="/tmp/",
             weights=[3, 1],
@@ -183,8 +213,16 @@ class TestBoosting(unittest.TestCase):
         self.classif.destroy()
 
     def test_load_meta(self):
-        self.assertEqual(type(self.classif.load_meta()), type({}))
+        from ml.clf.ensemble import Boosting
         self.classif.scores().print_scores()
+        self.assertEqual(type(self.classif.load_meta()), type({}))
+        classif = Boosting({}, 
+            model_name="test_boosting", 
+            model_version="1",
+            check_point_path="/tmp/")
+        
+        for p in classif.predict(self.dataset.data[:1], raw=True):
+            print(list(p))
 
 
 class TestStacking(unittest.TestCase):
@@ -204,7 +242,7 @@ class TestStacking(unittest.TestCase):
             RandomForest,
             AdaBoost]},
             dataset=self.dataset, 
-            model_name="test", 
+            model_name="test_stacking", 
             model_version="1",
             check_point_path="/tmp/",
             n_splits=3)
@@ -215,8 +253,17 @@ class TestStacking(unittest.TestCase):
         self.classif.destroy()
 
     def test_load_meta(self):
-        self.assertEqual(type(self.classif.load_meta()), type({}))
+        from ml.clf.ensemble import Stacking
         self.classif.scores().print_scores()
+        self.assertEqual(type(self.classif.load_meta()), type({}))
+
+        classif = Stacking({}, 
+            model_name="test_stacking", 
+            model_version="1",
+            check_point_path="/tmp/")
+        
+        for p in classif.predict(self.dataset.data[:1], raw=True):
+            print(list(p))
 
 
 class TestBagging(unittest.TestCase):
