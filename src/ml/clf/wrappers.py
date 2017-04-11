@@ -40,6 +40,14 @@ class DataDrive(object):
             path = self.make_model_file()
             save_metadata(path+".xmeta", self._metadata())
 
+    def edit_meta(self, key, value):
+        from ml.ds import save_metadata
+        meta = self.load_meta()
+        meta[key] = value
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            save_metadata(path+".xmeta", meta)
+
     def load_meta(self):
         from ml.ds import load_metadata
         if self.check_point_path is not None:
@@ -79,8 +87,8 @@ class DataDrive(object):
         """remove the dataset associated to the model and his checkpoints"""
         from ml.utils.files import rm
         self.dataset.destroy()
-        if hasattr(self, 'dl') and self.dl is not None:
-            self.dl.destroy()
+        #if hasattr(self, 'dl') and self.dl is not None:
+        self.dl.destroy()
         rm(self.get_model_path()+"."+self.ext)
         rm(self.get_model_path()+".xmeta")
 
@@ -212,8 +220,7 @@ class BaseClassif(DataDrive):
                                         self.le.transform(dataset.validation_labels))
             dsb.build_dataset(train_data, train_labels, test_data, test_labels,
                             validation_data, validation_labels)
-
-        self.dl = dsb.desfragment(dataset_path=settings["dataset_model_path"])        
+        
         dsb.close_reader()
         return dsb
 
@@ -228,9 +235,15 @@ class BaseClassif(DataDrive):
         self._original_dataset_md5 = dataset.md5()
         if auto is True:
             self.dataset = self.reformat_all(dataset)
-        else:
-            self.dataset = dataset
-            self.labels_encode(dataset.labels)
+            if self.dataset.mode == "w":
+                self.dl = self.dataset.desfragment(dataset_path=settings["dataset_model_path"])
+                self.edit_meta("dl", self.dl.name)
+            else:
+                meta = self.load_meta()
+                self.dl = Data.original_ds(name=meta["dl"], dataset_path=settings["dataset_model_path"])
+        #else:
+        #    self.dataset = dataset
+        #    self.labels_encode(dataset.labels)
 
     def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False):
         from ml.utils.seq import grouper_chunk
@@ -303,12 +316,12 @@ class BaseClassif(DataDrive):
     def get_dataset(self):
         from ml.ds import DataSetBuilder, Data
         meta = self.load_meta()
-        dataset = DataSetBuilder(meta["dataset_name"], dataset_path=meta["dataset_path"],
+        dataset = DataSetBuilder(name=meta["dataset_name"], dataset_path=meta["dataset_path"],
             apply_transforms=False)
         self._original_dataset_md5 = meta["original_ds_md5"]
         self.labels_encode(meta["base_labels"])
         self.group_name = meta.get('group_name', None)
-        self.dl = Data.original_ds(name=meta["dl"], dataset_path=meta["dataset_path"])
+        self.dl = Data.original_ds(name=meta["dl"], dataset_path=settings["dataset_model_path"])
         if meta.get('md5', None) != dataset.md5():
             log.warning("The dataset md5 is not equal to the model '{}'".format(
                 self.__class__.__name__))

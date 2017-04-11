@@ -249,7 +249,6 @@ class TestStacking(unittest.TestCase):
         self.classif.train(num_steps=1)
 
     def tearDown(self):
-        self.dataset.destroy()
         self.classif.destroy()
 
     def test_load_meta(self):
@@ -289,13 +288,13 @@ class TestBagging(unittest.TestCase):
         self.classif.train()
 
     def tearDown(self):
-        self.dataset.destroy()
+        #self.dataset.destroy()
         self.classif.destroy()
 
     def test_load_meta(self):
         from ml.clf.ensemble import Bagging
-        self.assertEqual(type(self.classif.load_meta()), type({}))
         self.classif.scores().print_scores()
+        self.assertEqual(type(self.classif.load_meta()), type({}))
 
 
 class TestXgboost(unittest.TestCase):

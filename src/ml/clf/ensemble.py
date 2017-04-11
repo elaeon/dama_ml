@@ -18,16 +18,8 @@ class Grid(DataDrive):
         
         self.model = None        
         self.meta_name = meta_name
-        if len(classifs) == 0 and dataset is None:
-            meta = self.load_meta()
-            self.individual_ds = meta.get('individual_ds', None)
-            classifs_layers = meta.get('models', {})
-            if self.individual_ds == True:
-                for layer, classifs in classifs_layers.items():
-                    data = [(classif, None) for classif in classifs]
-                    classifs_layers[layer] = data
-            classifs_layers = self.load_namespaces(classifs_layers, fn=locate)
-            self.classifs = classifs_layers
+        if len(classifs) == 0:
+            self.reload()
         else:
             classifs_layers = self.rename_namespaces(classifs)
             self.individual_ds = self.check_layers(classifs_layers)
@@ -35,11 +27,21 @@ class Grid(DataDrive):
                 dataset = None
             else:
                 classifs_layers = self.load_namespaces(classifs_layers, dataset=dataset,
-                    fn=lambda x: x)               
-                
+                    fn=lambda x: x)
             self.classifs = classifs_layers
         self.dataset = dataset
         self.params = {}
+
+
+    def reload(self):
+        meta = self.load_meta()
+        self.individual_ds = meta.get('individual_ds', None)
+        classifs_layers = meta.get('models', {})
+        if self.individual_ds == True:
+            for layer, classifs in classifs_layers.items():
+                classifs_layers[layer] = [(classif, None) for classif in classifs]
+        classifs_layers = self.load_namespaces(classifs_layers, fn=locate)
+        self.classifs = classifs_layers
 
     def check_layers(self, classifs):
         try:
@@ -369,6 +371,7 @@ class Stacking(Ensemble):
         super(Stacking, self).__init__(classifs, meta_name="stacking", **kwargs)
         self.dataset_blend = None
         self.n_splits = n_splits
+        self.ext = "pkl"
         if len(classifs) == 0:
             meta = self.load_meta()
             self.iterations = meta["iterations"]
@@ -378,6 +381,7 @@ class Stacking(Ensemble):
 
         for classif in self.load_models():
             self.le = classif.le
+            self.num_labels = classif.num_labels
             break
 
     def load_blend(self):
@@ -407,7 +411,7 @@ class Stacking(Ensemble):
         self.clf_models_namespace = self.string_namespaces(self.classifs)
         if self.check_point_path is not None:
             path = self.make_model_file()            
-            joblib.dump(dataset_blend, '{}.pkl'.format(path))
+            joblib.dump(dataset_blend, '{}.{}'.format(path, self.ext))
             self.save_meta()
 
     def train(self, batch_size=128, num_steps=1):
@@ -417,55 +421,50 @@ class Stacking(Ensemble):
         size = self.dataset.shape[0]
         dataset_blend_train = np.zeros((size, len(self.classifs[self.meta_name+".0"]), num_classes))
         dataset_blend_labels = np.zeros((size, len(self.classifs[self.meta_name+".0"]), 1))
-        for j, clf in enumerate(self.load_models(autoload=False)):
+        for j, clf in enumerate(self.load_models()):
             print("Training [{}]".format(clf.__class__.__name__))
-            dsbf = DataSetBuilderFold(n_splits=n_splits)
-            dsbf.build_dataset(dataset=self.dataset)
             init_r = 0
-            for i, dataset in enumerate(dsbf.get_splits()):
-                print("Fold", i)
-                clf.set_dataset(dataset)
-                clf.train(batch_size=batch_size, num_steps=num_steps)
-                y_submission = np.asarray(list(
-                    clf.predict(clf.dataset.test_data, raw=True, transform=False, chunk_size=0)))
-                if len(clf.dataset.test_labels.shape) > 1:
-                    test_labels = np.argmax(clf.dataset.test_labels, axis=1)
-                else:
-                    test_labels = clf.dataset.test_labels[:]
-                r = init_r + clf.dataset.test_data.shape[0]
-                dataset_blend_train[init_r:r, j] = y_submission
-                dataset_blend_labels[init_r:r, j] = test_labels.reshape(-1, 1)
-                init_r = r
-                clf.dataset.destroy()
-            dsbf.destroy()
-        self.iterations = i + 1
+            clf.train(batch_size=batch_size, num_steps=num_steps, n_splits=n_splits)
+            y_submission = np.asarray(list(
+                clf.predict(clf.dataset.test_data, raw=True, transform=False, chunk_size=0)))
+            if len(clf.dataset.test_labels.shape) > 1:
+                test_labels = np.argmax(clf.dataset.test_labels, axis=1)
+            else:
+                test_labels = clf.dataset.test_labels[:]
+            r = init_r + clf.dataset.test_data.shape[0]
+            dataset_blend_train[init_r:r, j] = y_submission
+            dataset_blend_labels[init_r:r, j] = test_labels.reshape(-1, 1)
+            init_r = r
+        self.iterations = n_splits
         dataset_blend_train = dataset_blend_train.reshape(dataset_blend_train.shape[0], -1)
         dataset_blend_labels = dataset_blend_labels.reshape(dataset_blend_labels.shape[0], -1)
         self.save_model(np.append(dataset_blend_train, dataset_blend_labels, axis=1))
+        self.reload()
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         from sklearn.linear_model import LogisticRegression
         if self.dataset_blend is None:
             self.load_blend()
 
-        clf_b = self.load_models().next()
         size = data.shape[0]
-        num_classes = clf_b.num_labels
-        dataset_blend_test = np.zeros((size, len(self.classifs[self.meta_name+".0"]), num_classes))
-        for j, clf in enumerate(self.load_models(self.dataset)):
-            dataset_blend_test_j = np.zeros((size, self.iterations, num_classes))
-            count = 0     
-            while count < self.iterations:
-                y_predict = np.asarray(list(
-                    clf.predict(data, raw=True, transform=transform, chunk_size=0)))
-                dataset_blend_test_j[:, count] = y_predict
-                count += 1
-            dataset_blend_test[:, j] = dataset_blend_test_j.mean(1)
+        dataset_blend_test = np.zeros((size, len(self.classifs[self.meta_name+".0"]), self.num_labels))
+        for j, clf in enumerate(self.load_models()):
+            y_predict = np.asarray(list(
+                clf.predict(data, raw=True, transform=transform, chunk_size=0)))
+            dataset_blend_test[:, j] = y_predict
 
         clf = LogisticRegression()
-        columns = len(self.classifs[self.meta_name+".0"]) * num_classes
+        columns = len(self.classifs[self.meta_name+".0"]) * self.num_labels
         clf.fit(self.dataset_blend[:,:columns], self.dataset_blend[:,columns])
         return clf.predict_proba(dataset_blend_test.reshape(dataset_blend_test.shape[0], -1))
+
+    def destroy(self):
+        from ml.utils.files import rm
+        for clf in self.load_models():
+            clf.destroy()
+        self.dataset.destroy()
+        rm(self.get_model_path()+"."+self.ext)
+        rm(self.get_model_path()+".xmeta")
 
 
 class Bagging(Ensemble):

@@ -121,7 +121,7 @@ class ReadWriteData(object):
         from ml.utils.files import rm
         self.close_reader()
         rm(self.url())
-        log.debug("rm {}".format(self.url()))
+        log.debug("DESTROY {}".format(self.url()))
 
     def url(self):
         """
