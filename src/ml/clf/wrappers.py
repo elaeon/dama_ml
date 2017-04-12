@@ -241,9 +241,10 @@ class BaseClassif(DataDrive):
             else:
                 meta = self.load_meta()
                 self.dl = Data.original_ds(name=meta["dl"], dataset_path=settings["dataset_model_path"])
-        #else:
-        #    self.dataset = dataset
-        #    self.labels_encode(dataset.labels)
+        else:
+            self.dataset.destroy()
+            self.dataset = dataset
+            self.labels_encode(dataset.labels)
 
     def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False):
         from ml.utils.seq import grouper_chunk

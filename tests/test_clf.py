@@ -134,7 +134,7 @@ class TestGrid(unittest.TestCase):
             "AdaBoost": [{"batch_size": 50, "num_steps": 100}]}
         dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
         dataset.build_dataset(X, Y)
-        self.dataset = dataset#{"RandomForest": [dataset], "AdaBoost": [dataset]}
+        self.dataset = dataset
 
     def tearDown(self):
         self.dataset.destroy()
@@ -151,7 +151,6 @@ class TestGrid(unittest.TestCase):
         classif.train(others_models_args=self.others_models_args)
         classif.scores().print_scores()
         self.assertEqual(type(classif.load_meta()), type({}))
-        classif.destroy()
 
         classif = Grid({}, 
             model_name="test_grid", 
@@ -160,6 +159,8 @@ class TestGrid(unittest.TestCase):
         
         for p in classif.predict(self.dataset.data[:1], raw=True):
             print(list(p))
+
+        classif.destroy()
 
     def test_load_meta2(self):
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
@@ -172,7 +173,6 @@ class TestGrid(unittest.TestCase):
         classif.train(others_models_args=self.others_models_args)
         classif.scores().print_scores()
         self.assertEqual(type(classif.load_meta()), type({}))
-        classif.destroy()
 
         classif = Grid({}, 
             model_name="test_grid", 
@@ -181,6 +181,8 @@ class TestGrid(unittest.TestCase):
         
         for p in classif.predict(self.dataset.data[:1], raw=True):
             print(list(p))
+
+        classif.destroy()
 
 
 class TestBoosting(unittest.TestCase):
@@ -210,7 +212,6 @@ class TestBoosting(unittest.TestCase):
 
     def tearDown(self):
         self.dataset.destroy()
-        self.classif.destroy()
 
     def test_load_meta(self):
         from ml.clf.ensemble import Boosting
@@ -223,6 +224,8 @@ class TestBoosting(unittest.TestCase):
         
         for p in classif.predict(self.dataset.data[:1], raw=True):
             print(list(p))
+
+        classif.destroy()
 
 
 class TestStacking(unittest.TestCase):
@@ -249,7 +252,7 @@ class TestStacking(unittest.TestCase):
         self.classif.train(num_steps=1)
 
     def tearDown(self):
-        self.classif.destroy()
+        self.dataset.destroy()
 
     def test_load_meta(self):
         from ml.clf.ensemble import Stacking
@@ -263,6 +266,8 @@ class TestStacking(unittest.TestCase):
         
         for p in classif.predict(self.dataset.data[:1], raw=True):
             print(list(p))
+
+        classif.destroy()
 
 
 class TestBagging(unittest.TestCase):
@@ -282,19 +287,28 @@ class TestBagging(unittest.TestCase):
             RandomForest,
             AdaBoost]},
             dataset=self.dataset, 
-            model_name="test", 
+            model_name="test_bagging", 
             model_version="1",
             check_point_path="/tmp/")
         self.classif.train()
 
     def tearDown(self):
-        #self.dataset.destroy()
-        self.classif.destroy()
+        self.dataset.destroy()
 
     def test_load_meta(self):
         from ml.clf.ensemble import Bagging
         self.classif.scores().print_scores()
         self.assertEqual(type(self.classif.load_meta()), type({}))
+
+        classif = Bagging(None, {}, 
+            model_name="test_bagging", 
+            model_version="1",
+            check_point_path="/tmp/")
+        
+        for p in classif.predict(self.dataset.data[:1], raw=True):
+            print(list(p))
+
+        classif.destroy()
 
 
 class TestXgboost(unittest.TestCase):
