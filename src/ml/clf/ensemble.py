@@ -21,6 +21,7 @@ class Grid(DataDrive):
         if len(classifs) == 0:
             self.reload()
         else:
+            classifs = {"0": classifs}
             classifs_layers = self.rename_namespaces(classifs)
             self.individual_ds = self.check_layers(classifs_layers)
             if self.individual_ds == True:
@@ -32,6 +33,11 @@ class Grid(DataDrive):
         self.dataset = dataset
         self.params = {}
 
+    def active_network(self):
+        if self.meta_name is None or self.meta_name == "":
+            return "0"
+        else:
+            return ".".join([self.meta_name, "0"])
 
     def reload(self):
         meta = self.load_meta()
@@ -84,10 +90,10 @@ class Grid(DataDrive):
             return "{}.{}".format(self.model_name, namespace)
 
     def load_models(self, autoload=True):
-        for index, (namespace, classifs) in enumerate(self.classifs.items()):
-            for classif, dataset in classifs:
-                yield self.load_model(classif, dataset=dataset, 
-                    namespace=namespace, autoload=autoload, index=index)
+        namespace = self.active_network()
+        for index, (classif, dataset) in enumerate(self.classifs[namespace]):
+            yield self.load_model(classif, dataset=dataset, 
+                namespace=namespace, autoload=autoload, index=index)
 
     def load_model(self, model, dataset=None, namespace=None, autoload=True, index=0):
         namespace = self.model_namespace2str("" if namespace is None else namespace)
@@ -202,6 +208,15 @@ class Grid(DataDrive):
             path = self.make_model_file()
             self.save_meta()
 
+    def __add__(self, o):
+        if type(self) == type(o):
+            classifs = {0: self.classifs[0], 1: o.classifs[0]}
+            return Grid(classifs,
+                dataset=None, 
+                model_name="test_grid0", 
+                model_version="1",
+                check_point_path="/tmp/")
+
 
 class Ensemble(Grid):
     def scores(self, measures=None, all_clf=True):
@@ -229,7 +244,7 @@ class Boosting(Ensemble):
             **kwargs):
         super(Boosting, self).__init__(classifs, meta_name="boosting", **kwargs)
         if len(classifs) > 0:
-            self.weights = self.set_weights(0, classifs["0"], weights)
+            self.weights = self.set_weights(0, self.classifs[self.active_network()], weights)
             self.election = election
             self.num_max_clfs = num_max_clfs
         else:
@@ -397,8 +412,9 @@ class Stacking(Ensemble):
         num_classes = len(self.dataset.labels_info().keys())
         n_splits = self.n_splits if num_classes < self.n_splits else num_classes
         size = self.dataset.shape[0]
-        dataset_blend_train = np.zeros((size, len(self.classifs[self.meta_name+".0"]), num_classes))
-        dataset_blend_labels = np.zeros((size, len(self.classifs[self.meta_name+".0"]), 1))
+        namespace = self.active_network()
+        dataset_blend_train = np.zeros((size, len(self.classifs[namespace]), num_classes))
+        dataset_blend_labels = np.zeros((size, len(self.classifs[namespace]), 1))
         for j, clf in enumerate(self.load_models()):
             print("Training [{}]".format(clf.__class__.__name__))
             init_r = 0
@@ -422,16 +438,17 @@ class Stacking(Ensemble):
         from sklearn.linear_model import LogisticRegression
         if self.dataset_blend is None:
             self.load_blend()
-
+        
+        namespace = self.active_network()
         size = data.shape[0]
-        dataset_blend_test = np.zeros((size, len(self.classifs[self.meta_name+".0"]), self.num_labels))
+        dataset_blend_test = np.zeros((size, len(self.classifs[namespace]), self.num_labels))
         for j, clf in enumerate(self.load_models()):
             y_predict = np.asarray(list(
                 clf.predict(data, raw=True, transform=transform, chunk_size=0)))
             dataset_blend_test[:, j] = y_predict
 
         clf = LogisticRegression()
-        columns = len(self.classifs[self.meta_name+".0"]) * self.num_labels
+        columns = len(self.classifs[namespace]) * self.num_labels
         clf.fit(self.dataset_blend[:,:columns], self.dataset_blend[:,columns])
         return clf.predict_proba(dataset_blend_test.reshape(dataset_blend_test.shape[0], -1))
 
@@ -439,7 +456,6 @@ class Stacking(Ensemble):
         from ml.utils.files import rm
         for clf in self.load_models():
             clf.destroy()
-        self.dataset.destroy()
         rm(self.get_model_path()+"."+self.ext)
         rm(self.get_model_path()+".xmeta")
 
@@ -499,7 +515,8 @@ class Bagging(Ensemble):
         predictions = (
             classif.predict(data, raw=True, transform=transform, chunk_size=chunk_size)
             for classif in self.load_models())
-        predictions = np.asarray(list(geometric_mean(predictions, len(self.classifs[self.meta_name+".0"]))))
+        namespace = self.active_network()
+        predictions = np.asarray(list(geometric_mean(predictions, len(self.classifs[namespace]))))
         if len(data.shape) == 1:
             data = data[:].reshape(-1, 1)
         return np.append(data, predictions, axis=1)

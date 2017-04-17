@@ -143,7 +143,7 @@ class TestGrid(unittest.TestCase):
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
         from ml.clf.ensemble import Grid
 
-        classif = Grid({0: [RandomForest, AdaBoost]},
+        classif = Grid([RandomForest, AdaBoost],
             dataset=self.dataset, 
             model_name="test_grid", 
             model_version="1",
@@ -166,7 +166,7 @@ class TestGrid(unittest.TestCase):
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
         from ml.clf.ensemble import Grid
 
-        classif = Grid({0: [(RandomForest, self.dataset), (AdaBoost, self.dataset)]}, 
+        classif = Grid([(RandomForest, self.dataset), (AdaBoost, self.dataset)], 
             model_name="test_grid", 
             model_version="1",
             check_point_path="/tmp/")
@@ -184,6 +184,28 @@ class TestGrid(unittest.TestCase):
 
         classif.destroy()
 
+    def test_compose_grid(self):
+        from ml.clf.extended.w_sklearn import RandomForest, AdaBoost, KNN
+        from ml.clf.extended.w_keras import FCNet
+        from ml.clf.ensemble import Grid
+
+        classif_0 = Grid([RandomForest, AdaBoost],
+            dataset=self.dataset, 
+            model_name="test_grid0", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif_0.train(others_models_args=self.others_models_args)
+        classif_1 = Grid([AdaBoost, KNN],
+            dataset=None, 
+            model_name="test_grid1", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif = classif_0 + classif_1
+        #print("#################")
+        #print(classif.classifs)
+        #classif.train(others_models_args={"AdaBoost": [{"batch_size": 50, "num_steps": 100, "n_splits": 2}],
+        #    "KNN": [{"batch_size": 50, "num_steps": 100}]})
+
 
 class TestBoosting(unittest.TestCase):
     def setUp(self):
@@ -197,10 +219,10 @@ class TestBoosting(unittest.TestCase):
         self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
         self.dataset.build_dataset(X, Y)
 
-        self.classif = Boosting({"0": [
+        self.classif = Boosting([
             ExtraTrees,
             RandomForest,
-            AdaBoost]},
+            AdaBoost],
             dataset=self.dataset, 
             model_name="test_boosting", 
             model_version="1",
@@ -217,7 +239,7 @@ class TestBoosting(unittest.TestCase):
         from ml.clf.ensemble import Boosting
         self.classif.scores().print_scores()
         self.assertEqual(type(self.classif.load_meta()), type({}))
-        classif = Boosting({}, 
+        classif = Boosting([], 
             model_name="test_boosting", 
             model_version="1",
             check_point_path="/tmp/")
@@ -240,10 +262,10 @@ class TestStacking(unittest.TestCase):
         self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
         self.dataset.build_dataset(X, Y)
 
-        self.classif = Stacking({"0": [
+        self.classif = Stacking([
             ExtraTrees,
             RandomForest,
-            AdaBoost]},
+            AdaBoost],
             dataset=self.dataset, 
             model_name="test_stacking", 
             model_version="1",
@@ -259,7 +281,7 @@ class TestStacking(unittest.TestCase):
         self.classif.scores().print_scores()
         self.assertEqual(type(self.classif.load_meta()), type({}))
 
-        classif = Stacking({}, 
+        classif = Stacking([], 
             model_name="test_stacking", 
             model_version="1",
             check_point_path="/tmp/")
@@ -282,10 +304,10 @@ class TestBagging(unittest.TestCase):
         self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
         self.dataset.build_dataset(X, Y)
 
-        self.classif = Bagging(GradientBoost, {"0": [
+        self.classif = Bagging(GradientBoost, [
             ExtraTrees,
             RandomForest,
-            AdaBoost]},
+            AdaBoost],
             dataset=self.dataset, 
             model_name="test_bagging", 
             model_version="1",
@@ -300,7 +322,7 @@ class TestBagging(unittest.TestCase):
         self.classif.scores().print_scores()
         self.assertEqual(type(self.classif.load_meta()), type({}))
 
-        classif = Bagging(None, {}, 
+        classif = Bagging(None, [], 
             model_name="test_bagging", 
             model_version="1",
             check_point_path="/tmp/")
