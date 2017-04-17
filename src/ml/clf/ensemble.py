@@ -33,6 +33,13 @@ class Grid(DataDrive):
         self.dataset = dataset
         self.params = {}
 
+    def reset_dataset(self, dataset, individual_ds=False):
+        self.individual_ds = individual_ds
+        clf_layers = {}
+        for layer, classifs in self.classifs.items():
+            clf_layers[layer] = [(classif, dataset) for classif, _ in classifs]
+        self.classifs = clf_layers
+
     def active_network(self):
         if self.meta_name is None or self.meta_name == "":
             return "0"
@@ -210,12 +217,14 @@ class Grid(DataDrive):
 
     def __add__(self, o):
         if type(self) == type(o):
-            classifs = {0: self.classifs[0], 1: o.classifs[0]}
-            return Grid(classifs,
-                dataset=None, 
+            ensemble = EnsembleLayers( 
                 model_name="test_grid0", 
                 model_version="1",
-                check_point_path="/tmp/")
+                check_point_path="/tmp/",
+                dataset=self.classifs["0"][0][1])
+            ensemble.add(self)
+            ensemble.add(o)
+            return ensemble
 
 
 class Ensemble(Grid):
@@ -237,6 +246,50 @@ class Ensemble(Grid):
             return self.le.inverse_transform(np.argmax(labels, axis=1))
         else:
             return self.le.inverse_transform(labels.astype('int'))
+
+
+class EnsembleLayers:
+    def __init__(self, dataset=None, model_name=None, model_version=None, check_point_path=""):
+        self.layers = []
+        self.dataset = dataset
+
+    def add(self, ensemble):
+        self.layers.append(ensemble)
+
+    def train(self, others_models_args):
+        print(others_models_args)
+        initial_layer = self.layers[0]
+        initial_layer.train(others_models_args=others_models_args[0])
+        y_submission = initial_layer.predict(
+            self.dataset.test_data, raw=True, transform=False, chunk_size=0)
+
+        size = self.dataset.test_data.shape[0] * len(initial_layer.classifs[initial_layer.active_network()])
+        for classif in initial_layer.load_models():
+            num_labels = classif.num_labels
+        data = np.zeros((size, num_labels))
+        labels = np.empty(size, dtype="|S1")
+        i = 0
+        for y in y_submission:
+            for row, label in zip(y, self.dataset.test_labels):
+                data[i] = row
+                labels[i] = label
+                i += 1
+    
+        dataset = DataSetBuilder("test_l", dataset_path="/tmp/", rewrite=True)
+        dataset.build_dataset(data, labels)
+        #print(dataset.train_data[:], dataset.train_labels[:])
+        second_layer = self.layers[1]
+        second_layer.reset_dataset(dataset)
+        second_layer.train()
+        #second_layer.scores().print_scores()
+
+        initial_layer.destroy()
+        second_layer.destroy()
+        dataset.destroy()
+
+    def predict(self):
+        pass
+
 
 
 class Boosting(Ensemble):
@@ -408,7 +461,6 @@ class Stacking(Ensemble):
             self.save_meta()
 
     def train(self, batch_size=128, num_steps=1):
-        from ml.ds import DataSetBuilderFold
         num_classes = len(self.dataset.labels_info().keys())
         n_splits = self.n_splits if num_classes < self.n_splits else num_classes
         size = self.dataset.shape[0]
