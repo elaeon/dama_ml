@@ -1190,7 +1190,8 @@ class DataSetBuilder(DataLabel):
                 compression_level=0,
                 chunks=100,
                 rewrite=False):
-        self.name = name
+
+        self.name = uuid.uuid4().hex if name is None else name
         self._applied_transforms = False
         self.chunks = chunks
         self.rewrite = rewrite
@@ -1298,9 +1299,8 @@ class DataSetBuilder(DataLabel):
         """
         log.debug("Desfragment...DSB")
         dataset_path = self.dataset_path if dataset_path is None else dataset_path
-        id_ = uuid.uuid4().hex
         dl = DataLabel(
-            name=self.name+id_,
+            name=uuid.uuid4().hex,
             dataset_path=dataset_path,
             transforms=self.transforms,
             apply_transforms=self.apply_transforms,

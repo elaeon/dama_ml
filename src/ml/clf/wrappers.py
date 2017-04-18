@@ -92,6 +92,14 @@ class DataDrive(object):
         rm(self.get_model_path()+"."+self.ext)
         rm(self.get_model_path()+".xmeta")
 
+    @classmethod
+    def cls_name(cls):
+        return cls.__name__
+
+    @classmethod
+    def module_cls_name(cls):
+        return "{}.{}".format(cls.__module__, cls.__name__)
+
 
 class BaseClassif(DataDrive):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
@@ -113,13 +121,13 @@ class BaseClassif(DataDrive):
         if autoload is True:
             self.load_dataset(dataset)
 
-    @classmethod
-    def cls_name(cls):
-        return cls.__name__
+    #@classmethod
+    #def cls_name(cls):
+    #    return cls.__name__
 
-    @classmethod
-    def module_cls_name(cls):
-        return "{}.{}".format(cls.__module__, cls.__name__)
+    #@classmethod
+    #def module_cls_name(cls):
+    #    return "{}.{}".format(cls.__module__, cls.__name__)
 
     def scores(self, measures=None):
         list_measure = ListMeasure()

@@ -248,18 +248,20 @@ class Ensemble(Grid):
             return self.le.inverse_transform(labels.astype('int'))
 
 
-class EnsembleLayers:
-    def __init__(self, dataset=None, model_name=None, model_version=None, check_point_path=""):
-        self.layers = []
-        self.dataset = dataset
+class EnsembleLayers(DataDrive):
+    def __init__(self, dataset=None, **kwargs):
+        super(EnsembleLayers, self).__init__(**kwargs)
+        if dataset is None:
+            self.reload()
+        else:
+            self.layers = []
+            self.dataset = dataset
 
     def add(self, ensemble):
         self.layers.append(ensemble)
 
     def train(self, others_models_args):
-        from collections import defaultdict
-
-        print(others_models_args)
+        from ml.clf.utils import add_params_to_params
         initial_layer = self.layers[0]
         initial_layer.train(others_models_args=others_models_args[0])
         y_submission = initial_layer.predict(
@@ -268,6 +270,7 @@ class EnsembleLayers:
         size = self.dataset.test_data.shape[0] * len(initial_layer.classifs[initial_layer.active_network()])
         for classif in initial_layer.load_models():
             num_labels = classif.num_labels
+            break
         data = np.zeros((size, num_labels))
         labels = np.empty(size, dtype="|S1")
         i = 0
@@ -277,24 +280,57 @@ class EnsembleLayers:
                 labels[i] = label
                 i += 1
     
-        dataset = DataSetBuilder("test_l", dataset_path="/tmp/", rewrite=False)
+        #fixme: add a dataset chunk writer
+        dataset = DataSetBuilder(dataset_path="/tmp/", rewrite=False)
         dataset.build_dataset(data, labels)
         second_layer = self.layers[1]
         second_layer.reset_dataset(dataset)
-        if len(others_models_args) > 1:
-            pass
-        else:
-            others_models_args_c = defaultdict(list)
-            for m, _ in second_layer.classifs["0"]:
-                others_models_args_c[m.cls_name()].append({'n_splits': 5})
-        second_layer.train(others_models_args_c)
-        second_layer.scores().print_scores()
-        initial_layer.destroy()
-        second_layer.destroy()
-        dataset.destroy()
 
-    def predict(self):
+        others_models_args_c = add_params_to_params(second_layer.classifs, 
+                                                    others_models_args)
+
+        second_layer.train(others_models_args=others_models_args_c)
+        #second_layer.scores().print_scores()
+
+        self.clf_models_namespace = {
+            "layer1": {
+                "model": initial_layer.module_cls_name(),
+                "model_name": initial_layer.model_name,
+                "model_version": initial_layer.model_version,
+                "check_point_path": initial_layer.check_point_path
+            },
+            "layer2": {
+                "model": second_layer.module_cls_name(),
+                "model_name": second_layer.model_name,
+                "model_version": second_layer.model_version,
+                "check_point_path": second_layer.check_point_path
+            }
+        }
+        #initial_layer.destroy()
+        #second_layer.destroy()
+        dataset.destroy()
+        self.save_model()
+
+    def save_model(self):
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            self.save_meta()
+
+    def _metadata(self, score=None):
+        return {"models": self.clf_models_namespace, score: score}
+
+    def predict(self, data, raw=False, transform=True, chunk_size=1):
+        initial_layer = self.layers[0]
+        y_submission = initial_layer.predict(data, raw=raw, transform=transform, 
+            chunk_size=chunk_size)
+
+    def destroy(self):
         pass
+
+    def reload(self):
+        meta = self.load_meta()
+        models = meta.get('models', {})
+        print(models)
 
 
 
