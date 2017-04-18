@@ -257,6 +257,8 @@ class EnsembleLayers:
         self.layers.append(ensemble)
 
     def train(self, others_models_args):
+        from collections import defaultdict
+
         print(others_models_args)
         initial_layer = self.layers[0]
         initial_layer.train(others_models_args=others_models_args[0])
@@ -275,14 +277,18 @@ class EnsembleLayers:
                 labels[i] = label
                 i += 1
     
-        dataset = DataSetBuilder("test_l", dataset_path="/tmp/", rewrite=True)
+        dataset = DataSetBuilder("test_l", dataset_path="/tmp/", rewrite=False)
         dataset.build_dataset(data, labels)
-        #print(dataset.train_data[:], dataset.train_labels[:])
         second_layer = self.layers[1]
         second_layer.reset_dataset(dataset)
-        second_layer.train()
-        #second_layer.scores().print_scores()
-
+        if len(others_models_args) > 1:
+            pass
+        else:
+            others_models_args_c = defaultdict(list)
+            for m, _ in second_layer.classifs["0"]:
+                others_models_args_c[m.cls_name()].append({'n_splits': 5})
+        second_layer.train(others_models_args_c)
+        second_layer.scores().print_scores()
         initial_layer.destroy()
         second_layer.destroy()
         dataset.destroy()

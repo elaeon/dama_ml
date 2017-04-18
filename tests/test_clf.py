@@ -195,13 +195,12 @@ class TestGrid(unittest.TestCase):
             model_version="1",
             check_point_path="/tmp/")
         #classif_0.train(others_models_args=self.others_models_args)
-        classif_1 = Grid([AdaBoost, KNN],
+        classif_1 = Grid([AdaBoost],
             dataset=None, 
             model_name="test_grid1", 
             model_version="1",
             check_point_path="/tmp/")
         classif = classif_0 + classif_1
-        print("#################")
         classif.train([self.others_models_args])
         #print(classif.classifs)
         #classif.train(others_models_args={"AdaBoost": [{"batch_size": 50, "num_steps": 100, "n_splits": 2}],
