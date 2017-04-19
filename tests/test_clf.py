@@ -202,6 +202,7 @@ class TestGrid(unittest.TestCase):
             check_point_path="/tmp/")
         classif = classif_0 + classif_1
         classif.train([self.others_models_args])
+        classif.destroy()
 
 
 class TestBoosting(unittest.TestCase):

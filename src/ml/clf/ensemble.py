@@ -290,7 +290,6 @@ class EnsembleLayers(DataDrive):
                                                     others_models_args)
 
         second_layer.train(others_models_args=others_models_args_c)
-        #second_layer.scores().print_scores()
 
         self.clf_models_namespace = {
             "layer1": {
@@ -306,32 +305,56 @@ class EnsembleLayers(DataDrive):
                 "check_point_path": second_layer.check_point_path
             }
         }
-        #initial_layer.destroy()
-        #second_layer.destroy()
-        dataset.destroy()
         self.save_model()
+        self.reload()
+        dataset.destroy()
+
+    def scores(self):
+        return self.layers[1].scores()
 
     def save_model(self):
         if self.check_point_path is not None:
             path = self.make_model_file()
             self.save_meta()
 
-    def _metadata(self, score=None):
-        return {"models": self.clf_models_namespace, score: score}
+    def _metadata(self):
+        list_measure = self.scores()
+        return {"models": self.clf_models_namespace, 
+            "score": list_measure.measures_to_dict()}
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         initial_layer = self.layers[0]
-        y_submission = initial_layer.predict(data, raw=raw, transform=transform, 
+        y_submission = initial_layer.predict(data, raw=True, transform=True, 
+            chunk_size=chunk_size)
+        second_layer = self.layers[1]
+        return second_layer.predict(y_submission, raw=raw, transform=transform, 
             chunk_size=chunk_size)
 
     def destroy(self):
-        pass
+        for layer in self.layers:
+            layer.destroy()
 
     def reload(self):
         meta = self.load_meta()
         models = meta.get('models', {})
-        print(models)
 
+        model_1 = locate(models["layer1"]["model"])
+        classif_1 = model_1([], 
+            model_name=models["layer1"]["model_name"], 
+            model_version=models["layer1"]["model_version"],
+            check_point_path=models["layer1"]["check_point_path"])
+
+        model_2 = locate(models["layer2"]["model"])
+        classif_2 = model_2([],
+            model_name=models["layer2"]["model_name"], 
+            model_version=models["layer2"]["model_version"],
+            check_point_path=models["layer2"]["check_point_path"])
+
+        self.layers = []
+        self.add(classif_1)
+        self.add(classif_2)
+
+        return models
 
 
 class Boosting(Ensemble):
