@@ -407,29 +407,40 @@ class TestKFold(unittest.TestCase):
 
 class TestLayers(unittest.TestCase):
 
-    def test_operations(self):
-        from ml.layers import IterLayer
+    def predict(self, data):
+        for e in data:
+            yield e + 1 
+
+    def chunks(self, data, chunk_size=2):
         from ml.utils.seq import grouper_chunk
+        for chunk in grouper_chunk(chunk_size, data):
+            for p in self.predict(chunk):
+                yield p
 
-        def predict(data):
-            for e in data:
-                yield e + 1 
-
-        def chunks(data, chunk_size=2):
-            from ml.utils.seq import grouper_chunk
-            for chunk in grouper_chunk(chunk_size, data):
-                for p in predict(chunk):
-                    yield p
+    def test_operations_scalar(self):
+        from ml.layers import IterLayer
 
         data = np.zeros((20, 2))
-        predictor = IterLayer(chunks(data))        
-        #print(list(predictor.chunks(data)))
+        predictor = IterLayer(self.chunks(data))
         predictor += 1
         predictor -= 1
         predictor *= 1
         predictor /= 1.
         predictor **= 1
+        self.assertItemsEqual(np.asarray(list(predictor)).reshape(-1), np.zeros((40,)) + 1)
+
+    def test_operations_stream(self):
+        from ml.layers import IterLayer
+
+        data_0 = np.zeros((20, 2)) - 1 
+        data_1 = np.zeros((20, 2))
+        predictor_0 = IterLayer(self.chunks(data_0, chunk_size=3))
+        predictor_1 = IterLayer(self.chunks(data_1, chunk_size=2))
+
+        predictor = predictor_0 + predictor_1
+        predictor = predictor - predictor
         print(list(predictor))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,54 +1,69 @@
+from itertools import izip, imap
+import operator
+
+
+def choice(operator):
+    def inner(fn):
+        def view(x, y):
+            if type(x) == type(y):
+                return x.stream_operation(operator, y)
+            else:
+                return x.scalar_operation(operator, y)
+        return view
+    return inner
+
 
 class IterLayer:
     def __init__(self, fn_iter):
         self.fn_iter = fn_iter
 
-    def operation(self, operator, v):
-        from itertools import imap
-        return imap(lambda x: operator(x, v), self.fn_iter)
-
     def scalar_operation(self, operator, scalar):
-        iter_layer = IterLayer(self.operation(operator, scalar))
-        return iter_layer
+        iter_ = imap(lambda x: operator(x, scalar), self)
+        return IterLayer(iter_)
 
-    def __add__(self, scalar):
-        from operator import add
-        return self.scalar_operation(add, scalar)
+    def stream_operation(self, operator, stream):
+        iter_ = imap(lambda x: operator(x[0], x[1]), izip(self, stream))
+        return IterLayer(iter_)
 
-    def __sub__(self, scalar):
-        from operator import sub
-        return self.scalar_operation(sub, scalar)
+    @choice(operator.add)
+    def __add__(self, x):
+        return
 
-    def __mul__(self, scalar):
-        from operator import mul
-        return self.scalar_operation(mul, scalar)
+    @choice(operator.sub)
+    def __sub__(self, x):
+        return
 
-    def __div__(self, scalar):
-        from operator import div
-        return self.scalar_operation(div, scalar)
+    @choice(operator.mul)
+    def __mul__(self, x):
+        return
 
-    def __pow__(self, scalar):
-        return self.scalar_operation(pow, scalar)
+    @choice(operator.div)
+    def __div__(self, x):
+        return
 
-    def __iadd__(self, scalar):
-        from operator import iadd
-        return self.scalar_operation(iadd, scalar)
+    @choice(pow)
+    def __pow__(self, x):
+        return
 
-    def __isub__(self, scalar):
-        from operator import isub
-        return self.scalar_operation(isub, scalar)
+    @choice(operator.iadd)
+    def __iadd__(self, x):
+        return
 
-    def __imul__(self, scalar):
-        from operator import imul
-        return self.scalar_operation(imul, scalar)
+    @choice(operator.isub)
+    def __isub__(self, x):
+        return
 
-    def __idiv__(self, scalar):
-        from operator import idiv
-        return self.scalar_operation(idiv, scalar)
+    @choice(operator.imul)
+    def __imul__(self, x):
+        return
 
-    def __ipow__(self, scalar):
-        from operator import ipow
-        return self.scalar_operation(ipow, scalar)
+    @choice(operator.idiv)
+    def __idiv__(self, x):
+        return
+
+    @choice(operator.ipow)
+    def __ipow__(self, x):
+        return
 
     def __iter__(self):
         return self.fn_iter
