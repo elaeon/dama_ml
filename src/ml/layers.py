@@ -65,5 +65,17 @@ class IterLayer:
     def __ipow__(self, x):
         return
 
+    @classmethod
+    def avg(self, iters, size, method="arithmetic"):
+        if method == "arithmetic":
+            iter_ = (sum(x) / float(size) for x in izip(*iters))
+        else:
+            iter_ = (reduce(operator.mul, x)**(1. / size) for x in izip(*iters)) 
+        return IterLayer(iter_)
+
+    def compose(self, fn, *args, **kwargs):
+        iter_ = (fn(x, *args, **kwargs) for x in self)
+        return IterLayer(iter_)
+
     def __iter__(self):
         return self.fn_iter

@@ -417,6 +417,9 @@ class TestLayers(unittest.TestCase):
             for p in self.predict(chunk):
                 yield p
 
+    def multi_round(self, X, *args):
+        return [round(x, *args) for x in X]
+
     def test_operations_scalar(self):
         from ml.layers import IterLayer
 
@@ -438,8 +441,45 @@ class TestLayers(unittest.TestCase):
         predictor_1 = IterLayer(self.chunks(data_1, chunk_size=2))
 
         predictor = predictor_0 + predictor_1
-        predictor = predictor - predictor
-        print(list(predictor))
+        self.assertItemsEqual(np.asarray(list(predictor)).reshape(-1), np.zeros((40,)) + 1)
+
+    def test_operations(self):
+        from ml.layers import IterLayer
+
+        data_0 = np.zeros((20, 2)) - 1 
+        data_1 = np.zeros((20, 2))
+        data_2 = np.zeros((20, 2)) + 3
+        predictor_0 = IterLayer(self.chunks(data_0, chunk_size=3))
+        predictor_1 = IterLayer(self.chunks(data_1, chunk_size=2))
+        predictor_2 = IterLayer(self.chunks(data_2, chunk_size=3))
+
+        predictor = ((predictor_0**.65) * (predictor_1**.35) * .85) + predictor_2 * .15
+        self.assertItemsEqual(np.asarray(list(predictor)).reshape(-1), np.zeros((40,)) + .6)
+
+    def test_avg(self):
+        from ml.layers import IterLayer
+
+        predictor_0 = IterLayer(self.chunks(np.zeros((20, 2)) + 1, chunk_size=3))
+        predictor_1 = IterLayer(self.chunks(np.zeros((20, 2)) + 2, chunk_size=3))
+        predictor_2 = IterLayer(self.chunks(np.zeros((20, 2)) + 3, chunk_size=3))
+
+        predictor_avg = IterLayer.avg([predictor_0, predictor_1, predictor_2], 3)
+        self.assertItemsEqual(np.asarray(list(predictor_avg)).reshape(-1), np.zeros((40,)) + 3)
+
+        predictor_0 = IterLayer(self.chunks(np.zeros((20, 2)) + 1, chunk_size=3))
+        predictor_1 = IterLayer(self.chunks(np.zeros((20, 2)) + 2, chunk_size=3))
+        predictor_2 = IterLayer(self.chunks(np.zeros((20, 2)) + 3, chunk_size=3))
+
+        predictor_avg = IterLayer.avg([predictor_0, predictor_1, predictor_2], 3, method="geometric")
+        predictor_avg = predictor_avg.compose(self.multi_round, 2)
+        self.assertItemsEqual(np.asarray(list(predictor_avg)).reshape(-1), np.zeros((40,)) + 2.88)
+
+    def test_custom_fn(self):
+        from ml.layers import IterLayer
+
+        predictor = IterLayer(self.chunks(np.zeros((20, 2)) + 1, chunk_size=3))
+        predictor = predictor.compose(self.multi_round, 2)
+        self.assertItemsEqual(np.asarray(list(predictor)).reshape(-1), np.zeros((40,)) + 2)
 
 
 if __name__ == '__main__':
