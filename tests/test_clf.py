@@ -187,22 +187,30 @@ class TestGrid(unittest.TestCase):
     def test_compose_grid(self):
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost, KNN
         from ml.clf.extended.w_keras import FCNet
-        from ml.clf.ensemble import Grid
+        from ml.clf.ensemble import Grid, EnsembleLayers
 
-        classif_0 = Grid([RandomForest, AdaBoost],
+        classif_1 = Grid([RandomForest, AdaBoost],
             dataset=self.dataset, 
             model_name="test_grid0", 
             model_version="1",
             check_point_path="/tmp/")
 
-        classif_1 = Grid([AdaBoost, KNN],
+        classif_2 = Grid([AdaBoost, KNN],
             dataset=None, 
             model_name="test_grid1", 
             model_version="1",
             check_point_path="/tmp/")
-        classif = classif_0 + classif_1
-        classif.train([self.others_models_args])
-        classif.destroy()
+
+        ensemble = EnsembleLayers( 
+            model_name="test_ensemble_grid", 
+            model_version="1",
+            check_point_path="/tmp/",
+            dataset=self.dataset)
+        ensemble.add(classif_1)
+        ensemble.add(classif_2)
+
+        ensemble.train([self.others_models_args])
+        ensemble.destroy()
 
 
 class TestBoosting(unittest.TestCase):
@@ -395,6 +403,33 @@ class TestKFold(unittest.TestCase):
             check_point_path="/tmp/")
         classif.predict(self.dataset.test_data[0:1])
         classif.destroy()
+
+
+class TestLayers(unittest.TestCase):
+
+    def test_operations(self):
+        from ml.layers import IterLayer
+        from ml.utils.seq import grouper_chunk
+
+        def predict(data):
+            for e in data:
+                yield e + 1 
+
+        def chunks(data, chunk_size=2):
+            from ml.utils.seq import grouper_chunk
+            for chunk in grouper_chunk(chunk_size, data):
+                for p in predict(chunk):
+                    yield p
+
+        data = np.zeros((20, 2))
+        predictor = IterLayer(chunks(data))        
+        #print(list(predictor.chunks(data)))
+        predictor += 1
+        predictor -= 1
+        predictor *= 1
+        predictor /= 1.
+        predictor **= 1
+        print(list(predictor))
 
 if __name__ == '__main__':
     unittest.main()

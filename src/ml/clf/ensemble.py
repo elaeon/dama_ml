@@ -215,17 +215,6 @@ class Grid(DataDrive):
             path = self.make_model_file()
             self.save_meta()
 
-    def __add__(self, o):
-        if type(self) == type(o):
-            ensemble = EnsembleLayers( 
-                model_name="test_grid0", 
-                model_version="1",
-                check_point_path="/tmp/",
-                dataset=self.classifs["0"][0][1])
-            ensemble.add(self)
-            ensemble.add(o)
-            return ensemble
-
 
 class Ensemble(Grid):
     def scores(self, measures=None, all_clf=True):
@@ -262,6 +251,7 @@ class EnsembleLayers(DataDrive):
 
     def train(self, others_models_args):
         from ml.clf.utils import add_params_to_params
+
         initial_layer = self.layers[0]
         initial_layer.train(others_models_args=others_models_args[0])
         y_submission = initial_layer.predict(
