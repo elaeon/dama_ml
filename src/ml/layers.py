@@ -1,12 +1,15 @@
 from itertools import izip, imap
 import operator
+import collections
 
 
 def choice(operator):
     def inner(fn):
         def view(x, y):
-            if type(x) == type(y):
+            if isinstance(x, IterLayer) and isinstance(y, IterLayer):
                 return x.stream_operation(operator, y)
+            elif isinstance(y, collections.Iterable):
+                return x.stream_operation(operator, IterLayer(y))
             else:
                 return x.scalar_operation(operator, y)
         return view
@@ -15,7 +18,10 @@ def choice(operator):
 
 class IterLayer:
     def __init__(self, fn_iter):
-        self.fn_iter = fn_iter
+        if type(fn_iter) == type([]) or type(fn_iter) == type(()):
+            self.fn_iter = (e for e in fn_iter)
+        else:
+            self.fn_iter = fn_iter
 
     def scalar_operation(self, operator, scalar):
         iter_ = imap(lambda x: operator(x, scalar), self)

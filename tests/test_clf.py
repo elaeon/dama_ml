@@ -405,7 +405,7 @@ class TestKFold(unittest.TestCase):
         classif.destroy()
 
 
-class TestLayers(unittest.TestCase):
+class TestIterLayers(unittest.TestCase):
 
     def predict(self, data):
         for e in data:
@@ -442,6 +442,19 @@ class TestLayers(unittest.TestCase):
 
         predictor = predictor_0 + predictor_1
         self.assertItemsEqual(np.asarray(list(predictor)).reshape(-1), np.zeros((40,)) + 1)
+
+    def test_operations_list(self):
+        from ml.layers import IterLayer
+        data_0 = np.zeros((20, 2)) - 1 
+        data_1 = np.zeros((20, 2))
+        w = [1, 2]
+        predictor_0 = IterLayer(self.chunks(data_0, chunk_size=3))
+        predictor_1 = IterLayer(self.chunks(data_1, chunk_size=2))
+
+        predictor = IterLayer([predictor_0, predictor_1])
+        predictors = predictor * w
+        self.assertItemsEqual(np.asarray(list(predictors[0])).reshape(-1), np.zeros((40,)))
+        self.assertItemsEqual(np.asarray(list(predictors[1])).reshape(-1), np.zeros((40,) + 2))
 
     def test_operations(self):
         from ml.layers import IterLayer
