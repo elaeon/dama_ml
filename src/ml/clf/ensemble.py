@@ -369,11 +369,12 @@ class Boosting(Ensemble):
         return {index: w for index, w in enumerate(weights)}
 
     def avg_prediction(self, predictions, weights, uncertain=True):
+        from ml.layers import IterLayer
         if uncertain is False:
-            from ml.utils.numeric_functions import discrete_weight
-            return discrete_weight(predictions, weights)
+            #from ml.utils.numeric_functions import discrete_weight
+            #return discrete_weight(predictions, weights)
+            IterLayer.max_counter(predictions, weights=weights)
         else:
-            from ml.layers import IterLayer
             predictors = IterLayer(predictions) * weights
             return IterLayer.avg(predictors, sum(weights))
             #from ml.utils.numeric_functions import arithmetic_mean

@@ -487,6 +487,22 @@ class TestIterLayers(unittest.TestCase):
         predictor_avg = predictor_avg.compose(self.multi_round, 2)
         self.assertItemsEqual(np.asarray(list(predictor_avg)).reshape(-1), np.zeros((40,)) + 2.88)
 
+    def test_max_counter(self):
+        from ml.layers import IterLayer
+
+        predictor_0 = IterLayer(["0", "1", "0", "1", "2", "0", "1", "2"])
+        predictor_1 = IterLayer(["1", "2", "2", "1", "2", "0", "0", "0"])
+        predictor_2 = IterLayer(["0", "1", "0", "1", "2", "0", "1", "2"])
+        predictor_avg = IterLayer.max_counter([predictor_0, predictor_1, predictor_2])
+        self.assertEqual(list(predictor_avg), ['0', '1', '0', '1', '2', '0', '1', '2'])
+
+        weights = [1.5, 2, 1]
+        predictor_0 = IterLayer(["0", "1", "0", "1", "2", "0", "1", "2"])
+        predictor_1 = IterLayer(["1", "2", "2", "1", "2", "0", "0", "0"])
+        predictor_2 = IterLayer(["0", "1", "0", "1", "2", "0", "1", "2"])        
+        predictor_avg = IterLayer.max_counter([predictor_0, predictor_1, predictor_2], weights=weights)
+        self.assertEqual(list(predictor_avg), ['0', '1', '0', '1', '2', '0', '1', '2'])
+
     def test_custom_fn(self):
         from ml.layers import IterLayer
 

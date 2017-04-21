@@ -79,6 +79,21 @@ class IterLayer:
             iter_ = (reduce(operator.mul, x)**(1. / size) for x in izip(*iters)) 
         return IterLayer(iter_)
 
+    @classmethod
+    def max_counter(self, iters, weights=None):
+        def merge(labels, weights):
+            if weights is None:
+                return ((label, 1) for label in labels)
+            else:
+                values = {}
+                for label, w in izip(labels, weights):
+                    values.setdefault(label, 0)
+                    values[label] += w
+                return values.items()
+
+        iter_ = (max(merge(x, weights), key=lambda x: x[1])[0] for x in izip(*iters))
+        return IterLayer(iter_)
+
     def compose(self, fn, *args, **kwargs):
         iter_ = (fn(x, *args, **kwargs) for x in self)
         return IterLayer(iter_)
