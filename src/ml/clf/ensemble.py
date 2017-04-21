@@ -18,6 +18,8 @@ class Grid(DataDrive):
         
         self.model = None        
         self.meta_name = meta_name
+        self.fn_output = None
+
         if len(classifs) == 0:
             self.reload()
         else:
@@ -129,6 +131,15 @@ class Grid(DataDrive):
             return ListMeasure()
 
     def scores(self, measures=None, namespace=None):
+        #if self.fn_output is not None:
+        #    list_measure = ListMeasure()
+            #list_measure.calc_scores("Reduce", 
+            #                        self.predict, 
+            #                       dataset.test_data, 
+            #                        dataset.test_labels[:],
+            #                        labels2classes_fn=self.numerical_labels2classes, 
+            #                        measures=measures)
+        #return list_measure + self.all_clf_scores(measures=measures)
         return self.all_clf_scores(measures=measures)
 
     def print_confusion_matrix(self, namespace=None):
@@ -185,8 +196,14 @@ class Grid(DataDrive):
         return best
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        for classif in self.load_models():
-            yield classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
+        def iter_():
+            for classif in self.load_models():
+                yield classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
+
+        if self.fn_output is None:
+            return iter_()
+        else:
+            return self.fn_output(*iter_())
 
     def destroy(self):
         from ml.utils.files import rm
@@ -214,6 +231,10 @@ class Grid(DataDrive):
         if self.check_point_path is not None:
             path = self.make_model_file()
             self.save_meta()
+
+    def output(self, fn):
+        self.fn_output = fn
+        
 
 
 class Ensemble(Grid):

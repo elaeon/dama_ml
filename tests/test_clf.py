@@ -200,6 +200,7 @@ class TestGrid(unittest.TestCase):
             model_name="test_grid1", 
             model_version="1",
             check_point_path="/tmp/")
+        classif_2.output(lambda x, y: (x**.25) * .85 * y**.35)
 
         ensemble = EnsembleLayers( 
             model_name="test_ensemble_grid", 
@@ -210,6 +211,7 @@ class TestGrid(unittest.TestCase):
         ensemble.add(classif_2)
 
         ensemble.train([self.others_models_args])
+        ensemble.scores().print_scores()
         ensemble.destroy()
 
 
@@ -453,8 +455,9 @@ class TestIterLayers(unittest.TestCase):
 
         predictor = IterLayer([predictor_0, predictor_1])
         predictors = predictor * w
-        self.assertItemsEqual(np.asarray(list(predictors[0])).reshape(-1), np.zeros((40,)))
-        self.assertItemsEqual(np.asarray(list(predictors[1])).reshape(-1), np.zeros((40,) + 2))
+        predictors = np.asarray(list(predictors))
+        self.assertItemsEqual(np.asarray(list(predictors[0])).reshape(-1), np.zeros((40)))
+        self.assertItemsEqual(np.asarray(list(predictors[1])).reshape(-1), np.zeros((40,)) + 2)
 
     def test_operations(self):
         from ml.layers import IterLayer
