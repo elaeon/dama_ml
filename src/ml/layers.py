@@ -1,6 +1,7 @@
 from itertools import izip, imap
 import operator
 import collections
+import types
 
 
 def choice(operator):
@@ -18,10 +19,10 @@ def choice(operator):
 
 class IterLayer:
     def __init__(self, fn_iter):
-        if type(fn_iter) == type([]) or type(fn_iter) == type(()):
-            self.fn_iter = (e for e in fn_iter)
-        else:
+        if isinstance(fn_iter, types.GeneratorType):
             self.fn_iter = fn_iter
+        else:
+            self.fn_iter = (e for e in fn_iter)
 
     def scalar_operation(self, operator, scalar):
         iter_ = imap(lambda x: operator(x, scalar), self)

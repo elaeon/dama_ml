@@ -371,16 +371,10 @@ class Boosting(Ensemble):
     def avg_prediction(self, predictions, weights, uncertain=True):
         from ml.layers import IterLayer
         if uncertain is False:
-            #from ml.utils.numeric_functions import discrete_weight
-            #return discrete_weight(predictions, weights)
-            IterLayer.max_counter(predictions, weights=weights)
+            return IterLayer.max_counter(predictions, weights=weights)
         else:
             predictors = IterLayer(predictions) * weights
             return IterLayer.avg(predictors, sum(weights))
-            #from ml.utils.numeric_functions import arithmetic_mean
-            #predictions_iter = ((prediction * w for prediction in row_prediction)
-            #    for w, row_prediction in izip(weights, predictions))
-            #return arithmetic_mean(predictions_iter, float(sum(weights)))
 
     def train(self, batch_size=128, num_steps=1, only_voting=False):
         if only_voting is False:
@@ -405,6 +399,7 @@ class Boosting(Ensemble):
 
         weights = [self.weights[index] for index in models_index]
         self.save_model(models, weights)
+        self.reload()
 
     def _metadata(self, score=None):
         list_measure = self.scores(all_clf=False)
@@ -546,6 +541,8 @@ class Stacking(Ensemble):
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         from sklearn.linear_model import LogisticRegression
+        from ml.layers import IterLayer
+
         if self.dataset_blend is None:
             self.load_blend()
         
@@ -560,7 +557,7 @@ class Stacking(Ensemble):
         clf = LogisticRegression()
         columns = len(self.classifs[namespace]) * self.num_labels
         clf.fit(self.dataset_blend[:,:columns], self.dataset_blend[:,columns])
-        return clf.predict_proba(dataset_blend_test.reshape(dataset_blend_test.shape[0], -1))
+        return IterLayer(clf.predict_proba(dataset_blend_test.reshape(dataset_blend_test.shape[0], -1)))
 
     def destroy(self):
         from ml.utils.files import rm
@@ -619,14 +616,16 @@ class Bagging(Ensemble):
         print("Done...")
         self.classif.train(**model_base_args)
         self.save_model()
+        self.reload()
 
     def prepare_data(self, data, transform=True, chunk_size=1):
-        from ml.utils.numeric_functions import geometric_mean
+        from ml.layers import IterLayer
         predictions = (
             classif.predict(data, raw=True, transform=transform, chunk_size=chunk_size)
             for classif in self.load_models())
         namespace = self.active_network()
-        predictions = np.asarray(list(geometric_mean(predictions, len(self.classifs[namespace]))))
+        predictions = IterLayer.avg(predictions, len(self.classifs[namespace]), method="geometric")
+        predictions = np.asarray(list(predictions))
         if len(data.shape) == 1:
             data = data[:].reshape(-1, 1)
         return np.append(data, predictions, axis=1)

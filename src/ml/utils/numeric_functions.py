@@ -14,24 +14,6 @@ def le(x, y):
 def ge(x, y):
     return y - x
 
-def geometric_mean(predictions, total):
-    for row_prediction in izip(*predictions):
-        mul_predictions = reduce(mul, row_prediction)
-        yield np.power(mul_predictions, (1. / total))
-
-def arithmetic_mean(predictions, total):
-    for row_prediction in izip(*predictions):
-        sum_prediction = sum(row_prediction)
-        yield sum_prediction / float(total)
-
-def discrete_weight(predictions, weights):
-    for row_prediction in izip(*predictions):
-        counter = {}
-        for w, prediction in izip(weights, row_prediction):
-            counter.setdefault(prediction, 0)
-            counter[prediction] += w
-        yield max(counter.items(), key=lambda x:x[1])[0]
-
 def logb(x, b):
     """
     :type x: float
