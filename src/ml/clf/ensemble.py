@@ -335,7 +335,8 @@ class EnsembleLayers(DataDrive):
         return {
             "dataset_path": self.dataset.dataset_path,
             "dataset_name": self.dataset.name,
-            "models": self.clf_models_namespace, 
+            "models": self.clf_models_namespace,
+            "output": self.fn_output,
             "score": list_measure.measures_to_dict()}
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
@@ -345,7 +346,7 @@ class EnsembleLayers(DataDrive):
         second_layer = self.layers[1]
         output = second_layer.predict(y_submission, raw=raw, transform=transform, 
             chunk_size=chunk_size)
-        return list(self.fn_output(*output))[0]
+        return list(self.fn_output(*output)).pop()
 
     def destroy(self):
         for layer in self.layers:
@@ -370,6 +371,7 @@ class EnsembleLayers(DataDrive):
         self.layers = []
         self.add(classif_1)
         self.add(classif_2)
+        self.output(meta["output"])
 
         return models
 

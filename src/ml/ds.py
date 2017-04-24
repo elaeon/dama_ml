@@ -6,7 +6,8 @@ from skimage import io
 import os
 import numpy as np
 import pandas as pd
-import cPickle as pickle
+#import cPickle as pickle
+import dill as pickle
 import random
 import h5py
 import logging
@@ -1121,15 +1122,6 @@ class DataLabel(Data):
             for row in libsvm_row(self.labels, self.data, le):
                 f.write(" ".join(row))
                 f.write("\n")
-
-
-    #def __add__(self, o):
-    #    if type(self) == DataLabel and type(o) == DataLabel:
-    #        pass
-    #    elif type(self) == DataSetBuilder and type(o) == DataLabel:
-    #        if self._applied_transforms == o._applied_transforms and\
-    #            o.shape[0] == self.shape[0]:
-    #            print("OK")
 
 
 class DataSetBuilder(DataLabel):

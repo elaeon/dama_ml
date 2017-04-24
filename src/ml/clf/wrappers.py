@@ -121,14 +121,6 @@ class BaseClassif(DataDrive):
         if autoload is True:
             self.load_dataset(dataset)
 
-    #@classmethod
-    #def cls_name(cls):
-    #    return cls.__name__
-
-    #@classmethod
-    #def module_cls_name(cls):
-    #    return "{}.{}".format(cls.__module__, cls.__name__)
-
     def scores(self, measures=None):
         list_measure = ListMeasure()
         list_measure.calc_scores(self.__class__.__name__, 
@@ -274,12 +266,15 @@ class BaseClassif(DataDrive):
             chunk_size = 1
 
         if isinstance(data, IterLayer):
-            if transform is True:
-                data = self.transform_shape(self.dataset.processing(data, initial=False))
-            def iter_():
+            def iter_(fn):
                 for x in data:
-                    yield IterLayer(self._predict(list(x), raw=raw))
-            return IterLayer(iter_())
+                    yield IterLayer(self._predict(fn(x), raw=raw))
+
+            if transform is True:
+                fn = lambda x: self.transform_shape(self.dataset.processing(list(x), initial=False))
+            else:
+                fn = list
+            return IterLayer(iter_(fn))
         else:
             if transform is True and chunk_size > 0:
                 fn = lambda x, s: self.transform_shape(
