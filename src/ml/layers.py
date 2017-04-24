@@ -21,6 +21,8 @@ class IterLayer:
     def __init__(self, fn_iter):
         if isinstance(fn_iter, types.GeneratorType):
             self.fn_iter = fn_iter
+        elif isinstance(fn_iter, IterLayer):
+            self.fn_iter = fn_iter.fn_iter
         else:
             self.fn_iter = (e for e in fn_iter)
 

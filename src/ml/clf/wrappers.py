@@ -273,20 +273,28 @@ class BaseClassif(DataDrive):
             log.warning("Chunk size is set to 1")
             chunk_size = 1
 
-        if transform is True and chunk_size > 0:
-            fn = lambda x, s: self.transform_shape(
-                self.dataset.processing(x, initial=False), size=s)
-            return IterLayer(self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw))
-        elif transform is True and chunk_size == 0:
-            data = self.transform_shape(self.dataset.processing(data, initial=False))
-            return IterLayer(self._predict(data, raw=raw))
-        elif transform is False and chunk_size > 0:
-            fn = lambda x, s: self.transform_shape(x, size=s)
-            return IterLayer(self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw))
-        elif transform is False and chunk_size == 0:
-            if len(data.shape) == 1:
-                data = self.transform_shape(data)
-            return IterLayer(self._predict(data, raw=raw))
+        if isinstance(data, IterLayer):
+            if transform is True:
+                data = self.transform_shape(self.dataset.processing(data, initial=False))
+            def iter_():
+                for x in data:
+                    yield IterLayer(self._predict(list(x), raw=raw))
+            return IterLayer(iter_())
+        else:
+            if transform is True and chunk_size > 0:
+                fn = lambda x, s: self.transform_shape(
+                    self.dataset.processing(x, initial=False), size=s)
+                return IterLayer(self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw))
+            elif transform is True and chunk_size == 0:
+                data = self.transform_shape(self.dataset.processing(data, initial=False))
+                return IterLayer(self._predict(data, raw=raw))
+            elif transform is False and chunk_size > 0:
+                fn = lambda x, s: self.transform_shape(x, size=s)
+                return IterLayer(self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw))
+            elif transform is False and chunk_size == 0:
+                if len(data.shape) == 1:
+                    data = self.transform_shape(data)
+                return IterLayer(self._predict(data, raw=raw))
 
     def _pred_erros(self, predictions, test_data, test_labels, valid_size=.1):
         validation_labels_d = {}

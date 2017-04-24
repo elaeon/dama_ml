@@ -18,7 +18,6 @@ class Grid(DataDrive):
         
         self.model = None        
         self.meta_name = meta_name
-        self.fn_output = None
 
         if len(classifs) == 0:
             self.reload()
@@ -26,9 +25,7 @@ class Grid(DataDrive):
             classifs = {"0": classifs}
             classifs_layers = self.rename_namespaces(classifs)
             self.individual_ds = self.check_layers(classifs_layers)
-            if self.individual_ds == True:
-                dataset = None
-            else:
+            if self.individual_ds != True:
                 classifs_layers = self.load_namespaces(classifs_layers, dataset=dataset,
                     fn=lambda x: x)
             self.classifs = classifs_layers
@@ -41,6 +38,7 @@ class Grid(DataDrive):
         for layer, classifs in self.classifs.items():
             clf_layers[layer] = [(classif, dataset) for classif, _ in classifs]
         self.classifs = clf_layers
+        self.dataset = dataset
 
     def active_network(self):
         if self.meta_name is None or self.meta_name == "":
@@ -131,15 +129,6 @@ class Grid(DataDrive):
             return ListMeasure()
 
     def scores(self, measures=None, namespace=None):
-        #if self.fn_output is not None:
-        #    list_measure = ListMeasure()
-            #list_measure.calc_scores("Reduce", 
-            #                        self.predict, 
-            #                       dataset.test_data, 
-            #                        dataset.test_labels[:],
-            #                        labels2classes_fn=self.numerical_labels2classes, 
-            #                        measures=measures)
-        #return list_measure + self.all_clf_scores(measures=measures)
         return self.all_clf_scores(measures=measures)
 
     def print_confusion_matrix(self, namespace=None):
@@ -196,14 +185,11 @@ class Grid(DataDrive):
         return best
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
+        from ml.layers import IterLayer
         def iter_():
             for classif in self.load_models():
                 yield classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
-
-        if self.fn_output is None:
-            return iter_()
-        else:
-            return self.fn_output(*iter_())
+        return IterLayer(iter_())
 
     def destroy(self):
         from ml.utils.files import rm
@@ -231,10 +217,6 @@ class Grid(DataDrive):
         if self.check_point_path is not None:
             path = self.make_model_file()
             self.save_meta()
-
-    def output(self, fn):
-        self.fn_output = fn
-        
 
 
 class Ensemble(Grid):
@@ -298,7 +280,8 @@ class EnsembleLayers(DataDrive):
         second_layer.reset_dataset(dataset)
 
         others_models_args_c = add_params_to_params(second_layer.classifs, 
-                                                    others_models_args)
+                                                    others_models_args,
+                                                    n_splits=5)
 
         second_layer.train(others_models_args=others_models_args_c)
 
@@ -320,8 +303,27 @@ class EnsembleLayers(DataDrive):
         self.reload()
         dataset.destroy()
 
-    def scores(self):
-        return self.layers[1].scores()
+    def scores(self, measures=None):
+        if self.fn_output is not None:
+            list_measure = ListMeasure()
+            list_measure.calc_scores("Reduce", 
+                                    self.predict, 
+                                    self.dataset.test_data, 
+                                    self.dataset.test_labels[:],
+                                    labels2classes_fn=self.numerical_labels2classes, 
+                                    measures=measures)
+            return list_measure
+
+    def numerical_labels2classes(self, labels):
+        if not hasattr(self, 'le'):
+            for classif in self.layers[-1].load_models():
+                self.le = classif.le
+                break
+
+        if len(labels.shape) > 1 and labels.shape[1] > 1:
+            return self.le.inverse_transform(np.argmax(labels, axis=1))
+        else:
+            return self.le.inverse_transform(labels.astype('int'))
 
     def save_model(self):
         if self.check_point_path is not None:
@@ -330,7 +332,10 @@ class EnsembleLayers(DataDrive):
 
     def _metadata(self):
         list_measure = self.scores()
-        return {"models": self.clf_models_namespace, 
+        return {
+            "dataset_path": self.dataset.dataset_path,
+            "dataset_name": self.dataset.name,
+            "models": self.clf_models_namespace, 
             "score": list_measure.measures_to_dict()}
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
@@ -338,8 +343,9 @@ class EnsembleLayers(DataDrive):
         y_submission = initial_layer.predict(data, raw=True, transform=True, 
             chunk_size=chunk_size)
         second_layer = self.layers[1]
-        return second_layer.predict(y_submission, raw=raw, transform=transform, 
+        output = second_layer.predict(y_submission, raw=raw, transform=transform, 
             chunk_size=chunk_size)
+        return list(self.fn_output(*output))[0]
 
     def destroy(self):
         for layer in self.layers:
@@ -366,6 +372,9 @@ class EnsembleLayers(DataDrive):
         self.add(classif_2)
 
         return models
+
+    def output(self, fn):
+        self.fn_output = fn
 
 
 class Boosting(Ensemble):

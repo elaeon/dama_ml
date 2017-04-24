@@ -21,7 +21,7 @@ def proximity_dataset(label_ref, labels, dataset):
         return filter(lambda x: x[1] == -1, zip(dataset_other_, y_pred_train))
 
 
-def add_params_to_params(classifs_layer, others_models_args):
+def add_params_to_params(classifs_layer, others_models_args, n_splits=5):
     if len(others_models_args) == 1:
         others_models_args_c = {m.cls_name(): [{}] for m, _ in classifs_layer["0"]}
     else:
@@ -32,7 +32,7 @@ def add_params_to_params(classifs_layer, others_models_args):
         for params in others_models_args_c.get(m.cls_name(), [{}]):
             if not "n_splits" in params:
                 tmp_params = params.copy()
-                tmp_params["n_splits"] = 5
+                tmp_params["n_splits"] = n_splits
                 n_params.append(tmp_params)
             else:
                 n_params.append(params)

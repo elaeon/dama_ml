@@ -200,7 +200,6 @@ class TestGrid(unittest.TestCase):
             model_name="test_grid1", 
             model_version="1",
             check_point_path="/tmp/")
-        classif_2.output(lambda x, y: (x**.25) * .85 * y**.35)
 
         ensemble = EnsembleLayers( 
             model_name="test_ensemble_grid", 
@@ -209,6 +208,7 @@ class TestGrid(unittest.TestCase):
             dataset=self.dataset)
         ensemble.add(classif_1)
         ensemble.add(classif_2)
+        ensemble.output(lambda x, y: (x**.25) * .85 * y**.35)
 
         ensemble.train([self.others_models_args])
         ensemble.scores().print_scores()
