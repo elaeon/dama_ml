@@ -243,6 +243,7 @@ class Ensemble(Grid):
 class EnsembleLayers(DataDrive):
     def __init__(self, dataset=None, **kwargs):
         super(EnsembleLayers, self).__init__(**kwargs)
+        self.fn_output = None
         if dataset is None:
             self.reload()
         else:
@@ -306,13 +307,15 @@ class EnsembleLayers(DataDrive):
     def scores(self, measures=None):
         if self.fn_output is not None:
             list_measure = ListMeasure()
-            list_measure.calc_scores("Reduce", 
+            list_measure.calc_scores(self.model_name, 
                                     self.predict, 
                                     self.dataset.test_data, 
                                     self.dataset.test_labels[:],
                                     labels2classes_fn=self.numerical_labels2classes, 
                                     measures=measures)
             return list_measure
+        else:
+            return ListMeasure()
 
     def numerical_labels2classes(self, labels):
         if not hasattr(self, 'le'):

@@ -211,7 +211,9 @@ class TestGrid(unittest.TestCase):
         ensemble.output(lambda x, y: (x**.25) * .85 * y**.35)
 
         ensemble.train([self.others_models_args])
-        ensemble.scores().print_scores()
+        s = ensemble.layers[-1].scores()
+        st = ensemble.scores()
+        (s + st).print_scores()
         ensemble.destroy()
 
 
