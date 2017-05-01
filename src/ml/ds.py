@@ -60,11 +60,13 @@ class ReadWriteData(object):
 
     def _set_space_shape(self, f, name, shape, label=False):
         dtype = self.auto_dtype(None, self.dtype) if label == False else self.auto_dtype(None, self.ltype)
-        f['data'].create_dataset(name, shape, dtype=dtype, chunks=True, **self.zip_params)
+        f['data'].require_dataset(name, shape, dtype=dtype, chunks=True, 
+            exact=True, **self.zip_params)
 
     def _set_space_data(self, f, name, data, label=False):
         dtype = self.auto_dtype(data, self.dtype) if label == False else self.auto_dtype(data, self.ltype)
-        f['data'].create_dataset(name, data.shape, dtype=dtype, data=data, chunks=True, **self.zip_params)
+        f['data'].require_dataset(name, data.shape, dtype=dtype, data=data, 
+            exact=True, chunks=True, **self.zip_params)
 
     def _set_data(self, f, name, data):
         key = '/data/' + name
@@ -139,12 +141,6 @@ class ReadWriteData(object):
             self.f.close()
             del self.f
 
-    def exists(self):
-        try:
-            return self.md5()
-        except IOError:
-            return False
-
     @classmethod
     def url_to_name(self, url):
         dataset_url = url.split("/")
@@ -192,17 +188,11 @@ class Data(ReadWriteData):
     :type rewrite: bool
     :param rewrite: if true, you can clean the saved data and add a new dataset.
     """
-    def __init__(self, name=None, 
-                dataset_path=None,
-                transforms=None,
-                apply_transforms=False,
-                dtype='float64',
-                description='',
-                author='',
-                compression_level=0,
-                chunks=100,
-                rewrite=True):
-        self.name = name
+    def __init__(self, name=None, dataset_path=None, transforms=None,
+                apply_transforms=False, dtype='float64', description='',
+                author='', compression_level=0, chunks=100, rewrite=True):
+
+        self.name = uuid.uuid4().hex if name is None else name
         self._applied_transforms = False
         self.chunks = chunks
         self.rewrite = rewrite
@@ -215,17 +205,112 @@ class Data(ReadWriteData):
         if transforms is None:
             transforms = Transforms()
 
-        if not self._preload_attrs() or self.rewrite == True:
-            self.apply_transforms = apply_transforms
+        self._attrs = ["author", "dtype", "transforms"]
+
+        if not self.exist() or self.rewrite:
+            self.create_route()
+            self.mode = "w"
             self.author = author
-            self.description = description
-            self.compression_level = compression_level
             self.dtype = dtype
             self.transforms = transforms
-            self.mode = "w"
+            self.description = description
+            self.compression_level = compression_level
+            self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
+            self.dataset_class = self.module_cls_name()
+            self.apply_transforms = apply_transforms
         else:
             self.mode = "r"
 
+        self.zip_params = {"compression": "gzip", "compression_opts": self.compression_level}
+
+    @property
+    def author(self):
+        return self._get_attr('author')
+
+    @author.setter
+    def author(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['author'] = value
+
+    @property
+    def dtype(self):
+        return self._get_attr('dtype')
+
+    @dtype.setter
+    def dtype(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['dtype'] = value
+
+    @property
+    def transforms(self):
+        return Transforms.from_json(self._get_attr('transforms'))
+
+    @transforms.setter
+    def transforms(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['transforms'] = value.to_json()
+
+    @property
+    def description(self):
+        return self._get_attr('description')
+
+    @description.setter
+    def description(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['description'] = value
+
+    @property
+    def timestamp(self):
+        return self._get_attr('timestamp')
+
+    @timestamp.setter
+    def timestamp(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['timestamp'] = value
+
+    @property
+    def compression_level(self):
+        return self._get_attr('compression_level')
+
+    @compression_level.setter
+    def compression_level(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['compression_level'] = value
+
+    @property
+    def dataset_class(self):
+        return self._get_attr('dataset_class')
+
+    @dataset_class.setter
+    def dataset_class(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['dataset_class'] = value
+
+    @property
+    def apply_transforms(self):
+        return self._get_attr('apply_transforms')
+
+    @apply_transforms.setter
+    def apply_transforms(self, value):
+        if self.mode == 'w':
+            self._set_attr('apply_transforms', value)
+
+    @property
+    def md5(self):
+        return self._get_attr('md5')
+
+    @md5.setter
+    def md5(self, value):
+        if self.mode == 'w':
+            self._set_attr('md5', value)
+                
     @classmethod
     def module_cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
@@ -287,49 +372,6 @@ class Data(ReadWriteData):
         """
         return self.type_t(self.dtype, data)
 
-    def _primitive_attrs(self, f):
-        f.attrs['path'] = self.url()
-        f.attrs['timestamp'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
-        f.attrs['author'] = self.author
-        f.attrs['transforms'] = self.transforms.to_json()
-        f.attrs['description'] = self.description
-        f.attrs['applied_transforms'] = self.apply_transforms
-        f.attrs['dtype'] = self.dtype
-        f.attrs['compression_level'] = self.compression_level
-        f.attrs['dataset_class'] = self.module_cls_name()
-        if 0 < self.compression_level <= 9:
-            self.zip_params = {"compression": "gzip", "compression_opts": self.compression_level}
-        else:
-            self.zip_params = {}
-
-    def _open_attrs(self):
-        if self.mode == 'w':
-            self.create_route()
-            f = h5py.File(self.url(), 'w')
-            self._primitive_attrs(f)
-            f.create_group("data")
-        else:
-            f = h5py.File(self.url(), 'r')
-        return f
-
-    def _preload_attrs(self):
-        try:
-            with h5py.File(self.url(), 'r') as f:
-                self.author = f.attrs['author']
-                self.transforms = Transforms.from_json(f.attrs['transforms'])
-                self.description = f.attrs['description']
-                self.apply_transforms = f.attrs['applied_transforms']
-                self.dtype = f.attrs['dtype']
-                self.compression_level = f.attrs['compression_level']
-            if self.md5() is None:
-                return False
-        except KeyError:
-            return False
-        except IOError:
-            return False
-        else:
-            return True
-
     def exist(self):
         try:
             with h5py.File(self.url(), 'r') as f:
@@ -354,7 +396,7 @@ class Data(ReadWriteData):
         print('Author: {}'.format(self.author))
         print('Transforms: {}'.format(self.transforms.to_json()))
         print('Applied transforms: {}'.format(self.apply_transforms))
-        print('MD5: {}'.format(self.md5()))
+        print('MD5: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
         print('       ')
         headers = ["Dataset", "Mean", "Std", "Shape", "dType"]
@@ -371,11 +413,11 @@ class Data(ReadWriteData):
         h = hashlib.md5(self.data[:])
         return h.hexdigest()
 
-    def md5(self):
-        """
-        return the signature of the dataset in hex md5
-        """
-        return self._get_attr("md5")
+    #def md5(self):
+    #    """
+    #    return the signature of the dataset in hex md5
+    #    """
+    #    return self._get_attr("md5")
 
     def distinct_data(self):
         """
@@ -418,15 +460,16 @@ class Data(ReadWriteData):
         if self.mode == "r":
             return
 
-        f = self._prepare_attrs(dsb.shape)
-
-        end = self.chunks_writer(f, "/data/data", dsb.train_data, chunks=self.chunks)
-        end = self.chunks_writer(f, "/data/data", dsb.test_data, chunks=self.chunks, 
+        with h5py.File(self.url(), 'a') as f:
+            f.require_group("data")
+            self._set_space_shape(f, "data", dsb.shape)
+            end = self.chunks_writer(f, "/data/data", dsb.train_data, chunks=self.chunks)
+            end = self.chunks_writer(f, "/data/data", dsb.test_data, chunks=self.chunks, 
+                                    init=end)
+            self.chunks_writer(f, "/data/data", dsb.validation_data, chunks=self.chunks, 
                                 init=end)
-        self.chunks_writer(f, "/data/data", dsb.validation_data, chunks=self.chunks, 
-                            init=end)
-        f.close()        
-        self._set_attr("md5", self.calc_md5())
+        
+        self.md5 = self.calc_md5()
 
     def build_dataset_from_iter(self, f, iter_, name, init=0):
         """
@@ -446,16 +489,12 @@ class Data(ReadWriteData):
         if self.mode == "r":
             return
 
-        f = self._open_attrs()
-        data = self.processing(data, initial=True)
-        self._set_space_data(f, 'data', self.dtype_t(data))
-        f.close()
-        self._set_attr("md5", self.calc_md5())
+        with h5py.File(self.url(), 'a') as f:
+            f.require_group("data")
+            data = self.processing(data, initial=True)
+            self._set_space_data(f, 'data', self.dtype_t(data))
 
-    def _prepare_attrs(self, shape):
-        f = self._open_attrs()
-        self._set_space_shape(f, "data", shape)
-        return f
+        self.md5 = self.calc_md5()
 
     def empty(self, name, dataset_path=None, dtype='float64', apply_transforms=False):
         """
@@ -693,30 +732,25 @@ class DataLabel(Data):
                 compression_level=0,
                 chunks=100,
                 rewrite=True):
-        self.name = name
-        self._applied_transforms = False
-        self.chunks = chunks
-        self.rewrite = rewrite
 
-        if dataset_path is None:
-            self.dataset_path = settings["dataset_path"]
-        else:
-            self.dataset_path = dataset_path
+        super(DataLabel, self).__init__(name=name, dataset_path=dataset_path,
+            apply_transforms=apply_transforms,transforms=transforms, dtype=dtype,
+            description=description, author=author, compression_level=compression_level,
+            chunks=chunks, rewrite=rewrite)
         
-        if transforms is None:
-            transforms = Transforms()
-
-        if not self._preload_attrs() or self.rewrite == True:
-            self.apply_transforms = apply_transforms
-            self.author = author
-            self.description = description
-            self.compression_level = compression_level
-            self.dtype = dtype
+        self._attrs.append("ltype")
+        if self.mode == "w" or self.rewrite:
             self.ltype = ltype
-            self.transforms = transforms
-            self.mode = "w"
-        else:
-            self.mode = "r"
+
+    @property
+    def ltype(self):
+        return self._get_attr('ltype')
+
+    @ltype.setter
+    def ltype(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['ltype'] = value
 
     @property
     def labels(self):
@@ -742,7 +776,7 @@ class DataLabel(Data):
         """
         try:
             dl = self.desfragment()
-            dataset, n_labels = self.only_labels_per_data(dl, labels)
+            dataset, n_labels = self.only_labels_from_data(dl, labels)
             dl.destroy()
         except ValueError:
             label = labels[0] if len(labels) > 0 else None
@@ -776,30 +810,6 @@ class DataLabel(Data):
         """
         return self.type_t(self.ltype, labels)
 
-    def _open_attrs(self):
-        f = super(DataLabel, self)._open_attrs()
-        f.attrs['ltype'] = self.ltype
-        return f
-
-    def _preload_attrs(self):
-        try:
-            with h5py.File(self.url(), 'r') as f:
-                self.author = f.attrs['author']
-                self.transforms = Transforms.from_json(f.attrs['transforms'])
-                self.description = f.attrs['description']
-                self.apply_transforms = f.attrs['applied_transforms']
-                self.dtype = f.attrs['dtype']
-                self.ltype = f.attrs['ltype']
-                self.compression_level = f.attrs['compression_level']
-            if self.md5() is None:
-                return False
-        except KeyError:
-            return False
-        except IOError:
-            return False
-        else:
-            return True
-
     def info(self, classes=False):
         """
         :type classes: bool
@@ -813,7 +823,7 @@ class DataLabel(Data):
         print('Author: {}'.format(self.author))
         print('Transforms: {}'.format(self.transforms.to_json()))
         print('Applied transforms: {}'.format(self.apply_transforms))
-        print('MD5: {}'.format(self.md5()))
+        print('MD5: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
         print('       ')
         headers = ["Dataset", "Mean", "Std", "Shape", "dType", "Labels"]
@@ -830,43 +840,35 @@ class DataLabel(Data):
             return
 
         labels_shape = tuple(dsb.shape[0:1] + dsb.train_labels.shape[1:])
-        f = self._prepare_attrs(dsb.shape, labels_shape)
-
-        end = self.chunks_writer(f, "/data/data", dsb.train_data, chunks=self.chunks)
-        end = self.chunks_writer(f, "/data/data", dsb.test_data, chunks=self.chunks, 
+        with h5py.File(self.url(), 'a') as f:
+            f.require_group("data")
+            self._set_space_shape(f, "data", dsb.shape)
+            self._set_space_shape(f, "labels", labels_shape, label=True)
+            end = self.chunks_writer(f, "/data/data", dsb.train_data, chunks=self.chunks)
+            end = self.chunks_writer(f, "/data/data", dsb.test_data, chunks=self.chunks, 
+                                    init=end)
+            self.chunks_writer(f, "/data/data", dsb.validation_data, chunks=self.chunks, 
                                 init=end)
-        self.chunks_writer(f, "/data/data", dsb.validation_data, chunks=self.chunks, 
-                            init=end)
 
-        end = self.chunks_writer(f, "/data/labels", dsb.train_labels, chunks=self.chunks)
-        end = self.chunks_writer(f, "/data/labels", dsb.test_labels, chunks=self.chunks, 
+            end = self.chunks_writer(f, "/data/labels", dsb.train_labels, chunks=self.chunks)
+            end = self.chunks_writer(f, "/data/labels", dsb.test_labels, chunks=self.chunks, 
+                                    init=end)
+            self.chunks_writer(f, "/data/labels", dsb.validation_labels, chunks=self.chunks, 
                                 init=end)
-        self.chunks_writer(f, "/data/labels", dsb.validation_labels, chunks=self.chunks, 
-                            init=end)
-        f.close()        
-        self._set_attr("md5", self.calc_md5())
-
-    def _prepare_attrs(self, shape, labels_shape):
-        f = self._open_attrs()
-        self._set_space_shape(f, "data", shape)
-        self._set_space_shape(f, "labels", labels_shape, label=True)
-        return f
-
-    def _write(self, f, data, labels, init=0):
-        end = self.chunks_writer(f, "/data/data", data, chunks=self.chunks, init=init)
-        end_l = self.chunks_writer(f, "/data/labels", labels, chunks=self.chunks, init=init)
-        return end
+       
+        self.md5 = self.calc_md5()
 
     def build_dataset(self, data, labels):
         """
         build a datalabel dataset from data and labels
         """
-        f = self._open_attrs()
-        data = self.processing(data, initial=True)
-        self._set_space_data(f, 'data', self.dtype_t(data))
-        self._set_space_data(f, 'labels', self.ltype_t(labels), label=True)
-        f.close()
-        self._set_attr("md5", self.calc_md5())
+        with h5py.File(self.url(), 'a') as f:
+            f.require_group("data")
+            data = self.processing(data, initial=True)
+            self._set_space_data(f, 'data', self.dtype_t(data))
+            self._set_space_data(f, 'labels', self.ltype_t(labels), label=True)
+
+        self.md5 = self.calc_md5()
 
     def empty(self, name, dtype='float64', ltype='|S1', apply_transforms=False):
         """
@@ -1205,91 +1207,17 @@ class DataSetBuilder(DataLabel):
                 chunks=100,
                 rewrite=False):
 
-        self.name = uuid.uuid4().hex if name is None else name
-        self._applied_transforms = False
-        self.chunks = chunks
-        self.rewrite = rewrite
+        super(DataSetBuilder, self).__init__(name=name, dataset_path=dataset_path,
+            apply_transforms=apply_transforms,transforms=transforms, dtype=dtype,
+            ltype=ltype, description=description, author=author, 
+            compression_level=compression_level, chunks=chunks, rewrite=rewrite)
 
-        if dataset_path is None:
-            self.dataset_path = settings["dataset_path"]
-        else:
-            self.dataset_path = dataset_path
-
-        if transforms is None:
-            transforms = Transforms()
-
-        self._attrs = ["author", "dtype", "ltype", "transforms"]
-
-        if not self.exist() or self.rewrite:
-            self.create_route()
-            self.mode = "w"
-            self.author = author
-            self.dtype = dtype
-            self.ltype = ltype
-            self.transforms = transforms
-            self.description = description
+        if self.mode == "w" or self.rewrite:
             self.validator = validator
             self.valid_size = valid_size
             self.train_size = train_size
-            self.compression_level = compression_level
-            self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
-            self.dataset_class = self.module_cls_name()
-            self.apply_transforms = apply_transforms
-            #f.attrs['applied_transforms'] = self.apply_transforms
-        else:
-            self.mode = "r"
 
         self.test_size = round(1 - (self.train_size + self.valid_size), 2)
-
-    @property
-    def author(self):
-        return self._get_attr('author')
-
-    @author.setter
-    def author(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['author'] = value
-
-    @property
-    def dtype(self):
-        return self._get_attr('dtype')
-
-    @dtype.setter
-    def dtype(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['dtype'] = value
-
-    @property
-    def ltype(self):
-        return self._get_attr('ltype')
-
-    @ltype.setter
-    def ltype(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['ltype'] = value
-
-    @property
-    def transforms(self):
-        return Transforms.from_json(self._get_attr('transforms'))
-
-    @transforms.setter
-    def transforms(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['transforms'] = value.to_json()
-
-    @property
-    def description(self):
-        return self._get_attr('description')
-
-    @description.setter
-    def description(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['description'] = value
 
     @property
     def valid_size(self):
@@ -1320,46 +1248,6 @@ class DataSetBuilder(DataLabel):
         if self.mode == 'w':
             with h5py.File(self.url(), 'a') as f:
                 f.attrs['validator'] = value
-
-    @property
-    def timestamp(self):
-        return self._get_attr('timestamp')
-
-    @timestamp.setter
-    def timestamp(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['timestamp'] = value
-
-    @property
-    def compression_level(self):
-        return self._get_attr('compression_level')
-
-    @compression_level.setter
-    def compression_level(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['compression_level'] = value
-
-    @property
-    def dataset_class(self):
-        return self._get_attr('dataset_class')
-
-    @dataset_class.setter
-    def dataset_class(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['dataset_class'] = value
-
-    @property
-    def apply_transforms(self):
-        return self._get_attr('apply_transforms')
-
-    @apply_transforms.setter
-    def apply_transforms(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['apply_transforms'] = value
 
     @property
     def train_data(self):
@@ -1403,35 +1291,6 @@ class DataSetBuilder(DataLabel):
         else:
             return (rows,)
 
-    def _open_attrs(self):
-        f = super(DataSetBuilder, self)._open_attrs()
-        f.attrs["validator"] = self.validator
-        f.attrs["train_size"] = self.train_size 
-        f.attrs["valid_size"] = self.valid_size 
-        return f
-
-    def _preload_attrs(self):
-        try:
-            with h5py.File(self.url(), 'r') as f:
-                self.author = f.attrs['author']
-                self.transforms = Transforms.from_json(f.attrs['transforms'])
-                self.description = f.attrs['description']
-                self.apply_transforms = f.attrs['applied_transforms']
-                self.dtype = f.attrs['dtype']
-                self.ltype = f.attrs['ltype']
-                self.compression_level = f.attrs['compression_level']
-                self.validator = f.attrs["validator"]
-                self.train_size = f.attrs["train_size"]
-                self.valid_size = f.attrs["valid_size"]
-            if self.md5() is None:
-                return False
-        except KeyError:
-            return False
-        except IOError:
-            return False
-        else:
-            return True
-
     def desfragment(self, dataset_path=None):
         """
         Concatenate the train, valid and test data in a data array.
@@ -1467,7 +1326,7 @@ class DataSetBuilder(DataLabel):
         print('Author: {}'.format(self.author))
         print('Transforms: {}'.format(self.transforms.to_json()))
         print('Applied transforms: {}'.format(self.apply_transforms))
-        print('MD5: {}'.format(self.md5()))
+        print('MD5: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
         print('       ')
         if self.train_data.dtype != np.object:
@@ -1570,36 +1429,35 @@ class DataSetBuilder(DataLabel):
         if self.mode == "r":
             return
 
-        f = self._open_attrs()
-
-        if self.validator == '' or use_validator == False and test_data is not None\
-            and test_labels is not None and validation_data is not None\
-            and validation_labels is not None:
-                data_labels = [
-                    data, validation_data, test_data,
-                    labels, validation_labels, test_labels]
-        else:
-            if self.validator == 'cross':
-                data_labels = self.cross_validators(data, labels)
-            elif self.validator == 'adversarial':
-                data_labels = self.adversarial_validator(data, labels, test_data, test_labels)
+        with h5py.File(self.url(), 'a') as f:
+            f.require_group("data")
+            if self.validator == '' or use_validator == False and test_data is not None\
+                and test_labels is not None and validation_data is not None\
+                and validation_labels is not None:
+                    data_labels = [
+                        data, validation_data, test_data,
+                        labels, validation_labels, test_labels]
             else:
-                data_labels = self.cross_validators(data, labels)
+                if self.validator == 'cross':
+                    data_labels = self.cross_validators(data, labels)
+                elif self.validator == 'adversarial':
+                    data_labels = self.adversarial_validator(data, labels, test_data, test_labels)
+                else:
+                    data_labels = self.cross_validators(data, labels)
 
-        train_data = self.processing(data_labels[0], initial=True)        
-        validation_data = self.processing(data_labels[1])
-        test_data = self.processing(data_labels[2])
+            train_data = self.processing(data_labels[0], initial=True)        
+            validation_data = self.processing(data_labels[1])
+            test_data = self.processing(data_labels[2])
 
-        self._set_space_data(f, 'train_data', self.dtype_t(train_data))
-        self._set_space_data(f, 'test_data', self.dtype_t(test_data))
-        self._set_space_data(f, 'validation_data', self.dtype_t(validation_data))
+            self._set_space_data(f, 'train_data', self.dtype_t(train_data))
+            self._set_space_data(f, 'test_data', self.dtype_t(test_data))
+            self._set_space_data(f, 'validation_data', self.dtype_t(validation_data))
 
-        self._set_space_data(f, 'train_labels', self.ltype_t(data_labels[3]), label=True)
-        self._set_space_data(f, 'test_labels', self.ltype_t(data_labels[5]), label=True)
-        self._set_space_data(f, 'validation_labels', self.ltype_t(data_labels[4]), label=True)
-
-        f.close()
-        self._set_attr("md5", self.calc_md5())
+            self._set_space_data(f, 'train_labels', self.ltype_t(data_labels[3]), label=True)
+            self._set_space_data(f, 'test_labels', self.ltype_t(data_labels[5]), label=True)
+            self._set_space_data(f, 'validation_labels', self.ltype_t(data_labels[4]), label=True)
+        
+        self.md5 = self.calc_md5()
 
     def _clf(self):
         from ml.clf.extended.w_sklearn import RandomForest

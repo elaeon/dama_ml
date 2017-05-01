@@ -38,9 +38,9 @@ class TestDataset(unittest.TestCase):
             validator="cross",
             rewrite=True)
         dataset.build_dataset(self.X, self.Y)
-        self.assertEqual(self.dataset.train_labels.shape, (5,))
-        self.assertEqual(self.dataset.validation_labels.shape, (2,))
-        self.assertEqual(self.dataset.test_labels.shape, (3,))
+        self.assertEqual(dataset.train_labels.shape, (5,))
+        self.assertEqual(dataset.validation_labels.shape, (2,))
+        self.assertEqual(dataset.test_labels.shape, (3,))
         dataset.destroy()
 
     def test_only_labels(self):
@@ -84,7 +84,7 @@ class TestDataset(unittest.TestCase):
             rewrite=True)
         dataset.build_dataset(self.X, self.Y)
         self.assertEqual(dataset.distinct_data() > 0, True)
-        dataset.destrroy()
+        dataset.destroy()
 
     def test_sparcity(self):
         dataset = DataSetBuilder(
@@ -130,16 +130,16 @@ class TestDataset(unittest.TestCase):
         dataset.apply_transforms = True
         copy = dataset.copy()
         transforms_to_apply = copy.transforms_to_apply
-        copy.destroy()
         self.assertEqual(transforms_to_apply, False)
         self.assertEqual(copy.apply_transforms, dataset.apply_transforms)
+        copy.destroy()
 
         dataset.apply_transforms = False
         copy = dataset.copy()
         transforms_to_apply = copy.transforms_to_apply
-        copy.destroy()
         self.assertEqual(transforms_to_apply, False)        
         self.assertEqual(copy.apply_transforms, dataset.apply_transforms)
+        copy.destroy()
         dataset.destroy()
 
     def test_convert(self):
@@ -218,7 +218,8 @@ class TestDataset(unittest.TestCase):
             validator="cross",
             rewrite=True)
         dataset.build_dataset(self.X, self.Y)
-        dataset.remove_outlayers()
+        outlayers = dataset.outlayers()
+        dataset.remove_outlayers(list(outlayers))
         dataset.destroy()
 
     def test_plot(self):
@@ -236,18 +237,18 @@ class TestDataset(unittest.TestCase):
         dataset.plot(view="rows", type_g="scatter")
         dataset.destroy()
 
-    def test_dsb_build_iter(self):
-        dsb = DataSetBuilder(name="test", dataset_path="/tmp", chunks=100)
-        iter_ = ((i, i) for i in xrange(0, 50))
-        iter2 = (((i, i) for i in xrange(50, 100)))
-        shape = (100, 2)
-        f = dsb._open_attrs()
-        dsb._set_space_shape(f, "train_data", shape)
-        end = dsb.build_dataset_from_iter(f, iter_, "train_data")        
-        dsb.build_dataset_from_iter(f, iter2, "train_data", init=end)
+    #def test_dsb_build_iter(self):
+    #    dsb = DataSetBuilder(name="test", dataset_path="/tmp", chunks=100)
+    #    iter_ = ((i, i) for i in xrange(0, 50))
+    #    iter2 = (((i, i) for i in xrange(50, 100)))
+    #    shape = (100, 2)
+    #    f = dsb._open_attrs()
+    #    dsb._set_space_shape(f, "train_data", shape)
+    #    end = dsb.build_dataset_from_iter(f, iter_, "train_data")        
+    #    dsb.build_dataset_from_iter(f, iter2, "train_data", init=end)
         #print(dsb.train_data[:])
-        f.close()
-        dsb.destroy()
+    #    f.close()
+    #    dsb.destroy()
 
     def test_get_set(self):
         from ml.processing import rgb2gray
@@ -272,6 +273,8 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(type(dsb.timestamp), type(''))
         self.assertEqual(dsb.apply_transforms, False)
 
+        dsb.build_dataset(self.X, self.Y)
+        self.assertEqual(type(dsb.md5), type(''))
         dsb.destroy()
 
     def test_to_libsvm(self):
