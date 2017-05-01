@@ -13,3 +13,4 @@ h5py>=2.6.0
 xmltodict>=0.10.2
 keras>=1.1.1
 seaborn>=0.7.1
+dill>=0.2.6

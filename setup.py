@@ -19,7 +19,8 @@ install_requires = [
     'h5py>=2.6.0',
     'GPy>=1.5.6',
     'climin>=0.1a1',
-    'xmltodict>=0.10.2'
+    'xmltodict>=0.10.2',
+    'dill>=0.2.6.'
 ]
 
 this_dir = abspath(dirname(__file__))
@@ -36,7 +37,7 @@ tests_require = [
 
 setup(
     name='ml',
-    version='0.2.0',
+    version='0.4.0',
     description='A modern machine learning framework',
     long_description=long_description,
     author="Alejandro G. Martínez Romero",
