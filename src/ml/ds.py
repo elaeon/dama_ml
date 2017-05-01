@@ -91,9 +91,10 @@ class ReadWriteData(object):
             with h5py.File(self.url(), 'r') as f:
                 return f.attrs[name]
         except KeyError:
+            log.debug("Not found attribute {} in file {}".format(name, self.url()))
             return None
         except IOError:
-            log.debug("Error found in file {}".format(self.url()))
+            log.debug("Error opening file {}".format(name, self.url()))
             return None
 
     def chunks_writer(self, f, name, data, chunks=128, init=0):
@@ -329,6 +330,17 @@ class Data(ReadWriteData):
         else:
             return True
 
+    def exist(self):
+        try:
+            with h5py.File(self.url(), 'r') as f:
+                for attr in self._attrs:
+                    if not attr in f.attrs:
+                        return False
+        except IOError:
+            return False
+        else:
+            return True
+
     def info(self, classes=False):
         """
         :type classes: bool
@@ -416,24 +428,34 @@ class Data(ReadWriteData):
         f.close()        
         self._set_attr("md5", self.calc_md5())
 
-    def _prepare_attrs(self, shape):
-        f = self._open_attrs()
-        self._set_space_shape(f, "data", shape)
-        return f
+    def build_dataset_from_iter(self, f, iter_, name, init=0):
+        """
+        Build a dataset from an iterator
+        """
+        if self.mode == "r":
+            return
 
-    def _write(self, f, data, labels, init=0):
-        end = self.chunks_writer(f, "/data/data", data, chunks=self.chunks, init=init)
+        end = self.chunks_writer(f, "/data/{}".format(name), iter_, chunks=self.chunks, init=init)
+        print(end)
         return end
 
     def build_dataset(self, data):
         """
         build a datalabel dataset from data and labels
         """
+        if self.mode == "r":
+            return
+
         f = self._open_attrs()
         data = self.processing(data, initial=True)
         self._set_space_data(f, 'data', self.dtype_t(data))
         f.close()
         self._set_attr("md5", self.calc_md5())
+
+    def _prepare_attrs(self, shape):
+        f = self._open_attrs()
+        self._set_space_shape(f, "data", shape)
+        return f
 
     def empty(self, name, dataset_path=None, dtype='float64', apply_transforms=False):
         """
@@ -1196,21 +1218,148 @@ class DataSetBuilder(DataLabel):
         if transforms is None:
             transforms = Transforms()
 
-        if not self._preload_attrs() or self.rewrite == True:
+        self._attrs = ["author", "dtype", "ltype", "transforms"]
+
+        if not self.exist() or self.rewrite:
+            self.create_route()
+            self.mode = "w"
+            self.author = author
             self.dtype = dtype
             self.ltype = ltype
             self.transforms = transforms
+            self.description = description
+            self.validator = validator
             self.valid_size = valid_size
             self.train_size = train_size
-            self.test_size = round(1 - (train_size + valid_size), 2)
-            self.apply_transforms = apply_transforms
-            self.validator = validator
-            self.author = author
-            self.description = description
             self.compression_level = compression_level
-            self.mode = "w"
+            self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
+            self.dataset_class = self.module_cls_name()
+            self.apply_transforms = apply_transforms
+            #f.attrs['applied_transforms'] = self.apply_transforms
         else:
             self.mode = "r"
+
+        self.test_size = round(1 - (self.train_size + self.valid_size), 2)
+
+    @property
+    def author(self):
+        return self._get_attr('author')
+
+    @author.setter
+    def author(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['author'] = value
+
+    @property
+    def dtype(self):
+        return self._get_attr('dtype')
+
+    @dtype.setter
+    def dtype(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['dtype'] = value
+
+    @property
+    def ltype(self):
+        return self._get_attr('ltype')
+
+    @ltype.setter
+    def ltype(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['ltype'] = value
+
+    @property
+    def transforms(self):
+        return Transforms.from_json(self._get_attr('transforms'))
+
+    @transforms.setter
+    def transforms(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['transforms'] = value.to_json()
+
+    @property
+    def description(self):
+        return self._get_attr('description')
+
+    @description.setter
+    def description(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['description'] = value
+
+    @property
+    def valid_size(self):
+        return self._get_attr('valid_size')
+
+    @valid_size.setter
+    def valid_size(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['valid_size'] = value
+
+    @property
+    def train_size(self):
+        return self._get_attr('train_size')
+
+    @train_size.setter
+    def train_size(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['train_size'] = value
+
+    @property
+    def validator(self):
+        return self._get_attr('validator')
+
+    @validator.setter
+    def validator(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['validator'] = value
+
+    @property
+    def timestamp(self):
+        return self._get_attr('timestamp')
+
+    @timestamp.setter
+    def timestamp(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['timestamp'] = value
+
+    @property
+    def compression_level(self):
+        return self._get_attr('compression_level')
+
+    @compression_level.setter
+    def compression_level(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['compression_level'] = value
+
+    @property
+    def dataset_class(self):
+        return self._get_attr('dataset_class')
+
+    @dataset_class.setter
+    def dataset_class(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['dataset_class'] = value
+
+    @property
+    def apply_transforms(self):
+        return self._get_attr('apply_transforms')
+
+    @apply_transforms.setter
+    def apply_transforms(self, value):
+        if self.mode == 'w':
+            with h5py.File(self.url(), 'a') as f:
+                f.attrs['apply_transforms'] = value
 
     @property
     def train_data(self):

@@ -17,7 +17,7 @@ def choice(operator):
     return inner
 
 
-class IterLayer:
+class IterLayer(object):
     def __init__(self, fn_iter):
         if isinstance(fn_iter, types.GeneratorType):
             self.fn_iter = fn_iter
@@ -33,6 +33,10 @@ class IterLayer:
     def stream_operation(self, operator, stream):
         iter_ = imap(lambda x: operator(x[0], x[1]), izip(self, stream))
         return IterLayer(iter_)
+
+    def to_dsb(self):
+        from ml.ds import DataSetBuilder
+        pass
 
     @choice(operator.add)
     def __add__(self, x):
