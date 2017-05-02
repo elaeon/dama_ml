@@ -237,18 +237,17 @@ class TestDataset(unittest.TestCase):
         dataset.plot(view="rows", type_g="scatter")
         dataset.destroy()
 
-    #def test_dsb_build_iter(self):
-    #    dsb = DataSetBuilder(name="test", dataset_path="/tmp", chunks=100)
-    #    iter_ = ((i, i) for i in xrange(0, 50))
-    #    iter2 = (((i, i) for i in xrange(50, 100)))
-    #    shape = (100, 2)
-    #    f = dsb._open_attrs()
-    #    dsb._set_space_shape(f, "train_data", shape)
-    #    end = dsb.build_dataset_from_iter(f, iter_, "train_data")        
-    #    dsb.build_dataset_from_iter(f, iter2, "train_data", init=end)
-        #print(dsb.train_data[:])
-    #    f.close()
-    #    dsb.destroy()
+    def test_dsb_build_iter(self):
+        dsb = DataSetBuilder(name="test", dataset_path="/tmp", chunks=100, dtype="int64")
+        shape = (10000, 2)
+        step = 0
+        range_list = range(0, 15000, 50)
+        for init, end in zip(range_list, range_list[1:]):
+            iter_ = ((i, i) for i in xrange(init, end))
+            step = dsb.build_dataset_from_iter(iter_, shape, "train_data", init=step)
+        self.assertEqual(dsb.train_data.shape, shape)
+        self.assertItemsEqual(dsb.train_data[9999], [9999, 9999])
+        dsb.destroy()
 
     def test_get_set(self):
         from ml.processing import rgb2gray

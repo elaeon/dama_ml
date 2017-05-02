@@ -103,7 +103,7 @@ class ReadWriteData(object):
         from ml.utils.seq import grouper_chunk
         end = init
         for row in grouper_chunk(chunks, data):
-            seq = np.asarray(list(row))
+            seq = self.dtype_t(np.asarray(list(row)))
             end += seq.shape[0]
             #print("init:{}, end:{}, shape:{}, chunks:{}".format(init, end, seq.shape, chunks))
             f[name][init:end] = seq
@@ -358,7 +358,7 @@ class Data(ReadWriteData):
             return data
 
         ttype = np.dtype(ttype)
-        if data.dtype is not ttype and data.dtype != np.object:
+        if data.dtype != ttype and data.dtype != np.object:
             return data.astype(ttype)
         else:
             return data
@@ -413,12 +413,6 @@ class Data(ReadWriteData):
         h = hashlib.md5(self.data[:])
         return h.hexdigest()
 
-    #def md5(self):
-    #    """
-    #    return the signature of the dataset in hex md5
-    #    """
-    #    return self._get_attr("md5")
-
     def distinct_data(self):
         """
         return the radio of distincts elements in the training data.
@@ -471,15 +465,17 @@ class Data(ReadWriteData):
         
         self.md5 = self.calc_md5()
 
-    def build_dataset_from_iter(self, f, iter_, name, init=0):
+    def build_dataset_from_iter(self, iter_, shape, name, init=0):
         """
         Build a dataset from an iterator
         """
         if self.mode == "r":
             return
 
-        end = self.chunks_writer(f, "/data/{}".format(name), iter_, chunks=self.chunks, init=init)
-        print(end)
+        with h5py.File(self.url(), 'a') as f:
+            f.require_group("data")
+            self._set_space_shape(f, name, shape)
+            end = self.chunks_writer(f, "/data/{}".format(name), iter_, chunks=self.chunks, init=init)
         return end
 
     def build_dataset(self, data):
