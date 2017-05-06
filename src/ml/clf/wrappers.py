@@ -232,7 +232,7 @@ class BaseClassif(DataDrive):
         self.num_features = self.dataset.num_features()
 
     def set_dataset(self, dataset, auto=True):
-        self._original_dataset_md5 = dataset.md5()
+        self._original_dataset_md5 = dataset.md5
         if auto is True:
             self.dataset = self.reformat_all(dataset)
             if self.dataset.mode == "w":
@@ -317,7 +317,7 @@ class BaseClassif(DataDrive):
         list_measure = self.scores()
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
-                "md5": self.dataset.md5(),
+                "md5": self.dataset.md5,
                 "original_ds_md5": self._original_dataset_md5, #not reformated dataset
                 "group_name": self.group_name,
                 "model_module": self.module_cls_name(),
@@ -336,7 +336,7 @@ class BaseClassif(DataDrive):
         self.labels_encode(meta["base_labels"])
         self.group_name = meta.get('group_name', None)
         self.dl = Data.original_ds(name=meta["dl"], dataset_path=settings["dataset_model_path"])
-        if meta.get('md5', None) != dataset.md5():
+        if meta.get('md5', None) != dataset.md5:
             log.warning("The dataset md5 is not equal to the model '{}'".format(
                 self.__class__.__name__))
         return dataset
