@@ -239,8 +239,12 @@ class BaseClassif(DataDrive):
                 self.dl = self.dataset.desfragment(dataset_path=settings["dataset_model_path"])
                 self.edit_meta("dl", self.dl.name)
             else:
-                meta = self.load_meta()
-                self.dl = Data.original_ds(name=meta["dl"], dataset_path=settings["dataset_model_path"])
+                try:
+                    meta = self.load_meta()
+                    self.dl = Data.original_ds(name=meta["dl"], dataset_path=settings["dataset_model_path"])
+                except KeyError:
+                    self.dl = self.dataset.desfragment(dataset_path=settings["dataset_model_path"])
+                    self.edit_meta("dl", self.dl.name)
         else:
             self.dataset.destroy()
             self.dataset = dataset

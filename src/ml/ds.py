@@ -151,8 +151,8 @@ class ReadWriteData(object):
     @classmethod
     def original_ds(self, name, dataset_path=None):
         from pydoc import locate
-        meta_dataset = Data(name=name, dataset_path=dataset_path)
-        DS = locate(meta_dataset._get_attr("dataset_class"))
+        meta_dataset = Data(name=name, dataset_path=dataset_path, rewrite=False)
+        DS = locate(meta_dataset.dataset_class)
         return DS(name=name, dataset_path=dataset_path)
     
 
@@ -1209,11 +1209,14 @@ class DataSetBuilder(DataLabel):
             compression_level=compression_level, chunks=chunks, rewrite=rewrite)
 
         if self.mode == "w" or self.rewrite:
-            self.validator = validator
+            self.validator = validator if validator is not None else ''
             self.valid_size = valid_size
             self.train_size = train_size
 
-        self.test_size = round(1 - (self.train_size + self.valid_size), 2)
+        if self.train_size is not None or self.valid_size is not None:
+            self.test_size = round(1 - (self.train_size + self.valid_size), 2)
+        else:
+            self.test_size = 0
 
     @property
     def valid_size(self):
@@ -1410,24 +1413,20 @@ class DataSetBuilder(DataLabel):
     #    self.save()
 
     def build_dataset(self, data, labels, test_data=None, test_labels=None, 
-                        validation_data=None, validation_labels=None, 
-                        use_validator=True):
+                        validation_data=None, validation_labels=None):
         """
         :type data: ndarray
         :param data: array of values to save in the dataset
 
         :type labels: ndarray
         :param labels: array of labels to save in the dataset
-
-        :type use_validator: bool
-        :param use_validator: if want to use cross validator or adversarial
         """
         if self.mode == "r":
             return
 
         with h5py.File(self.url(), 'a') as f:
             f.require_group("data")
-            if self.validator == '' or use_validator == False and test_data is not None\
+            if self.validator == '' and test_data is not None\
                 and test_labels is not None and validation_data is not None\
                 and validation_labels is not None:
                     data_labels = [
@@ -1436,8 +1435,8 @@ class DataSetBuilder(DataLabel):
             else:
                 if self.validator == 'cross':
                     data_labels = self.cross_validators(data, labels)
-                elif self.validator == 'adversarial':
-                    data_labels = self.adversarial_validator(data, labels, test_data, test_labels)
+                #elif self.validator == 'adversarial':
+                #    data_labels = self.adversarial_validator(data, labels, test_data, test_labels)
                 else:
                     data_labels = self.cross_validators(data, labels)
 
