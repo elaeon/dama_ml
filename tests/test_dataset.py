@@ -3,6 +3,7 @@ import numpy as np
 import csv
 
 from ml.ds import DataSetBuilder, DataSetBuilderFile, DataSetBuilderFold, DataLabel
+from ml.ds import Data
 from ml.processing import Transforms
 
 
@@ -176,8 +177,9 @@ class TestDataset(unittest.TestCase):
         dataset.build_dataset(self.X, self.Y)
         transforms = Transforms()
         if dataset.transforms_to_apply is True:
-            dsb = dataset.add_transforms("add_transform", transforms)
+            dsb = dataset.add_transforms(transforms, name="add_transform")
             self.assertEqual(dsb.transforms_to_apply, True)
+            self.assertEqual(dsb.name == "add_transform", True)
             dsb.destroy()
         dataset.destroy()
         
@@ -189,8 +191,9 @@ class TestDataset(unittest.TestCase):
             validator="cross")
 
         dataset.build_dataset(self.X, self.Y)
-        dsb = dataset.add_transforms("add_transform", transforms)
+        dsb = dataset.add_transforms(transforms)
         self.assertEqual(dsb.transforms_to_apply, False)
+        self.assertEqual(dsb.name != "add_transform", True)
         dsb.destroy()
         dataset.destroy()
 
@@ -313,6 +316,16 @@ class TestDataset(unittest.TestCase):
         check("/tmp/test.test.txt")
         check("/tmp/test.validation.txt")
         dataset.destroy()
+
+    def test_rewrite(self):
+        dsb = DataSetBuilder(name="test", dataset_path="/tmp", chunks=100, 
+            author="AGMR", rewrite=True, dtype='float32', transforms=transforms,
+            description="description text", train_size=.7, valid_size=.1, 
+            validator="cross", compression_level=5, ltype='int',
+            apply_transforms = False)
+
+        dsb2 = DataSetBuilder(name="test", dataset_path="/tmp", rewrite=True)
+        dsb2.info()
 
 
 class TestDataSetFile(unittest.TestCase):

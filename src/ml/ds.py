@@ -190,7 +190,7 @@ class Data(ReadWriteData):
     """
     def __init__(self, name=None, dataset_path=None, transforms=None,
                 apply_transforms=False, dtype='float64', description='',
-                author='', compression_level=0, chunks=100, rewrite=True):
+                author='', compression_level=0, chunks=100, rewrite=False):
 
         self.name = uuid.uuid4().hex if name is None else name
         self._applied_transforms = False
@@ -523,14 +523,14 @@ class Data(ReadWriteData):
         data.close_reader()
         return data
 
-    def copy(self, dataset_path=None, percentaje=1):
+    def copy(self, name=None, dataset_path=None, percentaje=1):
         """
         :type percentaje: float
         :param percentaje: value between [0, 1], this value represent the size of the dataset to copy.
         
         copy the dataset, a percentaje is permited for the size of the copy
         """
-        name = self.name + "_copy_" + uuid.uuid4().hex
+        name = self.name + "_copy_" + uuid.uuid4().hex if name is None else name
         data = self.convert(name, dtype=self.dtype,
                         apply_transforms=self.apply_transforms, 
                         percentaje=percentaje, dataset_path=dataset_path)
@@ -616,7 +616,7 @@ class Data(ReadWriteData):
             y_pred = clf.predict(data)
         return (i for i, v in enumerate(y_pred) if v == -1)
 
-    def add_transforms(self, name, transforms):
+    def add_transforms(self, transforms, name=None):
         """
         :type name: string
         :param name: result dataset's name
@@ -625,7 +625,7 @@ class Data(ReadWriteData):
         :param transforms: transforms to apply in the new dataset
         """
         if self.apply_transforms == True:
-            dsb_c = self.copy()
+            dsb_c = self.copy(name=name)
             dsb_c.apply_transforms = False
             dsb_c.transforms = transforms
             dsb = dsb_c.convert(name, dtype=self.dtype, apply_transforms=True, 
@@ -633,7 +633,7 @@ class Data(ReadWriteData):
             dsb_c.destroy()
             dsb.transforms = self.transforms + transforms
         else:
-            dsb = self.copy()
+            dsb = self.copy(name=name)
             dsb.transforms += transforms
         return dsb
         
@@ -727,7 +727,7 @@ class DataLabel(Data):
                 author='',
                 compression_level=0,
                 chunks=100,
-                rewrite=True):
+                rewrite=False):
 
         super(DataLabel, self).__init__(name=name, dataset_path=dataset_path,
             apply_transforms=apply_transforms,transforms=transforms, dtype=dtype,
@@ -897,14 +897,14 @@ class DataLabel(Data):
         dl.close_reader()
         return dl
 
-    def copy(self, percentaje=1):
+    def copy(self, name=None, percentaje=1):
         """
         :type percentaje: float
         :param percentaje: value between [0, 1], this value represent the size of the dataset to copy.
         
         copy the dataset, a percentaje is permited for the size of the copy
         """
-        name = self.name + "_copy_" + uuid.uuid4().hex
+        name = self.name + "_copy_" + uuid.uuid4().hex if name is None else name
         dl = self.convert(name, dtype=self.dtype, ltype=self.ltype, 
                         apply_transforms=self.apply_transforms, 
                         percentaje=percentaje)
@@ -937,7 +937,7 @@ class DataLabel(Data):
     def from_DF(self, name, df, transforms=None, apply_transforms=None, path=None):
         pass
 
-    def add_transforms(self, name, transforms):
+    def add_transforms(self, transforms, name=None):
         """
         :type name: string
         :param name: result dataset's name
@@ -946,7 +946,7 @@ class DataLabel(Data):
         :param transforms: transforms to apply in the new dataset
         """
         if self.apply_transforms == True:
-            dsb_c = self.copy()
+            dsb_c = self.copy(name=name)
             dsb_c.apply_transforms = False
             dsb_c.transforms = transforms
             dsb = dsb_c.convert(name, dtype=self.dtype, ltype=self.ltype, 
@@ -954,7 +954,7 @@ class DataLabel(Data):
             dsb_c.destroy()
             dsb.transforms = self.transforms + transforms
         else:
-            dsb = self.copy()
+            dsb = self.copy(name=name)
             dsb.transforms += transforms
         return dsb
         
@@ -1413,7 +1413,7 @@ class DataSetBuilder(DataLabel):
     #    self.save()
 
     def build_dataset(self, data, labels, test_data=None, test_labels=None, 
-                        validation_data=None, validation_labels=None):
+                    validation_data=None, validation_labels=None):
         """
         :type data: ndarray
         :param data: array of values to save in the dataset
@@ -1426,8 +1426,8 @@ class DataSetBuilder(DataLabel):
 
         with h5py.File(self.url(), 'a') as f:
             f.require_group("data")
-            if self.validator == '' and test_data is not None\
-                and test_labels is not None and validation_data is not None\
+            if test_data is not None and test_labels is not None\
+                and validation_data is not None\
                 and validation_labels is not None:
                     data_labels = [
                         data, validation_data, test_data,
@@ -1499,8 +1499,7 @@ class DataSetBuilder(DataLabel):
             test_data=calc_nshape(self.test_data, percentaje),
             test_labels=calc_nshape(self.test_labels, percentaje),
             validation_data=calc_nshape(self.validation_data, percentaje),
-            validation_labels=calc_nshape(self.validation_labels, percentaje),
-            use_validator=False)
+            validation_labels=calc_nshape(self.validation_labels, percentaje))
         dsb.close_reader()
         return dsb
 
@@ -1637,8 +1636,8 @@ class DataSetBuilderImage(DataSetBuilder):
                 labels.append(number_id)
         return images_data, labels
 
-    def copy(self, percentaje=1):
-        dataset = super(DataSetBuilderImage, self).copy(percentaje=percentaje)
+    def copy(self, name=None, percentaje=1):
+        dataset = super(DataSetBuilderImage, self).copy(name=name, percentaje=percentaje)
         dataset.image_size = self.image_size
         return dataset
 

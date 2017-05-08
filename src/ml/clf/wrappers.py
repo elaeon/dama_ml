@@ -86,8 +86,10 @@ class DataDrive(object):
     def destroy(self):
         """remove the dataset associated to the model and his checkpoints"""
         from ml.utils.files import rm
+        #print("DS", self.dataset.name)
         self.dataset.destroy()
         #if hasattr(self, 'dl') and self.dl is not None:
+        #print("DL", self.dl.name)
         self.dl.destroy()
         rm(self.get_model_path()+"."+self.ext)
         rm(self.get_model_path()+".xmeta")
@@ -197,7 +199,7 @@ class BaseClassif(DataDrive):
     def reformat_all(self, dataset):
         log.info("Reformating {}...".format(self.cls_name()))
         dsb = DataSetBuilder(
-            name=dataset.name+"_"+self.model_name+"_"+self.cls_name(),
+            name=dataset.name+"_"+self.model_name+"_"+self.model_version+"_"+self.cls_name(),
             dataset_path=settings["dataset_model_path"],
             apply_transforms=True,
             compression_level=9,

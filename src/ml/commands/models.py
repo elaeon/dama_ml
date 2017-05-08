@@ -51,13 +51,14 @@ def run(args):
         clf, model_name, version = args.rm.split(".")
         name_version = model_name + "." + version
         model_path_meta = os.path.join(settings["checkpoints_path"], clf, name_version, name_version)
-        model_path = os.path.join(settings["checkpoints_path"], clf, name_version)    
-        dataset_name = DataDrive.read_meta("dataset_name", model_path_meta)
-        dataset = Data.original_ds(name=dataset_name, dataset_path=settings["dataset_model_path"])
-        dataset.destroy()
-        print("Delete dataset: {}".format(dataset.url()))
-        print("Delete model: {}".format(model_path))
-        rm(model_path)
+        print(DataDrive.read_meta(None, model_path_meta))
+        #model_path = os.path.join(settings["checkpoints_path"], clf, name_version)    
+        #dataset_name = DataDrive.read_meta("dataset_name", model_path_meta)
+        #dataset = Data.original_ds(name=dataset_name, dataset_path=settings["dataset_model_path"])
+        #dataset.destroy()
+        #print("Delete dataset: {}".format(dataset.url()))
+        #print("Delete model: {}".format(model_path))
+        #rm(model_path)
         print("Done.")
     else:
         headers = ["classif", "model name", "version", "dataset", "group"]

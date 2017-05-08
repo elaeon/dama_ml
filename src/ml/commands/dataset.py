@@ -27,8 +27,6 @@ def run(args):
     elif args.remove_outlayers:
         dataset = Data.original_ds(args.remove_outlayers)
         dataset.remove_outlayers()
-    #elif args.clean:
-    #    print("Done.")
     elif args.used_in:        
         dataset = Data.original_ds(args.used_in)
         for _, model_path_meta in get_models_from_dataset(dataset, settings["checkpoints_path"]):
