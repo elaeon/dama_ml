@@ -30,6 +30,28 @@ def predict(classif, path):
         for row in predictions:
             csvwriter.writerow(row)
 
+def build():
+    dsb = DataSetBuilder(name="numerai", compression_level=6, validator=None)
+    training_data = pd.read_csv('numerai_training_data.csv', header=0)
+    prediction_data = pd.read_csv('numerai_tournament_data.csv', header=0)
+
+    features = [f for f in list(training_data) if "feature" in f]
+    data = training_data[features].as_matrix()
+    labels = training_data["target"].as_matrix()
+    #test = prediction_data[prediction_data['data_type'] == 'test']
+    #test_data = test[features].as_matrix()
+    #test_labels = test['target'].as_matrix()
+    validation = prediction_data[prediction_data['data_type'] == 'validation']
+    validation_data = validation[features].as_matrix()
+    validation_labels = validation['target'].as_matrix()
+
+    data = np.vstack((data, validation_data))
+    labels = np.append(labels, validation_labels, axis=0)
+    #dsb.build_dataset(data, labels, test_data=test_data, test_labels=test_labels,
+    #    validation_data=validation_data, validation_labels=validation_labels)
+
+    dsb.build_dataset(data, labels)
+    dsb.info()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
