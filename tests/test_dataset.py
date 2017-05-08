@@ -327,6 +327,18 @@ class TestDataset(unittest.TestCase):
         dsb2 = DataSetBuilder(name="test", dataset_path="/tmp", rewrite=True)
         dsb2.info()
 
+    def test_to_data(self):
+        dataset = DataSetBuilder(
+            name="test_ds_1",
+            dataset_path="/tmp/",
+            ltype='int',
+            validator="cross",
+            rewrite=True)
+        dataset.build_dataset(self.X, self.Y)
+        data = dataset.to_data()
+        dataset.destroy()
+        data.destroy()
+
 
 class TestDataSetFile(unittest.TestCase):
     def setUp(self):

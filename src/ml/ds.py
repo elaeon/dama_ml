@@ -96,16 +96,16 @@ class ReadWriteData(object):
             log.debug("Not found attribute {} in file {}".format(name, self.url()))
             return None
         except IOError:
-            log.debug("Error opening file {}".format(name, self.url()))
+            log.debug("Error opening {} in file {}".format(name, self.url()))
             return None
 
-    def chunks_writer(self, f, name, data, chunks=128, init=0):
+    def chunks_writer(self, f, name, data, chunks=128, init=0, type_t=None):
         from ml.utils.seq import grouper_chunk
         end = init
         for row in grouper_chunk(chunks, data):
-            seq = self.dtype_t(np.asarray(list(row)))
+            seq = type_t(np.asarray(list(row)))
             end += seq.shape[0]
-            #print("init:{}, end:{}, shape:{}, chunks:{}".format(init, end, seq.shape, chunks))
+            #print("init:{}, end:{}, shape:{}, chunks:{}, name: {}".format(init, end, seq.shape, chunks, name))
             f[name][init:end] = seq
             init = end
         return end
@@ -374,10 +374,7 @@ class Data(ReadWriteData):
 
     def exist(self):
         try:
-            with h5py.File(self.url(), 'r') as f:
-                for attr in self._attrs:
-                    if not attr in f.attrs:
-                        return False
+            return self.md5 != None
         except IOError:
             return False
         else:
@@ -457,15 +454,16 @@ class Data(ReadWriteData):
         with h5py.File(self.url(), 'a') as f:
             f.require_group("data")
             self._set_space_shape(f, "data", dsb.shape)
-            end = self.chunks_writer(f, "/data/data", dsb.train_data, chunks=self.chunks)
+            end = self.chunks_writer(f, "/data/data", dsb.train_data, 
+                chunks=self.chunks, type_t=self.dtype_t)
             end = self.chunks_writer(f, "/data/data", dsb.test_data, chunks=self.chunks, 
-                                    init=end)
+                                    init=end, type_t=self.dtype_t)
             self.chunks_writer(f, "/data/data", dsb.validation_data, chunks=self.chunks, 
-                                init=end)
+                                init=end, type_t=self.dtype_t)
         
         self.md5 = self.calc_md5()
 
-    def build_dataset_from_iter(self, iter_, shape, name, init=0):
+    def build_dataset_from_iter(self, iter_, shape, name, init=0, type_t=None):
         """
         Build a dataset from an iterator
         """
@@ -475,7 +473,8 @@ class Data(ReadWriteData):
         with h5py.File(self.url(), 'a') as f:
             f.require_group("data")
             self._set_space_shape(f, name, shape)
-            end = self.chunks_writer(f, "/data/{}".format(name), iter_, chunks=self.chunks, init=init)
+            end = self.chunks_writer(f, "/data/{}".format(name), iter_, 
+                chunks=self.chunks, init=init, type_t=type_t)
         return end
 
     def build_dataset(self, data):
@@ -840,17 +839,19 @@ class DataLabel(Data):
             f.require_group("data")
             self._set_space_shape(f, "data", dsb.shape)
             self._set_space_shape(f, "labels", labels_shape, label=True)
-            end = self.chunks_writer(f, "/data/data", dsb.train_data, chunks=self.chunks)
+            end = self.chunks_writer(f, "/data/data", dsb.train_data, chunks=self.chunks,
+                type_t=self.dtype_t)
             end = self.chunks_writer(f, "/data/data", dsb.test_data, chunks=self.chunks, 
-                                    init=end)
+                                    init=end, type_t=self.dtype_t)
             self.chunks_writer(f, "/data/data", dsb.validation_data, chunks=self.chunks, 
-                                init=end)
+                                init=end, type_t=self.dtype_t)
 
-            end = self.chunks_writer(f, "/data/labels", dsb.train_labels, chunks=self.chunks)
+            end = self.chunks_writer(f, "/data/labels", dsb.train_labels, 
+                chunks=self.chunks, type_t=self.ltype_t)
             end = self.chunks_writer(f, "/data/labels", dsb.test_labels, chunks=self.chunks, 
-                                    init=end)
+                                    init=end, type_t=self.ltype_t)
             self.chunks_writer(f, "/data/labels", dsb.validation_labels, chunks=self.chunks, 
-                                init=end)
+                                init=end, type_t=self.ltype_t)
        
         self.md5 = self.calc_md5()
 
@@ -1092,7 +1093,7 @@ class DataLabel(Data):
                             compression_level=9,
                             rewrite=False)
 
-                    if not dl.exists():
+                    if not dl.exist():
                         ds = self.to_data()
                         classif = PTsne(model_name="tsne", model_version="1", 
                             check_point_path="/tmp/", dataset=ds, latent_dim=2)

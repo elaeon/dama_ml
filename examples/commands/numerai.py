@@ -1,6 +1,6 @@
 import argparse
 
-from ml.ds import DataSetBuilderFile
+from ml.ds import DataSetBuilder
 from ml.utils.config import get_settings
 from ml.utils.numeric_functions import le
 from ml.processing import Transforms
@@ -24,16 +24,19 @@ def predict(classif, path):
     for value, label in zip(list(classif.predict(data, raw=True, chunk_size=258)), ids):
         predictions.append([str(label), str(value[1])])
     
-    with open("predictions.csv", "w") as csvfile:
+    with open(settings["predictions_file_path"], "w") as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
         csvwriter.writerow(["id", "probability"])
         for row in predictions:
             csvwriter.writerow(row)
 
 def build():
+    import pandas as pd
+    import numpy as np
+
     dsb = DataSetBuilder(name="numerai", compression_level=6, validator=None)
-    training_data = pd.read_csv('numerai_training_data.csv', header=0)
-    prediction_data = pd.read_csv('numerai_tournament_data.csv', header=0)
+    training_data = pd.read_csv(settings["numerai_train"], header=0)
+    prediction_data = pd.read_csv(settings["numerai_test"], header=0)
 
     features = [f for f in list(training_data) if "feature" in f]
     data = training_data[features].as_matrix()
@@ -58,8 +61,12 @@ if __name__ == '__main__':
     parser.add_argument("--model-name", help="nombre del dataset a utilizar", type=str)
     parser.add_argument("--model-version", type=str)
     parser.add_argument("--path", type=str)
+    parser.add_argument("--build-dataset", action="store_true")
     args = parser.parse_args()
 
-    dataset = DataSetBuilderFile(args.dataset_name)
-    predict(classif, args.path, "id")
-    print("ok")
+    if args.build_dataset:
+        build()
+    else:    
+        dataset = DataSetBuilderFile(name="numeraiml datasets")
+        predict(classif, args.path, "id")
+        print("ok")

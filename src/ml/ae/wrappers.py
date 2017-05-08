@@ -179,7 +179,7 @@ class BaseAe(DataDrive):
                 "dataset_name": self.dataset.name,
                 "o_dataset_path": self.original_dataset.dataset_path,
                 "o_dataset_name": self.original_dataset.name,
-                "md5": self.original_dataset.md5(), #not reformated dataset
+                "md5": self.original_dataset.md5, #not reformated dataset
                 "group_name": self.group_name,
                 "model_module": self.module_cls_name(),
                 "model_name": self.model_name,
@@ -193,7 +193,7 @@ class BaseAe(DataDrive):
             dataset_path=meta["o_dataset_path"])
         dataset = Data.original_ds(meta["dataset_name"], dataset_path=meta["dataset_path"])
         self.group_name = meta.get('group_name', None)
-        if meta.get('md5', None) != self.original_dataset.md5():
+        if meta.get('md5', None) != self.original_dataset.md5:
             log.warning("The dataset md5 is not equal to the model '{}'".format(
                 self.__class__.__name__))
         return dataset
