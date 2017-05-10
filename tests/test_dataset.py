@@ -247,7 +247,8 @@ class TestDataset(unittest.TestCase):
         range_list = range(0, 15000, 50)
         for init, end in zip(range_list, range_list[1:]):
             iter_ = ((i, i) for i in xrange(init, end))
-            step = dsb.build_dataset_from_iter(iter_, shape, "train_data", init=step)
+            step = dsb.build_dataset_from_iter(iter_, shape, "train_data", 
+                init=step, type_t=dsb.dtype_t)
         self.assertEqual(dsb.train_data.shape, shape)
         self.assertItemsEqual(dsb.train_data[9999], [9999, 9999])
         dsb.destroy()

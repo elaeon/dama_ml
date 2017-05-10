@@ -13,14 +13,15 @@ install_requires = [
     'scikit-learn>=0.18',
     'scipy>=0.18.1',
     'tabulate>=0.7.5',
-    'tensorflow>=0.12.1',
+    'tensorflow==0.12.1',
     'tflearn==0.2.1',
     'tqdm>=4.5.0',
-    'h5py>=2.6.0',
+    'h5py==2.6.0',
     'GPy>=1.5.6',
     'climin>=0.1a1',
     'xmltodict>=0.10.2',
-    'dill>=0.2.6.'
+    'dill>=0.2.6.',
+    'keras==2.0.2'
 ]
 
 this_dir = abspath(dirname(__file__))

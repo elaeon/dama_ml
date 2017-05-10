@@ -149,6 +149,7 @@ class BaseAe(DataDrive):
                 yield prediction
 
     def predict(self, data, raw=False, transform=True, chunk_size=1, model_type="decoder"):
+        from ml.layers import IterLayer
         if self.model is None:
             self.load_model()
 
@@ -158,20 +159,31 @@ class BaseAe(DataDrive):
             log.warning("Chunk size is set to 1")
             chunk_size = 1
 
-        if transform is True and chunk_size > 0:
-            fn = lambda x, s: self.transform_shape(
-                self.dataset.processing(x, initial=False), size=s)
-            return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw, decoder=decoder)
-        elif transform is True and chunk_size == 0:
-            data = self.transform_shape(self.dataset.processing(data, initial=False))
-            return self._predict(data, raw=raw, decoder=decoder)
-        elif transform is False and chunk_size > 0:
-            fn = lambda x, s: self.transform_shape(x, size=s)
-            return self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw, decoder=decoder)
-        elif transform is False and chunk_size == 0:
-            if len(data.shape) == 1:
-                data = self.transform_shape(data)
-            return self._predict(data, raw=raw, decoder=decoder)
+        if isinstance(data, IterLayer):
+            def iter_(fn):
+                for x in data:
+                    yield IterLayer(self._predict(fn(x), raw=raw))
+
+            if transform is True:
+                fn = lambda x: self.transform_shape(self.dataset.processing(list(x), initial=False))
+            else:
+                fn = list
+            return IterLayer(iter_(fn))
+        else:
+            if transform is True and chunk_size > 0:
+                fn = lambda x, s: self.transform_shape(
+                    self.dataset.processing(x, initial=False), size=s)
+                return IterLayer(self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw, decoder=decoder))
+            elif transform is True and chunk_size == 0:
+                data = self.transform_shape(self.dataset.processing(data, initial=False))
+                return IterLayer(self._predict(data, raw=raw, decoder=decoder))
+            elif transform is False and chunk_size > 0:
+                fn = lambda x, s: self.transform_shape(x, size=s)
+                return IterLayer(self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw, decoder=decoder))
+            elif transform is False and chunk_size == 0:
+                if len(data.shape) == 1:
+                    data = self.transform_shape(data)
+                return IterLayer(self._predict(data, raw=raw, decoder=decoder))
 
     def _metadata(self):
         log.info("Generating metadata...")

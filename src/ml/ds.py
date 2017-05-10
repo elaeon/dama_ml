@@ -1075,14 +1075,14 @@ class DataLabel(Data):
                     square=True, xticklabels=5, yticklabels=5,
                     linewidths=.5, cbar_kws={"shrink": .5})
         else:
-            data = self
             if columns is not None:
                 columns = columns.split(",")
                 if type_g == "lm":
-                    df = data.to_df(labels2numbers=True)
+                    df = self.to_df(labels2numbers=True)
                     sns.lmplot(x=columns[0], y=columns[1], data=df, col="target", hue="target")
             else:
-                if data.shape[1] > 2:
+                print(type(self))
+                if self.shape[1] > 2:
                     from ml.ae.extended.w_keras import PTsne
                     dl = DataLabel(name=self.name+"_2d_", 
                             dataset_path=self.dataset_path,
@@ -1101,14 +1101,15 @@ class DataLabel(Data):
                         data = np.asarray(list(classif.predict(self.data)))
                         dl.build_dataset(data, self.labels[:])
                         ds.destroy()
-                    data = dl
+                else:
+                    dl = self
 
-                if data.shape[1] == 2:
+                if dl.shape[1] == 2:
                     if type_g == "lm":
-                        df = data.to_df(labels2numbers=True)
+                        df = dl.to_df(labels2numbers=True)
                         sns.lmplot(x="c0", y="c1", data=df, hue="target")
                     elif type_g == "scatter":
-                        df = data.to_df()
+                        df = dl.to_df()
                         legends = []
                         labels = self.labels_info()
                         colors = cm.rainbow(np.linspace(0, 1, len(labels)))
@@ -1120,7 +1121,7 @@ class DataLabel(Data):
                         plt.legend(p, l, loc='lower left', ncol=3, fontsize=8, 
                             scatterpoints=1, bbox_to_anchor=(0,0))
                     elif type_g == "pairplot":
-                        df = data.to_df(labels2numbers=True)
+                        df = dl.to_df(labels2numbers=True)
                         sns.pairplot(df.astype("float64"), hue='target', 
                             vars=df.columns[:-1], diag_kind="kde", palette="husl")
         plt.show()
