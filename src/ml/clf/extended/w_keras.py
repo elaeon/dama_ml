@@ -14,7 +14,7 @@ class FCNet(Keras):
         model.add(Dense(self.layers[0], input_shape=(self.num_features,)))
         for layer_size in self.layers[1:]:
             model.add(Dense(layer_size, activation='tanh', 
-                activity_regularizer=regularizers.activity_l2(10e-5)))
+                activity_regularizer=regularizers.l2(l=10e-5)))
             model.add(Dropout(0.5))
 
         model.add(Dense(self.num_labels, activation='softmax'))

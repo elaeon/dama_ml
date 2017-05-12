@@ -466,7 +466,7 @@ class TFL(BaseClassif):
 
 
 class Keras(BaseClassif):
-    def __init__(self):
+    def __init__(self, **kwargs):
         super(Keras, self).__init__(**kwargs)
         self.ext = "ckpt"
 
@@ -486,7 +486,7 @@ class Keras(BaseClassif):
         labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
         return data, labels_m
 
-    def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2):
+    def train_kfolds(self, batch_size=10, num_steps=100, n_splits=None):
         from sklearn.model_selection import StratifiedKFold
         self.model = self.prepare_model_k()
         cv = StratifiedKFold(n_splits=n_splits)
