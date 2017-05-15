@@ -283,13 +283,13 @@ class Transforms(object):
 
 class Fit(object):
     def __init__(self, data, **kwargs):
-        self.t = self.fit(data, kwargs)
+        self.t = self.fit(data, **kwargs)
 
     @classmethod
     def module_cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
-    def fit(self, data):
+    def fit(self, data, **params):
         pass
 
     def dim_rule(self, data):
@@ -305,7 +305,7 @@ class FitStandardScaler(Fit):
             data = data.reshape(data.shape[0], -1)
         return data
 
-    def fit(self, data, params):
+    def fit(self, data, **params):
         from sklearn.preprocessing import StandardScaler
         scaler = StandardScaler(**params)
         scaler.fit(self.dim_rule(data))
@@ -318,7 +318,7 @@ class FitRobustScaler(Fit):
             data = data.reshape(data.shape[0], -1)
         return data
 
-    def fit(self, data, params):
+    def fit(self, data, **params):
         from sklearn.preprocessing import RobustScaler
         scaler = RobustScaler(**params)
         scaler.fit(self.dim_rule(data))
@@ -331,11 +331,28 @@ class FitTruncatedSVD(Fit):
             data = data.reshape(data.shape[0], -1)
         return data
 
-    def fit(self, data, params):
+    def fit(self, data, **params):
         from sklearn.decomposition import TruncatedSVD
         svd = TruncatedSVD(**params)
         svd.fit(self.dim_rule(data))
         return svd.transform
+
+
+class FitTsne(Fit):
+    def dim_rule(self, data):
+        return data
+
+    def fit(self, data, **params):
+        from ml.ae.extended.w_keras import PTsne
+        from ml.ds import Data
+
+        tsne = PTsne(model_name="tsne", model_version="1")
+        if not tsne.exist():
+            dataset = Data()
+            dataset.build_dataset(data)
+            tsne = PTsne(model_name="tsne", model_version="1", dataset=dataset, latent_dim=2)
+            tsne.train(batch_size=50, num_steps=2)
+        return tsne.predict
 
 
 def poly_features(data, degree=2, interaction_only=False, include_bias=True):

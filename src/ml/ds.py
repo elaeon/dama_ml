@@ -354,11 +354,15 @@ class Data(ReadWriteData):
 
         convert the data to the especified ttype.
         """
+        from ml.layers import IterLayer
         if ttype == 'auto':
             return data
 
         ttype = np.dtype(ttype)
-        if data.dtype != ttype and data.dtype != np.object:
+        if isinstance(data, IterLayer):
+            data = np.asarray(list(data))
+            return data.astype(ttype)
+        elif data.dtype != ttype and data.dtype != np.object:
             return data.astype(ttype)
         else:
             return data
@@ -1442,12 +1446,13 @@ class DataSetBuilder(DataLabel):
                 else:
                     data_labels = self.cross_validators(data, labels)
 
-            train_data = self.processing(data_labels[0], initial=True)        
-            validation_data = self.processing(data_labels[1])
-            test_data = self.processing(data_labels[2])
-
+            train_data = self.processing(data_labels[0], initial=True)
             self._set_space_data(f, 'train_data', self.dtype_t(train_data))
+
+            test_data = self.processing(data_labels[2], initial=False)
             self._set_space_data(f, 'test_data', self.dtype_t(test_data))
+            
+            validation_data = self.processing(data_labels[1], initial=False)
             self._set_space_data(f, 'validation_data', self.dtype_t(validation_data))
 
             self._set_space_data(f, 'train_labels', self.ltype_t(data_labels[3]), label=True)

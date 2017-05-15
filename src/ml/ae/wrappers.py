@@ -73,6 +73,13 @@ class DataDrive(object):
     def print_meta(self):
         print(self.load_meta())
 
+    def destroy(self):
+        """remove the dataset associated to the model and his checkpoints"""
+        from ml.utils.files import rm
+        self.dataset.destroy()
+        rm(self.get_model_path()+"."+self.ext)
+        rm(self.get_model_path()+".xmeta")
+
 
 class BaseAe(DataDrive):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
@@ -85,6 +92,7 @@ class BaseAe(DataDrive):
         self.original_dataset = None
         self.dataset = None
         self.latent_dim = latent_dim
+        self.ext = "ckpt"
         super(BaseAe, self).__init__(
             check_point_path=check_point_path,
             model_version=model_version,
@@ -115,7 +123,7 @@ class BaseAe(DataDrive):
         ds = Data(
             name=dataset.name+"_"+self.model_name+"_"+self.cls_name(),
             dataset_path=settings["dataset_model_path"],
-            apply_transforms=True,
+            apply_transforms=not dataset.apply_transforms,
             compression_level=9,
             dtype=dataset.dtype,
             transforms=dataset.transforms,
@@ -133,8 +141,10 @@ class BaseAe(DataDrive):
         if dataset is None:
             self.dataset = self.get_dataset()
         else:
-            self.set_dataset(dataset)        
-        self.num_features = self.dataset.num_features()
+            self.set_dataset(dataset)
+
+        if self.exist():
+            self.num_features = self.dataset.num_features()
 
     def set_dataset(self, dataset):
         self.original_dataset = dataset
@@ -201,14 +211,21 @@ class BaseAe(DataDrive):
     def get_dataset(self):
         from ml.ds import Data
         meta = self.load_meta()
-        self.original_dataset = Data.original_ds(meta["o_dataset_name"], 
-            dataset_path=meta["o_dataset_path"])
-        dataset = Data.original_ds(meta["dataset_name"], dataset_path=meta["dataset_path"])
-        self.group_name = meta.get('group_name', None)
-        if meta.get('md5', None) != self.original_dataset.md5:
-            log.warning("The dataset md5 is not equal to the model '{}'".format(
-                self.__class__.__name__))
-        return dataset
+        try:
+            self.original_dataset = Data.original_ds(meta["o_dataset_name"], 
+                dataset_path=meta["o_dataset_path"])
+            dataset = Data.original_ds(meta["dataset_name"], dataset_path=meta["dataset_path"])
+        except KeyError:
+            return None
+        else:
+            self.group_name = meta.get('group_name', None)
+            if meta.get('md5', None) != self.original_dataset.md5:
+                log.warning("The dataset md5 is not equal to the model '{}'".format(
+                    self.__class__.__name__))
+            return dataset
+
+    def exist(self):
+        return self.dataset is not None
 
 
 class Keras(BaseAe):

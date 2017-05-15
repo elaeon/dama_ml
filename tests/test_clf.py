@@ -64,6 +64,15 @@ class TestSKL(unittest.TestCase):
     def test_load_meta(self):
         self.assertEqual(type(self.classif.load_meta()), type({}))
 
+    def test_empty_load(self):
+        from ml.clf.extended.w_sklearn import RandomForest
+        classif = RandomForest(
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif.train(num_steps=1)
+        classif.destroy()
+
 
 class TestMLP(unittest.TestCase):
     def setUp(self):
@@ -205,7 +214,7 @@ class TestGrid(unittest.TestCase):
             model_name="test_ensemble_grid", 
             model_version="1",
             check_point_path="/tmp/",
-            dataset=self.dataset)
+            raw_dataset=self.dataset)
         ensemble.add(classif_1)
         ensemble.add(classif_2)
         ensemble.output(lambda x, y: (x**.25) * .85 * y**.35)

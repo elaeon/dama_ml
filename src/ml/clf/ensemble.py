@@ -241,14 +241,14 @@ class Ensemble(Grid):
 
 
 class EnsembleLayers(DataDrive):
-    def __init__(self, dataset=None, **kwargs):
+    def __init__(self, raw_dataset=None, **kwargs):
         super(EnsembleLayers, self).__init__(**kwargs)
         self.fn_output = None
-        if dataset is None:
+        if raw_dataset is None:
             self.reload()
         else:
             self.layers = []
-            self.dataset = dataset
+            self.dataset = raw_dataset
 
     def add(self, ensemble):
         self.layers.append(ensemble)
@@ -261,28 +261,31 @@ class EnsembleLayers(DataDrive):
         y_submission = initial_layer.predict(
             self.dataset.test_data, raw=True, transform=False, chunk_size=0)
 
-        size = self.dataset.test_data.shape[0] * len(initial_layer.classifs[initial_layer.active_network()])
         for classif in initial_layer.load_models():
             num_labels = classif.num_labels
             break
+
+        deep = len(initial_layer.classifs[initial_layer.active_network()])
+        size = self.dataset.test_data.shape[0] * deep
+        shape = (size, num_labels)
         data = np.zeros((size, num_labels))
-        labels = np.empty(size, dtype="|S1")
+        labels = np.empty(size, dtype=self.dataset.dtype)
         i = 0
         for y in y_submission:
             for row, label in zip(y, self.dataset.test_labels):
                 data[i] = row
                 labels[i] = label
                 i += 1
-    
         #fixme: add a dataset chunk writer
         dataset = DataSetBuilder(dataset_path="/tmp/", rewrite=False)
         dataset.build_dataset(data, labels)
         second_layer = self.layers[1]
         second_layer.reset_dataset(dataset)
 
+        n_splits = 2*deep + 1
         others_models_args_c = add_params_to_params(second_layer.classifs, 
                                                     others_models_args,
-                                                    n_splits=5)
+                                                    n_splits=n_splits)
 
         second_layer.train(others_models_args=others_models_args_c)
 

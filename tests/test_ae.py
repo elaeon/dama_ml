@@ -27,6 +27,14 @@ class TestAE(unittest.TestCase):
             check_point_path="/tmp/")
         self.assertEqual(len(list(classif.predict([X[1]]))[0]), 2)
 
+    def test_empty_load(self):        
+        from ml.ae.extended.w_keras import PTsne
+        classif = PTsne(model_name="tsne2", model_version="1", 
+            check_point_path="/tmp/")
+
+        #classif.train(batch_size=258, num_steps=1)
+        classif.destroy()
+
     def test_vae(self):
         from ml.ae.extended.w_keras import VAE
         from ml.ds import Data
