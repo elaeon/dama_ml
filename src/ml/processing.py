@@ -339,8 +339,6 @@ class FitTruncatedSVD(Fit):
 
 
 class FitTsne(Fit):
-    def dim_rule(self, data):
-        return data
 
     def fit(self, data, **params):
         from ml.ae.extended.w_keras import PTsne
@@ -353,6 +351,16 @@ class FitTsne(Fit):
             tsne = PTsne(model_name="tsne", model_version="1", dataset=dataset, latent_dim=2)
             tsne.train(batch_size=50, num_steps=2)
         return tsne.predict
+
+    def transform(self, data):
+        from itertools import izip
+        from ml.layers import IterLayer
+
+        def iter_():
+            for row, predict in izip(data, self.t(self.dim_rule(data))):
+                yield np.append(row, list(predict), axis=0)
+
+        return IterLayer(iter_())
 
 
 def poly_features(data, degree=2, interaction_only=False, include_bias=True):

@@ -1085,7 +1085,6 @@ class DataLabel(Data):
                     df = self.to_df(labels2numbers=True)
                     sns.lmplot(x=columns[0], y=columns[1], data=df, col="target", hue="target")
             else:
-                print(type(self))
                 if self.shape[1] > 2:
                     from ml.ae.extended.w_keras import PTsne
                     dl = DataLabel(name=self.name+"_2d_", 
@@ -1429,6 +1428,10 @@ class DataSetBuilder(DataLabel):
         """
         if self.mode == "r":
             return
+
+        #fixme 
+        if len(data.shape) == 1:
+            data = data.reshape(-1, 1)
 
         with h5py.File(self.url(), 'a') as f:
             f.require_group("data")

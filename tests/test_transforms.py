@@ -170,10 +170,9 @@ class TestTransforms(unittest.TestCase):
         dataset.destroy()
         classif.dataset.destroy()
 
-    def test_transform_model(self):
+    def test_transform_col_model(self):
         from ml.ds import DataSetBuilder
         from ml.processing import FitTsne
-        from ml.clf.extended.w_sklearn import RandomForest
 
         transforms = Transforms()
         transforms.add(FitTsne, type="column")
@@ -182,16 +181,9 @@ class TestTransforms(unittest.TestCase):
         dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
             ltype='int', transforms=transforms, rewrite=True, apply_transforms=True)
         dataset.build_dataset(X, Y)
+        self.assertEqual(dataset.shape, (20, 3))
         dataset.info()
         dataset.destroy()
-        #classif = RandomForest(dataset=dataset, 
-        #    model_name="test", 
-        #    model_version="1",
-        #    check_point_path="/tmp/")
-        #classif.train(num_steps=1)
-        #self.assertEqual(classif.dataset.apply_transforms, True)
-        #dataset.destroy()
-        #classif.dataset.destroy()
 
 
 if __name__ == '__main__':
