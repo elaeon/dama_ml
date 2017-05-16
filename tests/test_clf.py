@@ -74,31 +74,6 @@ class TestSKL(unittest.TestCase):
         classif.destroy()
 
 
-class TestMLP(unittest.TestCase):
-    def setUp(self):
-        from ml.ds import DataSetBuilder
-        from ml.clf.extended.w_tflearn import MLP
-
-        X = np.asarray([1, 0]*1000)
-        Y = X*1
-        self.dataset = DataSetBuilder(name="test_mlp", dataset_path="/tmp/", 
-            ltype='int', rewrite=True)
-        self.dataset.build_dataset(X, Y)
-        
-        #self.classif = MLP(dataset=self.dataset, 
-        #    model_name="test", 
-        #    model_version="1",
-        #    check_point_path="/tmp/")
-        #self.classif.train(num_steps=2)
-
-    def tearDown(self):
-        self.dataset.destroy()
-
-    def test_labels(self):
-        pass
-        #self.assertEqual(type(self.classif.load_meta()), type({}))
-
-
 class TestGpy(unittest.TestCase):
     def setUp(self):
         from ml.ds import DataSetBuilder

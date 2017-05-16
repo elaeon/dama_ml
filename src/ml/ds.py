@@ -1654,10 +1654,6 @@ class DataSetBuilderImage(DataSetBuilder):
         dataset.image_size = self.image_size
         return dataset
 
-    def info(self, classes=True):
-        super(DataSetBuilderImage, self).info(classes=classes)
-        #print('Image Size {}x{}'.format(self.image_size, self.image_size))
-
 
 class DataSetBuilderFile(DataSetBuilder):
     """
@@ -1724,7 +1720,7 @@ class DataSetBuilderFold(object):
         from sklearn.model_selection import StratifiedKFold
         skf = StratifiedKFold(n_splits=self.n_splits)
         for i, (train, test) in enumerate(skf.split(dl.data, dl.labels)):
-            validation_index = int(train.shape[0] * .1)
+            validation_index = int(round(train.shape[0] * .1, 0))
             validation = train[:validation_index]
             train = train[validation_index:]
             dsb = DataSetBuilder(name=self.name+"_"+str(i), 

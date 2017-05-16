@@ -390,7 +390,7 @@ class TestDataSetFold(unittest.TestCase):
         dsbf = DataSetBuilderFold(n_splits=n_splits)
         dsbf.build_dataset(self.dataset)
         for dsb in dsbf.get_splits():
-            self.assertEqual(dsb.shape[0] < 10, True)
+            self.assertEqual(dsb.shape[0], 10)
             self.assertEqual(dsb.shape[1], 10)
         self.assertEqual(len(dsbf.splits), n_splits)
         dsbf.destroy()

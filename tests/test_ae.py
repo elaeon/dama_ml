@@ -33,7 +33,7 @@ class TestAE(unittest.TestCase):
             check_point_path="/tmp/")
 
         #classif.train(batch_size=258, num_steps=1)
-        classif.destroy()
+        #classif.destroy()
 
     def test_vae(self):
         from ml.ae.extended.w_keras import VAE

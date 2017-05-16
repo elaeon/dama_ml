@@ -54,7 +54,7 @@ def sampling(args, **kwargs):
     latent_dim = kwargs.get("latent_dim", 2)
     epsilon_std = kwargs.get("epsilon_std", 1.0)
     epsilon = K.random_normal(shape=(batch_size, latent_dim), 
-        mean=0., std=epsilon_std)
+        mean=0., stddev=epsilon_std)
     return z_mean + K.exp(z_log_var / 2) * epsilon
 
 
