@@ -110,10 +110,10 @@ class TestDataset(unittest.TestCase):
             validator="cross",
             rewrite=True)
         dataset.build_dataset(self.X, self.Y)
-        ds = dataset.copy(.5)
-        self.assertEqual(dataset.copy(.5).train_data.shape[0], 3)
+        ds = dataset.copy(percentaje=.5)
+        self.assertEqual(dataset.copy(percentaje=.5).train_data.shape[0], 3)
         dl = dataset.desfragment()
-        self.assertEqual(dl.copy(.5).data.shape[0], 5)
+        self.assertEqual(dl.copy(percentaje=.5).data.shape[0], 5)
         ds.destroy()
         dl.destroy()
         dataset.destroy()
@@ -318,15 +318,19 @@ class TestDataset(unittest.TestCase):
         check("/tmp/test.validation.txt")
         dataset.destroy()
 
-    def test_rewrite(self):
+    def test_no_data(self):
+        from ml.processing import rgb2gray
+        transforms = Transforms()
+        transforms.add(rgb2gray)
         dsb = DataSetBuilder(name="test", dataset_path="/tmp", chunks=100, 
             author="AGMR", rewrite=True, dtype='float32', transforms=transforms,
             description="description text", train_size=.7, valid_size=.1, 
             validator="cross", compression_level=5, ltype='int',
-            apply_transforms = False)
+            apply_transforms=False)
 
         dsb2 = DataSetBuilder(name="test", dataset_path="/tmp", rewrite=True)
         dsb2.info()
+        dsb.destroy()
 
     def test_to_data(self):
         dataset = DataSetBuilder(

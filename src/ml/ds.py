@@ -1333,36 +1333,39 @@ class DataSetBuilder(DataLabel):
         print('MD5: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
         print('       ')
-        if self.train_data.dtype != np.object:
-            headers = ["Dataset", "Mean", "Std", "Shape", "dType", "Labels"]
-            table = []
-            table.append(["train set", self.train_data[:].mean(), self.train_data[:].std(), 
-                self.train_data.shape, self.train_data.dtype, self.train_labels.size])
+        try:
+            if self.train_data.dtype != np.object:
+                headers = ["Dataset", "Mean", "Std", "Shape", "dType", "Labels"]
+                table = []
+                table.append(["train set", self.train_data[:].mean(), self.train_data[:].std(), 
+                    self.train_data.shape, self.train_data.dtype, self.train_labels.size])
 
-            if self.validation_data is not None:
-                table.append(["valid set", self.validation_data[:].mean(), self.validation_data[:].std(), 
-                self.validation_data.shape, self.validation_data.dtype, self.validation_labels.size])
+                if self.validation_data is not None:
+                    table.append(["valid set", self.validation_data[:].mean(), self.validation_data[:].std(), 
+                    self.validation_data.shape, self.validation_data.dtype, self.validation_labels.size])
 
-            table.append(["test set", self.test_data[:].mean(), self.test_data[:].std(), 
-                self.test_data.shape, self.test_data.dtype, self.test_labels.size])
-            order_table_print(headers, table, "shape")
-        else:
-            headers = ["Dataset", "Shape", "dType", "Labels"]
-            table = []
-            table.append(["train set", self.train_data.shape, self.train_data.dtype, 
-                self.train_labels.size])
+                table.append(["test set", self.test_data[:].mean(), self.test_data[:].std(), 
+                    self.test_data.shape, self.test_data.dtype, self.test_labels.size])
+                order_table_print(headers, table, "shape")
+            else:
+                headers = ["Dataset", "Shape", "dType", "Labels"]
+                table = []
+                table.append(["train set", self.train_data.shape, self.train_data.dtype, 
+                    self.train_labels.size])
 
-            if self.valid_data is not None:
-                table.append(["valid set", self.valid_data.shape, self.valid_data.dtype, 
-                self.valid_labels.size])
+                if self.valid_data is not None:
+                    table.append(["valid set", self.valid_data.shape, self.valid_data.dtype, 
+                    self.valid_labels.size])
 
-            table.append(["test set", self.test_data.shape, self.test_data.dtype, 
-                self.test_labels.size])
-            order_table_print(headers, table, "shape")
+                table.append(["test set", self.test_data.shape, self.test_data.dtype, 
+                    self.test_labels.size])
+                order_table_print(headers, table, "shape")
 
-        if classes == True:
-            headers = ["class", "# items"]
-            order_table_print(headers, self.labels_info().items(), "# items")
+            if classes == True:
+                headers = ["class", "# items"]
+                order_table_print(headers, self.labels_info().items(), "# items")
+        except KeyError:
+            print("No data found")
 
     def cross_validators(self, data, labels):
         from sklearn.model_selection import train_test_split
