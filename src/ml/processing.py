@@ -144,7 +144,11 @@ class TransformsCol(TransformsRow):
         def initial_fn(data):
             for fn, params in self.transforms.items():
                 fn = locate(fn)
-                yield fn(data, **params)
+                if "name_00_ml" in params:
+                    name = params.pop("name_00_ml")
+                else:
+                    name = None
+                yield fn(data, name=name, **params)
 
         if base_data is None:
             for fn_fit in initial_fn(data):
@@ -177,7 +181,7 @@ class Transforms(object):
     def cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
-    def add(self, fn, type="row", **params):
+    def add(self, fn, name=None, type="row", **params):
         """
         :type fn: function
         :param fn: function to add
@@ -189,6 +193,8 @@ class Transforms(object):
         """
         t_class = self.types[type]
         t_obj = t_class()
+        if name is not None and type == "column":
+            params["name_00_ml"] = name
         t_obj.add(fn, **params)
         self.transforms.append(t_obj)
 
@@ -282,7 +288,8 @@ class Transforms(object):
 
 
 class Fit(object):
-    def __init__(self, data, **kwargs):
+    def __init__(self, data, name=None, **kwargs):
+        self.name = name
         self.t = self.fit(data, **kwargs)
 
     @classmethod
@@ -344,11 +351,11 @@ class FitTsne(Fit):
         from ml.ae.extended.w_keras import PTsne
         from ml.ds import Data
 
-        tsne = PTsne(model_name="tsne", model_version="1")
+        tsne = PTsne(model_name=self.name, model_version="1")
         if not tsne.exist():
             dataset = Data()
             dataset.build_dataset(data)
-            tsne = PTsne(model_name="tsne", model_version="1", dataset=dataset, latent_dim=2)
+            tsne = PTsne(model_name=self.name, model_version="1", dataset=dataset, latent_dim=2)
             tsne.train(batch_size=50, num_steps=2)
         return tsne.predict
 

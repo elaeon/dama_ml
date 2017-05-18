@@ -81,12 +81,15 @@ class TestTransforms(unittest.TestCase):
         self.assertEqual(len(result[3].transforms), 1)
 
     def test_json(self):
+        from ml.processing import FitTsne
         transforms = Transforms()
         transforms.add(linear)
         transforms.add(linear_p, type="column", b=1)
         transforms.add(linear_p, b=1)
+        transforms.add(FitTsne, name="tsne", type="column")
         result = transforms.to_json()
-        txt = '[{"row": {"tests.test_transforms.linear": {}}}, {"column": {"tests.test_transforms.linear_p": {"b": 1}}}, {"row": {"tests.test_transforms.linear_p": {"b": 1}}}]'
+        print(result)
+        txt = '[{"row": {"tests.test_transforms.linear": {}}}, {"column": {"tests.test_transforms.linear_p": {"b": 1}}}, {"row": {"tests.test_transforms.linear_p": {"b": 1}}}, {"column": {"ml.processing.FitTsne": {"name_00_ml": "tsne"}}}]'
         self.assertEqual(result, txt)
 
         transforms.clean()
@@ -175,7 +178,7 @@ class TestTransforms(unittest.TestCase):
         from ml.processing import FitTsne
 
         transforms = Transforms()
-        transforms.add(FitTsne, type="column")
+        transforms.add(FitTsne, name="tsne", type="column")
         X = np.asarray([1, 0]*10)
         Y = X*1
         dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
