@@ -70,8 +70,15 @@ class TestSKL(unittest.TestCase):
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
-        classif.train(num_steps=1)
         classif.destroy()
+
+    def test_scores(self):        
+        from ml.clf.extended.w_sklearn import RandomForest
+        classif = RandomForest(
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif.scores().print_scores()
 
 
 class TestGpy(unittest.TestCase):
@@ -213,7 +220,7 @@ class TestBoosting(unittest.TestCase):
         self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
         self.dataset.build_dataset(X, Y)
 
-        self.classif = Boosting([
+        classif = Boosting([
             ExtraTrees,
             RandomForest,
             AdaBoost],
@@ -224,20 +231,21 @@ class TestBoosting(unittest.TestCase):
             weights=[3, 1],
             election='best-c',
             num_max_clfs=5)
-        self.classif.train(num_steps=1)
+        classif.train(num_steps=1)
 
     def tearDown(self):
         self.dataset.destroy()
 
     def test_load_meta(self):
         from ml.clf.ensemble import Boosting
-        self.classif.scores().print_scores()
-        self.assertEqual(type(self.classif.load_meta()), type({}))
+        
         classif = Boosting([], 
             model_name="test_boosting", 
             model_version="1",
             check_point_path="/tmp/")
         
+        self.assertEqual(type(classif.load_meta()), type({}))
+
         for p in classif.predict(self.dataset.data[:1], raw=True):
             print(list(p))
 
@@ -256,7 +264,7 @@ class TestStacking(unittest.TestCase):
         self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
         self.dataset.build_dataset(X, Y)
 
-        self.classif = Stacking([
+        classif = Stacking([
             ExtraTrees,
             RandomForest,
             AdaBoost],
@@ -265,21 +273,20 @@ class TestStacking(unittest.TestCase):
             model_version="1",
             check_point_path="/tmp/",
             n_splits=3)
-        self.classif.train(num_steps=1)
+        classif.train(num_steps=1)
 
     def tearDown(self):
         self.dataset.destroy()
 
     def test_load_meta(self):
         from ml.clf.ensemble import Stacking
-        self.classif.scores().print_scores()
-        self.assertEqual(type(self.classif.load_meta()), type({}))
 
         classif = Stacking([], 
             model_name="test_stacking", 
             model_version="1",
             check_point_path="/tmp/")
         
+        self.assertEqual(type(classif.load_meta()), type({}))
         for p in classif.predict(self.dataset.data[:1], raw=True):
             print(list(p))
 
@@ -298,7 +305,7 @@ class TestBagging(unittest.TestCase):
         self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
         self.dataset.build_dataset(X, Y)
 
-        self.classif = Bagging(GradientBoost, [
+        classif = Bagging(GradientBoost, [
             ExtraTrees,
             RandomForest,
             AdaBoost],
@@ -306,21 +313,21 @@ class TestBagging(unittest.TestCase):
             model_name="test_bagging", 
             model_version="1",
             check_point_path="/tmp/")
-        self.classif.train()
+        classif.train()
 
     def tearDown(self):
         self.dataset.destroy()
 
     def test_load_meta(self):
         from ml.clf.ensemble import Bagging
-        self.classif.scores().print_scores()
-        self.assertEqual(type(self.classif.load_meta()), type({}))
 
         classif = Bagging(None, [], 
             model_name="test_bagging", 
             model_version="1",
             check_point_path="/tmp/")
         
+        self.assertEqual(type(classif.load_meta()), type({}))
+
         for p in classif.predict(self.dataset.data[:1], raw=True):
             print(list(p))
 

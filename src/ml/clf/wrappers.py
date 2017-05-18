@@ -86,10 +86,7 @@ class DataDrive(object):
     def destroy(self):
         """remove the dataset associated to the model and his checkpoints"""
         from ml.utils.files import rm
-        #print("DS", self.dataset.name)
         self.dataset.destroy()
-        #if hasattr(self, 'dl') and self.dl is not None:
-        #print("DL", self.dl.name)
         self.dl.destroy()
         rm(self.get_model_path()+"."+self.ext)
         rm(self.get_model_path()+".xmeta")
@@ -167,7 +164,7 @@ class BaseClassif(DataDrive):
     def transform_shape(self, data, size=None):
         if size is None:
             size = data.shape[0]
-        return data[:].reshape(size, -1)#.astype(np.float32)
+        return data[:].reshape(size, -1)
 
     def is_binary():
         return self.num_labels == 2
