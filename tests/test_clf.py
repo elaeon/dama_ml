@@ -507,5 +507,49 @@ class TestIterLayers(unittest.TestCase):
         self.assertItemsEqual(np.asarray(list(predictor)).reshape(-1), np.zeros((40,)) + 2)
 
 
+class TestEnsemble(unittest.TestCase):
+    def setUp(self):        
+        from ml.ds import DataSetBuilder
+
+        X = np.asarray([1, 0]*1000)
+        Y = X*1
+        self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
+        self.dataset.build_dataset(X, Y)
+
+    def test_ensemble(self):
+        from ml.clf.extended.w_sklearn import RandomForest, AdaBoost, LogisticRegression        
+        from ml.processing import FitRobustScaler, Transforms
+        from ml.clf.ensemble import Grid, EnsembleLayers
+
+        transforms = Transforms()
+        transforms.add(FitRobustScaler, type="column")
+        ds0 = self.dataset.add_transforms(transforms, name="ds_test_0")
+
+        classif_1 = Grid([(RandomForest, ds0)],
+            model_name="test_grid0", 
+            model_version="1")
+
+        classif_2 = Grid([AdaBoost, LogisticRegression],
+            dataset=None, 
+            model_name="test_grid1", 
+            model_version="1")
+
+        ensemble = EnsembleLayers( 
+            model_name="test_ensemble_grid", 
+            model_version="1",
+            raw_dataset=self.dataset)
+
+        ensemble.add(classif_1)
+        ensemble.add(classif_2)
+        ensemble.output(lambda x, y: (x + y) / 2)
+        others_models_args = {"RandomForest": [{"n_splits": 2}]}
+        ensemble.train([others_models_args])
+        ensemble.scores().print_scores()
+        ds0.destroy()
+
+    def tearDown(self):
+        self.dataset.destroy()
+
+
 if __name__ == '__main__':
     unittest.main()

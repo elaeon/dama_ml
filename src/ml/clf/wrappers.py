@@ -8,6 +8,7 @@ from ml.utils.config import get_settings
 from ml.models import MLModel
 from ml.ds import DataSetBuilder, Data
 from ml.clf.measures import ListMeasure
+from ml.layers import IterLayer
 
 
 settings = get_settings("ml")
@@ -162,9 +163,14 @@ class BaseClassif(DataDrive):
         return dataset, labels
 
     def transform_shape(self, data, size=None):
-        if size is None:
-            size = data.shape[0]
-        return data[:].reshape(size, -1)
+        if isinstance(data, IterLayer):
+            return np.asarray(list(data))
+        elif len(data.shape) > 2:
+            if size is None:
+                size = data.shape[0]
+            return data[:].reshape(size, -1)
+        else:
+            return data
 
     def is_binary():
         return self.num_labels == 2
@@ -258,7 +264,6 @@ class BaseClassif(DataDrive):
                 yield prediction
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        from ml.layers import IterLayer
 
         if self.model is None:
             self.load_model()

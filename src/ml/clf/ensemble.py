@@ -185,11 +185,8 @@ class Grid(DataDrive):
         return best
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        from ml.layers import IterLayer
-        def iter_():
-            for classif in self.load_models():
-                yield classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
-        return IterLayer(iter_())
+        for classif in self.load_models():
+            yield classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
 
     def destroy(self):
         from ml.utils.files import rm
@@ -259,7 +256,7 @@ class EnsembleLayers(DataDrive):
         initial_layer = self.layers[0]
         initial_layer.train(others_models_args=others_models_args[0])
         y_submission = initial_layer.predict(
-            self.dataset.test_data, raw=True, transform=False, chunk_size=0)
+            self.dataset.test_data, raw=True, transform=True, chunk_size=100)
 
         for classif in initial_layer.load_models():
             num_labels = classif.num_labels
@@ -350,8 +347,14 @@ class EnsembleLayers(DataDrive):
         y_submission = initial_layer.predict(data, raw=True, transform=True, 
             chunk_size=chunk_size)
         second_layer = self.layers[1]
-        output = second_layer.predict(y_submission, raw=raw, transform=transform, 
-            chunk_size=chunk_size)
+
+        predictions = []
+        for data in y_submission:
+            data = np.asarray(list(data))
+            predictions.append(second_layer.predict(data, raw=raw, transform=False, 
+                chunk_size=chunk_size))
+
+        print(zip(*predictions))
         return list(self.fn_output(*output)).pop()
 
     def destroy(self):

@@ -105,5 +105,9 @@ class IterLayer(object):
         iter_ = (fn(x, *args, **kwargs) for x in self)
         return IterLayer(iter_)
 
+    @property
+    def shape(self):
+        return (None, None)
+
     def __iter__(self):
         return self.fn_iter
