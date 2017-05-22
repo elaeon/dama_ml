@@ -6,7 +6,6 @@ from skimage import io
 import os
 import numpy as np
 import pandas as pd
-#import cPickle as pickle
 import dill as pickle
 import random
 import h5py
@@ -206,8 +205,10 @@ class Data(ReadWriteData):
             transforms = Transforms()
 
         self._attrs = ["author", "dtype", "transforms"]
-
-        if not self.exist() or self.rewrite:
+        ds_exist = self.exist()
+        if not ds_exist or self.rewrite:
+            if ds_exist:
+                self.destroy()
             self.create_route()
             self.mode = "w"
             self.author = author
@@ -380,7 +381,7 @@ class Data(ReadWriteData):
         try:
             return self.md5 != None
         except IOError:
-            return False
+            return os.path.isfile(self.url())
         else:
             return True
 

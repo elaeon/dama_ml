@@ -344,6 +344,29 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
         data.destroy()
 
+    def test_rewrite(self):
+        dataset = DataSetBuilder(
+            name="test_ds",
+            dataset_path="/tmp/",
+            train_size=.5,
+            valid_size=.2,
+            ltype='int',
+            validator="cross",
+            rewrite=True)
+        dataset.build_dataset(self.X, self.Y)
+        self.assertEqual(dataset.validation_labels.shape[0], 2)
+
+        dataset = DataSetBuilder(
+            name="test_ds",
+            dataset_path="/tmp/",
+            train_size=.4,
+            valid_size=.1,
+            ltype='int',
+            validator="cross",
+            rewrite=True)
+        dataset.build_dataset(self.X, self.Y)
+        self.assertEqual(dataset.validation_labels.shape[0], 1)
+
 
 class TestDataSetFile(unittest.TestCase):
     def setUp(self):

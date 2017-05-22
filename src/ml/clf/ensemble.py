@@ -61,6 +61,7 @@ class Grid(DataDrive):
                 classifs_layers[layer] = [(classif, None) for classif in classifs]
         classifs_layers = self.load_namespaces(classifs_layers, fn=locate)
         self.classifs = classifs_layers
+        self.output(meta["output"])
 
     def check_layers(self, classifs):
         try:
@@ -246,6 +247,7 @@ class Grid(DataDrive):
                 "models": self.clf_models_namespace,
                 "model_name": self.model_name,
                 "individual_ds": self.individual_ds,
+                "output": self.fn_output,
                 "score": score}
 
     def save_model(self):
@@ -256,27 +258,6 @@ class Grid(DataDrive):
 
     def output(self, fn):
         self.fn_output = fn
-
-
-#class Ensemble(Grid):
-#    def scores(self, measures=None, all_clf=True):
-#        list_measure = ListMeasure()
-#        list_measure.calc_scores(self.__class__.__name__, 
-#                                self.predict, 
-#                                self.dataset.test_data, 
-#                                self.dataset.test_labels[:],
-#                                labels2classes_fn=self.numerical_labels2classes, 
-#                                measures=measures)
-#        if all_clf is True:
-#            return list_measure + self.all_clf_scores(measures=measures)
-#        else:
-#            return list_measure
-
-#    def numerical_labels2classes(self, labels):
-#        if len(labels.shape) > 1 and labels.shape[1] > 1:
-#            return self.le.inverse_transform(np.argmax(labels, axis=1))
-#        else:
-#            return self.le.inverse_transform(labels.astype('int'))
 
 
 class EnsembleLayers(DataDrive):
@@ -378,7 +359,6 @@ class EnsembleLayers(DataDrive):
             "dataset_path": self.dataset.dataset_path,
             "dataset_name": self.dataset.name,
             "models": self.clf_models_namespace,
-            #"output": self.fn_output,
             "score": list_measure.measures_to_dict()}
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
@@ -393,7 +373,6 @@ class EnsembleLayers(DataDrive):
             second_layer.output("avg")
         
         data = np.asarray(list(y_submission))
-        #print(len(data))
         return second_layer.predict(data, raw=raw, transform=False, 
                 chunk_size=chunk_size)
 
@@ -420,12 +399,8 @@ class EnsembleLayers(DataDrive):
         self.layers = []
         self.add(classif_1)
         self.add(classif_2)
-        #self.output(meta["output"])
 
         return models
-
-    #def output(self, fn):
-    #    self.fn_output = fn
 
 
 class Boosting(Grid):
