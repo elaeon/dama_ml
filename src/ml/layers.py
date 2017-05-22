@@ -1,6 +1,7 @@
 from itertools import izip, imap
 import operator
 import collections
+import itertools
 import types
 
 
@@ -101,9 +102,16 @@ class IterLayer(object):
         iter_ = (max(merge(x, weights), key=lambda x: x[1])[0] for x in izip(*iters))
         return IterLayer(iter_)
 
+    @classmethod
+    def concat_n(self, iters):
+        return IterLayer(itertools.chain(*iters))
+
     def compose(self, fn, *args, **kwargs):
         iter_ = (fn(x, *args, **kwargs) for x in self)
         return IterLayer(iter_)
+
+    def concat(self, iterlayer):
+        return IterLayer(itertools.chain(self, iterlayer))
 
     @property
     def shape(self):

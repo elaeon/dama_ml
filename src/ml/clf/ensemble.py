@@ -18,6 +18,7 @@ class Grid(DataDrive):
         
         self.model = None        
         self.meta_name = meta_name
+        self.fn_output = None
 
         if len(classifs) == 0:
             self.reload()
@@ -31,6 +32,11 @@ class Grid(DataDrive):
             self.classifs = classifs_layers
         self.dataset = dataset
         self.params = {}
+
+        #for classif in self.load_models():
+        #    self.le = classif.le
+        #    self.num_labels = classif.num_labels
+        #    break
 
     def reset_dataset(self, dataset, individual_ds=False):
         self.individual_ds = individual_ds
@@ -128,8 +134,29 @@ class Grid(DataDrive):
         except TypeError:
             return ListMeasure()
 
-    def scores(self, measures=None, namespace=None):
-        return self.all_clf_scores(measures=measures)
+    def scores(self, measures=None, all_clf=True):
+        list_measure = ListMeasure()
+        list_measure.calc_scores(self.__class__.__name__, 
+                                self.predict, 
+                                self.dataset.test_data, 
+                                self.dataset.test_labels[:],
+                                labels2classes_fn=self.numerical_labels2classes, 
+                                measures=measures)
+        if all_clf is True:
+            return list_measure + self.all_clf_scores(measures=measures)
+        else:
+            return list_measure
+
+    def numerical_labels2classes(self, labels):
+        if not hasattr(self, 'le'):
+            for classif in self.load_models():
+                self.le = classif.le
+                break
+
+        if len(labels.shape) > 1 and labels.shape[1] > 1:
+            return self.le.inverse_transform(np.argmax(labels, axis=1))
+        else:
+            return self.le.inverse_transform(labels.astype('int'))
 
     def print_confusion_matrix(self, namespace=None):
         from operator import add
@@ -185,8 +212,20 @@ class Grid(DataDrive):
         return best
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        for classif in self.load_models():
-            yield classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
+        def iter_():
+            for classif in self.load_models():
+                yield classif.predict(data, raw=raw, transform=transform, 
+                                        chunk_size=chunk_size)
+
+        if self.fn_output is None:
+            from ml.layers import IterLayer
+            return IterLayer.concat_n(iter_())
+        elif self.fn_output == "avg":
+            from ml.layers import IterLayer
+            namespace = self.active_network()
+            return IterLayer.avg(iter_(), len(self.classifs[namespace]))
+        else:
+            return self.fn_output(*iter_())
 
     def destroy(self):
         from ml.utils.files import rm
@@ -215,32 +254,35 @@ class Grid(DataDrive):
             path = self.make_model_file()
             self.save_meta()
 
+    def output(self, fn):
+        self.fn_output = fn
 
-class Ensemble(Grid):
-    def scores(self, measures=None, all_clf=True):
-        list_measure = ListMeasure()
-        list_measure.calc_scores(self.__class__.__name__, 
-                                self.predict, 
-                                self.dataset.test_data, 
-                                self.dataset.test_labels[:],
-                                labels2classes_fn=self.numerical_labels2classes, 
-                                measures=measures)
-        if all_clf is True:
-            return list_measure + self.all_clf_scores(measures=measures)
-        else:
-            return list_measure
 
-    def numerical_labels2classes(self, labels):
-        if len(labels.shape) > 1 and labels.shape[1] > 1:
-            return self.le.inverse_transform(np.argmax(labels, axis=1))
-        else:
-            return self.le.inverse_transform(labels.astype('int'))
+#class Ensemble(Grid):
+#    def scores(self, measures=None, all_clf=True):
+#        list_measure = ListMeasure()
+#        list_measure.calc_scores(self.__class__.__name__, 
+#                                self.predict, 
+#                                self.dataset.test_data, 
+#                                self.dataset.test_labels[:],
+#                                labels2classes_fn=self.numerical_labels2classes, 
+#                                measures=measures)
+#        if all_clf is True:
+#            return list_measure + self.all_clf_scores(measures=measures)
+#        else:
+#            return list_measure
+
+#    def numerical_labels2classes(self, labels):
+#        if len(labels.shape) > 1 and labels.shape[1] > 1:
+#            return self.le.inverse_transform(np.argmax(labels, axis=1))
+#        else:
+#            return self.le.inverse_transform(labels.astype('int'))
 
 
 class EnsembleLayers(DataDrive):
     def __init__(self, raw_dataset=None, **kwargs):
         super(EnsembleLayers, self).__init__(**kwargs)
-        self.fn_output = None
+
         if raw_dataset is None:
             self.reload()
         else:
@@ -267,12 +309,11 @@ class EnsembleLayers(DataDrive):
         shape = (size, num_labels)
         data = np.zeros((size, num_labels))
         labels = np.empty(size, dtype=self.dataset.dtype)
-        i = 0
-        for y in y_submission:
-            for row, label in zip(y, self.dataset.test_labels):
-                data[i] = row
-                labels[i] = label
-                i += 1
+        for i, y in enumerate(y_submission):
+            row_c = i % self.dataset.test_labels.shape[0]
+            data[i] = y
+            labels[i] = self.dataset.test_labels[row_c]
+
         #fixme: add a dataset chunk writer
         dataset = DataSetBuilder(dataset_path="/tmp/", rewrite=False)
         dataset.build_dataset(data, labels)
@@ -300,22 +341,20 @@ class EnsembleLayers(DataDrive):
                 "check_point_path": second_layer.check_point_path
             }
         }
+
         self.save_model()
         self.reload()
         dataset.destroy()
 
     def scores(self, measures=None):
-        if self.fn_output is not None:
-            list_measure = ListMeasure()
-            list_measure.calc_scores(self.model_name, 
-                                    self.predict, 
-                                    self.dataset.test_data, 
-                                    self.dataset.test_labels[:],
-                                    labels2classes_fn=self.numerical_labels2classes, 
-                                    measures=measures)
-            return list_measure
-        else:
-            return ListMeasure()
+        list_measure = ListMeasure()
+        list_measure.calc_scores(self.model_name, 
+                                self.predict, 
+                                self.dataset.test_data, 
+                                self.dataset.test_labels[:],
+                                labels2classes_fn=self.numerical_labels2classes, 
+                                measures=measures)
+        return list_measure
 
     def numerical_labels2classes(self, labels):
         if not hasattr(self, 'le'):
@@ -339,23 +378,24 @@ class EnsembleLayers(DataDrive):
             "dataset_path": self.dataset.dataset_path,
             "dataset_name": self.dataset.name,
             "models": self.clf_models_namespace,
-            "output": self.fn_output,
+            #"output": self.fn_output,
             "score": list_measure.measures_to_dict()}
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         initial_layer = self.layers[0]
+        if initial_layer.fn_output is None:
+            initial_layer.output("avg")
         y_submission = initial_layer.predict(data, raw=True, transform=True, 
             chunk_size=chunk_size)
+        
         second_layer = self.layers[1]
-
-        predictions = []
-        for data in y_submission:
-            data = np.asarray(list(data))
-            predictions.append(second_layer.predict(data, raw=raw, transform=False, 
-                chunk_size=chunk_size))
-
-        print(zip(*predictions))
-        return list(self.fn_output(*output)).pop()
+        if second_layer.fn_output is None:
+            second_layer.output("avg")
+        
+        data = np.asarray(list(y_submission))
+        #print(len(data))
+        return second_layer.predict(data, raw=raw, transform=False, 
+                chunk_size=chunk_size)
 
     def destroy(self):
         for layer in self.layers:
@@ -380,15 +420,15 @@ class EnsembleLayers(DataDrive):
         self.layers = []
         self.add(classif_1)
         self.add(classif_2)
-        self.output(meta["output"])
+        #self.output(meta["output"])
 
         return models
 
-    def output(self, fn):
-        self.fn_output = fn
+    #def output(self, fn):
+    #    self.fn_output = fn
 
 
-class Boosting(Ensemble):
+class Boosting(Grid):
     def __init__(self, classifs, weights=None, election='best', num_max_clfs=1, 
             **kwargs):
         super(Boosting, self).__init__(classifs, meta_name="boosting", **kwargs)
@@ -402,9 +442,9 @@ class Boosting(Ensemble):
             self.election = meta["election"]
             self.model_name = meta["model_name"]
 
-        for classif in self.load_models():
-            self.le = classif.le
-            break
+        #for classif in self.load_models():
+        #    self.le = classif.le
+        #    break
 
     def get_boosting_values(self, weights):
         return {index: w for index, w in enumerate(weights)}
@@ -521,7 +561,7 @@ class Boosting(Ensemble):
                 return relation_clf
 
 
-class Stacking(Ensemble):
+class Stacking(Grid):
     def __init__(self, classifs, n_splits=2, **kwargs):
         super(Stacking, self).__init__(classifs, meta_name="stacking", **kwargs)
         self.dataset_blend = None
@@ -531,10 +571,10 @@ class Stacking(Ensemble):
             meta = self.load_meta()
             self.model_name = meta["model_name"]
 
-        for classif in self.load_models():
-            self.le = classif.le
-            self.num_labels = classif.num_labels
-            break
+        #for classif in self.load_models():
+        #    self.le = classif.le
+        #    self.num_labels = classif.num_labels
+        #    break
 
     def load_blend(self):
         from sklearn.externals import joblib
@@ -608,7 +648,7 @@ class Stacking(Ensemble):
         rm(self.get_model_path()+".xmeta")
 
 
-class Bagging(Ensemble):
+class Bagging(Grid):
     def __init__(self, classif, classifs_rbm, **kwargs):
         super(Bagging, self).__init__(classifs_rbm, meta_name="bagging", **kwargs)
         if classif is None:
