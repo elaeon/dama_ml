@@ -140,6 +140,7 @@ class TestGrid(unittest.TestCase):
             model_version="1",
             check_point_path="/tmp/")
         classif.train(others_models_args=self.others_models_args)
+        classif.output("avg")
         classif.scores().print_scores()
         self.assertEqual(type(classif.load_meta()), type({}))
 
@@ -158,10 +159,12 @@ class TestGrid(unittest.TestCase):
         from ml.clf.ensemble import Grid
 
         classif = Grid([(RandomForest, self.dataset), (AdaBoost, self.dataset)], 
+            dataset=self.dataset,
             model_name="test_grid", 
             model_version="1",
             check_point_path="/tmp/")
         classif.train(others_models_args=self.others_models_args)
+        classif.output("avg")
         classif.scores().print_scores()
         self.assertEqual(type(classif.load_meta()), type({}))
 
@@ -198,7 +201,7 @@ class TestGrid(unittest.TestCase):
             model_name="test_grid0", 
             model_version="1",
             check_point_path="/tmp/")
-
+        #classif_1.output("avg")
         classif_2 = Grid([AdaBoost, KNN],
             dataset=None, 
             model_name="test_grid1", 
@@ -221,7 +224,8 @@ class TestGrid(unittest.TestCase):
         ensemble.destroy()
 
     def test_compose_grid_adv(self):
-        from ml.clf.extended.w_sklearn import RandomForest, AdaBoost, LogisticRegression
+        from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
+        from ml.clf.extended.w_sklearn import LogisticRegression, KNN
         from ml.clf.ensemble import Grid, EnsembleLayers      
         from ml.processing import FitRobustScaler, Transforms
 
@@ -229,19 +233,22 @@ class TestGrid(unittest.TestCase):
         transforms.add(FitRobustScaler, type="column")
         ds0 = self.dataset.add_transforms(transforms, name="ds_test_0")
 
-        classif_1 = Grid([(RandomForest, ds0)],
-            model_name="test_grid0", 
+        classif_1 = Grid([(RandomForest, ds0), (KNN, self.dataset)],
+            model_name="test_grid0",            
+            check_point_path="/tmp/",
             model_version="1")
 
         classif_2 = Grid([AdaBoost, LogisticRegression],
             dataset=None, 
-            model_name="test_grid1", 
+            model_name="test_grid1",            
+            check_point_path="/tmp/", 
             model_version="1")
         classif_2.output(lambda x, y: (x + y) / 2)
 
         ensemble = EnsembleLayers( 
             model_name="test_ensemble_grid", 
-            model_version="1",
+            model_version="1",            
+            check_point_path="/tmp/",
             raw_dataset=self.dataset)
 
         ensemble.add(classif_1)
@@ -250,7 +257,7 @@ class TestGrid(unittest.TestCase):
         ensemble.train([others_models_args])
         ensemble.scores().print_scores()
 
-        ensemble = EnsembleLayers( 
+        ensemble = EnsembleLayers(
             model_name="test_ensemble_grid", 
             model_version="1",
             check_point_path="/tmp/")

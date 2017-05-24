@@ -33,11 +33,6 @@ class Grid(DataDrive):
         self.dataset = dataset
         self.params = {}
 
-        #for classif in self.load_models():
-        #    self.le = classif.le
-        #    self.num_labels = classif.num_labels
-        #    break
-
     def reset_dataset(self, dataset, individual_ds=False):
         self.individual_ds = individual_ds
         clf_layers = {}
@@ -120,7 +115,7 @@ class Grid(DataDrive):
                 **self.get_params(model.cls_name(), index))
 
     def train(self, others_models_args={}):
-        default_params = others_models_args
+        default_params = {"batch_size": 128, "num_steps": 1}
         for classif in self.load_models():
             print("Training [{}]".format(classif.__class__.__name__))
             params = others_models_args.get(classif.cls_name(), [default_params]).pop(0)
@@ -295,12 +290,14 @@ class EnsembleLayers(DataDrive):
             data[i] = y
             labels[i] = self.dataset.test_labels[row_c]
 
+        size = i
+        labels = labels[:size]
+        data = data[:size]
         #fixme: add a dataset chunk writer
         dataset = DataSetBuilder(dataset_path="/tmp/", rewrite=False)
         dataset.build_dataset(data, labels)
         second_layer = self.layers[1]
         second_layer.reset_dataset(dataset)
-
         n_splits = 2*deep + 1
         others_models_args_c = add_params_to_params(second_layer.classifs, 
                                                     others_models_args,
@@ -322,7 +319,6 @@ class EnsembleLayers(DataDrive):
                 "check_point_path": second_layer.check_point_path
             }
         }
-
         self.save_model()
         self.reload()
         dataset.destroy()
@@ -416,10 +412,6 @@ class Boosting(Grid):
             self.weights = self.get_boosting_values(meta['weights'])
             self.election = meta["election"]
             self.model_name = meta["model_name"]
-
-        #for classif in self.load_models():
-        #    self.le = classif.le
-        #    break
 
     def get_boosting_values(self, weights):
         return {index: w for index, w in enumerate(weights)}
