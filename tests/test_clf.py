@@ -313,47 +313,6 @@ class TestBoosting(unittest.TestCase):
         classif.destroy()
 
 
-class TestStacking(unittest.TestCase):
-    def setUp(self):
-        from ml.ds import DataSetBuilder
-        from ml.clf.ensemble import Stacking
-        from ml.clf.extended.w_sklearn import RandomForest
-        from ml.clf.extended.w_sklearn import ExtraTrees, AdaBoost
-
-        X = np.asarray([1, 0]*1000)
-        Y = X*1
-        self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
-        self.dataset.build_dataset(X, Y)
-
-        classif = Stacking([
-            ExtraTrees,
-            RandomForest,
-            AdaBoost],
-            dataset=self.dataset, 
-            model_name="test_stacking", 
-            model_version="1",
-            check_point_path="/tmp/",
-            n_splits=3)
-        classif.train(num_steps=1)
-
-    def tearDown(self):
-        self.dataset.destroy()
-
-    def test_load_meta(self):
-        from ml.clf.ensemble import Stacking
-
-        classif = Stacking([], 
-            model_name="test_stacking", 
-            model_version="1",
-            check_point_path="/tmp/")
-        
-        self.assertEqual(type(classif.load_meta()), type({}))
-        for p in classif.predict(self.dataset.data[:1], raw=True):
-            print(list(p))
-
-        classif.destroy()
-
-
 class TestBagging(unittest.TestCase):
     def setUp(self):
         from ml.ds import DataSetBuilder
