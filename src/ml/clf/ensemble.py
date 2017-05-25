@@ -220,6 +220,14 @@ class Grid(DataDrive):
             from ml.layers import IterLayer
             namespace = self.active_network()
             return IterLayer.avg(iter_(), len(self.classifs[namespace]))
+        elif self.fn_output == "bagging":
+            from ml.layers import IterLayer
+            namespace = self.active_network()
+            predictions = IterLayer.avg(iter_(), len(self.classifs[namespace]), method="geometric")
+            predictions = np.asarray(list(predictions))
+            #if len(data.shape) == 1:
+            #    data = data[:].reshape(-1, 1)
+            return np.append(data, predictions, axis=1)
         else:
             return self.fn_output(*iter_())
 
@@ -280,6 +288,9 @@ class EnsembleLayers(DataDrive):
             num_labels = classif.num_labels
             break
 
+        if initial_layer.fn_output == "bagging":
+            num_labels = num_labels + self.dataset.shape[1]
+
         deep = len(initial_layer.classifs[initial_layer.active_network()])
         size = self.dataset.test_data.shape[0] * deep
         shape = (size, num_labels)
@@ -290,9 +301,8 @@ class EnsembleLayers(DataDrive):
             data[i] = y
             labels[i] = self.dataset.test_labels[row_c]
 
-        size = i
-        labels = labels[:size]
-        data = data[:size]
+        labels = labels[:i]
+        data = data[:i]
         #fixme: add a dataset chunk writer
         dataset = DataSetBuilder(dataset_path="/tmp/", rewrite=False)
         dataset.build_dataset(data, labels)
@@ -526,77 +536,3 @@ class Boosting(Grid):
                 return order_from_ordered(best_predictors, relation_clf)
             else:
                 return relation_clf
-
-
-class Bagging(Grid):
-    def __init__(self, classif, classifs_rbm, **kwargs):
-        super(Bagging, self).__init__(classifs_rbm, meta_name="bagging", **kwargs)
-        if classif is None:
-            meta = self.load_meta()
-            self.model_name = meta["model_name"]
-            classif = locate(meta["model_base"])
-            self.classif = self.load_model(classif, namespace=self.meta_name)
-        else:
-            self.classif = self.load_model(classif, dataset=self.dataset, 
-                                    namespace=self.meta_name)
-        self.le = self.classif.le
-
-    def _metadata(self, score=None):
-        list_measure = self.scores(all_clf=False)
-        meta = super(Bagging, self)._metadata(score=list_measure.measures_to_dict())
-        meta["model_base"] = self.classif.module_cls_name()
-        return meta
-
-    def save_model(self):         
-        self.clf_models_namespace = self.string_namespaces(self.classifs)
-        if self.check_point_path is not None:
-            path = self.make_model_file()
-            self.save_meta()
-
-    def train(self, model_base_args={"batch_size": 128, "num_steps": 1}, 
-            others_models_args={}):
-        default_params = model_base_args
-        for classif in self.load_models():
-            print("Training [{}]".format(classif.__class__.__name__))
-            params = others_models_args.get(classif.cls_name(), [default_params]).pop(0)
-            classif.train(**params)
-        
-        print("Building features...")
-        dsb = DataSetBuilder(name=self.classif.dataset.name+"."+self.meta_name, rewrite=True)
-        dsb.build_dataset(
-            self.prepare_data(self.classif.dataset.train_data, transform=False, chunk_size=256),
-            self.classif.numerical_labels2classes(self.classif.dataset.train_labels[:]),
-            test_data=self.prepare_data(self.classif.dataset.test_data, transform=False, 
-                chunk_size=256),
-            test_labels=self.classif.numerical_labels2classes(self.classif.dataset.test_labels[:]),
-            validation_data=self.prepare_data(self.classif.dataset.validation_data, 
-                transform=False, chunk_size=256),
-            validation_labels=self.classif.numerical_labels2classes(
-                self.classif.dataset.validation_labels[:]))
-        self.classif.set_dataset(dsb, auto=False)
-        print("Done...")
-        self.classif.train(**model_base_args)
-        self.save_model()
-        self.reload()
-
-    def prepare_data(self, data, transform=True, chunk_size=1):
-        from ml.layers import IterLayer
-        predictions = (
-            classif.predict(data, raw=True, transform=transform, chunk_size=chunk_size)
-            for classif in self.load_models())
-        namespace = self.active_network()
-        predictions = IterLayer.avg(predictions, len(self.classifs[namespace]), method="geometric")
-        predictions = np.asarray(list(predictions))
-        if len(data.shape) == 1:
-            data = data[:].reshape(-1, 1)
-        return np.append(data, predictions, axis=1)
-
-    def predict(self, data, raw=False, transform=True, chunk_size=1):
-        data_model_base = self.prepare_data(data, transform=transform, chunk_size=chunk_size)
-        return self.classif.predict(data_model_base, raw=raw, transform=False, chunk_size=chunk_size)
-
-    def destroy(self):
-        from ml.utils.files import rm
-        self.classif.destroy()
-        for clf in self.load_models():
-            clf.destroy()

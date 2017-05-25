@@ -223,7 +223,7 @@ class TestGrid(unittest.TestCase):
         (s + st).print_scores()
         ensemble.destroy()
 
-    def test_compose_grid_adv(self):
+    def test_compose_grid_predict(self):
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
         from ml.clf.extended.w_sklearn import LogisticRegression, KNN
         from ml.clf.ensemble import Grid, EnsembleLayers      
@@ -268,6 +268,47 @@ class TestGrid(unittest.TestCase):
         ensemble.destroy()
         ds0.destroy()
 
+    def test_ensemble_bagging(self):
+        from ml.clf.extended.w_sklearn import RandomForest, AdaBoost, KNN
+        from ml.clf.extended.w_sklearn import LogisticRegression
+        from ml.clf.ensemble import Grid, EnsembleLayers
+
+        classif_1 = Grid([RandomForest, AdaBoost, KNN],
+            dataset=self.dataset,
+            model_name="test_grid0",            
+            check_point_path="/tmp/",
+            model_version="1")
+        classif_1.output("bagging")
+
+        classif_2 = Grid([LogisticRegression],
+            dataset=None, 
+            model_name="test_grid1",
+            check_point_path="/tmp/", 
+            model_version="1")
+        classif_2.output(lambda x: x)
+
+        ensemble = EnsembleLayers( 
+            model_name="test_ensemble_grid", 
+            model_version="1",            
+            check_point_path="/tmp/",
+            raw_dataset=self.dataset)
+
+        ensemble.add(classif_1)
+        ensemble.add(classif_2)
+        others_models_args = {"RandomForest": [{"n_splits": 2}]}
+        ensemble.train([others_models_args])
+        ensemble.scores().print_scores()
+
+        ensemble = EnsembleLayers(
+            model_name="test_ensemble_grid", 
+            model_version="1",
+            check_point_path="/tmp/")
+        
+        for p in ensemble.predict(self.dataset.data[:1], raw=True):
+            print(list(p))
+
+        ensemble.destroy()
+
 
 class TestBoosting(unittest.TestCase):
     def setUp(self):
@@ -302,47 +343,6 @@ class TestBoosting(unittest.TestCase):
         
         classif = Boosting([], 
             model_name="test_boosting", 
-            model_version="1",
-            check_point_path="/tmp/")
-        
-        self.assertEqual(type(classif.load_meta()), type({}))
-
-        for p in classif.predict(self.dataset.data[:1], raw=True):
-            print(list(p))
-
-        classif.destroy()
-
-
-class TestBagging(unittest.TestCase):
-    def setUp(self):
-        from ml.ds import DataSetBuilder
-        from ml.clf.ensemble import Bagging
-        from ml.clf.extended.w_sklearn import RandomForest
-        from ml.clf.extended.w_sklearn import ExtraTrees, AdaBoost, GradientBoost
-
-        X = np.asarray([1, 0]*1000)
-        Y = X*1
-        self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
-        self.dataset.build_dataset(X, Y)
-
-        classif = Bagging(GradientBoost, [
-            ExtraTrees,
-            RandomForest,
-            AdaBoost],
-            dataset=self.dataset, 
-            model_name="test_bagging", 
-            model_version="1",
-            check_point_path="/tmp/")
-        classif.train()
-
-    def tearDown(self):
-        self.dataset.destroy()
-
-    def test_load_meta(self):
-        from ml.clf.ensemble import Bagging
-
-        classif = Bagging(None, [], 
-            model_name="test_bagging", 
             model_version="1",
             check_point_path="/tmp/")
         
