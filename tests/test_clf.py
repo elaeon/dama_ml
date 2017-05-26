@@ -550,5 +550,29 @@ class TestIterLayers(unittest.TestCase):
         predictor = IterLayer.concat_n([predictor_0, predictor_1, predictor_2])
         self.assertItemsEqual(np.asarray(list(predictor)).reshape(-1), fl)
 
+    def test_append_data_to_iter(self):
+        from ml.layers import IterLayer
+
+        data = [[0, 1, 0], [2, 3, 0], [4, 5, 0], [5, 6, 0]]
+        data_i = [['a', 'b'], ['c', 'd'], ['e', 'f'], ['g', 'h']]
+        iter_layer = IterLayer((e for e in data_i))
+        iter_ce = iter_layer.concat_elems(data)
+
+        for i, e in enumerate(iter_ce):
+            self.assertItemsEqual(list(e), data_i[i] + data[i])
+
+    def test_append_iter_to_iter(self):
+        from ml.layers import IterLayer
+
+        data_i2 = [[0, 1, 0], [2, 3, 0], [4, 5, 0], [5, 6, 0]]
+        data_i1 = [['a', 'b'], ['c', 'd'], ['e', 'f'], ['g', 'h']]
+        iter_layer_1 = IterLayer((e for e in data_i1))
+        iter_layer_2 = IterLayer((e for e in data_i2))
+        iter_ce = iter_layer_1.concat_elems(iter_layer_2)
+
+        for i, e in enumerate(iter_ce):
+            self.assertItemsEqual(list(e), data_i1[i] + data_i2[i])
+
+
 if __name__ == '__main__':
     unittest.main()

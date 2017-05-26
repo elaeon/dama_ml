@@ -224,10 +224,11 @@ class Grid(DataDrive):
             from ml.layers import IterLayer
             namespace = self.active_network()
             predictions = IterLayer.avg(iter_(), len(self.classifs[namespace]), method="geometric")
-            predictions = np.asarray(list(predictions))
+            return predictions.concat_elems(data)
+            #predictions = np.asarray(list(predictions))
             #if len(data.shape) == 1:
             #    data = data[:].reshape(-1, 1)
-            return np.append(data, predictions, axis=1)
+            #return np.append(data, predictions, axis=1)
         else:
             return self.fn_output(*iter_())
 
