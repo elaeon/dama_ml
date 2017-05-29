@@ -26,14 +26,16 @@ class TestAE(unittest.TestCase):
         classif = PTsne(model_name="tsne", model_version="1", 
             check_point_path="/tmp/")
         self.assertEqual(len(list(classif.predict([X[1]]))[0]), 2)
+        classif.destroy()
+        dataset.destroy()
 
     def test_empty_load(self):        
         from ml.ae.extended.w_keras import PTsne
-        classif = PTsne(model_name="tsne2", model_version="1", 
+        classif = PTsne(
+            model_name="tsne2", 
+            model_version="1", 
             check_point_path="/tmp/")
-
-        #classif.train(batch_size=258, num_steps=1)
-        #classif.destroy()
+        classif.destroy()
 
     def test_vae(self):
         from ml.ae.extended.w_keras import VAE
@@ -61,28 +63,28 @@ class TestAE(unittest.TestCase):
         self.assertEqual(encoder.shape, (1, 2))
         self.assertEqual(decoder.shape, (1, 10))
 
-    def test_ensemble(self):
-        from ml.clf.ensemble import Bagging
-        from ml.ae.extended.w_keras import PTsne
-        from ml.clf.extended.w_sklearn import RandomForest
-        from ml.ds import DataSetBuilder
+    #def test_ensemble(self):
+    #    from ml.clf.ensemble import Bagging
+    #    from ml.ae.extended.w_keras import PTsne
+    #    from ml.clf.extended.w_sklearn import RandomForest
+    #    from ml.ds import DataSetBuilder
 
-        X = np.asarray([1, 0]*1000)
-        Y = X*1
-        dataset = DataSetBuilder("test_ae_ensemble", dataset_path="/tmp/", rewrite=False)
-        dataset.build_dataset(X, Y)
-        bagging = Bagging(RandomForest, [PTsne, PTsne],
-                dataset=dataset,
-                model_name="test_bag",
-                model_version="1")
-        bagging.add_params("PTsne", 0, perplexity=50)
-        bagging.add_params("PTsne", 1, perplexity=30)
-        model_base_args = {"batch_size": 50, "num_steps": 1}
-        others_models_args = {"PTsne": 
-            [{"batch_size": 50, "num_steps": 5}, {"batch_size": 50, "num_steps": 5}]}
-        bagging.train(model_base_args=model_base_args, others_models_args=others_models_args)
-        bagging.scores().print_scores()
-        dataset.destroy()
+    #    X = np.asarray([1, 0]*1000)
+    #    Y = X*1
+    #    dataset = DataSetBuilder("test_ae_ensemble", dataset_path="/tmp/", rewrite=False)
+    #    dataset.build_dataset(X, Y)
+    #    bagging = Bagging(RandomForest, [PTsne, PTsne],
+    #            dataset=dataset,
+    #            model_name="test_bag",
+    #            model_version="1")
+    #    bagging.add_params("PTsne", 0, perplexity=50)
+    #    bagging.add_params("PTsne", 1, perplexity=30)
+    #    model_base_args = {"batch_size": 50, "num_steps": 1}
+    #    others_models_args = {"PTsne": 
+    #        [{"batch_size": 50, "num_steps": 5}, {"batch_size": 50, "num_steps": 5}]}
+    #    bagging.train(model_base_args=model_base_args, others_models_args=others_models_args)
+    #    bagging.scores().print_scores()
+    #    dataset.destroy()
 
 if __name__ == '__main__':
     unittest.main()
