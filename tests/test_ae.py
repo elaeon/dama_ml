@@ -31,11 +31,14 @@ class TestAE(unittest.TestCase):
 
     def test_empty_load(self):        
         from ml.ae.extended.w_keras import PTsne
-        classif = PTsne(
-            model_name="tsne2", 
-            model_version="1", 
-            check_point_path="/tmp/")
-        classif.destroy()
+        try:
+            classif = PTsne(
+                model_name="tsne2", 
+                model_version="1", 
+                check_point_path="/tmp/")
+            classif.destroy()
+        except Exception, e:
+            self.assertEqual(e.message, "No metadata found")
 
     def test_vae(self):
         from ml.ae.extended.w_keras import VAE
