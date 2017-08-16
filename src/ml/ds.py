@@ -38,6 +38,8 @@ def load_metadata(path):
         return data
     except IOError:
         return {}
+    except Exception, e:
+        print(e.message, path)
 
 
 def calc_nshape(data, value):

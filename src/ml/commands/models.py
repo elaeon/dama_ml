@@ -48,16 +48,12 @@ def run(args):
         list_measure = ListMeasure(headers=headers, measures=table, order=order)
         list_measure.print_scores(order_column=measure)
     elif args.rm:
-        clf, model_name, version = args.rm.split(".")
-        name_version = model_name + "." + version
-        model_path_meta = os.path.join(settings["checkpoints_path"], clf, name_version, name_version)
-        print(DataDrive.read_meta(None, model_path_meta))
-        #model_path = os.path.join(settings["checkpoints_path"], clf, name_version)    
-        #dataset_name = DataDrive.read_meta("dataset_name", model_path_meta)
-        #dataset = Data.original_ds(name=dataset_name, dataset_path=settings["dataset_model_path"])
-        #dataset.destroy()
-        #print("Delete dataset: {}".format(dataset.url()))
-        #print("Delete model: {}".format(model_path))
+        for model_name in args.rm:
+            clf, model_name, version = model_name.split(".")
+            name_version = model_name + "." + version
+            model_path_meta = os.path.join(settings["checkpoints_path"], clf, name_version, name_version)
+            print(DataDrive.read_meta(None, model_path_meta))
+            #print("Delete model: {}".format(model_path))
         #rm(model_path)
         print("Done.")
     else:
@@ -68,8 +64,9 @@ def run(args):
                 meta = DataDrive.read_meta(None, os.path.join(
                     settings["checkpoints_path"], clf, name_version, name_version))
                 try:
-                    name, version = name_version.split(".")
-                    table.append([clf, name, version, meta.get("dataset_name", None),
+                    if meta is not None:
+                        name, version = name_version.split(".")
+                        table.append([clf, name, version, meta.get("dataset_name", None),
                                 meta.get("group_name", None)])
                 except ValueError:
                     pass
