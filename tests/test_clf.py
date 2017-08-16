@@ -67,7 +67,7 @@ class TestSKL(unittest.TestCase):
     def test_empty_load(self):
         from ml.clf.extended.w_sklearn import RandomForest
         classif = RandomForest(
-            model_name="test_0000", 
+            model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
         classif.destroy()

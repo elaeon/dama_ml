@@ -22,7 +22,7 @@ class TestLinearOutLayer(unittest.TestCase):
         transforms = Transforms()
         transforms.add(FitStandardScaler, type="column")
         ds = DataLabel(name="test", dataset_path="/tmp", transforms=transforms, 
-            apply_transforms=True)
+            apply_transforms=True, rewrite=True)
         ds.build_dataset(df.as_matrix(), np.asarray(self.outlayers))
         outlayers = ds.outlayers(type_detector='isolation', n_estimators=25, max_samples=10, 
             contamination=self.contamination)
@@ -34,7 +34,7 @@ class TestLinearOutLayer(unittest.TestCase):
         transforms = Transforms()
         transforms.add(FitStandardScaler, type="column")
         ds = DataLabel(name="test", dataset_path="/tmp", transforms=transforms, 
-            apply_transforms=True)
+            apply_transforms=True, rewrite=True)
         ds.build_dataset(df.as_matrix(), np.asarray(self.outlayers))
         outlayers = ds.outlayers(type_detector='robust', contamination=self.contamination)
         ds.destroy()

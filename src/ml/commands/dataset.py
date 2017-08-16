@@ -18,9 +18,10 @@ def run(args):
         dataset.info(classes=True)
     elif args.rm:
         try:
-            dataset = DataSetBuilder(args.rm)
-            print("Dataset: {}".format(dataset.url()))
-            rm(dataset.url())
+            for ds in args.rm:
+                dataset = DataSetBuilder(ds)
+                print("Dataset: {}".format(dataset.url()))
+                rm(dataset.url())
         except IOError:
             pass
         print("Done.")
