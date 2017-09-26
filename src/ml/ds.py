@@ -1286,7 +1286,10 @@ class DataSetBuilder(DataLabel):
 
     @property
     def labels(self):
-        return self.train_labels
+        #return self.train_labels
+        return np.concatenate((self.train_labels[:], 
+            self.test_labels[:],
+            self.validation_labels[:]), axis=0)
 
     @property
     def shape(self):
@@ -1663,9 +1666,10 @@ class DataSetBuilderFile(DataSetBuilder):
     Class for csv dataset build. Get the data from a csv's file.
     """
 
-    def __init__(self, name=None, training_data_path=None, **kwargs):
+    def __init__(self, name=None, training_data_path=None, test_data_path=None, **kwargs):
         super(DataSetBuilderFile, self).__init__(name, **kwargs)
         self.training_data_path = training_data_path
+        self.test_data_path = test_data_path
 
     def from_csv(self, folder_path, target_column):
         """

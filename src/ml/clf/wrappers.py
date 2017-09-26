@@ -23,7 +23,7 @@ log.addHandler(console)
 class BaseClassif(DataDrive):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
                 model_version=None, dataset_train_limit=None, 
-                autoload=True, group_name=None):
+                autoload=True, group_name=None, rewrite=False):
         self.model = None
         self.le = LabelEncoder()
         self.dataset_train_limit = dataset_train_limit
@@ -32,6 +32,8 @@ class BaseClassif(DataDrive):
         self.dataset = None
         self.dl = None
         self.ext = "ckpt.pkl"
+        self.rewrite = rewrite
+
         super(BaseClassif, self).__init__(
             check_point_path=check_point_path,
             model_version=model_version,
@@ -130,7 +132,7 @@ class BaseClassif(DataDrive):
             ltype='int',
             validator='',
             chunks=1000,
-            rewrite=False)
+            rewrite=self.rewrite)
 
         self.labels_encode(dataset.labels)
         log.info("Labels encode finished")
