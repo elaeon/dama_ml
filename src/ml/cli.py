@@ -9,6 +9,7 @@ subparsers = parser.add_subparsers()
 
 dataset_parser = subparsers.add_parser('datasets')
 dataset_parser.add_argument("--info", type=str, help="list of datasets or dateset info if a name is added")
+dataset_parser.add_argument("--sparcity", type=str, help="show the dataset sparcity")
 dataset_parser.add_argument("--rm", nargs="+", type=str, help="delete the dataset")
 dataset_parser.add_argument("--clean", action="store_true", help="clean orphans elements")
 dataset_parser.add_argument("--used-in", type=str, help="find if the models are using a specific dataset")

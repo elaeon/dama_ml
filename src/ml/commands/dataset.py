@@ -16,6 +16,9 @@ def run(args):
     if args.info:
         dataset = Data.original_ds(args.info)
         dataset.info(classes=True)
+    elif args.sparcity:
+        dataset = Data.original_ds(args.sparcity)
+        print(dataset.sparcity())
     elif args.rm:
         try:
             for ds in args.rm:

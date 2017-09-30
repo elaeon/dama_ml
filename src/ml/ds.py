@@ -1282,11 +1282,12 @@ class DataSetBuilder(DataLabel):
 
     @property
     def data(self):
-        return self.train_data
+        return np.concatenate((self.train_data[:], 
+            self.test_data[:],
+            self.validation_data[:]), axis=0)
 
     @property
     def labels(self):
-        #return self.train_labels
         return np.concatenate((self.train_labels[:], 
             self.test_labels[:],
             self.validation_labels[:]), axis=0)
