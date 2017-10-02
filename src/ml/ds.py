@@ -54,8 +54,10 @@ class ReadWriteData(object):
     def auto_dtype(self, data, ttype):
         if ttype == "auto" and data is not None:
             return data.dtype
-        elif ttype == "auto" and isinstance(data, type(None)):
+        elif ttype == "auto" and data is None:
             return "float64"
+        elif ttype == "object":
+            return h5py.special_dtype(vlen=unicode)
         else:
             return np.dtype(ttype)
 
@@ -1665,45 +1667,68 @@ class DataSetBuilderImage(DataSetBuilder):
 class DataSetBuilderFile(DataSetBuilder):
     """
     Class for csv dataset build. Get the data from a csv's file.
+    
+    :type training_data_path: list
+    :param training_data_path: list of files paths
+
+    :type sep: list
+    :param sep: list of strings separators for each file
+
+    kwargs are the same that DataSetBuilder's options
     """
 
-    def __init__(self, name=None, training_data_path=None, test_data_path=None, **kwargs):
+    def __init__(self, name=None, training_data_path=None, test_data_path=None,
+                sep=None, merge_field="id", **kwargs):
         super(DataSetBuilderFile, self).__init__(name, **kwargs)
         self.training_data_path = training_data_path
         self.test_data_path = test_data_path
+        self.sep = sep
+        self.merge_field = merge_field
 
-    def from_csv(self, folder_path, target_column):
+    def from_csv(self, folder_path, label_column):
         """
         :type folder_path: string
         :param folder_path: path to the csv.
 
-        :type target_column: string
-        :param target_column: column's name where are the labels
+        :type label_column: string
+        :param label_column: column's name where are the labels
         """
-        data, labels = self.csv2dataset(folder_path, target_column)
+        df = pd.read_csv(folder_path)
+        data, labels = self.df2dataset_label(df, label_column)
         return data, labels
 
     @classmethod
-    def csv2dataset(self, path, target_column):
-        df = pd.read_csv(path)
-        dataset = df.drop([target_column], axis=1).as_matrix()
-        labels = df[target_column].as_matrix()
+    def df2dataset_label(self, df, labels_column, ids=None):
+        if ids is not None:
+            drops = ids + [labels_column]
+        else:
+            drops = [labels_column]
+        dataset = df.drop(drops, axis=1).as_matrix()
+        labels = df[labels_column].as_matrix()
         return dataset, labels        
 
-    def build_dataset(self, target_column=None):
+    def build_dataset(self, labels_column=None):
         """
-         :type target_column: string
-         :param target_column: column's name where are the labels
+         :type label_column: string
+         :param label_column: column's name where are the labels
         """
-        data, labels = self.from_csv(self.training_data_path, target_column)
+        if isinstance(self.training_data_path, list):
+            if not isinstance(self.sep, list):
+                sep = [self.sep for _ in self.training_data_path]
+            else:
+                sep = self.sep
+            old_df = None
+            for sep, path in zip(sep, self.training_data_path):
+                data_df = pd.read_csv(path, sep=sep)
+                if old_df is not None:
+                    old_df = pd.merge(old_df, data_df, on=self.merge_field)
+                else:
+                    old_df = data_df
+            data, labels = self.df2dataset_label(old_df, 
+                labels_column=labels_column, ids=[self.merge_field])
+        else:
+            data, labels = self.from_csv(self.training_data_path, labels_column)
         super(DataSetBuilderFile, self).build_dataset(data, labels)
-
-    @classmethod
-    def merge_data_labels(self, data_path, labels_path, column_id):
-        import pandas as pd
-        data_df = pd.read_csv(data_path)
-        labels_df = pd.read_csv(labels_path)
-        return pd.merge(data_df, labels_df, on=column_id)
 
 
 class DataSetBuilderFold(object):

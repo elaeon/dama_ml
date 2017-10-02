@@ -7,6 +7,16 @@ from ml.ds import Data
 from ml.processing import Transforms
 
 
+def build_csv_file(path, vector, sep=","):
+    with open(path, 'w') as f:
+        header = ["id"] + map(str, list(range(vector.shape[-1])))
+        f.write(sep.join(header))
+        f.write("\n")
+        for i, row in enumerate(vector):
+            f.write(str(i)+sep)
+            f.write(sep.join(map(str, row)))
+            f.write("\n")
+
 class TestDataset(unittest.TestCase):
     def setUp(self):
         NUM_FEATURES = 10
@@ -71,7 +81,7 @@ class TestDataset(unittest.TestCase):
             rewrite=True)
         dataset.build_dataset(self.X, self.Y)
         labels_counter = dataset.labels_info()
-        self.assertEqual(labels_counter[0]+labels_counter[1], 5)
+        self.assertEqual(labels_counter[0]+labels_counter[1], 10)
         dataset.destroy()
 
     def test_distinct_data(self):
@@ -366,6 +376,26 @@ class TestDataset(unittest.TestCase):
             rewrite=True)
         dataset.build_dataset(self.X, self.Y)
         self.assertEqual(dataset.validation_labels.shape[0], 1)
+
+    def test_text_ds(self):
+        import h5py
+        X = [str(line)*10 for line in range(100)]
+        ds = Data(name="test", dtype='object')
+        ds.build_dataset(X)        
+        self.assertEqual(ds.shape[0], 100)
+        ds.destroy()
+
+    def test_file_merge(self):
+        build_csv_file('/tmp/test_X.csv', self.X, sep=",")
+        build_csv_file('/tmp/test_Y.csv', self.Y.reshape(-1, 1), sep="|")
+
+        dbf = DataSetBuilderFile(name="test", 
+            training_data_path=['/tmp/test_X.csv', '/tmp/test_Y.csv'], 
+                sep=[",", "|"], merge_field="id")
+        dbf.build_dataset(labels_column="0_y")
+        self.assertEqual(dbf.shape, self.X.shape)
+        self.assertEqual(dbf.labels.shape, self.Y.shape)
+        dbf.destroy()
 
 
 class TestDataSetFile(unittest.TestCase):
