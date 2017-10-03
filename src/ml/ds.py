@@ -1362,9 +1362,9 @@ class DataSetBuilder(DataLabel):
                 table.append(["train set", self.train_data.shape, self.train_data.dtype, 
                     self.train_labels.size])
 
-                if self.valid_data is not None:
-                    table.append(["valid set", self.valid_data.shape, self.valid_data.dtype, 
-                    self.valid_labels.size])
+                if self.validation_data is not None:
+                    table.append(["valid set", self.validation_data.shape, self.validation_data.dtype, 
+                    self.validation_labels.size])
 
                 table.append(["test set", self.test_data.shape, self.test_data.dtype, 
                     self.test_labels.size])
@@ -1548,7 +1548,7 @@ class DataSetBuilder(DataLabel):
 
     def to_libsvm(self, name=None, save_to=None, validation=True):
         """
-        tranforms the dataset into libsvm format
+        tranforms the dataset to libsvm format
         """
         from ml.utils.seq import libsvm_row
         le = self.labels2num()
@@ -1707,7 +1707,7 @@ class DataSetBuilderFile(DataSetBuilder):
         labels = df[labels_column].as_matrix()
         return dataset, labels        
 
-    def build_dataset(self, labels_column=None):
+    def build_dataset(self, labels_column=None, nrows=None):
         """
          :type label_column: string
          :param label_column: column's name where are the labels
@@ -1719,7 +1719,7 @@ class DataSetBuilderFile(DataSetBuilder):
                 sep = self.sep
             old_df = None
             for sep, path in zip(sep, self.training_data_path):
-                data_df = pd.read_csv(path, sep=sep)
+                data_df = pd.read_csv(path, sep=sep, nrows=nrows)
                 if old_df is not None:
                     old_df = pd.merge(old_df, data_df, on=self.merge_field)
                 else:
