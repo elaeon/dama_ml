@@ -229,7 +229,9 @@ class ListMeasure(object):
             order=order)
         return list_measure
 
-    def calc_scores(self, name, predict, data, labels, labels2classes_fn=None, measures=None):
+    def calc_scores(self, name, predictor, data, labels, labels2classes_fn=None, 
+                    measures=None):
+        from tqdm import tqdm
         if measures is None:
             measures = ["accuracy", "precision", "recall", "f1", "auc", "logloss"]
         elif isinstance(measures, str):
@@ -237,8 +239,8 @@ class ListMeasure(object):
         else:
             measures = ["logloss"]
         uncertain = "logloss" in measures
-        predictions = np.asarray(list(
-            predict(data, raw=uncertain, transform=False, chunk_size=258)))
+        predictions = np.asarray(list(tqdm(
+            predictor(data, raw=uncertain, transform=False, chunk_size=258), total=labels.shape[0])))
         measure = Measure(predictions, labels, labels2classes_fn)
         self.add_measure("CLF", name)
 

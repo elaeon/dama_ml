@@ -44,10 +44,11 @@ class BaseClassif(DataDrive):
 
     def scores(self, measures=None):
         list_measure = ListMeasure()
+        log.info("Getting scores")
         list_measure.calc_scores(self.__class__.__name__, 
                                 self.predict, 
-                                self.dataset.test_data[:1000], 
-                                self.dataset.test_labels[:1000], 
+                                self.dataset.test_data[:], 
+                                self.dataset.test_labels[:], 
                                 labels2classes_fn=self.numerical_labels2classes,
                                 measures=measures)
         return list_measure
@@ -316,11 +317,16 @@ class BaseClassif(DataDrive):
             print("fold ", k)
 
     def train(self, batch_size=0, num_steps=0, n_splits=None):
+        log.info("Training")
         if n_splits is not None:
             self.train_kfolds(batch_size=batch_size, num_steps=num_steps, n_splits=n_splits)
         else:
             self.model = self.prepare_model()
-        #self.save_model()
+        log.info("Saving model")
+        self.save_model()
+
+    def meta_scores(self):
+        return self.load_meta().get("score", None)
 
 
 class SKL(BaseClassif):
