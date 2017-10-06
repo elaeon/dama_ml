@@ -561,10 +561,14 @@ class Data(ReadWriteData):
             if initial == True:
                 return self.transforms.apply(data)
             else:
-                return self.transforms.apply(data, base_data=self.data)
+                return self.transforms.apply(data, base_data=self.train_data)
         else:
             log.debug("No transforms applied")
             return data if isinstance(data, np.ndarray) else np.asarray(data)
+
+    @property
+    def train_data(self):
+        return self.data
 
     @property
     def transforms_to_apply(self):
@@ -1299,12 +1303,12 @@ class DataSetBuilder(DataLabel):
         "return the shape of the dataset"
         rows = self.train_data.shape[0] + self.test_data.shape[0] +\
             self.validation_data.shape[0]
-        if self.train_data.dtype != np.object:
+        if self.train_data.dtype != np.object or len(self.train_data.shape) > 1:
             return tuple([rows] + list(self.train_data.shape[1:]))
         else:
             return (rows,)
 
-    def desfragment(self, dataset_path=None):
+    def desfragment(self, name=None, dataset_path=None):
         """
         Concatenate the train, valid and test data in a data array.
         Concatenate the train, valid, and test labels in another array.
@@ -1313,7 +1317,7 @@ class DataSetBuilder(DataLabel):
         log.debug("Desfragment...DSB")
         dataset_path = self.dataset_path if dataset_path is None else dataset_path
         dl = DataLabel(
-            name=uuid.uuid4().hex,
+            name=uuid.uuid4().hex if name is None else name,
             dataset_path=dataset_path,
             transforms=self.transforms,
             apply_transforms=self.apply_transforms,
@@ -1325,6 +1329,9 @@ class DataSetBuilder(DataLabel):
             compression_level=self.compression_level)
         dl.build_dataset_from_dsb(self)
         return dl
+
+    def to_datalabel(self, name=None):
+        return self.desfragment(name=name)
 
     def info(self, classes=False):
         """
@@ -1685,7 +1692,7 @@ class DataSetBuilderFile(DataSetBuilder):
         self.sep = sep
         self.merge_field = merge_field
 
-    def from_csv(self, folder_path, label_column):
+    def from_csv(self, folder_path, label_column, nrows=None, exclude_columns=None):
         """
         :type folder_path: string
         :param folder_path: path to the csv.
@@ -1693,21 +1700,29 @@ class DataSetBuilderFile(DataSetBuilder):
         :type label_column: string
         :param label_column: column's name where are the labels
         """
-        df = pd.read_csv(folder_path)
-        data, labels = self.df2dataset_label(df, label_column)
+        df = pd.read_csv(folder_path, nrows=nrows)
+        data, labels = self.df2dataset_label(df, label_column, 
+                                            exclude_columns=exclude_columns)
         return data, labels
 
     @classmethod
-    def df2dataset_label(self, df, labels_column, ids=None):
+    def df2dataset_label(self, df, labels_column, ids=None, exclude_columns=None):
         if ids is not None:
             drops = ids + [labels_column]
         else:
             drops = [labels_column]
+
+        if exclude_columns is not None:
+            if isinstance(exclude_columns, list):
+                drops.extend(exclude_columns)
+            else:
+                drops.extend([exclude_columns])
+
         dataset = df.drop(drops, axis=1).as_matrix()
         labels = df[labels_column].as_matrix()
         return dataset, labels        
 
-    def build_dataset(self, labels_column=None, nrows=None):
+    def build_dataset(self, labels_column=None, nrows=None, exclude_columns=None):
         """
          :type label_column: string
          :param label_column: column's name where are the labels
@@ -1725,9 +1740,12 @@ class DataSetBuilderFile(DataSetBuilder):
                 else:
                     old_df = data_df
             data, labels = self.df2dataset_label(old_df, 
-                labels_column=labels_column, ids=[self.merge_field])
+                labels_column=labels_column, ids=[self.merge_field],
+                exclude_columns=exclude_columns)
         else:
-            data, labels = self.from_csv(self.training_data_path, labels_column)
+            data, labels = self.from_csv(self.training_data_path, labels_column, 
+                                        nrows=nrows, 
+                                        exclude_columns=exclude_columns)
         super(DataSetBuilderFile, self).build_dataset(data, labels)
 
 

@@ -46,8 +46,8 @@ class BaseClassif(DataDrive):
         list_measure = ListMeasure()
         list_measure.calc_scores(self.__class__.__name__, 
                                 self.predict, 
-                                self.dataset.test_data, 
-                                self.dataset.test_labels[:], 
+                                self.dataset.test_data[:1000], 
+                                self.dataset.test_labels[:1000], 
                                 labels2classes_fn=self.numerical_labels2classes,
                                 measures=measures)
         return list_measure
@@ -144,9 +144,9 @@ class BaseClassif(DataDrive):
                                         self.le.transform(dataset.test_labels))
             validation_data, validation_labels = self.reformat(dataset.validation_data, 
                                         self.le.transform(dataset.validation_labels))
-            dsb.build_dataset(train_data, train_labels, test_data, test_labels,
-                            validation_data, validation_labels)
-        
+            dsb.build_dataset(train_data, train_labels, test_data=test_data, 
+                            test_labels=test_labels, validation_data=validation_data, 
+                            validation_labels=validation_labels)
         dsb.close_reader()
         return dsb
 
@@ -162,12 +162,13 @@ class BaseClassif(DataDrive):
         if auto is True:
             self.dataset = self.reformat_all(dataset)
             if self.dataset.mode == "w":
-                self.dl = self.dataset.desfragment(dataset_path=settings["dataset_model_path"])
-                self.edit_meta("dl", self.dl.name)
+                pass
+                #self.dl = self.dataset.desfragment(dataset_path=settings["dataset_model_path"])
+                #self.edit_meta("dl", self.dl.name)
             else:
                 try:
                     meta = self.load_meta()
-                    self.dl = Data.original_ds(name=meta["dl"], dataset_path=settings["dataset_model_path"])
+                    #self.dl = Data.original_ds(name=meta["dl"], dataset_path=settings["dataset_model_path"])
                 except KeyError:
                     self.dl = self.dataset.desfragment(dataset_path=settings["dataset_model_path"])
                     self.edit_meta("dl", self.dl.name)
@@ -254,7 +255,7 @@ class BaseClassif(DataDrive):
                 "model_version": self.model_version,
                 "score": list_measure.measures_to_dict(),
                 "base_labels": list(self.base_labels),
-                "dl": self.dl.name}
+                "dl": None}#self.dl.name}
         
     def get_dataset(self):
         from ml.ds import DataSetBuilder, Data
@@ -319,7 +320,7 @@ class BaseClassif(DataDrive):
             self.train_kfolds(batch_size=batch_size, num_steps=num_steps, n_splits=n_splits)
         else:
             self.model = self.prepare_model()
-        self.save_model()
+        #self.save_model()
 
 
 class SKL(BaseClassif):

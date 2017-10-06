@@ -24,11 +24,12 @@ class SVC(SKL):
 class RandomForest(SKLP):
     def prepare_model(self):
         from sklearn.ensemble import RandomForestClassifier
-
+        print("Train")
         model = RandomForestClassifier(n_estimators=25, min_samples_split=2)
         model_clf = model.fit(self.dataset.train_data, self.dataset.train_labels)
         reg_model = CalibratedClassifierCV(model_clf, method="sigmoid", cv="prefit")
         reg_model.fit(self.dataset.validation_data, self.dataset.validation_labels)
+        print("END")
         return self.ml_model(reg_model)
 
     def prepare_model_k(self):

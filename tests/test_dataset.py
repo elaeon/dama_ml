@@ -354,6 +354,18 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
         data.destroy()
 
+    def test_to_datalabel(self):
+        dataset = DataSetBuilder(
+            name="test_ds_1",
+            dataset_path="/tmp/",
+            ltype='int',
+            validator="cross",
+            rewrite=True)
+        dataset.build_dataset(self.X, self.Y)
+        data = dataset.to_datalabel()
+        dataset.destroy()
+        data.destroy()
+
     def test_rewrite(self):
         dataset = DataSetBuilder(
             name="test_ds",
@@ -381,8 +393,14 @@ class TestDataset(unittest.TestCase):
         import h5py
         X = [str(line)*10 for line in range(100)]
         ds = Data(name="test", dtype='object')
-        ds.build_dataset(X)        
+        ds.build_dataset(X)
         self.assertEqual(ds.shape[0], 100)
+        ds.destroy()
+
+        X = [(str(line)*10, "1") for line in range(100)]
+        ds = Data(name="test", dtype='object')
+        ds.build_dataset(X)
+        self.assertEqual(ds.shape, (100, 2))
         ds.destroy()
 
     def test_file_merge(self):
