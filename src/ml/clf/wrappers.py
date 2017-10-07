@@ -6,7 +6,7 @@ from sklearn.preprocessing import LabelEncoder
 from ml.utils.config import get_settings
 from ml.models import MLModel, DataDrive
 from ml.ds import DataSetBuilder, Data
-from ml.clf.measures import ListMeasure
+from ml.clf.measures import ListMeasure, Measure
 from ml.layers import IterLayer
 
 settings = get_settings("ml")
@@ -54,10 +54,13 @@ class BaseClassif(DataDrive):
         return list_measure
 
     def confusion_matrix(self):
+        from tqdm import tqdm
         list_measure = ListMeasure()
-        predictions = self.predict(self.dataset.test_data, raw=False, transform=False)
-        measure = Measure(np.asarray(list(predictions)), self.dataset.test_labels, 
-                        self.labels2classes_fn)
+        predictions = self.predict(self.dataset.test_data[:], raw=False, 
+            transform=False, chunk_size=258)
+        measure = Measure(np.asarray(list(tqdm(predictions, total=self.dataset.test_labels.shape[0]))),
+                        self.dataset.test_labels[:], 
+                        self.numerical_labels2classes)
         list_measure.add_measure("CLF", self.__class__.__name__)
         list_measure.add_measure("CM", measure.confusion_matrix(base_labels=self.base_labels))
         return list_measure

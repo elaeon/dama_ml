@@ -83,7 +83,7 @@ class Measure(object):
 
     def confusion_matrix(self, base_labels=None):
         from sklearn.metrics import confusion_matrix
-        cm = confusion_matrix(self.labels, self.transform(self.predictions), labels=base_labels)
+        cm = confusion_matrix(self.labels, self.predictions, labels=base_labels)
         return cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 
     @natural_order(False)
@@ -195,11 +195,11 @@ class ListMeasure(object):
 
     def print_matrix(self, labels):
         from tabulate import tabulate
-        for name, measure in enumerate(self.measures):
+        for _, measure in enumerate(self.measures):
             print("******")
-            print(name)
+            print(measure[0])
             print("******")
-            print(tabulate(np.c_[labels.T, measure], list(labels)))
+            print(tabulate(np.c_[labels.T, measure[1]], list(labels)))
 
     def __add__(self, other):
         for hs, ho in zip(self.headers, other.headers):
@@ -240,7 +240,8 @@ class ListMeasure(object):
             measures = ["logloss"]
         uncertain = "logloss" in measures
         predictions = np.asarray(list(tqdm(
-            predictor(data, raw=uncertain, transform=False, chunk_size=258), total=labels.shape[0])))
+            predictor(data, raw=uncertain, transform=False, chunk_size=258), 
+            total=labels.shape[0])))
         measure = Measure(predictions, labels, labels2classes_fn)
         self.add_measure("CLF", name)
 
