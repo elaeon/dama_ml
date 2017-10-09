@@ -102,13 +102,14 @@ class ReadWriteData(object):
             log.debug("Error opening {} in file {}".format(name, self.url()))
             return None
 
-    def chunks_writer(self, f, name, data, chunks=128, init=0, type_t=None):
+    def chunks_writer(self, f, name, data, chunks=258, init=0, type_t=None):
         from ml.utils.seq import grouper_chunk
+        from tqdm import tqdm
+        log.info("chunk size {}".format(chunks))
         end = init
-        for row in grouper_chunk(chunks, data):
+        for row in tqdm(grouper_chunk(chunks, data)):
             seq = type_t(np.asarray(list(row)))
             end += seq.shape[0]
-            #print("init:{}, end:{}, shape:{}, chunks:{}, name: {}".format(init, end, seq.shape, chunks, name))
             f[name][init:end] = seq
             init = end
         return end
@@ -193,7 +194,7 @@ class Data(ReadWriteData):
     """
     def __init__(self, name=None, dataset_path=None, transforms=None,
                 apply_transforms=False, dtype='float64', description='',
-                author='', compression_level=0, chunks=100, rewrite=False):
+                author='', compression_level=0, chunks=258, rewrite=False):
 
         self.name = uuid.uuid4().hex if name is None else name
         self._applied_transforms = False
@@ -345,7 +346,6 @@ class Data(ReadWriteData):
         return DataLabel
         """
         log.debug("Desfragment...Data")
-        dataset_path = self.dataset_path if dataset_path is None else dataset_path
         return self.copy(dataset_path=dataset_path)
 
     def type_t(self, ttype, data):
@@ -463,11 +463,11 @@ class Data(ReadWriteData):
         with h5py.File(self.url(), 'a') as f:
             f.require_group("data")
             self._set_space_shape(f, "data", dsb.shape)
-            end = self.chunks_writer(f, "/data/data", dsb.train_data, 
+            end = self.chunks_writer(f, "/data/data", dsb.train_data[:], 
                 chunks=self.chunks, type_t=self.dtype_t)
-            end = self.chunks_writer(f, "/data/data", dsb.test_data, chunks=self.chunks, 
+            end = self.chunks_writer(f, "/data/data", dsb.test_data[:], chunks=self.chunks, 
                                     init=end, type_t=self.dtype_t)
-            self.chunks_writer(f, "/data/data", dsb.validation_data, chunks=self.chunks, 
+            self.chunks_writer(f, "/data/data", dsb.validation_data[:], chunks=self.chunks, 
                                 init=end, type_t=self.dtype_t)
         
         self.md5 = self.calc_md5()
@@ -738,7 +738,7 @@ class DataLabel(Data):
                 description='',
                 author='',
                 compression_level=0,
-                chunks=100,
+                chunks=258,
                 rewrite=False):
 
         super(DataLabel, self).__init__(name=name, dataset_path=dataset_path,
@@ -852,18 +852,18 @@ class DataLabel(Data):
             f.require_group("data")
             self._set_space_shape(f, "data", dsb.shape)
             self._set_space_shape(f, "labels", labels_shape, label=True)
-            end = self.chunks_writer(f, "/data/data", dsb.train_data, chunks=self.chunks,
+            end = self.chunks_writer(f, "/data/data", dsb.train_data[:], chunks=self.chunks,
                 type_t=self.dtype_t)
-            end = self.chunks_writer(f, "/data/data", dsb.test_data, chunks=self.chunks, 
+            end = self.chunks_writer(f, "/data/data", dsb.test_data[:], chunks=self.chunks, 
                                     init=end, type_t=self.dtype_t)
-            self.chunks_writer(f, "/data/data", dsb.validation_data, chunks=self.chunks, 
+            self.chunks_writer(f, "/data/data", dsb.validation_data[:], chunks=self.chunks, 
                                 init=end, type_t=self.dtype_t)
 
-            end = self.chunks_writer(f, "/data/labels", dsb.train_labels, 
+            end = self.chunks_writer(f, "/data/labels", dsb.train_labels[:], 
                 chunks=self.chunks, type_t=self.ltype_t)
-            end = self.chunks_writer(f, "/data/labels", dsb.test_labels, chunks=self.chunks, 
+            end = self.chunks_writer(f, "/data/labels", dsb.test_labels[:], chunks=self.chunks, 
                                     init=end, type_t=self.ltype_t)
-            self.chunks_writer(f, "/data/labels", dsb.validation_labels, chunks=self.chunks, 
+            self.chunks_writer(f, "/data/labels", dsb.validation_labels[:], chunks=self.chunks, 
                                 init=end, type_t=self.ltype_t)
        
         self.md5 = self.calc_md5()
@@ -880,12 +880,13 @@ class DataLabel(Data):
 
         self.md5 = self.calc_md5()
 
-    def empty(self, name, dtype='float64', ltype='|S1', apply_transforms=False):
+    def empty(self, name, dtype='float64', ltype='|S1', 
+                apply_transforms=False, dataset_path=None):
         """
         build an empty DataLabel with the default parameters
         """
         dl = DataLabel(name=name, 
-            dataset_path=self.dataset_path,
+            dataset_path=dataset_path,
             transforms=self.transforms,
             apply_transforms=apply_transforms,
             dtype=dtype,
@@ -899,19 +900,21 @@ class DataLabel(Data):
         return dl
 
     def convert(self, name, dtype='float64', ltype='|S1', apply_transforms=False, 
-                percentaje=1):
+                percentaje=1, dataset_path=None):
         """
         :type dtype: string
         :param dtype: cast the data to the defined type
 
         dataset_path is not necesary to especify, this info is obtained from settings.cfg
         """
-        dl = self.empty(name, dtype=dtype, ltype=ltype, apply_transforms=apply_transforms)
+        dl = self.empty(name, dtype=dtype, ltype=ltype, 
+                        apply_transforms=apply_transforms, 
+                        dataset_path=dataset_path)
         dl.build_dataset(calc_nshape(self.data, percentaje), calc_nshape(self.labels, percentaje))
         dl.close_reader()
         return dl
 
-    def copy(self, name=None, percentaje=1):
+    def copy(self, name=None, dataset_path=None, percentaje=1):
         """
         :type percentaje: float
         :param percentaje: value between [0, 1], this value represent the size of the dataset to copy.
@@ -921,7 +924,7 @@ class DataLabel(Data):
         name = self.name + "_copy_" + uuid.uuid4().hex if name is None else name
         dl = self.convert(name, dtype=self.dtype, ltype=self.ltype, 
                         apply_transforms=self.apply_transforms, 
-                        percentaje=percentaje)
+                        percentaje=percentaje, dataset_path=dataset_path)
         return dl
 
     @classmethod
@@ -1214,7 +1217,7 @@ class DataSetBuilder(DataLabel):
                 description='',
                 author='',
                 compression_level=0,
-                chunks=100,
+                chunks=258,
                 rewrite=False):
 
         super(DataSetBuilder, self).__init__(name=name, dataset_path=dataset_path,
@@ -1315,7 +1318,6 @@ class DataSetBuilder(DataLabel):
         return data, labels
         """
         log.debug("Desfragment...DSB")
-        dataset_path = self.dataset_path if dataset_path is None else dataset_path
         dl = DataLabel(
             name=uuid.uuid4().hex if name is None else name,
             dataset_path=dataset_path,
@@ -1532,12 +1534,13 @@ class DataSetBuilder(DataLabel):
         dsb.close_reader()
         return dsb
 
-    def empty(self, name, dtype='float64', ltype='|S1', apply_transforms=False):
+    def empty(self, name, dtype='float64', ltype='|S1', apply_transforms=False,
+                dataset_path=None):
         """
         build an empty DataLabel with the default parameters
         """
         dsb = DataSetBuilder(name=name, 
-            dataset_path=self.dataset_path,
+            dataset_path=dataset_path,
             transforms=self.transforms,
             apply_transforms=apply_transforms,
             train_size=self.train_size,
@@ -1665,8 +1668,9 @@ class DataSetBuilderImage(DataSetBuilder):
                 labels.append(number_id)
         return images_data, labels
 
-    def copy(self, name=None, percentaje=1):
-        dataset = super(DataSetBuilderImage, self).copy(name=name, percentaje=percentaje)
+    def copy(self, name=None, dataset_path=None, percentaje=1):
+        dataset = super(DataSetBuilderImage, self).copy(
+            name=name, percentaje=percentaje, dataset_path=dataset_path)
         dataset.image_size = self.image_size
         return dataset
 

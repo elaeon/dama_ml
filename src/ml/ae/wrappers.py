@@ -16,6 +16,10 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 log.addHandler(console)
 
+from keras import backend
+if backend._BACKEND == "theano":
+    raise Exception, "Theano is not supported for the autoencoders wrappers, change it with export KERAS_BACKEND=tensorflow"
+
 
 class BaseAe(DataDrive):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 

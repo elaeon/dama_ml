@@ -366,6 +366,17 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
         data.destroy()
 
+    def test_datalabel_to_data(self):
+        dataset = DataLabel(
+            name="test_ds_1",
+            dataset_path="/tmp/",
+            ltype='int',
+            rewrite=True)
+        dataset.build_dataset(self.X, self.Y)
+        data = dataset.to_data()
+        dataset.destroy()
+        data.destroy()
+
     def test_rewrite(self):
         dataset = DataSetBuilder(
             name="test_ds",
