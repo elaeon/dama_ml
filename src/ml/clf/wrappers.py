@@ -165,17 +165,6 @@ class BaseClassif(DataDrive):
         self._original_dataset_md5 = dataset.md5
         if auto is True:
             self.dataset = self.reformat_all(dataset)
-            if self.dataset.mode == "w":
-                pass
-                #self.dl = self.dataset.desfragment(dataset_path=settings["dataset_model_path"])
-                #self.edit_meta("dl", self.dl.name)
-            else:
-                try:
-                    meta = self.load_meta()
-                    #self.dl = Data.original_ds(name=meta["dl"], dataset_path=settings["dataset_model_path"])
-                except KeyError:
-                    self.dl = self.dataset.desfragment(dataset_path=settings["dataset_model_path"])
-                    self.edit_meta("dl", self.dl.name)
         else:
             self.dataset.destroy()
             self.dataset = dataset
@@ -259,7 +248,7 @@ class BaseClassif(DataDrive):
                 "model_version": self.model_version,
                 "score": list_measure.measures_to_dict(),
                 "base_labels": list(self.base_labels),
-                "dl": None}#self.dl.name}
+                "dl": self.dl.name if self.dl is not None else None}
         
     def get_dataset(self):
         from ml.ds import DataSetBuilder, Data

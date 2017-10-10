@@ -179,14 +179,16 @@ class TestTransforms(unittest.TestCase):
 
         transforms = Transforms()
         transforms.add(FitTsne, name="tsne", type="column")
-        X = np.asarray([1, 0]*10)
+        X = np.random.rand(100, 4)
         Y = X*1
         dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
             ltype='int', transforms=transforms, rewrite=True, apply_transforms=True)
         dataset.build_dataset(X, Y)
-        self.assertEqual(dataset.shape, (20, 3))
+        shape = dataset.shape
         dataset.info()
         dataset.destroy()
+        transforms.destroy()
+        self.assertEqual(shape, (100, 6))
 
 
 if __name__ == '__main__':

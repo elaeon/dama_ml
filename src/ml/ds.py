@@ -561,7 +561,7 @@ class Data(ReadWriteData):
             if initial == True:
                 return self.transforms.apply(data)
             else:
-                return self.transforms.apply(data, base_data=self.train_data)
+                return self.transforms.apply(data, base_data=self.train_data[:])
         else:
             log.debug("No transforms applied")
             return data if isinstance(data, np.ndarray) else np.asarray(data)
@@ -1505,7 +1505,7 @@ class DataSetBuilder(DataLabel):
         return classif.load_meta().get("score", {measure, None}).get(measure, None) 
 
     def convert(self, name, dtype='float64', ltype='|S1', apply_transforms=False, 
-                percentaje=1):
+                percentaje=1, dataset_path=None):
         """
         :type name: string
         :param name: converted dataset's name
@@ -1523,7 +1523,8 @@ class DataSetBuilder(DataLabel):
         :param percentaje: values between 0 and 1, this value specify the percentaje of the data to apply transforms and cast function, then return a subset
 
         """
-        dsb = self.empty(name, dtype=dtype, ltype=ltype, apply_transforms=apply_transforms)
+        dsb = self.empty(name, dtype=dtype, ltype=ltype, 
+            apply_transforms=apply_transforms, dataset_path=dataset_path)
         dsb.build_dataset(
             calc_nshape(self.train_data, percentaje), 
             calc_nshape(self.train_labels, percentaje),

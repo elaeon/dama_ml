@@ -136,31 +136,36 @@ class TransformsCol(TransformsRow):
             transforms.add(locate(fn), **params)
         return transforms
 
+    def initial_fn(self, data):
+        for fn, params in self.transforms.items():
+            fn = locate(fn)
+            if "name_00_ml" in params:
+                name = params.pop("name_00_ml")
+            else:
+                name = None
+            yield fn(data, name=name, **params)
+
     def apply(self, data, base_data=None):
         """
         :type data: array
         :param data: apply the transforms added to the data
         """
-        def initial_fn(data):
-            for fn, params in self.transforms.items():
-                fn = locate(fn)
-                if "name_00_ml" in params:
-                    name = params.pop("name_00_ml")
-                else:
-                    name = None
-                yield fn(data, name=name, **params)
-
         if base_data is None:
-            for fn_fit in initial_fn(data):
+            for fn_fit in self.initial_fn(data):
                 data = fn_fit.transform(data)
         else:
-            for fn_fit in initial_fn(base_data):
+            for fn_fit in self.initial_fn(base_data):
                 data = fn_fit.transform(data)
 
         if data is None:
             raise Exception
         else:
             return data
+
+    def destroy(self):
+        for transform in self.initial_fn(None):
+            if hasattr(transform, 'destroy'):
+                transform.destroy()
 
 
 class Transforms(object):
@@ -286,6 +291,11 @@ class Transforms(object):
         else:
             return data
 
+    def destroy(self):
+        for transform in self.compact():
+            if hasattr(transform, 'destroy'):
+                transform.destroy()
+            
 
 class Fit(object):
     def __init__(self, data, name=None, **kwargs):
@@ -351,12 +361,16 @@ class FitTsne(Fit):
         from ml.ae.extended.w_keras import PTsne
         from ml.ds import Data
 
-        tsne = PTsne(model_name=self.name, model_version="1")
+        tsne = PTsne(model_name=self.name, model_version="1", autoload=False)
         if not tsne.exist():
             dataset = Data()
             dataset.build_dataset(data)
-            tsne = PTsne(model_name=self.name, model_version="1", dataset=dataset, latent_dim=2)
+            tsne = PTsne(model_name=self.name, model_version="1", 
+                        dataset=dataset, latent_dim=2)
             tsne.train(batch_size=50, num_steps=2)
+        else:
+            tsne.load_dataset(None)
+        self.model = tsne
         return tsne.predict
 
     def transform(self, data):
@@ -368,6 +382,10 @@ class FitTsne(Fit):
                 yield np.append(row, list(predict), axis=0)
 
         return IterLayer(iter_())
+
+    def destroy(self):
+        if hasattr(self, 'model'):
+            self.model.destroy()
 
 
 def poly_features(data, degree=2, interaction_only=False, include_bias=True):

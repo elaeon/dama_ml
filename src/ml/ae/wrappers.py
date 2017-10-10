@@ -82,9 +82,7 @@ class BaseAe(DataDrive):
             self.dataset = self.get_dataset()
         else:
             self.set_dataset(dataset)
-
-        if self.exist():
-            self.num_features = self.dataset.num_features()
+        self.num_features = self.dataset.num_features()
 
     def set_dataset(self, dataset):
         self.original_dataset = dataset
@@ -152,21 +150,22 @@ class BaseAe(DataDrive):
     def get_dataset(self):
         from ml.ds import Data
         meta = self.load_meta()
-        try:
-            self.original_dataset = Data.original_ds(meta["o_dataset_name"], 
-                dataset_path=meta["o_dataset_path"])
-            dataset = Data.original_ds(meta["dataset_name"], dataset_path=meta["dataset_path"])
-        except KeyError:
-            raise Exception, "No metadata found"
-        else:
-            self.group_name = meta.get('group_name', None)
-            if meta.get('md5', None) != self.original_dataset.md5:
-                log.warning("The dataset md5 is not equal to the model '{}'".format(
-                    self.__class__.__name__))
-            return dataset
+        #try:
+        self.original_dataset = Data.original_ds(meta["o_dataset_name"], 
+            dataset_path=meta["o_dataset_path"])
+        dataset = Data.original_ds(meta["dataset_name"], dataset_path=meta["dataset_path"])
+        #except KeyError:
+        #    raise Exception, "No metadata found"
+        #else:
+        self.group_name = meta.get('group_name', None)
+        if meta.get('md5', None) != self.original_dataset.md5:
+            log.warning("The dataset md5 is not equal to the model '{}'".format(
+                self.__class__.__name__))
+        return dataset
 
     def exist(self):
-        return self.dataset is not None
+        meta = self.load_meta()
+        return meta.get('dataset_name', "") != ""
 
 
 class Keras(BaseAe):

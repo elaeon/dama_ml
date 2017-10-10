@@ -94,7 +94,7 @@ class DataDrive(object):
         """remove the dataset associated to the model and his checkpoints"""
         from ml.utils.files import rm
         self.dataset.destroy()
-        if hasattr(self, 'dl'):
+        if hasattr(self, 'dl') and self.dl is not None:
             self.dl.destroy()
         rm(self.get_model_path()+"."+self.ext)
         rm(self.get_model_path()+".xmeta")
