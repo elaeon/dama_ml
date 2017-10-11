@@ -13,9 +13,11 @@ settings.update(get_settings("tickets"))
 
 class TestMsssiM(unittest.TestCase):
     def setUp(self):
-        self.img1 = os.path.join(settings["numbers_xml"], "1/img-1-0.png")
-        self.img2 = os.path.join(settings["numbers_xml"], "1/img-1-1.png") 
-        self.img3 = os.path.join(settings["numbers_xml"], "1/img-1-2.png")
+        base_file = os.path.dirname(os.path.abspath(__file__))
+        print(base_file)
+        self.img1 = os.path.join(base_file, "../examples/Pictures/testPattern.png")
+        self.img2 = os.path.join(base_file, "../examples/Pictures/testPattern.png") 
+        self.img3 = os.path.join(base_file, "../examples/Pictures/testPattern2.png")
 
     def test_same_img(self):
         from skimage import io, img_as_float
