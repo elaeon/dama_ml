@@ -543,7 +543,7 @@ class Data(ReadWriteData):
                         percentaje=percentaje, dataset_path=dataset_path)
         return data
 
-    def processing(self, data, initial=True):
+    def processing(self, data, base_data=None):
         """
         :type data: array
         :param data: data to transform
@@ -557,10 +557,10 @@ class Data(ReadWriteData):
         """
         if not self.transforms.is_empty() and self.transforms_to_apply and data is not None:
             log.debug("Apply transforms")
-            if initial == True:
+            if base_data is None:
                 return self.transforms.apply(data)
             else:
-                return self.transforms.apply(data, base_data=self.train_data[:])
+                return self.transforms.apply(data, base_data=base_data)
         else:
             log.debug("No transforms applied")
             return data if isinstance(data, np.ndarray) else np.asarray(data)
@@ -873,7 +873,7 @@ class DataLabel(Data):
         """
         with h5py.File(self.url(), 'a') as f:
             f.require_group("data")
-            data = self.processing(data, initial=True)
+            data = self.processing(data)
             self._set_space_data(f, 'data', self.dtype_t(data))
             self._set_space_data(f, 'labels', self.ltype_t(labels), label=True)
 
@@ -1381,32 +1381,32 @@ class DataSetBuilder(DataLabel):
         print('Description: {}'.format(self.description))
         print('       ')
         try:
-            if self.train_data.dtype != np.object:
-                headers = ["Dataset", "Mean", "Std", "Shape", "dType", "Labels"]
-                table = []
-                table.append(["train set", self.train_data[:].mean(), self.train_data[:].std(), 
-                    self.train_data.shape, self.train_data.dtype, self.train_labels.size])
+            #if self.train_data.dtype != np.object:
+            headers = ["Dataset", "Shape", "dType", "Labels"]
+            table = []
+            table.append(["train set", #self.train_data[:].mean(), self.train_data[:].std(), 
+                self.train_data.shape, self.train_data.dtype, self.train_labels.size])
 
-                if self.validation_data is not None:
-                    table.append(["valid set", self.validation_data[:].mean(), self.validation_data[:].std(), 
-                    self.validation_data.shape, self.validation_data.dtype, self.validation_labels.size])
+            if self.validation_data is not None:
+                table.append(["valid set", #self.validation_data[:].mean(), self.validation_data[:].std(), 
+                self.validation_data.shape, self.validation_data.dtype, self.validation_labels.size])
 
-                table.append(["test set", self.test_data[:].mean(), self.test_data[:].std(), 
-                    self.test_data.shape, self.test_data.dtype, self.test_labels.size])
-                order_table_print(headers, table, "shape")
-            else:
-                headers = ["Dataset", "Shape", "dType", "Labels"]
-                table = []
-                table.append(["train set", self.train_data.shape, self.train_data.dtype, 
-                    self.train_labels.size])
+            table.append(["test set", #self.test_data[:].mean(), self.test_data[:].std(), 
+                self.test_data.shape, self.test_data.dtype, self.test_labels.size])
+            order_table_print(headers, table, "shape")
+            #else:
+            #    headers = ["Dataset", "Shape", "dType", "Labels"]
+            #    table = []
+            #    table.append(["train set", self.train_data.shape, self.train_data.dtype, 
+            #        self.train_labels.size])
 
-                if self.validation_data is not None:
-                    table.append(["valid set", self.validation_data.shape, self.validation_data.dtype, 
-                    self.validation_labels.size])
+            #    if self.validation_data is not None:
+            #        table.append(["valid set", self.validation_data.shape, self.validation_data.dtype, 
+            #        self.validation_labels.size])
 
-                table.append(["test set", self.test_data.shape, self.test_data.dtype, 
-                    self.test_labels.size])
-                order_table_print(headers, table, "shape")
+            #    table.append(["test set", self.test_data.shape, self.test_data.dtype, 
+            #        self.test_labels.size])
+            #    order_table_print(headers, table, "shape")
 
             if classes == True:
                 headers = ["class", "# items"]
@@ -1499,13 +1499,13 @@ class DataSetBuilder(DataLabel):
                 else:
                     data_labels = self.cross_validators(data, labels)
 
-            train_data = self.processing(data_labels[0], initial=True)
+            train_data = self.processing(data_labels[0])
             self._set_space_data(f, 'train_data', self.dtype_t(train_data))
 
-            test_data = self.processing(data_labels[2], initial=False)
+            test_data = self.processing(data_labels[2], base_data=data_labels[0])
             self._set_space_data(f, 'test_data', self.dtype_t(test_data))
             
-            validation_data = self.processing(data_labels[1], initial=False)
+            validation_data = self.processing(data_labels[1], base_data=data_labels[0])
             self._set_space_data(f, 'validation_data', self.dtype_t(validation_data))
 
             self._set_space_data(f, 'train_labels', self.ltype_t(data_labels[3]), label=True)

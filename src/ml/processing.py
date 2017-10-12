@@ -313,7 +313,8 @@ class Fit(object):
         return data
 
     def transform(self, data):
-        return self.t(self.dim_rule(data))
+        from ml.layers import IterLayer
+        return IterLayer(self.t(self.dim_rule(data)))
 
 
 class FitStandardScaler(Fit):
@@ -351,7 +352,7 @@ class FitTruncatedSVD(Fit):
     def fit(self, data, **params):
         from sklearn.decomposition import TruncatedSVD
         svd = TruncatedSVD(**params)
-        svd.fit(self.dim_rule(data))
+        svd.fit(data)
         return svd.transform
 
 
