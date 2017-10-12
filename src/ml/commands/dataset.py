@@ -35,6 +35,9 @@ def run(args):
         dataset = Data.original_ds(args.used_in)
         for _, model_path_meta in get_models_from_dataset(dataset, settings["checkpoints_path"]):
             print("Dataset used in model: {}".format(DataDrive.read_meta("model_module", model_path_meta)))
+    elif args.sts:
+        dataset = Data.original_ds(args.sts)
+        print(dataset.stadistics())
     else:
         datasets = {}
         for parent, childs, files in os.walk(settings["dataset_path"]):

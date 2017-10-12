@@ -436,8 +436,7 @@ class Data(ReadWriteData):
 
     def sparcity(self):
         """
-        return a value between [0, 1] of the sparcity of the dataset.
-        0 no zeros exists, 1 all data is zero.
+        return a value between [0, 1]. If is 0 no zeros exists, if is 1 all data is zero.
         """
         if not isinstance(self.data.dtype, object):
             data = self.data[:].reshape(self.data.shape[0], -1)
@@ -1159,6 +1158,36 @@ class DataLabel(Data):
             for row in libsvm_row(self.labels, self.data, le):
                 f.write(" ".join(row))
                 f.write("\n")
+
+    def stadistics(self):
+        from tabulate import tabulate
+        from collections import defaultdict
+
+        headers = ["feature", "label", "missing", "mean", "std dev", "zeros", 
+            "min", "25%", "50%", "75%", "max"]
+        table = []
+        li = self.labels_info()
+        feature_column = defaultdict(dict)
+        for label in li:
+            mask = (self.labels == label)
+            data = self.data[mask]
+            for i, column in enumerate(data.T):
+                percentile = np.percentile(column, [0, 25, 50, 75, 100])
+                values = [
+                    "{}%".format((np.count_nonzero(np.isnan(column)) / column.size) * 100),
+                    np.mean(column),  
+                    np.std(column),
+                    "{0:.{1}f}%".format((
+                    (column.size - np.count_nonzero(column)) / float(column.size)) * 100, 2),
+                    ]
+                values.extend(percentile)
+                feature_column[i][label] = values
+
+        for feature, rows in feature_column.items():
+            for label, row in rows.items():
+                table.append([feature, label] + row)
+                feature = ""
+        return tabulate(table, headers)
 
 
 class DataSetBuilder(DataLabel):

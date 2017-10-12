@@ -14,7 +14,7 @@ def order_2d(list_2d, index=(0, 1), block_size=60):
 
 
 def build_blocks(list_2d, block_size, index):
-    """ build a dict of rows where each row is created if elem in 0 is grater 
+    """ build a dict of rows where each row is created if elem in 0 is greater 
         than block_size. Each row contains coords of numbers in the plane.
         list_ = [(10, 50), (13, 100), (14, 40), (15, 90), (21, 30), (40, 10), (60, 20)]
     """    
