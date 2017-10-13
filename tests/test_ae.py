@@ -29,17 +29,6 @@ class TestAE(unittest.TestCase):
         classif.destroy()
         dataset.destroy()
 
-    def test_empty_load(self):        
-        from ml.ae.extended.w_keras import PTsne
-        try:
-            classif = PTsne(
-                model_name="tsne2", 
-                model_version="1", 
-                check_point_path="/tmp/")
-            classif.destroy()
-        except Exception, e:
-            self.assertEqual(e.message, "No metadata found")
-
     def test_vae(self):
         from ml.ae.extended.w_keras import VAE
         from ml.ds import Data

@@ -197,7 +197,7 @@ class Data(ReadWriteData):
                 author='', compression_level=0, chunks=258, rewrite=False):
 
         self.name = uuid.uuid4().hex if name is None else name
-        self._applied_transforms = False
+        self._applied_transforms = apply_transforms
         self.chunks = chunks
         self.rewrite = rewrite
 
@@ -401,7 +401,7 @@ class Data(ReadWriteData):
         print('DATASET NAME: {}'.format(self.name))
         print('Author: {}'.format(self.author))
         print('Transforms: {}'.format(self.transforms.to_json()))
-        print('Applied transforms: {}'.format(self.apply_transforms))
+        print('Applied transforms: {}'.format(self._applied_transforms))
         print('MD5: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
         print('       ')
@@ -494,18 +494,19 @@ class Data(ReadWriteData):
 
         with h5py.File(self.url(), 'a') as f:
             f.require_group("data")
-            data = self.processing(data, initial=True)
+            data = self.processing(data)
             self._set_space_data(f, 'data', self.dtype_t(data))
 
         self.md5 = self.calc_md5()
 
-    def empty(self, name, dataset_path=None, dtype='float64', apply_transforms=False):
+    def empty(self, name, dataset_path=None, dtype='float64', 
+                apply_transforms=False, transforms=None):
         """
         build an empty DataLabel with the default parameters
         """
         data = Data(name=name, 
             dataset_path=dataset_path,
-            transforms=self.transforms,
+            transforms=self.transforms if transforms is None else transforms,
             apply_transforms=apply_transforms,
             dtype=dtype,
             description=self.description,
@@ -517,7 +518,7 @@ class Data(ReadWriteData):
         return data
 
     def convert(self, name, dtype='float64', apply_transforms=False, 
-                percentaje=1, dataset_path=None):
+                percentaje=1, dataset_path=None, transforms=None):
         """
         :type dtype: string
         :param dtype: cast the data to the defined type
@@ -525,7 +526,7 @@ class Data(ReadWriteData):
         dataset_path is not necesary to especify, this info is obtained from settings.cfg
         """
         data = self.empty(name, dataset_path=dataset_path, dtype=dtype, 
-            ltype=ltype, apply_transforms=apply_transforms)
+            ltype=ltype, apply_transforms=apply_transforms, transforms=transforms)
         data.build_dataset(calc_nshape(self.data, percentaje))
         data.close_reader()
         return data
@@ -555,23 +556,26 @@ class Data(ReadWriteData):
         execute the transformations to the data.
 
         """
-        if not self.transforms.is_empty() and self.transforms_to_apply and data is not None:
-            log.debug("Apply transforms")
+        if not self.transforms.is_empty() and self.apply_transforms and data is not None:
+            log.debug("Apply transforms " + str(data.shape))
             if base_data is None:
                 return self.transforms.apply(data)
             else:
                 return self.transforms.apply(data, base_data=base_data)
         else:
-            log.debug("No transforms applied")
+            log.debug("No transforms applied " + str(data.shape))
             return data if isinstance(data, np.ndarray) else np.asarray(data)
+
+    def transform(self):
+        pass
 
     @property
     def train_data(self):
         return self.data
 
-    @property
-    def transforms_to_apply(self):
-        return self.apply_transforms and not self._applied_transforms
+    #@property
+    #def transforms_to_apply(self):
+    #    return self.apply_transforms and not self._applied_transforms
 
     @classmethod
     def to_DF(self, dataset):
@@ -636,12 +640,12 @@ class Data(ReadWriteData):
         :param transforms: transforms to apply in the new dataset
         """
         if self.apply_transforms == True:
-            dsb_c = self.copy(name=name)
-            dsb_c.apply_transforms = False
-            dsb_c.transforms = transforms
-            dsb = dsb_c.convert(name, dtype=self.dtype, apply_transforms=True, 
-                percentaje=1)
-            dsb_c.destroy()
+            if hasattr(self, 'ltype'):
+                dsb = self.convert(name, dtype=self.dtype, ltype=self.ltype, 
+                    apply_transforms=True, percentaje=1, transforms=transforms)
+            else:
+                dsb = dsb_c.convert(name, dtype=self.dtype, apply_transforms=True, 
+                    percentaje=1, transforms=transforms)
             dsb.transforms = self.transforms + transforms
         else:
             dsb = self.copy(name=name)
@@ -829,7 +833,7 @@ class DataLabel(Data):
         print('DATASET NAME: {}'.format(self.name))
         print('Author: {}'.format(self.author))
         print('Transforms: {}'.format(self.transforms.to_json()))
-        print('Applied transforms: {}'.format(self.apply_transforms))
+        print('Applied transforms: {}'.format(self._applied_transforms))
         print('MD5: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
         print('       ')
@@ -880,13 +884,14 @@ class DataLabel(Data):
         self.md5 = self.calc_md5()
 
     def empty(self, name, dtype='float64', ltype='|S1', 
-                apply_transforms=False, dataset_path=None):
+                apply_transforms=False, dataset_path=None,
+                transforms=None):
         """
         build an empty DataLabel with the default parameters
         """
         dl = DataLabel(name=name, 
             dataset_path=dataset_path,
-            transforms=self.transforms,
+            transforms=self.transforms if transforms is None else transforms,
             apply_transforms=apply_transforms,
             dtype=dtype,
             ltype=ltype,
@@ -899,7 +904,7 @@ class DataLabel(Data):
         return dl
 
     def convert(self, name, dtype='float64', ltype='|S1', apply_transforms=False, 
-                percentaje=1, dataset_path=None):
+                percentaje=1, dataset_path=None, transforms=None):
         """
         :type dtype: string
         :param dtype: cast the data to the defined type
@@ -908,7 +913,7 @@ class DataLabel(Data):
         """
         dl = self.empty(name, dtype=dtype, ltype=ltype, 
                         apply_transforms=apply_transforms, 
-                        dataset_path=dataset_path)
+                        dataset_path=dataset_path, transforms=transforms)
         dl.build_dataset(calc_nshape(self.data, percentaje), calc_nshape(self.labels, percentaje))
         dl.close_reader()
         return dl
@@ -922,7 +927,7 @@ class DataLabel(Data):
         """
         name = self.name + "_copy_" + uuid.uuid4().hex if name is None else name
         dl = self.convert(name, dtype=self.dtype, ltype=self.ltype, 
-                        apply_transforms=self.apply_transforms, 
+                        apply_transforms=False, 
                         percentaje=percentaje, dataset_path=dataset_path)
         return dl
 
@@ -953,26 +958,26 @@ class DataLabel(Data):
     def from_DF(self, name, df, transforms=None, apply_transforms=None, path=None):
         pass
 
-    def add_transforms(self, transforms, name=None):
-        """
-        :type name: string
-        :param name: result dataset's name
+    #def add_transforms(self, transforms, name=None):
+    #    """
+    #    :type name: string
+    #    :param name: result dataset's name
 
-        :type transforms: Transform
-        :param transforms: transforms to apply in the new dataset
-        """
-        if self.apply_transforms == True:
-            dsb_c = self.copy(name=name)
-            dsb_c.apply_transforms = False
-            dsb_c.transforms = transforms
-            dsb = dsb_c.convert(name, dtype=self.dtype, ltype=self.ltype, 
-                apply_transforms=True, percentaje=1)
-            dsb_c.destroy()
-            dsb.transforms = self.transforms + transforms
-        else:
-            dsb = self.copy(name=name)
-            dsb.transforms += transforms
-        return dsb
+    #    :type transforms: Transform
+    #    :param transforms: transforms to apply in the new dataset
+    #    """
+    #    if self.apply_transforms == True:
+            #dsb_c = self.copy(name=name)
+            #dsb_c.transforms = transforms
+    #        dsb = self.convert(name, dtype=self.dtype, ltype=self.ltype, 
+    #            apply_transforms=True, percentaje=1, transforms=transforms)
+            #dsb = dsb_c
+            #dsb_c.destroy()
+    #        dsb.transforms = self.transforms + transforms
+    #    else:
+    #        dsb = self.copy(name=name)
+    #        dsb.transforms += transforms
+    #    return dsb
         
     def remove_outlayers(self, outlayers):
         """
@@ -1376,38 +1381,23 @@ class DataSetBuilder(DataLabel):
         print('DATASET NAME: {}'.format(self.name))
         print('Author: {}'.format(self.author))
         print('Transforms: {}'.format(self.transforms.to_json()))
-        print('Applied transforms: {}'.format(self.apply_transforms))
+        print('Applied transforms: {}'.format(self._applied_transforms))
         print('MD5: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
         print('       ')
         try:
-            #if self.train_data.dtype != np.object:
             headers = ["Dataset", "Shape", "dType", "Labels"]
             table = []
-            table.append(["train set", #self.train_data[:].mean(), self.train_data[:].std(), 
-                self.train_data.shape, self.train_data.dtype, self.train_labels.size])
+            table.append(["train set", self.train_data.shape, 
+                        self.train_data.dtype, self.train_labels.size])
 
             if self.validation_data is not None:
-                table.append(["valid set", #self.validation_data[:].mean(), self.validation_data[:].std(), 
-                self.validation_data.shape, self.validation_data.dtype, self.validation_labels.size])
+                table.append(["valid set", self.validation_data.shape, 
+                            self.validation_data.dtype, self.validation_labels.size])
 
-            table.append(["test set", #self.test_data[:].mean(), self.test_data[:].std(), 
-                self.test_data.shape, self.test_data.dtype, self.test_labels.size])
+            table.append(["test set", self.test_data.shape, 
+                            self.test_data.dtype, self.test_labels.size])
             order_table_print(headers, table, "shape")
-            #else:
-            #    headers = ["Dataset", "Shape", "dType", "Labels"]
-            #    table = []
-            #    table.append(["train set", self.train_data.shape, self.train_data.dtype, 
-            #        self.train_labels.size])
-
-            #    if self.validation_data is not None:
-            #        table.append(["valid set", self.validation_data.shape, self.validation_data.dtype, 
-            #        self.validation_labels.size])
-
-            #    table.append(["test set", self.test_data.shape, self.test_data.dtype, 
-            #        self.test_labels.size])
-            #    order_table_print(headers, table, "shape")
-
             if classes == True:
                 headers = ["class", "# items"]
                 order_table_print(headers, self.labels_info().items(), "# items")
@@ -1494,8 +1484,10 @@ class DataSetBuilder(DataLabel):
             else:
                 if self.validator == 'cross':
                     data_labels = self.cross_validators(data, labels)
-                #elif self.validator == 'adversarial':
-                #    data_labels = self.adversarial_validator(data, labels, test_data, test_labels)
+                elif self.validator == '':
+                    index = data.shape[0] / 3
+                    data_labels = [data[0:index], data[index:2*index], data[index*2:index*3],
+                    labels[0:index], labels[index:index*2], labels[index*2:index*3]]
                 else:
                     data_labels = self.cross_validators(data, labels)
 
@@ -1534,7 +1526,7 @@ class DataSetBuilder(DataLabel):
         return classif.load_meta().get("score", {measure, None}).get(measure, None) 
 
     def convert(self, name, dtype='float64', ltype='|S1', apply_transforms=False, 
-                percentaje=1, dataset_path=None):
+                percentaje=1, dataset_path=None, transforms=None):
         """
         :type name: string
         :param name: converted dataset's name
@@ -1553,7 +1545,8 @@ class DataSetBuilder(DataLabel):
 
         """
         dsb = self.empty(name, dtype=dtype, ltype=ltype, 
-            apply_transforms=apply_transforms, dataset_path=dataset_path)
+            apply_transforms=apply_transforms, dataset_path=dataset_path,
+            transforms=transforms)
         dsb.build_dataset(
             calc_nshape(self.train_data, percentaje), 
             calc_nshape(self.train_labels, percentaje),
@@ -1565,13 +1558,13 @@ class DataSetBuilder(DataLabel):
         return dsb
 
     def empty(self, name, dtype='float64', ltype='|S1', apply_transforms=False,
-                dataset_path=None):
+                dataset_path=None, transforms=None):
         """
         build an empty DataLabel with the default parameters
         """
         dsb = DataSetBuilder(name=name, 
             dataset_path=dataset_path,
-            transforms=self.transforms,
+            transforms=self.transforms if transforms is None else transforms,
             apply_transforms=apply_transforms,
             train_size=self.train_size,
             valid_size=self.valid_size,

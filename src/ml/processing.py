@@ -10,6 +10,8 @@ from pydoc import locate
 import logging
 import numpy as np
 import json
+import uuid
+
 
 logging.basicConfig()
 console = logging.StreamHandler()
@@ -39,11 +41,11 @@ class TransformsRow(object):
     transforms.add(function2, {'x': 10}) -> function2(x=10)
     """
     def __init__(self):
-        self.transforms = OrderedDict({})
+        self.transforms = []#OrderedDict({})
 
     def __add__(self, o):
         all_transforms = TransformsRow.from_json(self.to_json())
-        for fn, params in o.transforms.items():
+        for fn, params in o.transforms:#.items():
             all_transforms.add(locate(fn), **params)
         return all_transforms
 
@@ -65,7 +67,8 @@ class TransformsRow(object):
         This function add to the class the functions to use with the data.
         """
         fn_name = "{}.{}".format(fn.__module__, fn.__name__)
-        self.transforms[fn_name] = params
+        #print(fn_name, params)
+        self.transforms.append((fn_name, params))#[fn_name] = params
 
     def is_empty(self):
         """
@@ -85,9 +88,9 @@ class TransformsRow(object):
         """
         from json format to Transform class.
         """
-        transforms_dict = json.loads(json_transforms, object_pairs_hook=OrderedDict)
+        transforms_loaded = json.loads(json_transforms)#, object_pairs_hook=OrderedDict)
         transforms = TransformsRow()
-        for fn, params in transforms_dict.items():
+        for fn, params in transforms_loaded:#.items():
             transforms.add(locate(fn), **params)
         return transforms
 
@@ -97,13 +100,13 @@ class TransformsRow(object):
         :param data: apply the transforms added to the data
         """
         if not isinstance(data, list) and len(data.shape) == 1:
-            for fn, params in self.transforms.items():
+            for fn, params in self.transforms:#.items():
                 fn = locate(fn)
                 data = fn(data, **params)
         else:
             data_n = []
             for row in data:
-                for fn, params in self.transforms.items():
+                for fn, params in self.transforms:#.items():
                     fn = locate(fn)
                     row = fn(row, **params)
                 data_n.append(row)
@@ -118,7 +121,7 @@ class TransformsCol(TransformsRow):
     
     def __add__(self, o):
         all_transforms = TransformsCol.from_json(self.to_json())
-        for fn, params in o.transforms.items():
+        for fn, params in o.transforms:#.items():
             all_transforms.add(locate(fn), **params)
         return all_transforms
 
@@ -130,14 +133,14 @@ class TransformsCol(TransformsRow):
         """
         from json format to Transform class.
         """
-        transforms_dict = json.loads(json_transforms, object_pairs_hook=OrderedDict)
+        transforms_loaded = json.loads(json_transforms)#, object_pairs_hook=OrderedDict)
         transforms = TransformsCol()
-        for fn, params in transforms_dict.items():
+        for fn, params in transforms_loaded:#.items():
             transforms.add(locate(fn), **params)
         return transforms
 
     def initial_fn(self, data):
-        for fn, params in self.transforms.items():
+        for fn, params in self.transforms:#.items():
             fn = locate(fn)
             if "name_00_ml" in params:
                 name = params.pop("name_00_ml")
@@ -218,7 +221,7 @@ class Transforms(object):
     def __add__(self, o):
         all_transforms = Transforms.from_json(self.to_json())
         for transform in o.transforms:
-            for fn, params in transform.transforms.items():
+            for fn, params in transform.transforms:#.items():
                 all_transforms.add(locate(fn), type=transform.type(), **params)
         return all_transforms
 
@@ -267,7 +270,7 @@ class Transforms(object):
         transforms = Transforms()
         for transforms_type in transforms_list:
             for type, transforms_dict in transforms_type.items():
-                for fn, params in transforms_dict.items():
+                for fn, params in transforms_dict:#.items():
                     transforms.add(locate(fn), type=type, **params)
         return transforms
 
@@ -299,7 +302,7 @@ class Transforms(object):
 
 class Fit(object):
     def __init__(self, data, name=None, **kwargs):
-        self.name = name
+        self.name = name if name is not None else uuid.uuid4().hex
         self.t = self.fit(data, **kwargs)
 
     @classmethod
@@ -368,7 +371,7 @@ class FitTsne(Fit):
             dataset.build_dataset(data)
             tsne = PTsne(model_name=self.name, model_version="1", 
                         dataset=dataset, latent_dim=2)
-            tsne.train(batch_size=50, num_steps=2)
+            tsne.train(batch_size=50, num_steps=4)
         else:
             tsne.load_dataset(None)
         self.model = tsne
@@ -379,7 +382,7 @@ class FitTsne(Fit):
         from ml.layers import IterLayer
 
         def iter_():
-            for row, predict in izip(data, self.t(self.dim_rule(data))):
+            for row, predict in izip(data, self.t(self.dim_rule(data), chunk_size=5000)):
                 yield np.append(row, list(predict), axis=0)
 
         return IterLayer(iter_())

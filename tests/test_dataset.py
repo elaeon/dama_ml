@@ -17,6 +17,9 @@ def build_csv_file(path, vector, sep=","):
             f.write(sep.join(map(str, row)))
             f.write("\n")
 
+def linear(x, b=0):
+    return x + b
+
 class TestDataset(unittest.TestCase):
     def setUp(self):
         NUM_FEATURES = 10
@@ -140,18 +143,30 @@ class TestDataset(unittest.TestCase):
         dataset.build_dataset(self.X, self.Y)
         dataset.apply_transforms = True
         copy = dataset.copy()
-        transforms_to_apply = copy.transforms_to_apply
-        self.assertEqual(transforms_to_apply, False)
+        #transforms_to_apply = copy.transforms_to_apply
+        #self.assertEqual(transforms_to_apply, False)
         self.assertEqual(copy.apply_transforms, dataset.apply_transforms)
         copy.destroy()
 
         dataset.apply_transforms = False
         copy = dataset.copy()
-        transforms_to_apply = copy.transforms_to_apply
-        self.assertEqual(transforms_to_apply, False)        
+        #transforms_to_apply = copy.transforms_to_apply
+        #self.assertEqual(transforms_to_apply, False)        
         self.assertEqual(copy.apply_transforms, dataset.apply_transforms)
         copy.destroy()
         dataset.destroy()
+
+    def test_apply_tranforms(self):
+        dataset = DataSetBuilder(
+            name="test_ds",
+            dataset_path="/tmp/",
+            train_size=.5,
+            valid_size=.2,
+            ltype='int',
+            validator="cross",
+            rewrite=True,
+            apply_transforms=True)
+        
 
     def test_convert(self):
         dataset = DataSetBuilder(
@@ -176,21 +191,26 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
 
     def test_add_transform(self):
+        transforms = Transforms()
+        transforms.add(linear, b=1)
         dataset = DataSetBuilder(
             name="test_ds",
             dataset_path="/tmp/",
             train_size=.5,
             valid_size=.2,
             ltype='int',
-            validator="cross",
-            rewrite=True)
+            validator=None,
+            rewrite=True,
+            apply_transforms=True,
+            transforms=transforms)
         dataset.build_dataset(self.X, self.Y)
+        self.assertItemsEqual(self.X[0]+1, dataset.train_data[0])
         transforms = Transforms()
-        if dataset.transforms_to_apply is True:
-            dsb = dataset.add_transforms(transforms, name="add_transform")
-            self.assertEqual(dsb.transforms_to_apply, True)
-            self.assertEqual(dsb.name == "add_transform", True)
-            dsb.destroy()
+        transforms.add(linear, b=2)
+        dsb = dataset.add_transforms(transforms, name="add_transform")
+        self.assertItemsEqual(self.X[0]+3, dsb.train_data[0])
+        self.assertEqual(dsb.name == "add_transform", True)
+        dsb.destroy()
         dataset.destroy()
         
         dataset = DataSetBuilder(
@@ -198,11 +218,12 @@ class TestDataset(unittest.TestCase):
             dataset_path="/tmp/",
             ltype='int',
             apply_transforms=False,
-            validator="cross")
-
+            validator=None)
         dataset.build_dataset(self.X, self.Y)
+        transforms = Transforms()
+        transforms.add(linear, b=1)
         dsb = dataset.add_transforms(transforms)
-        self.assertEqual(dsb.transforms_to_apply, False)
+        self.assertItemsEqual(self.X[0], dsb.train_data[0])
         self.assertEqual(dsb.name != "add_transform", True)
         dsb.destroy()
         dataset.destroy()
@@ -402,13 +423,13 @@ class TestDataset(unittest.TestCase):
 
     def test_text_ds(self):
         import h5py
-        X = [str(line)*10 for line in range(100)]
+        X = np.asarray([str(line)*10 for line in range(100)])
         ds = Data(name="test", dtype='object')
         ds.build_dataset(X)
         self.assertEqual(ds.shape[0], 100)
         ds.destroy()
 
-        X = [(str(line)*10, "1") for line in range(100)]
+        X = np.asarray([(str(line)*10, "1") for line in range(100)])
         ds = Data(name="test", dtype='object')
         ds.build_dataset(X)
         self.assertEqual(ds.shape, (100, 2))

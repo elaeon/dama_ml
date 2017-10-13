@@ -63,7 +63,7 @@ class BaseAe(DataDrive):
         ds = Data(
             name=dataset.name+"_"+self.model_name+"_"+self.cls_name(),
             dataset_path=settings["dataset_model_path"],
-            apply_transforms=not dataset.apply_transforms,
+            apply_transforms=True,#not dataset.apply_transforms,
             compression_level=9,
             dtype=dataset.dtype,
             transforms=dataset.transforms,
@@ -96,7 +96,7 @@ class BaseAe(DataDrive):
             for prediction in self._predict(transform_fn(data, size), raw=uncertain, decoder=decoder):
                 yield prediction
 
-    def predict(self, data, raw=False, transform=True, chunk_size=1, model_type="decoder"):
+    def predict(self, data, raw=False, transform=True, chunk_size=258, model_type="decoder"):
         from ml.layers import IterLayer
         if self.model is None:
             self.load_model()
@@ -105,7 +105,7 @@ class BaseAe(DataDrive):
         if not isinstance(chunk_size, int):
             log.warning("The parameter chunk_size must be an integer.")            
             log.warning("Chunk size is set to 1")
-            chunk_size = 1
+            chunk_size = 258
 
         if isinstance(data, IterLayer):
             def iter_(fn):
@@ -113,18 +113,21 @@ class BaseAe(DataDrive):
                     yield IterLayer(self._predict(fn(x), raw=raw))
 
             if transform is True:
-                fn = lambda x: self.transform_shape(self.dataset.processing(list(x), initial=False))
+                fn = lambda x: self.transform_shape(
+                    self.dataset.processing(list(x), 
+                    base_data=self.dataset.train_data[:]))
             else:
                 fn = list
             return IterLayer(iter_(fn))
         else:
             if transform is True and chunk_size > 0:
                 fn = lambda x, s: self.transform_shape(
-                    self.dataset.processing(x, initial=False), size=s)
+                    self.dataset.processing(x, base_data=self.dataset.train_data[:]), size=s)
                 return IterLayer(self.chunk_iter(data, chunk_size, transform_fn=fn, 
                     uncertain=raw, decoder=decoder))
             elif transform is True and chunk_size == 0:
-                data = self.transform_shape(self.dataset.processing(data, initial=False))
+                data = self.transform_shape(self.dataset.processing(data, 
+                    base_data=self.dataset.train_data[:]))
                 return IterLayer(self._predict(data, raw=raw, decoder=decoder))
             elif transform is False and chunk_size > 0:
                 fn = lambda x, s: self.transform_shape(x, size=s)

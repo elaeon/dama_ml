@@ -178,7 +178,7 @@ class BaseClassif(DataDrive):
             for prediction in self._predict(transform_fn(data, size), raw=uncertain):
                 yield prediction
 
-    def predict(self, data, raw=False, transform=True, chunk_size=1):
+    def predict(self, data, raw=False, transform=True, chunk_size=258):
 
         if self.model is None:
             self.load_model()
@@ -186,7 +186,7 @@ class BaseClassif(DataDrive):
         if not isinstance(chunk_size, int):
             log.warning("The parameter chunk_size must be an integer.")            
             log.warning("Chunk size is set to 1")
-            chunk_size = 1
+            chunk_size = 258
 
         if isinstance(data, IterLayer):
             def iter_(fn):
@@ -194,17 +194,20 @@ class BaseClassif(DataDrive):
                     yield IterLayer(self._predict(fn(x), raw=raw))
 
             if transform is True:
-                fn = lambda x: self.transform_shape(self.dataset.processing(list(x), initial=False))
+                fn = lambda x: self.transform_shape(
+                    self.dataset.processing(list(x), 
+                    base_data=self.dataset.train_data[:]))
             else:
                 fn = list
             return IterLayer(iter_(fn))
         else:
             if transform is True and chunk_size > 0:
                 fn = lambda x, s: self.transform_shape(
-                    self.dataset.processing(x, initial=False), size=s)
+                    self.dataset.processing(x, base_data=self.dataset.train_data[:]), size=s)
                 return IterLayer(self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw))
             elif transform is True and chunk_size == 0:
-                data = self.transform_shape(self.dataset.processing(data, initial=False))
+                data = self.transform_shape(self.dataset.processing(data, 
+                    base_data=self.dataset.train_data[:]))
                 return IterLayer(self._predict(data, raw=raw))
             elif transform is False and chunk_size > 0:
                 fn = lambda x, s: self.transform_shape(x, size=s)
