@@ -18,7 +18,7 @@ log.addHandler(console)
 
 from keras import backend
 if backend._BACKEND == "theano":
-    raise Exception, "Theano is not supported for the autoencoders wrappers, change it with export KERAS_BACKEND=tensorflow"
+    raise Exception, "Theano does not support the autoencoders wrappers, change it with export KERAS_BACKEND=tensorflow"
 
 
 class BaseAe(DataDrive):
@@ -71,7 +71,7 @@ class BaseAe(DataDrive):
             rewrite=False)
 
         if ds.mode == "w":
-            ds._applied_transforms = dataset.apply_transforms
+            #ds._applied_transforms = dataset.apply_transforms
             data = self.reformat(dataset.data)
             ds.build_dataset(data)
         ds.close_reader()

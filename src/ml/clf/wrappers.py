@@ -129,7 +129,7 @@ class BaseClassif(DataDrive):
         dsb = DataSetBuilder(
             name=dataset.name+"_"+self.model_name+"_"+self.model_version+"_"+self.cls_name(),
             dataset_path=settings["dataset_model_path"],
-            apply_transforms=True,
+            apply_transforms=not dataset.apply_transforms,
             compression_level=9,
             dtype=dataset.dtype,
             transforms=dataset.transforms,
@@ -141,7 +141,7 @@ class BaseClassif(DataDrive):
         self.labels_encode(dataset.labels)
         log.info("Labels encode finished")
         if dsb.mode == "w":
-            dsb._applied_transforms = dataset.apply_transforms
+            #dsb._applied_transforms = dataset.apply_transforms
             train_data, train_labels = self.reformat(dataset.train_data, 
                                         self.le.transform(dataset.train_labels))
             test_data, test_labels = self.reformat(dataset.test_data, 
@@ -151,6 +151,8 @@ class BaseClassif(DataDrive):
             dsb.build_dataset(train_data, train_labels, test_data=test_data, 
                             test_labels=test_labels, validation_data=validation_data, 
                             validation_labels=validation_labels)
+            dsb.apply_transforms = True
+            dsb._applied_transforms = dsb.apply_transforms
         dsb.close_reader()
         return dsb
 

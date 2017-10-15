@@ -198,6 +198,30 @@ class TestTransforms(unittest.TestCase):
         transforms.destroy()
         self.assertEqual(shape, (100, 6))
 
+    def test_transforms_clf(self):
+        from ml.ds import DataSetBuilder
+        from ml.processing import FitTsne
+        from ml.clf.extended.w_sklearn import RandomForest
+
+        transforms = Transforms()
+        transforms.add(FitTsne, name="tsne", type="column")
+        X = np.random.rand(1000, 4)
+        Y = np.append(np.zeros(500), np.ones(500), axis=0)
+        dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+            ltype='int', transforms=transforms, rewrite=True, apply_transforms=True)
+        dataset.build_dataset(X, Y)
+        dataset.info()
+        
+        classif = RandomForest(
+            dataset=dataset,
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif.train()
+        classif.scores().print_scores()
+        classif.destroy()
+        dataset.destroy()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -67,7 +67,6 @@ class TransformsRow(object):
         This function add to the class the functions to use with the data.
         """
         fn_name = "{}.{}".format(fn.__module__, fn.__name__)
-        #print(fn_name, params)
         self.transforms.append((fn_name, params))#[fn_name] = params
 
     def is_empty(self):
@@ -269,9 +268,9 @@ class Transforms(object):
         transforms_list = json.loads(json_transforms, object_pairs_hook=OrderedDict)
         transforms = Transforms()
         for transforms_type in transforms_list:
-            for type, transforms_dict in transforms_type.items():
+            for type_, transforms_dict in transforms_type.items():
                 for fn, params in transforms_dict:#.items():
-                    transforms.add(locate(fn), type=type, **params)
+                    transforms.add(locate(fn), type=type_, **params)
         return transforms
 
     def apply(self, data, base_data=None):

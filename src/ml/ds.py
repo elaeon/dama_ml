@@ -566,16 +566,27 @@ class Data(ReadWriteData):
             log.debug("No transforms applied " + str(data.shape))
             return data if isinstance(data, np.ndarray) else np.asarray(data)
 
-    def transform(self):
-        pass
+    #def transform(self):
+    #    pass
 
     @property
     def train_data(self):
         return self.data
 
-    #@property
-    #def transforms_to_apply(self):
-    #    return self.apply_transforms and not self._applied_transforms
+    @property
+    def oldtransforms2new(self):
+        import json
+        from collections import OrderedDict
+        from pydoc import locate
+
+        t = self._get_attr('transforms')
+        transforms_list = json.loads(t, object_pairs_hook=OrderedDict)
+        transforms = Transforms()
+        for transforms_type in transforms_list:
+            for type_, transforms_dict in transforms_type.items():              
+                for fn, params in transforms_dict.items():
+                    transforms.add(locate(fn), type=type_, **params)
+        self._set_attr('transforms', transforms.to_json())
 
     @classmethod
     def to_DF(self, dataset):
