@@ -222,6 +222,25 @@ class TestTransforms(unittest.TestCase):
         classif.destroy()
         dataset.destroy()
 
+    def test_transforms_convert(self):
+        from ml.ds import DataSetBuilder
+        from ml.processing import FitTsne
+
+        transforms = Transforms()
+        transforms.add(FitTsne, name="tsne", type="column")
+        X = np.random.rand(1000, 4)
+        Y = np.append(np.zeros(500), np.ones(500), axis=0)
+        dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+            ltype='int', transforms=transforms, rewrite=True, apply_transforms=False)
+        dataset.build_dataset(X, Y)
+        dsb = dataset.convert(name="test2", apply_transforms=True)
+        shape = dsb.shape
+        dataset.destroy()
+        dsb.destroy()
+        self.assertEqual(shape, (1000, 6))
+
+        
+
 
 if __name__ == '__main__':
     unittest.main()

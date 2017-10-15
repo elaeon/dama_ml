@@ -259,6 +259,12 @@ class Data(ReadWriteData):
             with h5py.File(self.url(), 'a') as f:
                 f.attrs['transforms'] = value.to_json()
 
+    def reset_transforms(self, transforms):
+        if self._applied_transforms is False:
+            self.model = 'r'
+            self._set_attr('transforms', transforms.to_json())
+            self.mode = 'w'
+
     @property
     def description(self):
         return self._get_attr('description')
