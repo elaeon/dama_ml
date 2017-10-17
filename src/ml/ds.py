@@ -1184,9 +1184,10 @@ class DataLabel(Data):
     def stadistics(self):
         from tabulate import tabulate
         from collections import defaultdict
+        from ml.utils.numeric_functions import is_binary, is_integer
 
         headers = ["feature", "label", "missing", "mean", "std dev", "zeros", 
-            "min", "25%", "50%", "75%", "max"]
+            "min", "25%", "50%", "75%", "max", "type"]
         table = []
         li = self.labels_info()
         feature_column = defaultdict(dict)
@@ -1194,15 +1195,21 @@ class DataLabel(Data):
             mask = (self.labels == label)
             data = self.data[mask]
             for i, column in enumerate(data.T):
-                percentile = np.percentile(column, [0, 25, 50, 75, 100])
+                percentile = np.nanpercentile(column, [0, 25, 50, 75, 100])
                 values = [
-                    "{}%".format((np.count_nonzero(np.isnan(column)) / column.size) * 100),
+                    "{0:.{1}f}%".format((np.count_nonzero(np.isnan(column)) / float(column.size)) * 100, 2),
                     np.mean(column),  
                     np.std(column),
                     "{0:.{1}f}%".format((
                     (column.size - np.count_nonzero(column)) / float(column.size)) * 100, 2),
                     ]
                 values.extend(percentile)
+                if is_binary(column, include_null=True):
+                    values.append("binary")
+                elif is_integer(column):
+                    values.append("integer")
+                else:
+                    values.append("continuos")
                 feature_column[i][label] = values
 
         for feature, rows in feature_column.items():
@@ -1729,12 +1736,13 @@ class DataSetBuilderFile(DataSetBuilder):
     """
 
     def __init__(self, name=None, training_data_path=None, test_data_path=None,
-                sep=None, merge_field="id", **kwargs):
+                sep=None, merge_field="id", na_values=None, **kwargs):
         super(DataSetBuilderFile, self).__init__(name, **kwargs)
         self.training_data_path = training_data_path
         self.test_data_path = test_data_path
         self.sep = sep
         self.merge_field = merge_field
+        self.na_values = na_values
 
     def from_csv(self, folder_path, label_column, nrows=None, exclude_columns=None):
         """
@@ -1744,7 +1752,7 @@ class DataSetBuilderFile(DataSetBuilder):
         :type label_column: string
         :param label_column: column's name where are the labels
         """
-        df = pd.read_csv(folder_path, nrows=nrows)
+        df = pd.read_csv(folder_path, nrows=nrows, na_values=self.na_values)
         data, labels = self.df2dataset_label(df, label_column, 
                                             exclude_columns=exclude_columns)
         return data, labels

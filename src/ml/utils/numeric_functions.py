@@ -84,3 +84,18 @@ def expand_rows_cols(X, n_rows=2, n_cols=2):
         X = np.hstack((X, np.zeros((X.shape[0], n_cols))))
         X = np.vstack((X, np.zeros((n_rows, X.shape[1]))))
     return X
+
+
+def is_binary(array, include_null=True):
+    if include_null is False:
+        return np.count_nonzero((array != 0) & (array != 1)) == 0
+    else:
+        return all(x in [0, 1, None] for x in array)
+
+
+def is_integer(array, include_null=True):
+    mask = np.isnan(array)
+    if any(mask):
+        return all(np.equal(np.mod(array[~mask], 1), 0))
+    else:
+        return all(np.equal(np.mod(array, 1), 0))
