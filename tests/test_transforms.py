@@ -239,8 +239,24 @@ class TestTransforms(unittest.TestCase):
         dsb.destroy()
         self.assertEqual(shape, (1000, 6))
 
+    def test_nan_transforms(self):
+        from ml.processing import FitReplaceNan
+        data = [
+            [1,   2,   3,5,   None],
+            [0,   None,3,5,   9],
+            [0,   2.5, 3,None,9],
+            [None,2,   3,5,   None]
+        ]
+        data = np.array(data, dtype=float)
+        ft = FitReplaceNan(data, path='/tmp/')
+        data_nonan = np.array(list(ft.transform(data)))
+        self.assertItemsEqual(data_nonan[:,0], [1,0,0,-1])
+        self.assertItemsEqual(data_nonan[:,1], [2,2,2.5,2])
+        self.assertItemsEqual(data_nonan[:,2], [3,3,3,3])
+        self.assertItemsEqual(data_nonan[:,3], [5,5,5,5])
+        self.assertItemsEqual(data_nonan[:,4], [9,9,9,9])
+        ft.destroy()
         
-
 
 if __name__ == '__main__':
     unittest.main()

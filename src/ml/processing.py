@@ -300,8 +300,9 @@ class Transforms(object):
             
 
 class Fit(object):
-    def __init__(self, data, name=None, **kwargs):
-        self.name = name if name is not None else uuid.uuid4().hex
+    def __init__(self, data, name=None, path="", **kwargs):
+        self.name = name if name is not None else uuid.uuid4().hex        
+        self.meta_path = path + self.module_cls_name()
         self.t = self.fit(data, **kwargs)
 
     @classmethod
@@ -317,6 +318,14 @@ class Fit(object):
     def transform(self, data):
         from ml.layers import IterLayer
         return IterLayer(self.t(self.dim_rule(data)))
+
+    def read_meta(self):
+        from ml.ds import load_metadata
+        return load_metadata(self.meta_path)
+
+    def write_meta(self, data):
+        from ml.ds import save_metadata
+        save_metadata(self.meta_path, data)
 
 
 class FitStandardScaler(Fit):
@@ -390,6 +399,43 @@ class FitTsne(Fit):
         if hasattr(self, 'model'):
             self.model.destroy()
 
+
+class FitReplaceNan(Fit):
+    def dim_rule(self, data):
+        if len(data.shape) > 2:
+            data = data.reshape(data.shape[0], -1)
+        return data
+    
+    def fit(self, data, **params):
+        from ml.utils.numeric_functions import is_binary, is_integer
+        if len(self.read_meta()) == 0:
+            columns = {}
+            for i, column in enumerate(data.T):
+                if any(np.isnan(column)):
+                    if is_binary(column):
+                        replace_value = -1
+                    elif is_integer(column):
+                        replace_value = round(np.nanpercentile(column, [50]), 0)
+                    else:
+                        replace_value = np.nanpercentile(column, [50])[0]
+                    columns[i] = replace_value
+            self.write_meta(columns)
+
+        print(self.read_meta())
+        def transform(n_data):
+            columns = self.read_meta()
+            for row in n_data:
+                indx = np.where(np.isnan(row))
+                for i in indx[0]:
+                    row[i] = columns[i]
+                yield row
+        
+        return transform
+
+    def destroy(self):
+        from ml.utils.files import rm
+        rm(self.meta_path)
+        
 
 def poly_features(data, degree=2, interaction_only=False, include_bias=True):
     if len(data.shape) == 1:

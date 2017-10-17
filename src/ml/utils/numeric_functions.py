@@ -90,7 +90,7 @@ def is_binary(array, include_null=True):
     if include_null is False:
         return np.count_nonzero((array != 0) & (array != 1)) == 0
     else:
-        return all(x in [0, 1, None] for x in array)
+        return np.all((array==0)|(array==1)|(np.isnan(array)))
 
 
 def is_integer(array, include_null=True):
