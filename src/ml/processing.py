@@ -368,6 +368,12 @@ class FitTruncatedSVD(Fit):
 
 
 class FitTsne(Fit):
+    def dim_rule(self, data):
+        if len(data.shape) > 2:
+            data = data.reshape(data.shape[0], -1)
+        elif len(data.shape) == 1:
+            data = data.reshape(1, data.shape)
+        return data
 
     def fit(self, data, **params):
         from ml.ae.extended.w_keras import PTsne
@@ -390,6 +396,10 @@ class FitTsne(Fit):
         from ml.layers import IterLayer
 
         def iter_():
+            #if not isinstance(data, np.ndarray):
+            #    dataX = np.asarray(list(data))
+            #else:
+            #    dataX = data
             for row, predict in izip(data, self.t(self.dim_rule(data), chunk_size=5000)):
                 yield np.append(row, list(predict), axis=0)
 

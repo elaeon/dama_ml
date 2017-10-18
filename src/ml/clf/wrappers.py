@@ -197,7 +197,7 @@ class BaseClassif(DataDrive):
 
             if transform is True:
                 fn = lambda x: self.transform_shape(
-                    self.dataset.processing(list(x), 
+                    self.dataset.processing(np.asarray(list(x)), 
                     base_data=self.dataset.train_data[:]))
             else:
                 fn = list

@@ -713,6 +713,12 @@ class Data(ReadWriteData):
             base = next
         return data
 
+    def delete_columns(self, to_delete):
+        features = set(x for x in xrange(self.shape[1]))
+        to_keep = features.difference(set(to_delete))
+        print(to_keep, to_delete)
+        return self.data[:, to_keep]
+
 
 class DataLabel(Data):
     """

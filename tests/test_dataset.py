@@ -447,6 +447,13 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(dbf.labels.shape, self.Y.shape)
         dbf.destroy()
 
+    def delete_columns(self):
+        X = np.random.rand(100, 10)
+        dsb = Data(name="test")
+        dsb.build_dataset(X)
+        d = dsb.delete_columns([1,5,8])
+        print(d.shape)
+        dsb.destroy()
 
 class TestDataSetFile(unittest.TestCase):
     def setUp(self):
