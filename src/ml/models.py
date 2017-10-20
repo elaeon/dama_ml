@@ -5,19 +5,24 @@ import os
 settings = get_settings("ml")
 
 class MLModel:
-    def __init__(self, fit_fn=None, predictors=None, load_fn=None, save_fn=None):
+    def __init__(self, fit_fn=None, predictors=None, load_fn=None, save_fn=None,
+                transform_data=None):
         self.fit_fn = fit_fn
         self.predictors = predictors
         self.load_fn = load_fn
         self.save_fn = save_fn
+        self.transform_data = transform_data
 
     def fit(self, *args, **kwargs):
         return self.fit_fn(*args, **kwargs)
 
     def predict(self, data):
-        prediction = self.predictors[0](data)
-        for predictor in self.predictors[1:]:
-            prediction = predictor(prediction)
+        if self.transform_data is not None:
+            prediction = self.predictors[0](self.transform_data(data))
+        else:
+            prediction = self.predictors[0](data)
+        #for predictor in self.predictors[1:]:
+        #    prediction = predictor(prediction)
         return prediction
 
     def load(self, path):

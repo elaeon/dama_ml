@@ -31,7 +31,7 @@ class GPC(SKLP):
         self.load_model()
         self.save_model()
 
-    def prepare_model(self):
+    def prepare_model(self, obj_fn=None):
         self.model = GPy.core.GP(
                     X=self.dataset.train_data,
                     Y=self.dataset.train_labels[:].reshape(-1, 1), 
@@ -71,7 +71,7 @@ class SVGPC(GPC):
         super(SVGPC, self).__init__(kernel=kernel, optimizer=optimizer, 
                                     k_params=k_params, **kwargs)
 
-    def prepare_model(self):
+    def prepare_model(self, obj_fn=None):
         Z = np.random.rand(100, self.dataset.train_data.shape[1])
         self.model = GPy.core.SVGP(
             X=self.dataset.train_data, 

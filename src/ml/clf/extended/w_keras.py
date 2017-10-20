@@ -3,7 +3,7 @@ from ml.models import MLModel
 
 
 class FCNet(Keras):
-    def prepare_model(self):
+    def prepare_model(self, obj_fn=None):
         from keras.layers import Dense
         from keras.models import Sequential
         from keras import regularizers
@@ -21,6 +21,6 @@ class FCNet(Keras):
         model.compile(optimizer='sgd', loss='categorical_crossentropy')
         return self.ml_model(model)
 
-    def prepare_model_k(self):
+    def prepare_model_k(self, obj_fn=None):
         return self.prepare_model()
 

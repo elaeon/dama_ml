@@ -297,28 +297,23 @@ class BaseClassif(DataDrive):
                 prediction = np.asarray(prediction)
             yield self.convert_label(prediction, raw=raw)
 
-    def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2):
+    def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2, obj_fn=None):
         from sklearn.model_selection import StratifiedKFold
-        self.model = self.prepare_model_k()
+        self.model = self.prepare_model_k(obj_fn=obj_fn)
         cv = StratifiedKFold(n_splits=n_splits)
-        
-        if self.dl is None:
-            log.warning("The dataset dl is not set in the path, rebuilding...".format(
-                self.__class__.__name__))
-            dl = self.dataset.desfragment(dataset_path=settings["dataset_model_path"])
-        else:
-            dl = self.dl
-
-        for k, (train, test) in enumerate(cv.split(dl.data, dl.labels), 1):
-            self.model.fit(dl.data.value[train], dl.labels.value[train])
+        data = self.dataset.data_validation
+        labels = self.dataset.data_validation_labels
+        for k, (train, test) in enumerate(cv.split(data, labels), 1):
+            self.model.fit(data[train], labels[train])
             print("fold ", k)
 
-    def train(self, batch_size=0, num_steps=0, n_splits=None):
+    def train(self, batch_size=0, num_steps=0, n_splits=None, obj_fn=None):
         log.info("Training")
         if n_splits is not None:
-            self.train_kfolds(batch_size=batch_size, num_steps=num_steps, n_splits=n_splits)
+            self.train_kfolds(batch_size=batch_size, num_steps=num_steps, 
+                            n_splits=n_splits, obj_fn=obj_fn)
         else:
-            self.model = self.prepare_model()
+            self.model = self.prepare_model(obj_fn=obj_fn)
         log.info("Saving model")
         self.save_model()
 
@@ -362,6 +357,25 @@ class SKLP(BaseClassif):
         from sklearn.externals import joblib
         model = joblib.load('{}'.format(path))
         self.model = self.ml_model(model)
+
+
+class XGB(BaseClassif):
+    def ml_model(self, model, model_2=None):
+        return MLModel(fit_fn=model.train, 
+                            predictors=[model_2.predict],
+                            load_fn=self.load_fn,
+                            save_fn=model_2.save_model,
+                            transform_data=self.array2dmatrix)
+
+    def load_fn(self, path):
+        import xgboost as xgb
+        booster = xgb.Booster()
+        model_p = booster.load_model(path)
+        self.model = self.ml_model(xgb, model_2=model_p)
+
+    def array2dmatrix(self, data):
+        import xgboost as xgb
+        return xgb.DMatrix(data)
 
 
 class TFL(BaseClassif):

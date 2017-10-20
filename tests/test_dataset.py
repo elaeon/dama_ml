@@ -451,9 +451,11 @@ class TestDataset(unittest.TestCase):
         X = np.random.rand(100, 10)
         dsb = Data(name="test")
         dsb.build_dataset(X)
-        d = dsb.delete_columns([1,5,8])
-        print(d.shape)
+        ndsb = dsb.delete_columns([1,5,8])
+        print(ndsb.shape)
         dsb.destroy()
+        ndsb.destroy()
+
 
 class TestDataSetFile(unittest.TestCase):
     def setUp(self):

@@ -505,7 +505,7 @@ class Data(ReadWriteData):
 
         self.md5 = self.calc_md5()
 
-    def empty(self, name, dataset_path=None, dtype='float64', 
+    def empty(self, name, dataset_path=None, dtype='float64', ltype=None,
                 apply_transforms=False, transforms=None):
         """
         build an empty DataLabel with the default parameters
@@ -716,8 +716,20 @@ class Data(ReadWriteData):
     def delete_columns(self, to_delete):
         features = set(x for x in xrange(self.shape[1]))
         to_keep = features.difference(set(to_delete))
-        print(to_keep, to_delete)
-        return self.data[:, to_keep]
+        print("To keep", to_keep)
+        #print(type(self))
+        if hasattr(self, 'labels'):
+            data = self.empty(self.name+"_deleted_columns", dataset_path=self.dataset_path, dtype=self.dtype, 
+                ltype=self.ltype, apply_transforms=self.apply_transforms, 
+                transforms=self.transforms)
+            data.build_dataset(calc_nshape(self.data[:, list(to_keep)], 1), self.labels)
+        else:
+            data = self.empty(self.name+"_deleted_columns", dataset_path=self.dataset_path, dtype=self.dtype, 
+                apply_transforms=self.apply_transforms, 
+                transforms=self.transforms)
+            data.build_dataset(calc_nshape(self.data[:, list(to_keep)], 1))
+        data.close_reader()
+        return data
 
 
 class DataLabel(Data):
@@ -980,27 +992,6 @@ class DataLabel(Data):
     @classmethod
     def from_DF(self, name, df, transforms=None, apply_transforms=None, path=None):
         pass
-
-    #def add_transforms(self, transforms, name=None):
-    #    """
-    #    :type name: string
-    #    :param name: result dataset's name
-
-    #    :type transforms: Transform
-    #    :param transforms: transforms to apply in the new dataset
-    #    """
-    #    if self.apply_transforms == True:
-            #dsb_c = self.copy(name=name)
-            #dsb_c.transforms = transforms
-    #        dsb = self.convert(name, dtype=self.dtype, ltype=self.ltype, 
-    #            apply_transforms=True, percentaje=1, transforms=transforms)
-            #dsb = dsb_c
-            #dsb_c.destroy()
-    #        dsb.transforms = self.transforms + transforms
-    #    else:
-    #        dsb = self.copy(name=name)
-    #        dsb.transforms += transforms
-    #    return dsb
         
     def remove_outlayers(self, outlayers):
         """
@@ -1364,6 +1355,16 @@ class DataSetBuilder(DataLabel):
         return np.concatenate((self.train_labels[:], 
             self.test_labels[:],
             self.validation_labels[:]), axis=0)
+
+    @property
+    def data_validation(self):
+        return np.concatenate((self.train_data[:], self.validation_data[:]), 
+                            axis=0)
+
+    @property
+    def data_validation_labels(self):
+        return np.concatenate((self.train_labels[:], self.validation_labels[:]), 
+                            axis=0)
 
     @property
     def shape(self):

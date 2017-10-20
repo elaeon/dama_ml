@@ -53,7 +53,7 @@ def expand_matrix_row(matrix, max_size, actual_size):
     :type actual_size: int
     :param actual_size: number of rows to ignore
 
-    add rows of zeros to the end of the matrix
+    add rows with zeros to the end of the matrix
     """
     return np.append(
         matrix, 
@@ -78,7 +78,7 @@ def expand_rows_cols(X, n_rows=2, n_cols=2):
     :type n_cols: int
     :param n_cols: number of columns to add
 
-    add a expecific number rows and columns of zeros to the array X
+    add an expecific number of rows and columns of zeros to the array X
     """
     if len(X.shape) == 2:
         X = np.hstack((X, np.zeros((X.shape[0], n_cols))))
@@ -99,3 +99,19 @@ def is_integer(array, include_null=True):
         return all(np.equal(np.mod(array[~mask], 1), 0))
     else:
         return all(np.equal(np.mod(array, 1), 0))
+
+
+def gini(actual, pred):
+    assert(len(actual) == len(pred))
+    actual = np.asarray(actual, dtype=np.float)
+    n = actual.shape[0]
+    a_s = actual[np.argsort(pred)]
+    a_c = a_s.cumsum()
+    giniSum = a_c.sum() / a_s.sum() - (n + 1) / 2.0
+    return giniSum / n
+ 
+
+def gini_normalized(a, p):
+    if p.ndim == 2:
+        p = p[:,1] #just pick class 1 if is a binary array
+    return gini(a, p) / gini(a, a)

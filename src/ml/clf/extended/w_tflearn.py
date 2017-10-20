@@ -13,7 +13,7 @@ class MLP(TFL):
             self.layers = [128, 64]
         super(MLP, self).__init__(*args, **kwargs)
 
-    def prepare_model(self):
+    def prepare_model(self, obj_fn=None):
         input_layer = tflearn.input_data(shape=[None, self.num_features])
         layer_ = input_layer
         for layer_size in self.layers:
@@ -42,7 +42,7 @@ class ConvNet(TFL):
         return img.reshape((-1, self.dataset.image_size, self.dataset.image_size,
             self.num_channels)).astype(np.float32)
 
-    def prepare_model(self):
+    def prepare_model(self, obj_fn=None):
         network = tflearn.input_data(
             shape=[None, self.dataset.image_size, self.dataset.image_size, self.num_channels],
             name='input')
@@ -96,7 +96,7 @@ class ResidualTensor(TFL):
         print('RF-Validation set', self.valid_data.shape, self.valid_labels.shape)
         print('RF-Test set', self.test_data.shape, self.test_labels.shape)
 
-    def prepare_model(self, dropout=False):
+    def prepare_model(self, dropout=False, obj_fn=None):
         import tflearn
 
         net = tflearn.input_data(shape=[None, self.image_size, self.image_size, self.num_channels])
@@ -151,7 +151,7 @@ class LSTM(TFL):
     def transform_shape(self, data):
         return data.reshape((-1, self.timesteps, self.num_features_t)).astype(np.float32)
 
-    def prepare_model(self, dropout=False):
+    def prepare_model(self, dropout=False, obj_fn=None):
         import tflearn
         net = tflearn.input_data(shape=[None, self.timesteps, self.num_features_t])
         net = tflearn.lstm(net, 128, dropout=0.8)
