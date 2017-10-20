@@ -6,7 +6,7 @@ from sklearn.preprocessing import LabelEncoder
 from ml.utils.config import get_settings
 from ml.models import MLModel, DataDrive
 from ml.ds import DataSetBuilder, Data
-from ml.clf.measures import ListMeasure, Measure
+from ml.clf import measures as metrics
 from ml.layers import IterLayer
 
 settings = get_settings("ml")
@@ -43,27 +43,44 @@ class BaseClassif(DataDrive):
             self.load_dataset(dataset)
 
     def scores(self, measures=None):
-        list_measure = ListMeasure()
+        from tqdm import tqdm
+        if measures is None:
+            measures = [(metrics.accuracy, True, False), 
+                        (metrics.precision, True, False), 
+                        (metrics.recall, True, False), 
+                        (metrics.f1, True, False), 
+                        (metrics.auc, True, False), 
+                        (metrics.logloss, True, True)]
+
+        for _, _, uncertain in measures:
+            if uncertain is True:
+                uncertain = True
+                break
+        else:
+            uncertain = False
+        predictions = np.asarray(list(tqdm(
+            self.predict(self.dataset.test_data[:], raw=uncertain, transform=False, chunk_size=258), 
+            total=self.dataset.test_labels.shape[0])))
+        measure = metrics.Measure(predictions, 
+                        self.dataset.test_labels[:],
+                        labels2classes=self.numerical_labels2classes)
+        for metric, g, u in measures:
+            measure.add(metric, greater_is_better=g, uncertain=u)
+
         log.info("Getting scores")
-        list_measure.calc_scores(self.__class__.__name__, 
-                                self.predict, 
-                                self.dataset.test_data[:], 
-                                self.dataset.test_labels[:], 
-                                labels2classes_fn=self.numerical_labels2classes,
-                                measures=measures)
-        return list_measure
+        return measure.to_list()
 
     def confusion_matrix(self):
         from tqdm import tqdm
-        list_measure = ListMeasure()
         predictions = self.predict(self.dataset.test_data[:], raw=False, 
             transform=False, chunk_size=258)
         measure = Measure(np.asarray(list(tqdm(predictions, total=self.dataset.test_labels.shape[0]))),
                         self.dataset.test_labels[:], 
-                        self.numerical_labels2classes)
-        list_measure.add_measure("CLF", self.__class__.__name__)
-        list_measure.add_measure("CM", measure.confusion_matrix(base_labels=self.base_labels))
-        return list_measure
+                        labels2classes=self.numerical_labels2classes,
+                        name=self.__class__.__name__)
+        measure.add((confusion_matrix, None, None))
+        #list_measure.add_measure("CM", measure.confusion_matrix(base_labels=self.base_labels))
+        return measure.to_list()
 
     def only_is(self, op):
         predictions = np.asarray(list(self.predict(self.dataset.test_data, raw=False, transform=False)))

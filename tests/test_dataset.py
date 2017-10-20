@@ -143,16 +143,7 @@ class TestDataset(unittest.TestCase):
         dataset.build_dataset(self.X, self.Y)
         dataset.apply_transforms = True
         copy = dataset.copy()
-        #transforms_to_apply = copy.transforms_to_apply
-        #self.assertEqual(transforms_to_apply, False)
-        self.assertEqual(copy.apply_transforms, dataset.apply_transforms)
-        copy.destroy()
-
-        dataset.apply_transforms = False
-        copy = dataset.copy()
-        #transforms_to_apply = copy.transforms_to_apply
-        #self.assertEqual(transforms_to_apply, False)        
-        self.assertEqual(copy.apply_transforms, dataset.apply_transforms)
+        self.assertEqual(copy.apply_transforms, False)
         copy.destroy()
         dataset.destroy()
 

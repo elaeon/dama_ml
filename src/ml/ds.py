@@ -546,7 +546,7 @@ class Data(ReadWriteData):
         """
         name = self.name + "_copy_" + uuid.uuid4().hex if name is None else name
         data = self.convert(name, dtype=self.dtype,
-                        apply_transforms=self.apply_transforms, 
+                        apply_transforms=False, 
                         percentaje=percentaje, dataset_path=dataset_path)
         return data
 

@@ -6,9 +6,10 @@ log = logging.getLogger(__name__)
 #np.random.seed(133)
 
 
-def natural_order(reverse):
+def greater_is_better_fn(reverse, uncertain):
     def view(fn):
         fn.reverse = reverse
+        fn.uncertain = uncertain
         return fn
     return view
 
@@ -27,72 +28,105 @@ class Measure(object):
     :param labels2classes_fn: function for transform the labels to classes
     """
 
-    def __init__(self, predictions, labels, labels2classes_fn):
-        self.labels = labels2classes_fn(labels)
+    def __init__(self, predictions, labels, labels2classes=None, name=None):
+        if labels2classes is None:
+            self.labels2classes = lambda x: x 
+        else:
+            self.labels2classes = labels2classes
+        self.labels = labels
         self.predictions = predictions
-        self.average = "macro"
-        self.labels2classes = labels2classes_fn
+        self.name = name
+        self.measures = []
 
-    @natural_order(True)
-    def accuracy(self):
-        """
-        measure for correct predictions, true positives and true negatives.
-        """
-        from sklearn.metrics import accuracy_score
-        return accuracy_score(self.labels, self.labels2classes(self.predictions))
+    def add(self, measure, greater_is_better=True, uncertain=False):
+        self.measures.append(greater_is_better_fn(greater_is_better, uncertain)(measure))
 
-    @natural_order(True)
-    def precision(self):
-        """
-        measure for false positives predictions.
-        """
-        from sklearn.metrics import precision_score
-        return precision_score(self.labels, self.labels2classes(self.predictions), 
-            average=self.average, pos_label=None)
+    def scores(self):
+        if self.has_discrete():
+            labels = self.labels2classes(self.labels)
+            predictions_c = self.labels2classes(self.predictions)
 
-    @natural_order(True)
-    def recall(self):
-        """
-        measure from false negatives predictions.
-        """
-        from sklearn.metrics import recall_score
-        return recall_score(self.labels, self.labels2classes(self.predictions), 
-            average=self.average, pos_label=None)
+        for measure in self.measures:
+            if measure.uncertain:
+                yield measure(self.labels, self.predictions)
+            else:
+                yield measure(labels, predictions_c)
 
-    @natural_order(True)
-    def f1(self):
-        """
-        weighted average presicion and recall
-        """
-        from sklearn.metrics import f1_score
-        return f1_score(self.labels, self.labels2classes(self.predictions), 
-            average=self.average, pos_label=None)
+    def has_uncertain(self):
+        for measure in self.measures:
+            if measure.uncertain is True:
+                return True
+        return False
 
-    @natural_order(True)
-    def auc(self):
-        """
-        area under the curve of the reciver operating characteristic, measure for 
-        true positives rate and false positive rate
-        """
-        from sklearn.metrics import roc_auc_score
-        try:
-            return roc_auc_score(self.labels, self.labels2classes(self.predictions), 
-                average=self.average)
-        except ValueError:
-            return None
+    def has_discrete(self):
+        for measure in self.measures:
+            if measure.uncertain is False:
+                return True
+        return False
 
-    def confusion_matrix(self, base_labels=None):
-        from sklearn.metrics import confusion_matrix
-        cm = confusion_matrix(self.labels, self.predictions, labels=base_labels)
-        return cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    def to_list(self):
+        list_measure = ListMeasure(headers=[""]+[fn.__name__ for fn in self.measures],
+                    order=[True]+[fn.reverse for fn in self.measures],
+                    measures=[[self.name] + list(self.scores())])
+        return list_measure
 
-    @natural_order(False)
-    def logloss(self):
-        """
-        accuracy by penalising false classifications
-        """
-        from sklearn.metrics import log_loss
-        return log_loss(self.labels, self.predictions)
+
+def accuracy(labels, predictions):
+    """
+    measure for correct predictions, true positives and true negatives.
+    """
+    from sklearn.metrics import accuracy_score
+    return accuracy_score(labels, predictions)
+
+
+def precision(labels, predictions):
+    """
+    measure for false positives predictions.
+    """
+    from sklearn.metrics import precision_score
+    return precision_score(labels, predictions, average="macro", pos_label=None)
+
+
+def recall(labels, predictions):
+    """
+    measure from false negatives predictions.
+    """
+    from sklearn.metrics import recall_score
+    return recall_score(labels, predictions, average="macro", pos_label=None)
+
+
+def f1(labels, predictions):
+    """
+    weighted average presicion and recall
+    """
+    from sklearn.metrics import f1_score
+    return f1_score(labels, predictions, average="macro", pos_label=None)
+
+
+def auc(labels, predictions):
+    """
+    area under the curve of the reciver operating characteristic, measure for 
+    true positives rate and false positive rate
+    """
+    from sklearn.metrics import roc_auc_score
+    try:
+        return roc_auc_score(labels, predictions, average="macro")
+    except ValueError:
+        return None
+
+
+def confusion_matrix(labels, predictions, base_labels=None):
+    from sklearn.metrics import confusion_matrix
+    cm = confusion_matrix(labels, predictions, labels=base_labels)
+    return cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+
+
+def logloss(labels, predictions):
+    """
+    accuracy by penalising false classifications
+    """
+    from sklearn.metrics import log_loss
+    return log_loss(labels, predictions)
 
 
 class ListMeasure(object):
@@ -228,29 +262,3 @@ class ListMeasure(object):
             measures=this_measures+other_measures,
             order=order)
         return list_measure
-
-    def calc_scores(self, name, predictor, data, labels, labels2classes_fn=None, 
-                    measures=None):
-        from tqdm import tqdm
-        if measures is None:
-            measures = ["accuracy", "precision", "recall", "f1", "auc", "logloss"]
-        elif isinstance(measures, str):
-            measures = measures.split(",")
-        else:
-            measures = ["logloss"]
-        uncertain = "logloss" in measures
-        predictions = np.asarray(list(tqdm(
-            predictor(data, raw=uncertain, transform=False, chunk_size=258), 
-            total=labels.shape[0])))
-        measure = Measure(predictions, labels, labels2classes_fn)
-        self.add_measure("CLF", name)
-
-        measure_class = []
-        for measure_name in measures:
-            measure_name = measure_name.strip()
-            if hasattr(measure, measure_name):
-                measure_class.append((measure_name, measure))
-
-        for measure_name, measure in measure_class:
-            fn = getattr(measure, measure_name)
-            self.add_measure(measure_name, fn(), reverse=fn.reverse)
