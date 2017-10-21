@@ -368,9 +368,9 @@ class TestXgboost(unittest.TestCase):
             classif = Xgboost(dataset=self.dataset, 
                 model_name="test", 
                 model_version="1",
-                check_point_path="/tmp/",
-                params={'max_depth':2, 'eta':1, 'silent':1, 'objective':'binary:logistic'})
-            classif.train(num_steps=1)
+                check_point_path="/tmp/")
+            params={'max_depth':2, 'eta':1, 'silent':1, 'objective':'binary:logistic'}
+            classif.train(num_steps=1, model_params=params)
         except ImportError:
             return
         finally:

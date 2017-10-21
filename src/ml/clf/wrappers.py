@@ -44,20 +44,7 @@ class BaseClassif(DataDrive):
 
     def scores(self, measures=None):
         from tqdm import tqdm
-        if measures is None:
-            measures = [(metrics.accuracy, True, False), 
-                        (metrics.precision, True, False), 
-                        (metrics.recall, True, False), 
-                        (metrics.f1, True, False), 
-                        (metrics.auc, True, False), 
-                        (metrics.logloss, True, True)]
-
-        for _, _, uncertain in measures:
-            if uncertain is True:
-                uncertain = True
-                break
-        else:
-            uncertain = False
+        measures, uncertain = metrics.Measure.make_metrics(measures)
         predictions = np.asarray(list(tqdm(
             self.predict(self.dataset.test_data[:], raw=uncertain, transform=False, chunk_size=258), 
             total=self.dataset.test_labels.shape[0])))
@@ -324,13 +311,13 @@ class BaseClassif(DataDrive):
             self.model.fit(data[train], labels[train])
             print("fold ", k)
 
-    def train(self, batch_size=0, num_steps=0, n_splits=None, obj_fn=None):
+    def train(self, batch_size=0, num_steps=0, n_splits=None, obj_fn=None, model_params={}):
         log.info("Training")
         if n_splits is not None:
             self.train_kfolds(batch_size=batch_size, num_steps=num_steps, 
                             n_splits=n_splits, obj_fn=obj_fn)
         else:
-            self.model = self.prepare_model(obj_fn=obj_fn)
+            self.model = self.prepare_model(obj_fn=obj_fn, **model_params)
         log.info("Saving model")
         self.save_model()
 
@@ -387,8 +374,8 @@ class XGB(BaseClassif):
     def load_fn(self, path):
         import xgboost as xgb
         booster = xgb.Booster()
-        model_p = booster.load_model(path)
-        self.model = self.ml_model(xgb, model_2=model_p)
+        booster.load_model(path)
+        self.model = self.ml_model(xgb, model_2=booster)
 
     def array2dmatrix(self, data):
         import xgboost as xgb

@@ -70,6 +70,32 @@ class Measure(object):
                     measures=[[self.name] + list(self.scores())])
         return list_measure
 
+    @classmethod
+    def make_metrics(self, measures):
+        if measures is None:
+            measures = [(accuracy, True, False), 
+                        (precision, True, False), 
+                        (recall, True, False), 
+                        (f1, True, False), 
+                        (auc, True, False), 
+                        (logloss, False, True)]
+        elif isinstance(measures, str):
+            import sys
+            m = sys.modules['ml.clf.measures']
+            if hasattr(m, measures) and measures != 'logloss':
+                measures = [(getattr(m, measures), True, False)]
+            elif measures == 'logloss':
+                measures = [(getattr(m, measures), False, True)]
+
+        for _, _, uncertain in measures:
+            if uncertain is True:
+                uncertain = True
+                break
+        else:
+            uncertain = False
+
+        return measures, uncertain
+
 
 def accuracy(labels, predictions):
     """

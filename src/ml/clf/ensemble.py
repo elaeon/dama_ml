@@ -1,6 +1,6 @@
 import numpy as np
 from ml.clf.wrappers import DataDrive
-from ml.clf.measures import ListMeasure
+from ml.clf.measures import ListMeasure, Measure
 from ml.ds import DataSetBuilder, Data
 
 from pydoc import locate
@@ -130,14 +130,19 @@ class Grid(DataDrive):
         except TypeError:
             return ListMeasure()
 
-    def scores(self, measures=None, all_clf=True):
-        list_measure = ListMeasure()
-        list_measure.calc_scores(self.__class__.__name__, 
-                                self.predict, 
-                                self.dataset.test_data, 
-                                self.dataset.test_labels[:],
-                                labels2classes_fn=self.numerical_labels2classes, 
-                                measures=measures)
+    def scores(self, measures=None, all_clf=False):
+        from tqdm import tqdm
+        measures, uncertain = Measure.make_metrics(measures)
+        predictions = np.asarray(list(tqdm(
+            self.predict(self.dataset.test_data[:], raw=uncertain, transform=False, chunk_size=258), 
+            total=self.dataset.test_labels.shape[0])))
+        measure = Measure(predictions, 
+                        self.dataset.test_labels[:],
+                        labels2classes=self.numerical_labels2classes)
+        for metric, g, u in measures:
+            measure.add(metric, greater_is_better=g, uncertain=u)
+
+        list_measure = measure.to_list()
         if all_clf is True:
             return list_measure + self.all_clf_scores(measures=measures)
         else:
@@ -334,16 +339,6 @@ class EnsembleLayers(DataDrive):
         self.reload()
         dataset.destroy()
 
-    def scores(self, measures=None):
-        list_measure = ListMeasure()
-        list_measure.calc_scores(self.model_name, 
-                                self.predict, 
-                                self.dataset.test_data, 
-                                self.dataset.test_labels[:],
-                                labels2classes_fn=self.numerical_labels2classes, 
-                                measures=measures)
-        return list_measure
-
     def numerical_labels2classes(self, labels):
         if not hasattr(self, 'le'):
             for classif in self.layers[-1].load_models():
@@ -359,6 +354,20 @@ class EnsembleLayers(DataDrive):
         if self.check_point_path is not None:
             path = self.make_model_file()
             self.save_meta()
+
+    def scores(self, measures=None):
+        from tqdm import tqdm
+        measures, uncertain = Measure.make_metrics(measures)
+        predictions = np.asarray(list(tqdm(
+            self.predict(self.dataset.test_data[:], raw=uncertain, transform=False, chunk_size=258), 
+            total=self.dataset.test_labels.shape[0])))
+        measure = Measure(predictions, 
+                        self.dataset.test_labels[:],
+                        labels2classes=self.numerical_labels2classes)
+        for metric, g, u in measures:
+            measure.add(metric, greater_is_better=g, uncertain=u)
+
+        return measure.to_list()
 
     def _metadata(self):
         list_measure = self.scores()

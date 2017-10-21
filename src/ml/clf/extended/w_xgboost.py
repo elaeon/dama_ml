@@ -7,9 +7,9 @@ import os
 
 
 class Xgboost(XGB):
-    def prepare_model(self, obj_fn=None):
-        params = {'eta': 0.02, 'max_depth': 4, 'subsample': 0.9, 'colsample_bytree': 0.9, 
-          'objective': 'binary:logistic', 'eval_metric': 'auc', 'silent': True}
+    def prepare_model(self, obj_fn=None, **params):
+        #params = {'eta': 0.02, 'max_depth': 4, 'subsample': 0.9, 'colsample_bytree': 0.9, 
+        #  'objective': 'binary:logistic', 'eval_metric': 'auc', 'silent': True}
         d_train = xgb.DMatrix(self.dataset.train_data, self.dataset.train_labels) 
         d_valid = xgb.DMatrix(self.dataset.validation_data, self.dataset.validation_labels) 
         watchlist = [(d_train, 'train'), (d_valid, 'valid')]
@@ -24,13 +24,13 @@ class Xgboost(XGB):
 
 
 class XgboostSKL(SKLP):
-    def prepare_model(self, obj_fn=None):
+    def prepare_model(self, obj_fn=None, **params):
         model = CalibratedClassifierCV(xgb.XGBClassifier(seed=3, n_estimators=25), method="sigmoid")
         model_clf = model.fit(self.dataset.train_data, self.dataset.train_labels)
         reg_model = CalibratedClassifierCV(model_clf, method="sigmoid", cv="prefit")
         reg_model.fit(self.dataset.validation_data, self.dataset.validation_labels)
         return self.ml_model(reg_model)
 
-    def prepare_model_k(self, obj_fn=None):
+    def prepare_model_k(self, obj_fn=None, **params):
         model = CalibratedClassifierCV(xgb.XGBClassifier(seed=3, n_estimators=25), method="sigmoid")
         return self.ml_model(model)
