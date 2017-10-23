@@ -132,17 +132,13 @@ class Grid(DataDrive):
 
     def scores(self, measures=None, all_clf=False):
         from tqdm import tqdm
-        measures, uncertain = Measure.make_metrics(measures)
+        if measures is None or isinstance(measures, str):
+            measures = Measure.make_metrics(measures, name=self.model_name)
         predictions = np.asarray(list(tqdm(
-            self.predict(self.dataset.test_data[:], raw=uncertain, transform=False, chunk_size=258), 
+            self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), transform=False, chunk_size=258), 
             total=self.dataset.test_labels.shape[0])))
-        measure = Measure(predictions, 
-                        self.dataset.test_labels[:],
-                        labels2classes=self.numerical_labels2classes)
-        for metric, g, u in measures:
-            measure.add(metric, greater_is_better=g, uncertain=u)
-
-        list_measure = measure.to_list()
+        measures.set_data(predictions, self.dataset.test_labels[:], self.numerical_labels2classes)
+        list_measure = measures.to_list()
         if all_clf is True:
             return list_measure + self.all_clf_scores(measures=measures)
         else:
@@ -357,17 +353,13 @@ class EnsembleLayers(DataDrive):
 
     def scores(self, measures=None):
         from tqdm import tqdm
-        measures, uncertain = Measure.make_metrics(measures)
+        if measures is None or isinstance(measures, str):
+            measures = Measure.make_metrics(measures, name=self.model_name)
         predictions = np.asarray(list(tqdm(
-            self.predict(self.dataset.test_data[:], raw=uncertain, transform=False, chunk_size=258), 
+            self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), transform=False, chunk_size=258), 
             total=self.dataset.test_labels.shape[0])))
-        measure = Measure(predictions, 
-                        self.dataset.test_labels[:],
-                        labels2classes=self.numerical_labels2classes)
-        for metric, g, u in measures:
-            measure.add(metric, greater_is_better=g, uncertain=u)
-
-        return measure.to_list()
+        measures.set_data(predictions, self.dataset.test_labels[:], self.numerical_labels2classes)
+        return measures.to_list()
 
     def _metadata(self):
         list_measure = self.scores()

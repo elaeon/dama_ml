@@ -28,18 +28,23 @@ class Measure(object):
     :param labels2classes_fn: function for transform the labels to classes
     """
 
-    def __init__(self, predictions, labels, labels2classes=None, name=None):
-        if labels2classes is None:
-            self.labels2classes = lambda x: x 
-        else:
-            self.labels2classes = labels2classes
-        self.labels = labels
-        self.predictions = predictions
+    def __init__(self, predictions=None, labels=None, labels2classes=None, name=None):
+        self.set_data(predictions, labels, labels2classes)
         self.name = name
         self.measures = []
+        self.uncertain = False
 
     def add(self, measure, greater_is_better=True, uncertain=False):
+        self.uncertain = self.uncertain or uncertain
         self.measures.append(greater_is_better_fn(greater_is_better, uncertain)(measure))
+
+    def set_data(self, predictions, labels, labels2classes):
+        self.labels = labels
+        self.predictions = predictions
+        if labels2classes is None:
+            self.labels2classes = lambda x: x
+        else:
+            self.labels2classes = labels2classes
 
     def scores(self):
         if self.has_discrete():
@@ -71,30 +76,25 @@ class Measure(object):
         return list_measure
 
     @classmethod
-    def make_metrics(self, measures):
+    def make_metrics(self, measures, name=None):
+        measure = Measure(name=name)
         if measures is None:
-            measures = [(accuracy, True, False), 
-                        (precision, True, False), 
-                        (recall, True, False), 
-                        (f1, True, False), 
-                        (auc, True, False), 
-                        (logloss, False, True)]
+            measure.add(accuracy, greater_is_better=True, uncertain=False)
+            measure.add(precision, greater_is_better=True, uncertain=False)
+            measure.add(recall, greater_is_better=True, uncertain=False)
+            measure.add(f1, greater_is_better=True, uncertain=False)
+            measure.add(auc, greater_is_better=True, uncertain=False)
+            measure.add(logloss, greater_is_better=False, uncertain=True)
         elif isinstance(measures, str):
             import sys
             m = sys.modules['ml.clf.measures']
             if hasattr(m, measures) and measures != 'logloss':
-                measures = [(getattr(m, measures), True, False)]
+                measure.add(getattr(m, measures), greater_is_better=True, 
+                            uncertain=False)
             elif measures == 'logloss':
-                measures = [(getattr(m, measures), False, True)]
-
-        for _, _, uncertain in measures:
-            if uncertain is True:
-                uncertain = True
-                break
-        else:
-            uncertain = False
-
-        return measures, uncertain
+                measure.add(getattr(m, measures), greater_is_better=False, 
+                            uncertain=True)
+        return measure
 
 
 def accuracy(labels, predictions):

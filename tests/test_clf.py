@@ -84,8 +84,8 @@ class TestSKL(unittest.TestCase):
         from ml.clf.extended.w_sklearn import RandomForest
         from ml.utils.numeric_functions import gini_normalized
         from ml.clf.measures import Measure
-        metrics, _ = Measure.make_metrics(None)
-        metrics.append((gini_normalized, True, True))
+        metrics = Measure.make_metrics(None)
+        metrics.add(gini_normalized, greater_is_better=True, uncertain=True)
         classif = RandomForest(dataset=self.dataset, 
             model_name="test", 
             model_version="1",

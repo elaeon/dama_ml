@@ -45,19 +45,15 @@ class BaseClassif(DataDrive):
 
     def scores(self, measures=None):
         from tqdm import tqdm
-        measures, uncertain = metrics.Measure.make_metrics(measures)
+        if measures is None or isinstance(measures, str):
+            measures = metrics.Measure.make_metrics(measures, name=self.model_name)
         predictions = np.asarray(list(tqdm(
-            self.predict(self.dataset.test_data[:], raw=uncertain, transform=False, chunk_size=258), 
+            self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), 
+                        transform=False, chunk_size=258), 
             total=self.dataset.test_labels.shape[0])))
-        measure = metrics.Measure(predictions, 
-                        self.dataset.test_labels[:],
-                        labels2classes=self.numerical_labels2classes,
-                        name=self.model_name)
-        for metric, g, u in measures:
-            measure.add(metric, greater_is_better=g, uncertain=u)
-
+        measures.set_data(predictions, self.dataset.test_labels[:], self.numerical_labels2classes)
         log.info("Getting scores")
-        return measure.to_list()
+        return measures.to_list()
 
     def confusion_matrix(self):
         from tqdm import tqdm
