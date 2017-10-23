@@ -431,7 +431,7 @@ class FitReplaceNan(Fit):
                     columns[i] = replace_value
             self.write_meta(columns)
 
-        print(self.read_meta())
+        #print(self.read_meta())
         def transform(n_data):
             columns = self.read_meta()
             for row in n_data:

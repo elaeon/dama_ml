@@ -23,7 +23,7 @@ log.addHandler(console)
 class BaseClassif(DataDrive):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
                 model_version=None, dataset_train_limit=None, 
-                autoload=True, group_name=None, rewrite=False):
+                autoload=True, group_name=None, rewrite=False, metrics=None):
         self.model = None
         self.le = LabelEncoder()
         self.dataset_train_limit = dataset_train_limit
@@ -33,6 +33,7 @@ class BaseClassif(DataDrive):
         self.dl = None
         self.ext = "ckpt.pkl"
         self.rewrite = rewrite
+        self.metrics = metrics
 
         super(BaseClassif, self).__init__(
             check_point_path=check_point_path,
@@ -50,7 +51,8 @@ class BaseClassif(DataDrive):
             total=self.dataset.test_labels.shape[0])))
         measure = metrics.Measure(predictions, 
                         self.dataset.test_labels[:],
-                        labels2classes=self.numerical_labels2classes)
+                        labels2classes=self.numerical_labels2classes,
+                        name=self.model_name)
         for metric, g, u in measures:
             measure.add(metric, greater_is_better=g, uncertain=u)
 
@@ -246,7 +248,7 @@ class BaseClassif(DataDrive):
         return validation_data, validation_labels, pred_index
 
     def _metadata(self):
-        list_measure = self.scores()
+        list_measure = self.scores(measures=self.metrics)
         return {"dataset_path": self.dataset.dataset_path,
                 "dataset_name": self.dataset.name,
                 "md5": self.dataset.md5,
@@ -301,21 +303,23 @@ class BaseClassif(DataDrive):
                 prediction = np.asarray(prediction)
             yield self.convert_label(prediction, raw=raw)
 
-    def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2, obj_fn=None):
+    def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2, obj_fn=None, 
+                    model_params={}):
         from sklearn.model_selection import StratifiedKFold
-        self.model = self.prepare_model_k(obj_fn=obj_fn)
+        model = self.prepare_model_k(obj_fn=obj_fn)
         cv = StratifiedKFold(n_splits=n_splits)
         data = self.dataset.data_validation
         labels = self.dataset.data_validation_labels
         for k, (train, test) in enumerate(cv.split(data, labels), 1):
-            self.model.fit(data[train], labels[train])
+            model.fit(data[train], labels[train])
             print("fold ", k)
+        return model
 
     def train(self, batch_size=0, num_steps=0, n_splits=None, obj_fn=None, model_params={}):
         log.info("Training")
         if n_splits is not None:
-            self.train_kfolds(batch_size=batch_size, num_steps=num_steps, 
-                            n_splits=n_splits, obj_fn=obj_fn)
+            self.model = self.train_kfolds(batch_size=batch_size, num_steps=num_steps, 
+                            n_splits=n_splits, obj_fn=obj_fn, model_params=model_params)
         else:
             self.model = self.prepare_model(obj_fn=obj_fn, **model_params)
         log.info("Saving model")

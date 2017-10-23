@@ -80,6 +80,23 @@ class TestSKL(unittest.TestCase):
             check_point_path="/tmp/")
         classif.scores().print_scores()
 
+    def test_new_scores(self):
+        from ml.clf.extended.w_sklearn import RandomForest
+        from ml.utils.numeric_functions import gini_normalized
+        from ml.clf.measures import Measure
+        metrics, _ = Measure.make_metrics(None)
+        metrics.append((gini_normalized, True, True))
+        classif = RandomForest(dataset=self.dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/",
+            metrics=metrics)
+        classif.train(num_steps=1)
+        scores = classif.meta_scores()
+        self.assertEqual(scores.keys(), ['', 'f1', 'auc', 'recall', 'precision', 
+            'logloss', 'gini_normalized', 'accuracy'])
+        classif.destroy()
+
 
 class TestGpy(unittest.TestCase):
     def setUp(self):
