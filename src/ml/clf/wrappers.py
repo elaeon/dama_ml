@@ -321,8 +321,9 @@ class BaseClassif(DataDrive):
         log.info("Saving model")
         self.save_model()
 
-    def meta_scores(self):
-        return self.load_meta().get("score", None)
+    def scores2table(self):
+        from ml.clf.measures import ListMeasure
+        return ListMeasure.dict_to_measures(self.load_meta().get("score", None))
 
 
 class SKL(BaseClassif):

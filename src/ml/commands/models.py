@@ -26,7 +26,7 @@ def run(args):
                     measure = "logloss" if not args.measure else args.measure
                     scores = DataDrive.read_meta("score", model_path)
                     if scores is not None:
-                        score_ = scores.get(measure, None)
+                        score_ = scores.get(measure, {"values": [""], "reverse": False})
                         if isinstance(score_, dict):
                             score = score_['values'][0]
                             order_m = score_['reverse']

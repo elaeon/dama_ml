@@ -270,7 +270,10 @@ class Transforms(object):
         for transforms_type in transforms_list:
             for type_, transforms_dict in transforms_type.items():
                 for fn, params in transforms_dict:#.items():
-                    transforms.add(locate(fn), type=type_, **params)
+                    try:
+                        transforms.add(locate(fn), type=type_, **params)
+                    except Exception, e:
+                        print(e.message)
         return transforms
 
     def apply(self, data, base_data=None):

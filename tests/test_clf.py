@@ -97,6 +97,10 @@ class TestSKL(unittest.TestCase):
             'logloss', 'gini_normalized', 'accuracy'])
         classif.destroy()
 
+    def test_scores2table(self):
+        table = self.classif.scores2table()
+        table.print_scores()
+
 
 class TestGpy(unittest.TestCase):
     def setUp(self):

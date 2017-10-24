@@ -76,7 +76,7 @@ class Measure(object):
         return list_measure
 
     @classmethod
-    def make_metrics(self, measures, name=None):
+    def make_metrics(self, measures=None, name=None):
         measure = Measure(name=name)
         if measures is None:
             measure.add(accuracy, greater_is_better=True, uncertain=False)
@@ -215,6 +215,13 @@ class ListMeasure(object):
                 measures[header]["values"].append(measure[i])
         return measures
              
+    @classmethod
+    def dict_to_measures(self, data_dict):
+        headers = data_dict.keys()
+        measures = [[v["values"][0] for k, v in data_dict.items()]]
+        order = [v["reverse"] for k, v in data_dict.items()]
+        return ListMeasure(headers=headers, measures=measures, order=order)
+
     def print_scores(self, order_column=None):
         """
         :type order_column: string
