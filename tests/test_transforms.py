@@ -138,7 +138,7 @@ class TestTransforms(unittest.TestCase):
         transforms = Transforms()
         base_numbers = np.random.rand(1000, 3)
         transforms.add(FitStandardScaler, type="column")
-        transforms.add(FitTruncatedSVD, type="columns", n_components=2)
+        transforms.add(FitTruncatedSVD, type="column", n_components=2)
         numbers = np.random.rand(1000, 3)
         result = np.asarray(list(transforms.apply(numbers, base_data=base_numbers)))
         print(result)
@@ -258,7 +258,19 @@ class TestTransforms(unittest.TestCase):
         self.assertItemsEqual(data_nonan[:,3], [5,5,5,5])
         self.assertItemsEqual(data_nonan[:,4], [9,9,9,9])
         ft.destroy()
-        
+
+    #def test_local_transforms(self):
+    #    from pydoc import locate
+    #    import sys
+    #    sys.path.insert(0, "/home/alejandro/")
+    #    print(sys.path)
+        #json = """
+        #    [{"column": [["__main__.FitAddFeatures", {}]]}]
+        #"""
+    #                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               	    print(locate("porto.FitAddFeatures"))
+        #transforms = Transforms.from_json(json)
+        #print(transforms)
+
 
 if __name__ == '__main__':
     unittest.main()

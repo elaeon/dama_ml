@@ -1,7 +1,7 @@
 import argparse
 
 from ml import __version__
-from ml.commands import dataset, models, plot
+from ml.commands import dataset, models, plot, config
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--version', action='version', version=__version__)
@@ -30,6 +30,9 @@ plot_parser.add_argument("--view", type=str, help="analyze column or row")
 plot_parser.add_argument("--type-g", type=str, help="graph type")
 plot_parser.add_argument("--columns", type=str, help="columns to compare")
 plot_parser.set_defaults(func=plot.run)
+
+config_parser = subparsers.add_parser('config')
+config_parser.set_defaults(func=config.run)
 
 
 def main():

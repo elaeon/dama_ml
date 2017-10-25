@@ -92,8 +92,8 @@ class TestSKL(unittest.TestCase):
             check_point_path="/tmp/",
             metrics=metrics)
         classif.train(num_steps=1)
-        scores = classif.meta_scores()
-        self.assertEqual(scores.keys(), ['', 'f1', 'auc', 'recall', 'precision', 
+        scores_table = classif.scores2table()
+        self.assertEqual(scores_table.headers, ['', 'f1', 'auc', 'recall', 'precision', 
             'logloss', 'gini_normalized', 'accuracy'])
         classif.destroy()
 

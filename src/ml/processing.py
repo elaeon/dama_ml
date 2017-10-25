@@ -11,14 +11,22 @@ import logging
 import numpy as np
 import json
 import uuid
+import sys
 
+from ml.utils.config import get_settings
+from ml.layers import IterLayer
 
+settings = get_settings("ml")
 logging.basicConfig()
 console = logging.StreamHandler()
 console.setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 log.addHandler(console)
+
+
+if not settings["class_path"] in sys.path:
+    sys.path.insert(0, settings["class_path"])
 
 
 def pixelate_mode(mode):
@@ -41,11 +49,11 @@ class TransformsRow(object):
     transforms.add(function2, {'x': 10}) -> function2(x=10)
     """
     def __init__(self):
-        self.transforms = []#OrderedDict({})
+        self.transforms = []
 
     def __add__(self, o):
         all_transforms = TransformsRow.from_json(self.to_json())
-        for fn, params in o.transforms:#.items():
+        for fn, params in o.transforms:
             all_transforms.add(locate(fn), **params)
         return all_transforms
 
@@ -66,8 +74,15 @@ class TransformsRow(object):
 
         This function add to the class the functions to use with the data.
         """
-        fn_name = "{}.{}".format(fn.__module__, fn.__name__)
-        self.transforms.append((fn_name, params))#[fn_name] = params
+        if fn.__module__ == "__main__":
+            from ml.utils.files import path2module
+            from ml.utils.config import get_settings
+            settings = get_settings("ml")
+            fn_module = path2module(settings["class_path"])
+        else:
+            fn_module = fn.__module__
+        fn_name = "{}.{}".format(fn_module, fn.__name__)
+        self.transforms.append((fn_name, params))
 
     def is_empty(self):
         """
@@ -89,7 +104,7 @@ class TransformsRow(object):
         """
         transforms_loaded = json.loads(json_transforms)#, object_pairs_hook=OrderedDict)
         transforms = TransformsRow()
-        for fn, params in transforms_loaded:#.items():
+        for fn, params in transforms_loaded:
             transforms.add(locate(fn), **params)
         return transforms
 
@@ -99,13 +114,13 @@ class TransformsRow(object):
         :param data: apply the transforms added to the data
         """
         if not isinstance(data, list) and len(data.shape) == 1:
-            for fn, params in self.transforms:#.items():
+            for fn, params in self.transforms:
                 fn = locate(fn)
                 data = fn(data, **params)
         else:
             data_n = []
             for row in data:
-                for fn, params in self.transforms:#.items():
+                for fn, params in self.transforms:
                     fn = locate(fn)
                     row = fn(row, **params)
                 data_n.append(row)
@@ -120,7 +135,7 @@ class TransformsCol(TransformsRow):
     
     def __add__(self, o):
         all_transforms = TransformsCol.from_json(self.to_json())
-        for fn, params in o.transforms:#.items():
+        for fn, params in o.transforms:
             all_transforms.add(locate(fn), **params)
         return all_transforms
 
@@ -154,10 +169,10 @@ class TransformsCol(TransformsRow):
         """
         if base_data is None:
             for fn_fit in self.initial_fn(data):
-                data = fn_fit.transform(data)
+                data = np.asarray(list(fn_fit.transform(data)))
         else:
             for fn_fit in self.initial_fn(base_data):
-                data = fn_fit.transform(data)
+                data = np.asarray(list(fn_fit.transform(data)))
 
         if data is None:
             raise Exception
@@ -220,7 +235,7 @@ class Transforms(object):
     def __add__(self, o):
         all_transforms = Transforms.from_json(self.to_json())
         for transform in o.transforms:
-            for fn, params in transform.transforms:#.items():
+            for fn, params in transform.transforms:
                 all_transforms.add(locate(fn), type=transform.type(), **params)
         return all_transforms
 
@@ -269,7 +284,7 @@ class Transforms(object):
         transforms = Transforms()
         for transforms_type in transforms_list:
             for type_, transforms_dict in transforms_type.items():
-                for fn, params in transforms_dict:#.items():
+                for fn, params in transforms_dict:
                     try:
                         transforms.add(locate(fn), type=type_, **params)
                     except Exception, e:
@@ -520,18 +535,18 @@ def blur(data, level=.2):
     return filters.gaussian(data, level)
 
 
-def align_face(data):
-    from ml.face_detector import FaceAlign
-    dlibFacePredictor = "/home/sc/dlib-18.18/python_examples/shape_predictor_68_face_landmarks.dat"
-    align = FaceAlign(dlibFacePredictor)
-    return align.process_img(data)
+#def align_face(data):
+#    from ml.face_detector import FaceAlign
+#    dlibFacePredictor = "/home/sc/dlib-18.18/python_examples/shape_predictor_68_face_landmarks.dat"
+#    align = FaceAlign(dlibFacePredictor)
+#    return align.process_img(data)
 
 
-def detector(data):
-    from ml.face_detector import DetectorDlib
-    dlibFacePredictor = "/home/sc/dlib-18.18/python_examples/shape_predictor_68_face_landmarks.dat"
-    align = DetectorDlib(dlibFacePredictor)
-    return align.process_img(data)
+#def detector(data):
+#    from ml.face_detector import DetectorDlib
+#    dlibFacePredictor = "/home/sc/dlib-18.18/python_examples/shape_predictor_68_face_landmarks.dat"
+#    align = DetectorDlib(dlibFacePredictor)
+#    return align.process_img(data)
 
 
 def cut(data, rectangle=None):
