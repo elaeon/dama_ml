@@ -197,9 +197,9 @@ class Data(ReadWriteData):
                 author='', compression_level=0, chunks=258, rewrite=False):
 
         self.name = uuid.uuid4().hex if name is None else name
-        self._applied_transforms = apply_transforms
         self.chunks = chunks
         self.rewrite = rewrite
+        self.apply_transforms = apply_transforms
 
         if dataset_path is None:
             self.dataset_path = settings["dataset_path"]
@@ -223,7 +223,7 @@ class Data(ReadWriteData):
             self.compression_level = compression_level
             self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
             self.dataset_class = self.module_cls_name()
-            self.apply_transforms = apply_transforms
+            self._applied_transforms = apply_transforms
         else:
             self.mode = "r"
 
@@ -306,13 +306,13 @@ class Data(ReadWriteData):
                 f.attrs['dataset_class'] = value
 
     @property
-    def apply_transforms(self):
-        return self._get_attr('apply_transforms')
+    def _applied_transforms(self):
+        return self._get_attr('applied_transforms')
 
-    @apply_transforms.setter
-    def apply_transforms(self, value):
+    @_applied_transforms.setter
+    def _applied_transforms(self, value):
         if self.mode == 'w':
-            self._set_attr('apply_transforms', value)
+            self._set_attr('applied_transforms', value)
 
     @property
     def md5(self):
@@ -411,10 +411,9 @@ class Data(ReadWriteData):
         print('MD5: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
         print('       ')
-        headers = ["Dataset", "Mean", "Std", "Shape", "dType"]
+        headers = ["Dataset", "Shape", "dType"]
         table = []
-        table.append(["dataset", self.data[:].mean(), self.data[:].std(), 
-            self.data.shape, self.data.dtype])
+        table.append(["dataset", self.data.shape, self.data.dtype])
         order_table_print(headers, table, "shape")
 
     def calc_md5(self):
@@ -872,10 +871,9 @@ class DataLabel(Data):
         print('MD5: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
         print('       ')
-        headers = ["Dataset", "Mean", "Std", "Shape", "dType", "Labels"]
+        headers = ["Dataset", "Shape", "dType", "Labels"]
         table = []
-        table.append(["dataset", self.data[:].mean(), self.data[:].std(), 
-            self.data.shape, self.data.dtype, self.labels.size])
+        table.append(["dataset", self.data.shape, self.data.dtype, self.labels.size])
         order_table_print(headers, table, "shape")
 
     def build_dataset_from_dsb(self, dsb):
@@ -1430,8 +1428,11 @@ class DataSetBuilder(DataLabel):
                             self.test_data.dtype, self.test_labels.size])
             order_table_print(headers, table, "shape")
             if classes == True:
-                headers = ["class", "# items"]
-                order_table_print(headers, self.labels_info().items(), "# items")
+                headers = ["class", "# items", "%"]
+                items = [(cls, total, (total/float(self.shape[0]))*100) 
+                        for cls, total in self.labels_info().items()]
+                items_p = [0, 0]
+                order_table_print(headers, items, "# items")
         except KeyError:
             print("No data found")
 
