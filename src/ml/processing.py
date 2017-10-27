@@ -74,15 +74,17 @@ class TransformsRow(object):
 
         This function add to the class the functions to use with the data.
         """
-        if fn.__module__ == "__main__":
-            from ml.utils.files import path2module
-            from ml.utils.config import get_settings
-            settings = get_settings("ml")
-            fn_module = path2module(settings["class_path"])
-        else:
-            fn_module = fn.__module__
-        fn_name = "{}.{}".format(fn_module, fn.__name__)
-        self.transforms.append((fn_name, params))
+        if hasattr(fn, '__module__'):
+            if fn.__module__ == "__main__":
+                from ml.utils.files import path2module
+                from ml.utils.config import get_settings
+                settings = get_settings("ml")
+                fn_module = path2module(settings["class_path"])
+            else:
+                fn_module = fn.__module__
+            fn_name = "{}.{}".format(fn_module, fn.__name__)
+            self.transforms.append((fn_name, params))
+            
 
     def is_empty(self):
         """

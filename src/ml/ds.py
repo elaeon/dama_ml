@@ -712,18 +712,17 @@ class Data(ReadWriteData):
             base = next
         return data
 
-    def delete_columns(self, to_delete):
+    def delete_columns(self, name, to_delete):
         features = set(x for x in xrange(self.shape[1]))
         to_keep = features.difference(set(to_delete))
-        print("To keep", to_keep)
-        #print(type(self))
+        log.debug("To keep "+str(to_keep))
         if hasattr(self, 'labels'):
-            data = self.empty(self.name+"_deleted_columns", dataset_path=self.dataset_path, dtype=self.dtype, 
+            data = self.empty(name, dataset_path=self.dataset_path, dtype=self.dtype, 
                 ltype=self.ltype, apply_transforms=self.apply_transforms, 
                 transforms=self.transforms)
             data.build_dataset(calc_nshape(self.data[:, list(to_keep)], 1), self.labels)
         else:
-            data = self.empty(self.name+"_deleted_columns", dataset_path=self.dataset_path, dtype=self.dtype, 
+            data = self.empty(name, dataset_path=self.dataset_path, dtype=self.dtype, 
                 apply_transforms=self.apply_transforms, 
                 transforms=self.transforms)
             data.build_dataset(calc_nshape(self.data[:, list(to_keep)], 1))
