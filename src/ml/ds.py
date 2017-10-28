@@ -519,7 +519,7 @@ class Data(ReadWriteData):
             compression_level=self.compression_level,
             chunks=self.chunks,
             rewrite=self.rewrite)
-        data._applied_transforms = self.apply_transforms
+        data._applied_transforms = apply_transforms
         return data
 
     def convert(self, name, dtype='float64', apply_transforms=False, 
@@ -547,6 +547,7 @@ class Data(ReadWriteData):
         data = self.convert(name, dtype=self.dtype,
                         apply_transforms=False, 
                         percentaje=percentaje, dataset_path=dataset_path)
+        data._applied_transforms = self._applied_transforms
         return data
 
     def processing(self, data, base_data=None):
@@ -932,7 +933,7 @@ class DataLabel(Data):
             compression_level=self.compression_level,
             chunks=self.chunks,
             rewrite=self.rewrite)
-        dl._applied_transforms = self.apply_transforms
+        dl._applied_transforms = apply_transforms
         return dl
 
     def convert(self, name, dtype='float64', ltype='|S1', apply_transforms=False, 
@@ -961,6 +962,7 @@ class DataLabel(Data):
         dl = self.convert(name, dtype=self.dtype, ltype=self.ltype, 
                         apply_transforms=False, 
                         percentaje=percentaje, dataset_path=dataset_path)
+        dl._applied_transforms = self._applied_transforms
         return dl
 
     @classmethod
@@ -1607,7 +1609,7 @@ class DataSetBuilder(DataLabel):
             compression_level=self.compression_level,
             chunks=self.chunks,
             rewrite=self.rewrite)
-        dsb._applied_transforms = self.apply_transforms
+        dsb._applied_transforms = apply_transforms
         return dsb
 
     def to_libsvm(self, name=None, save_to=None, validation=True):

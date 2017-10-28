@@ -259,17 +259,76 @@ class TestTransforms(unittest.TestCase):
         self.assertItemsEqual(data_nonan[:,4], [9,9,9,9])
         ft.destroy()
 
-    #def test_local_transforms(self):
-    #    from pydoc import locate
-    #    import sys
-    #    sys.path.insert(0, "/home/alejandro/")
-    #    print(sys.path)
-        #json = """
-        #    [{"column": [["__main__.FitAddFeatures", {}]]}]
-        #"""
-    #                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               	    print(locate("porto.FitAddFeatures"))
-        #transforms = Transforms.from_json(json)
-        #print(transforms)
+    def test_transforms_convert_apply(self):
+        from ml.ds import DataSetBuilder
+        from ml.processing import FitStandardScaler, FitRobustScaler
+
+        transforms = Transforms()
+        transforms.add(FitStandardScaler, name="scaler", type="column")
+        X = np.random.rand(1000, 4)
+        Y = np.append(np.zeros(500), np.ones(500), axis=0)
+        dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+            ltype='int', transforms=transforms, rewrite=True, apply_transforms=True)
+        dataset.build_dataset(X, Y)
+        self.assertEqual(dataset._applied_transforms, True)
+        transforms = Transforms()
+        transforms.add(FitRobustScaler, name="scaler", type="column")
+        dsb = dataset.convert(name="test2", apply_transforms=True, transforms=transforms)
+        self.assertEqual(dsb._applied_transforms, True)
+        dataset.destroy()
+        dsb.destroy()
+
+        dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+            ltype='int', transforms=transforms, rewrite=True, apply_transforms=False)
+        dataset.build_dataset(X, Y)
+        self.assertEqual(dataset._applied_transforms, False)
+        transforms = Transforms()
+        transforms.add(FitRobustScaler, name="scaler", type="column")
+        dsb = dataset.convert(name="test2", apply_transforms=True, transforms=transforms)
+        self.assertEqual(dsb._applied_transforms, True)
+        dataset.destroy()
+        dsb.destroy()
+
+        dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+            ltype='int', transforms=transforms, rewrite=True, apply_transforms=True)
+        dataset.build_dataset(X, Y)
+        dsb = dataset.copy()
+        self.assertEqual(dsb._applied_transforms, True)
+        dataset.destroy()
+        dsb.destroy()
+
+        dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+            ltype='int', transforms=transforms, rewrite=True, apply_transforms=False)
+        dataset.build_dataset(X, Y)
+        dsb = dataset.copy()
+        self.assertEqual(dsb._applied_transforms, False)
+        dataset.destroy()
+        dsb.destroy()
+
+    def test_transforms_drop_cols(self):
+        from ml.processing import drop_columns
+        transforms = Transforms()
+        transforms.add(drop_columns, include_cols=[1,2])
+        X = np.random.rand(1000, 4)
+        result = transforms.apply(X)
+        self.assertEqual(result.shape, (1000, 2))
+
+        transforms = Transforms()
+        transforms.add(drop_columns, exclude_cols=[3])
+        result = transforms.apply(X)
+        self.assertEqual(result.shape, (1000, 3))
+        
+    def test_transforms_row_col(self):
+        from ml.processing import drop_columns
+        from ml.processing import FitStandardScaler
+
+        transforms = Transforms()
+        transforms.add(drop_columns, include_cols=[1,2])
+        transforms.add(FitStandardScaler, name="scaler", type="column")
+        transforms.add(linear_p, b=10)
+        X = np.random.rand(10, 4)
+        result = transforms.apply(X)
+        self.assertEqual(result.shape, (10, 2))
 
 
 if __name__ == '__main__':

@@ -416,10 +416,6 @@ class FitTsne(Fit):
         from ml.layers import IterLayer
 
         def iter_():
-            #if not isinstance(data, np.ndarray):
-            #    dataX = np.asarray(list(data))
-            #else:
-            #    dataX = data
             for row, predict in izip(data, self.t(self.dim_rule(data), chunk_size=5000)):
                 yield np.append(row, list(predict), axis=0)
 
@@ -466,6 +462,7 @@ class FitReplaceNan(Fit):
         from ml.utils.files import rm
         rm(self.meta_path)
         
+
 
 def poly_features(data, degree=2, interaction_only=False, include_bias=True):
     if len(data.shape) == 1:
@@ -674,3 +671,14 @@ def pixelate(data, pixel_width=None, pixel_height=None, mode='mean'):
                     data[x][y] = color
     #print("--- %s seconds ---" % (time.time() - start_time))
     return data
+
+
+def drop_columns(row, exclude_cols=None, include_cols=None):
+    if include_cols is not None:
+        row = row[include_cols]
+    elif exclude_cols is not None:
+        features = set(x for x in xrange(len(row)))
+        to_keep = list(features.difference(set(exclude_cols)))
+        row = row[to_keep]
+
+    return row
