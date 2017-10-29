@@ -29,22 +29,23 @@ def run(args):
                         score_ = scores.get(measure, {"values": [""], "reverse": False})
                         if isinstance(score_, dict):
                             score = score_['values'][0]
-                            order_m = score_['reverse']
+                            order_m = order_m or score_['reverse']
                     else:
                         score = None
 
                     try:
                         name, version = name_version.split(".")
-                        table.append([clf, name, version, meta.get("dataset_name", None),
+                        table.append([clf, name, version, 
                                     meta.get("group_name", None), score])
                     except ValueError:
                         pass
 
                     if args.meta:
-                        print(meta)        
-        headers = ["classif", "model name", "version", "dataset", "group", 
+                        print(meta)
+
+        headers = ["classif", "model name", "version", "group", 
             "{}".format(measure)]
-        order = [False, False, False, False, False, order_m]
+        order = [False, False, False, False, order_m]
         list_measure = ListMeasure(headers=headers, measures=table, order=order)
         list_measure.print_scores(order_column=measure)
     elif args.rm:
