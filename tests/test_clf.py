@@ -1,6 +1,9 @@
 import unittest
 import numpy as np
 
+from ml.ds import DataSetBuilder
+from ml.clf.extended.w_sklearn import RandomForest
+
 
 def sizes(seq):
     return [len(list(row)) for row in seq]
@@ -38,34 +41,31 @@ class TestSeq(unittest.TestCase):
 
 class TestSKL(unittest.TestCase):
     def setUp(self):
-        from ml.ds import DataSetBuilder
-        from ml.clf.extended.w_sklearn import RandomForest
-
-        X = np.asarray([1, 0]*10)
-        Y = X*1
+        self.X = np.random.rand(100, 10)
+        self.Y = self.X[:,0] > .5
         self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
             ltype='int', rewrite=True)
-        self.dataset.build_dataset(X, Y)
-        self.classif = RandomForest(dataset=self.dataset, 
-            model_name="test", 
-            model_version="1",
-            check_point_path="/tmp/")
-        self.classif.train(num_steps=1)
+        self.dataset.build_dataset(self.X, self.Y)
 
     def tearDown(self):
         self.dataset.destroy()
-        self.classif.destroy()
-
-    def test_only_is(self):
-        self.assertEqual(self.classif.erroneous_clf(), None)
-        c, _ , _ = self.classif.correct_clf()
-        self.assertEqual(list(c.reshape(-1, 1)), [1, 0, 0, 1])
 
     def test_load_meta(self):
-        self.assertEqual(type(self.classif.load_meta()), type({}))
+        classif = RandomForest(dataset=self.dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif.train(num_steps=1)
+        self.assertEqual(type(classif.load_meta()), type({}))
+        classif.destroy()
 
     def test_empty_load(self):
-        from ml.clf.extended.w_sklearn import RandomForest
+        classif = RandomForest(dataset=self.dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif.train(num_steps=1)
+
         classif = RandomForest(
             model_name="test", 
             model_version="1",
@@ -73,15 +73,14 @@ class TestSKL(unittest.TestCase):
         classif.destroy()
 
     def test_scores(self):        
-        from ml.clf.extended.w_sklearn import RandomForest
-        classif = RandomForest(
+        classif = RandomForest(dataset=self.dataset, 
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
+        classif.train(num_steps=1)
         classif.scores().print_scores()
 
     def test_new_scores(self):
-        from ml.clf.extended.w_sklearn import RandomForest
         from ml.utils.numeric_functions import gini_normalized
         from ml.clf.measures import Measure
         metrics = Measure.make_metrics(None)
@@ -98,7 +97,12 @@ class TestSKL(unittest.TestCase):
         classif.destroy()
 
     def test_scores2table(self):
-        table = self.classif.scores2table()
+        classif = RandomForest(dataset=self.dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif.train(num_steps=1)
+        table = classif.scores2table()
         table.print_scores()
 
 

@@ -59,12 +59,12 @@ class BaseClassif(DataDrive):
         from tqdm import tqdm
         predictions = self.predict(self.dataset.test_data[:], raw=False, 
             transform=False, chunk_size=258)
-        measure = Measure(np.asarray(list(tqdm(predictions, total=self.dataset.test_labels.shape[0]))),
+        measure = metrics.Measure(np.asarray(list(tqdm(predictions, 
+                        total=self.dataset.test_labels.shape[0]))),
                         self.dataset.test_labels[:], 
                         labels2classes=self.numerical_labels2classes,
                         name=self.__class__.__name__)
-        measure.add((confusion_matrix, None, None))
-        #list_measure.add_measure("CM", measure.confusion_matrix(base_labels=self.base_labels))
+        measure.add(metrics.confusion_matrix, greater_is_better=None, uncertain=False)
         return measure.to_list()
 
     def only_is(self, op):
