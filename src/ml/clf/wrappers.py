@@ -286,6 +286,11 @@ class BaseClassif(DataDrive):
             self.model.save('{}.{}'.format(path, self.ext))
             self.save_meta()
 
+    def has_model_file(self):
+        import os
+        path = self.get_model_path()
+        return os.path.exists('{}.{}'.format(path, self.ext))
+
     def load_model(self):        
         self.preload_model()
         if self.check_point_path is not None:

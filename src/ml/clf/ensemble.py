@@ -4,12 +4,13 @@ from ml.clf.measures import ListMeasure, Measure
 from ml.ds import DataSetBuilder, Data
 
 from pydoc import locate
+import inspect
 
 
 class Grid(DataDrive):
     def __init__(self, classifs, model_name=None, dataset=None, 
             check_point_path=None, model_version=None, meta_name="", 
-            group_name=None):
+            group_name=None, metrics=None):
         super(Grid, self).__init__(
             check_point_path=check_point_path,
             model_version=model_version,
@@ -19,6 +20,7 @@ class Grid(DataDrive):
         self.model = None        
         self.meta_name = meta_name
         self.fn_output = None
+        self.metrics = metrics
 
         if len(classifs) == 0:
             self.reload()
@@ -106,20 +108,24 @@ class Grid(DataDrive):
 
     def load_model(self, model, dataset=None, namespace=None, autoload=True, index=0):
         namespace = self.model_namespace2str("" if namespace is None else namespace)
-        return model(dataset=dataset, 
-                model_name=namespace, 
-                model_version=self.model_version, 
-                check_point_path=self.check_point_path,
-                group_name=self.group_name,
-                autoload=autoload,
-                **self.get_params(model.cls_name(), index))
+        if inspect.isclass(model):
+            return model(dataset=dataset, 
+                    model_name=namespace, 
+                    model_version=self.model_version, 
+                    check_point_path=self.check_point_path,
+                    group_name=self.group_name,
+                    autoload=autoload,
+                    **self.get_params(model.cls_name(), index))
+        else:
+            return model
 
     def train(self, others_models_args={}):
         default_params = {"batch_size": 128, "num_steps": 1}
         for classif in self.load_models():
-            print("Training [{}]".format(classif.__class__.__name__))
-            params = others_models_args.get(classif.cls_name(), [default_params]).pop(0)
-            classif.train(**params)
+            if not classif.has_model_file():
+                print("Training [{}]".format(classif.__class__.__name__))
+                params = others_models_args.get(classif.cls_name(), [default_params]).pop(0)
+                classif.train(**params)
         self.save_model()
     
     def all_clf_scores(self, measures=None):
@@ -135,7 +141,8 @@ class Grid(DataDrive):
         if measures is None or isinstance(measures, str):
             measures = Measure.make_metrics(measures, name=self.model_name)
         predictions = np.asarray(list(tqdm(
-            self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), transform=False, chunk_size=258), 
+            self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), 
+            transform=False, chunk_size=258), 
             total=self.dataset.test_labels.shape[0])))
         measures.set_data(predictions, self.dataset.test_labels[:], self.numerical_labels2classes)
         list_measure = measures.to_list()
@@ -239,7 +246,8 @@ class Grid(DataDrive):
             clf.destroy()
         rm(self.get_model_path()+".xmeta")
 
-    def _metadata(self, score=None):
+    def _metadata(self):
+        list_measure = self.scores(self.metrics)
         if self.dataset is not None:
             dataset_path = self.dataset.dataset_path
             dataset_name = self.dataset.name
@@ -253,7 +261,7 @@ class Grid(DataDrive):
                 "model_name": self.model_name,
                 "individual_ds": self.individual_ds,
                 "output": self.fn_output,
-                "score": score}
+                "score": list_measure.measures_to_dict()}
 
     def save_model(self):
         self.clf_models_namespace = self.string_namespaces(self.classifs)
@@ -264,11 +272,16 @@ class Grid(DataDrive):
     def output(self, fn):
         self.fn_output = fn
 
+    def scores2table(self):
+        from ml.clf.measures import ListMeasure
+        return ListMeasure.dict_to_measures(self.load_meta().get("score", None))
+
 
 class EnsembleLayers(DataDrive):
-    def __init__(self, raw_dataset=None, **kwargs):
+    def __init__(self, raw_dataset=None, metrics=None, **kwargs):
         super(EnsembleLayers, self).__init__(**kwargs)
 
+        self.metrics = metrics
         if raw_dataset is None:
             self.reload()
         else:
@@ -362,7 +375,7 @@ class EnsembleLayers(DataDrive):
         return measures.to_list()
 
     def _metadata(self):
-        list_measure = self.scores()
+        list_measure = self.scores(self.metrics)
         return {
             "dataset_path": self.dataset.dataset_path,
             "dataset_name": self.dataset.name,
@@ -461,7 +474,7 @@ class Boosting(Grid):
         self.save_model(models, weights)
         self.reload()
 
-    def _metadata(self, score=None):
+    def _metadata(self):
         list_measure = self.scores(all_clf=False)
         meta = super(Boosting, self)._metadata(score=list_measure.measures_to_dict())
         meta["weights"] = self.clf_weights

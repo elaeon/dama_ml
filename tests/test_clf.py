@@ -144,8 +144,8 @@ class TestGrid(unittest.TestCase):
         from ml.ds import DataSetBuilder
         from ml.clf.ensemble import Grid
 
-        X = np.asarray([1, 0]*1000)
-        Y = X*1
+        X = np.random.rand(100, 10)
+        Y = (X[:,0] > .5).astype(int)
         self.others_models_args = {"RandomForest": [{"batch_size": 50, "num_steps": 100, "n_splits": 2}],
             "AdaBoost": [{"batch_size": 50, "num_steps": 100}]}
         dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
@@ -164,8 +164,8 @@ class TestGrid(unittest.TestCase):
             model_name="test_grid", 
             model_version="1",
             check_point_path="/tmp/")
-        classif.train(others_models_args=self.others_models_args)
         classif.output("avg")
+        classif.train(others_models_args=self.others_models_args)
         classif.scores().print_scores()
         self.assertEqual(type(classif.load_meta()), type({}))
 
@@ -188,8 +188,8 @@ class TestGrid(unittest.TestCase):
             model_name="test_grid", 
             model_version="1",
             check_point_path="/tmp/")
-        classif.train(others_models_args=self.others_models_args)
         classif.output("avg")
+        classif.train(others_models_args=self.others_models_args)
         classif.scores().print_scores()
         self.assertEqual(type(classif.load_meta()), type({}))
 
@@ -203,6 +203,31 @@ class TestGrid(unittest.TestCase):
 
         classif.destroy()
 
+    def test_grid_fn_pretrained(self):
+        from ml.clf.ensemble import Grid
+        from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
+        from ml.utils.numeric_functions import gini_normalized
+        from ml.clf.measures import Measure
+
+        metrics = Measure.make_metrics(None)
+        metrics.add(gini_normalized, greater_is_better=True, uncertain=True)
+
+        rf = RandomForest(model_name="test_rf", model_version="1", dataset=self.dataset)
+        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.dataset)
+        rf.train()
+        ab.train()
+        classif = Grid([rf, ab],
+            dataset=self.dataset,
+            model_name="test_grid0", 
+            model_version="1",
+            check_point_path="/tmp/",
+            metrics=metrics)
+
+        classif.output(lambda x, y: (x + y) / 2)
+        classif.train()     
+        classif.scores2table().print_scores()
+        classif.destroy()
+
     def test_grid_fn(self):
         from ml.clf.ensemble import Grid
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
@@ -213,8 +238,8 @@ class TestGrid(unittest.TestCase):
             model_version="1",
             check_point_path="/tmp/")
 
-        classif.train(others_models_args=self.others_models_args)
-        classif.output(lambda x, y: (x + y) / 2)        
+        classif.output(lambda x, y: (x + y) / 2)
+        classif.train(others_models_args=self.others_models_args)      
         classif.scores().print_scores()
 
     def test_compose_grid(self):
