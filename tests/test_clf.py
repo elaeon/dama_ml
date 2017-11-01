@@ -240,7 +240,8 @@ class TestGrid(unittest.TestCase):
 
         classif.output(lambda x, y: (x + y) / 2)
         classif.train(others_models_args=self.others_models_args)      
-        classif.scores().print_scores()
+        classif.scores2table().print_scores()
+        classif.destroy()
 
     def test_compose_grid(self):
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost, KNN
@@ -252,6 +253,7 @@ class TestGrid(unittest.TestCase):
             model_version="1",
             check_point_path="/tmp/")
         #classif_1.output("avg")
+        classif_1.train(others_models_args=self.others_models_args)
         classif_2 = Grid([AdaBoost, KNN],
             dataset=None, 
             model_name="test_grid1", 
@@ -579,12 +581,12 @@ class TestIterLayers(unittest.TestCase):
     def test_concat_fn(self):
         from ml.layers import IterLayer
 
-        l0 = ["0", "1", "0", "1", "2", "0", "1", "2"]
-        l1 = ["1", "2", "2", "1", "2", "0", "0", "0"]
+        l0 = np.random.rand(10, 2)
+        l1 = np.random.rand(10, 2)
         predictor_0 = IterLayer(l0)
         predictor_1 = IterLayer(l1)
         predictor = predictor_0.concat(predictor_1)
-        self.assertItemsEqual(list(predictor), l0 + l1)
+        self.assertEqual(np.asarray(list(predictor)).shape, (20, 2))
 
     def test_concat_n(self):
         from ml.layers import IterLayer

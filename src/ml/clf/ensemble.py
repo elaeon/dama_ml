@@ -144,7 +144,8 @@ class Grid(DataDrive):
             self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), 
             transform=False, chunk_size=258), 
             total=self.dataset.test_labels.shape[0])))
-        measures.set_data(predictions, self.dataset.test_labels[:], self.numerical_labels2classes)
+        measures.set_data(predictions[:self.dataset.test_labels.shape[0]], 
+            self.dataset.test_labels[:], self.numerical_labels2classes)
         list_measure = measures.to_list()
         if all_clf is True:
             return list_measure + self.all_clf_scores(measures=measures)
@@ -233,10 +234,6 @@ class Grid(DataDrive):
             namespace = self.active_network()
             predictions = IterLayer.avg(iter_(), len(self.classifs[namespace]), method="geometric")
             return predictions.concat_elems(data)
-            #predictions = np.asarray(list(predictions))
-            #if len(data.shape) == 1:
-            #    data = data[:].reshape(-1, 1)
-            #return np.append(data, predictions, axis=1)
         else:
             return self.fn_output(*iter_())
 
