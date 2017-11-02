@@ -2,9 +2,13 @@ import numpy as np
 from ml.clf.wrappers import DataDrive
 from ml.clf.measures import ListMeasure, Measure
 from ml.ds import DataSetBuilder, Data
+from ml.utils.config import get_settings
+from ml.layers import IterLayer
 
 from pydoc import locate
 import inspect
+
+settings = get_settings("ml")
 
 
 class Grid(DataDrive):
@@ -21,6 +25,7 @@ class Grid(DataDrive):
         self.meta_name = meta_name
         self.fn_output = None
         self.metrics = metrics
+        self.calc_scores = True
 
         if len(classifs) == 0:
             self.reload()
@@ -119,8 +124,9 @@ class Grid(DataDrive):
         else:
             return model
 
-    def train(self, others_models_args={}):
+    def train(self, others_models_args={}, calc_scores=True):
         default_params = {"batch_size": 128, "num_steps": 1}
+        self.calc_scores = calc_scores
         for classif in self.load_models():
             if not classif.has_model_file():
                 print("Training [{}]".format(classif.__class__.__name__))
@@ -244,7 +250,11 @@ class Grid(DataDrive):
         rm(self.get_model_path()+".xmeta")
 
     def _metadata(self):
-        list_measure = self.scores(self.metrics)
+        if self.calc_scores:
+            list_measure = self.scores(self.metrics)
+        else:
+            list_measure = ListMeasure()
+
         if self.dataset is not None:
             dataset_path = self.dataset.dataset_path
             dataset_name = self.dataset.name
@@ -279,22 +289,24 @@ class EnsembleLayers(DataDrive):
         super(EnsembleLayers, self).__init__(**kwargs)
 
         self.metrics = metrics
+        self.layers = []
         if raw_dataset is None:
             self.reload()
         else:
-            self.layers = []
             self.dataset = raw_dataset
 
     def add(self, ensemble):
         self.layers.append(ensemble)
 
-    def train(self, others_models_args):
+    def train(self, others_models_args, calc_scores=True, n_splits=None):
         from ml.clf.utils import add_params_to_params
 
         initial_layer = self.layers[0]
-        initial_layer.train(others_models_args=others_models_args[0])
+        initial_layer.train(others_models_args=others_models_args[0], 
+                            calc_scores=calc_scores)
         y_submission = initial_layer.predict(
-            self.dataset.test_data, raw=True, transform=True, chunk_size=100)
+            self.dataset.test_data, raw=True, 
+            transform=not self.dataset._applied_transforms, chunk_size=100)
 
         for classif in initial_layer.load_models():
             num_labels = classif.num_labels
@@ -316,34 +328,31 @@ class EnsembleLayers(DataDrive):
         labels = labels[:i]
         data = data[:i]
         #fixme: add a dataset chunk writer
-        dataset = DataSetBuilder(dataset_path="/tmp/", rewrite=False)
+        dataset = DataSetBuilder(dataset_path=settings["dataset_model_path"], 
+                                rewrite=True)
         dataset.build_dataset(data, labels)
-        second_layer = self.layers[1]
-        second_layer.reset_dataset(dataset)
-        n_splits = 2*deep + 1
-        others_models_args_c = add_params_to_params(second_layer.classifs, 
-                                                    others_models_args,
-                                                    n_splits=n_splits)
 
-        second_layer.train(others_models_args=others_models_args_c)
+        if len(self.layers) > 1:
+            second_layer = self.layers[1]
+            second_layer.reset_dataset(dataset)
+            #n_splits = 2*deep + 1
+            others_models_args_c = add_params_to_params(second_layer.classifs, 
+                                                        others_models_args,
+                                                        n_splits=n_splits)
 
-        self.clf_models_namespace = {
-            "layer1": {
-                "model": initial_layer.module_cls_name(),
-                "model_name": initial_layer.model_name,
-                "model_version": initial_layer.model_version,
-                "check_point_path": initial_layer.check_point_path
-            },
-            "layer2": {
-                "model": second_layer.module_cls_name(),
-                "model_name": second_layer.model_name,
-                "model_version": second_layer.model_version,
-                "check_point_path": second_layer.check_point_path
+            second_layer.train(others_models_args=others_models_args_c)
+
+        self.clf_models_namespace = {}
+        for i, layer in enumerate(self.layers, 1):
+            self.clf_models_namespace["layer"+str(i)] = {
+                "model": layer.module_cls_name(),
+                "model_name": layer.model_name,
+                "model_version": layer.model_version,
+                "check_point_path": layer.check_point_path
             }
-        }
+
         self.save_model()
         self.reload()
-        dataset.destroy()
 
     def numerical_labels2classes(self, labels):
         if not hasattr(self, 'le'):
@@ -366,7 +375,8 @@ class EnsembleLayers(DataDrive):
         if measures is None or isinstance(measures, str):
             measures = Measure.make_metrics(measures, name=self.model_name)
         predictions = np.asarray(list(tqdm(
-            self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), transform=False, chunk_size=258), 
+            self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), 
+                        transform=False, chunk_size=258), 
             total=self.dataset.test_labels.shape[0])))
         measures.set_data(predictions, self.dataset.test_labels[:], self.numerical_labels2classes)
         return measures.to_list()
@@ -377,23 +387,23 @@ class EnsembleLayers(DataDrive):
             "dataset_path": self.dataset.dataset_path,
             "dataset_name": self.dataset.name,
             "models": self.clf_models_namespace,
-            "score": list_measure.measures_to_dict()}
+            "score": list_measure.measures_to_dict(),
+            "num_layers": len(self.layers)}
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        initial_layer = self.layers[0]
-        if initial_layer.fn_output is None:
-            initial_layer.output("avg")
-        y_submission = initial_layer.predict(data, raw=True, transform=True, 
-            chunk_size=chunk_size)
-        
-        second_layer = self.layers[1]
-        if second_layer.fn_output is None:
-            second_layer.output("avg")
-        
-        data = np.asarray(list(y_submission))
-        return second_layer.predict(data, raw=raw, transform=False, 
+        for (raw_l, transform_l), layer in zip([(True, transform), (raw, False)], self.layers):
+            if layer.fn_output is None:
+                layer.output("avg")
+            if isinstance(data, IterLayer):
+                y_submission = np.asarray(list(data))
+            else:
+                y_submission = data
+
+            data = layer.predict(y_submission, raw=raw_l, transform=transform_l, 
                 chunk_size=chunk_size)
 
+        return data
+        
     def destroy(self):
         for layer in self.layers:
             layer.destroy()
@@ -401,23 +411,14 @@ class EnsembleLayers(DataDrive):
     def reload(self):
         meta = self.load_meta()
         models = meta.get('models', {})
-
-        model_1 = locate(models["layer1"]["model"])
-        classif_1 = model_1([], 
-            model_name=models["layer1"]["model_name"], 
-            model_version=models["layer1"]["model_version"],
-            check_point_path=models["layer1"]["check_point_path"])
-
-        model_2 = locate(models["layer2"]["model"])
-        classif_2 = model_2([],
-            model_name=models["layer2"]["model_name"], 
-            model_version=models["layer2"]["model_version"],
-            check_point_path=models["layer2"]["check_point_path"])
-
-        self.layers = []
-        self.add(classif_1)
-        self.add(classif_2)
-
+        for i in range(models.get("num_layers", 0)): 
+            key = "layer{}".format(i)           
+            model_1 = locate(models[key]["model"])
+            classif = model_1([], 
+                model_name=models[key]["model_name"], 
+                model_version=models[key]["model_version"],
+                check_point_path=models[key]["check_point_path"])
+            self.add(classif)
         return models
 
 
@@ -446,7 +447,8 @@ class Boosting(Grid):
             predictors = IterLayer(predictions) * weights
             return IterLayer.avg(predictors, sum(weights))
 
-    def train(self, batch_size=128, num_steps=1, only_voting=False):
+    def train(self, batch_size=128, num_steps=1, only_voting=False, calc_score=True):
+        self.calc_score = calc_score
         if only_voting is False:
             for classif in self.load_models():
                 print("Training [{}]".format(classif.__class__.__name__))
@@ -472,8 +474,7 @@ class Boosting(Grid):
         self.reload()
 
     def _metadata(self):
-        list_measure = self.scores(all_clf=False)
-        meta = super(Boosting, self)._metadata(score=list_measure.measures_to_dict())
+        meta = super(Boosting, self)._metadata()
         meta["weights"] = self.clf_weights
         meta["election"] = self.election
         return meta

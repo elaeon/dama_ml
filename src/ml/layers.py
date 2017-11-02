@@ -106,7 +106,6 @@ class IterLayer(object):
     def concat_n(self, iters):
         return IterLayer(itertools.chain(*iters))
 
-    #@classmethod
     def concat_elems(self, data):
         iter_ = (list(itertools.chain(x0, x1)) for x0, x1 in izip(self, data))
         return IterLayer(iter_)

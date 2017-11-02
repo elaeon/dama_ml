@@ -286,12 +286,12 @@ class TestGrid(unittest.TestCase):
         ds0 = self.dataset.add_transforms(transforms, name="ds_test_0")
 
         classif_1 = Grid([(RandomForest, ds0), (KNN, self.dataset)],
+            dataset=self.dataset,
             model_name="test_grid0",            
             check_point_path="/tmp/",
             model_version="1")
 
         classif_2 = Grid([AdaBoost, LogisticRegression],
-            dataset=None, 
             model_name="test_grid1",            
             check_point_path="/tmp/", 
             model_version="1")
@@ -345,10 +345,12 @@ class TestGrid(unittest.TestCase):
             check_point_path="/tmp/",
             raw_dataset=self.dataset)
 
+        #classif_1.destroy()
+        #classif_2.destroy()
         ensemble.add(classif_1)
         ensemble.add(classif_2)
         others_models_args = {"RandomForest": [{"n_splits": 2}]}
-        ensemble.train([others_models_args])
+        ensemble.train([others_models_args], calc_scores=False)
         ensemble.scores().print_scores()
 
         ensemble = EnsembleLayers(
