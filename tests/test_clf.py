@@ -489,17 +489,29 @@ class TestIterLayers(unittest.TestCase):
     def multi_round(self, X, *args):
         return [round(x, *args) for x in X]
 
-    def test_operations_scalar(self):
+    def test_operations_lscalar(self):
         from ml.layers import IterLayer
 
         data = np.zeros((20, 2))
         predictor = IterLayer(self.chunks(data))
-        predictor += 1
-        predictor -= 1
-        predictor *= 1
+        predictor += 1.
+        predictor -= 1.
+        predictor *= 1.
         predictor /= 1.
         predictor **= 1
         self.assertItemsEqual(np.asarray(list(predictor)).reshape(-1), np.zeros((40,)) + 1)
+
+    def test_operations_rscalar(self):
+        from ml.layers import IterLayer
+
+        data = np.zeros((20, 2))
+        predictor0 = IterLayer(self.chunks(data))
+        predictor1 = IterLayer(self.chunks(data))
+        predictor2 = IterLayer(self.chunks(data))
+        predictor = .6*predictor0 + .3*predictor1 + .1*predictor2
+        X = np.asarray(list(predictor)).reshape(-1).round(decimals=0)
+        Y = np.zeros((40,)) + 1
+        self.assertItemsEqual(X, Y)
 
     def test_operations_stream(self):
         from ml.layers import IterLayer

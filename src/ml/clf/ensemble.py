@@ -148,7 +148,7 @@ class Grid(DataDrive):
             measures = Measure.make_metrics(measures, name=self.model_name)
         predictions = np.asarray(list(tqdm(
             self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), 
-            transform=False, chunk_size=258), 
+            transform=True, chunk_size=0), 
             total=self.dataset.test_labels.shape[0])))
         measures.set_data(predictions[:self.dataset.test_labels.shape[0]], 
             self.dataset.test_labels[:], self.numerical_labels2classes)
@@ -222,7 +222,7 @@ class Grid(DataDrive):
         best = self.ordered_best_predictors(measure=measure)[0].counter
         return best
 
-    def predict(self, data, raw=False, transform=True, chunk_size=1):
+    def predict(self, data, raw=False, transform=True, chunk_size=258):
         def iter_():
             for classif in self.load_models():
                 yield classif.predict(data, raw=raw, transform=transform, 

@@ -298,20 +298,23 @@ class Transforms(object):
         :type data: array
         :param data: apply the transforms added to the data
         """
-        transforms = self.compact()
-        if base_data is None:
-            for t_obj in transforms:
-                data = t_obj.apply(data)
-        else:
-            for t0_obj, t1_obj in zip(transforms, transforms[:-1] + [None]):
-                data = t0_obj.apply(data, base_data=base_data)
-                if t1_obj is not None:
-                    base_data = t1_obj.apply(base_data)
-
-        if data is None:
-            raise Exception
-        else:
+        if self.is_empty():
             return data
+        else:
+            transforms = self.compact()
+            if base_data is None:
+                for t_obj in transforms:
+                    data = t_obj.apply(data)
+            else:
+                for t0_obj, t1_obj in zip(transforms, transforms[:-1] + [None]):
+                    data = t0_obj.apply(data, base_data=base_data)
+                    if t1_obj is not None:
+                        base_data = t1_obj.apply(base_data)
+
+            if data is None:
+                raise Exception
+            else:
+                return data
 
     def destroy(self):
         for transform in self.compact():

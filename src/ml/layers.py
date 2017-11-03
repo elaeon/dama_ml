@@ -59,6 +59,9 @@ class IterLayer(object):
     def __pow__(self, x):
         return
 
+    __rmul__ = __mul__
+    __radd__ = __add__
+
     @choice(operator.iadd)
     def __iadd__(self, x):
         return

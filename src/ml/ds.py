@@ -499,7 +499,7 @@ class Data(ReadWriteData):
 
         with h5py.File(self.url(), 'a') as f:
             f.require_group("data")
-            data = self.processing(data)
+            data = self.processing(data, apply_transforms=self.apply_transforms)
             self._set_space_data(f, 'data', self.dtype_t(data))
 
         self.md5 = self.calc_md5()
@@ -550,7 +550,7 @@ class Data(ReadWriteData):
         data._applied_transforms = self._applied_transforms
         return data
 
-    def processing(self, data, base_data=None):
+    def processing(self, data, base_data=None, apply_transforms=True):
         """
         :type data: array
         :param data: data to transform
@@ -562,18 +562,12 @@ class Data(ReadWriteData):
         execute the transformations to the data.
 
         """
-        if not self.transforms.is_empty() and self.apply_transforms and data is not None:
-            log.debug("Apply transforms " + str(data.shape))
-            if base_data is None:
-                return self.transforms.apply(data)
-            else:
-                return self.transforms.apply(data, base_data=base_data)
+        if apply_transforms:
+            #log.debug("Apply transforms " + str(data.shape))
+            return self.transforms.apply(data, base_data=base_data)
         else:
-            log.debug("No transforms applied " + str(data.shape))
+            #log.debug("No transforms applied " + str(data.shape))
             return data if isinstance(data, np.ndarray) else np.asarray(data)
-
-    #def transform(self):
-    #    pass
 
     @property
     def train_data(self):
@@ -711,23 +705,6 @@ class Data(ReadWriteData):
                 self.data[:, index_column-1:index_column], 
                 axis=1)
             base = next
-        return data
-
-    def delete_columns(self, name, to_delete):
-        features = set(x for x in xrange(self.shape[1]))
-        to_keep = features.difference(set(to_delete))
-        log.debug("To keep "+str(to_keep))
-        if hasattr(self, 'labels'):
-            data = self.empty(name, dataset_path=self.dataset_path, dtype=self.dtype, 
-                ltype=self.ltype, apply_transforms=self.apply_transforms, 
-                transforms=self.transforms)
-            data.build_dataset(calc_nshape(self.data[:, list(to_keep)], 1), self.labels)
-        else:
-            data = self.empty(name, dataset_path=self.dataset_path, dtype=self.dtype, 
-                apply_transforms=self.apply_transforms, 
-                transforms=self.transforms)
-            data.build_dataset(calc_nshape(self.data[:, list(to_keep)], 1))
-        data.close_reader()
         return data
 
 
@@ -910,7 +887,7 @@ class DataLabel(Data):
         """
         with h5py.File(self.url(), 'a') as f:
             f.require_group("data")
-            data = self.processing(data)
+            data = self.processing(data, apply_transforms=self.apply_transforms)
             self._set_space_data(f, 'data', self.dtype_t(data))
             self._set_space_data(f, 'labels', self.ltype_t(labels), label=True)
 
@@ -1454,42 +1431,6 @@ class DataSetBuilder(DataLabel):
         y_train = y_train[valid_size_index:]
         return X_train, X_validation, X_test, y_train, y_validation, y_test
 
-    #### pending
-    #def adversarial_validator(self, train_data, train_labels, test_data, test_labels):
-    #    self.train_data = train_data
-    #    self.test_data = test_data
-    #    self.train_labels = train_labels
-    #    self.test_labels = test_labels
-    #    self.valid_data = train_data[0:1]
-    #    self.valid_labels = train_labels[0:1]
-
-        # train class is labeled as 1 
-    #    train_test_data_clf = self._clf()
-    #    train_test_data_clf.train()
-    #    class_train = np.argmax(train_test_data_clf.model.classes_)
-    #    predictions = [p[class_train] 
-    #        for p in train_test_data_clf.predict(self.train_data, raw=True, transform=False)]
-    #    predictions = sorted(enumerate(predictions), key=lambda x: x[1], reverse=False)
-        #print([(pred, index) for index, pred in predictions if pred < .5])
-        #because all targets are ones (train data) is not necessary compare it
-    #    false_test = [index for index, pred in predictions if pred < .5] # is a false test 
-    #    ok_train = [index for index, pred in predictions if pred >= .5]
- 
-    #    valid_data = self.train_data[false_test]
-    #    valid_labels = self.train_labels[false_test]
-    #    valid_size = int(round(self.train_data.shape[0] * self.valid_size))
-    #    self.valid_data = valid_data[:int(round(valid_size))]
-    #    self.valid_labels = valid_labels[:int(round(valid_size))]
-    #    self.train_data = np.concatenate((
-    #        valid_data[int(round(valid_size)):], 
-    #        self.train_data[ok_train]),
-    #        axis=0)
-    #    self.train_labels = np.concatenate((
-    #        valid_labels[int(round(valid_size)):],
-    #        self.train_labels[ok_train]),
-    #        axis=0)
-    #    self.save()
-
     def build_dataset(self, data, labels, test_data=None, test_labels=None, 
                     validation_data=None, validation_labels=None):
         """
@@ -1524,13 +1465,16 @@ class DataSetBuilder(DataLabel):
                 else:
                     data_labels = self.cross_validators(data, labels)
 
-            train_data = self.processing(data_labels[0])
+            train_data = self.processing(data_labels[0], 
+                                        apply_transforms=self.apply_transforms)
             self._set_space_data(f, 'train_data', self.dtype_t(train_data))
 
-            test_data = self.processing(data_labels[2], base_data=data_labels[0])
+            test_data = self.processing(data_labels[2], base_data=data_labels[0], 
+                                        apply_transforms=self.apply_transforms)
             self._set_space_data(f, 'test_data', self.dtype_t(test_data))
             
-            validation_data = self.processing(data_labels[1], base_data=data_labels[0])
+            validation_data = self.processing(data_labels[1], base_data=data_labels[0],
+                                             apply_transforms=self.apply_transforms)
             self._set_space_data(f, 'validation_data', self.dtype_t(validation_data))
 
             self._set_space_data(f, 'train_labels', self.ltype_t(data_labels[3]), label=True)

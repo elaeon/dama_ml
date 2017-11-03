@@ -49,7 +49,7 @@ class BaseClassif(DataDrive):
             measures = metrics.Measure.make_metrics(measures, name=self.model_name)
         predictions = np.asarray(list(tqdm(
             self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), 
-                        transform=False, chunk_size=258), 
+                        transform=False, chunk_size=0), 
             total=self.dataset.test_labels.shape[0])))
         measures.set_data(predictions, self.dataset.test_labels[:], self.numerical_labels2classes)
         log.info("Getting scores")
@@ -58,7 +58,7 @@ class BaseClassif(DataDrive):
     def confusion_matrix(self):
         from tqdm import tqdm
         predictions = self.predict(self.dataset.test_data[:], raw=False, 
-            transform=False, chunk_size=258)
+            transform=False, chunk_size=0)
         measure = metrics.Measure(np.asarray(list(tqdm(predictions, 
                         total=self.dataset.test_labels.shape[0]))),
                         self.dataset.test_labels[:], 
@@ -204,20 +204,15 @@ class BaseClassif(DataDrive):
                 fn = list
             return IterLayer(iter_(fn))
         else:
-            if transform is True and chunk_size > 0:
+            if chunk_size > 0:
                 fn = lambda x, s: self.transform_shape(
-                    self.dataset.processing(x, base_data=self.dataset.train_data[:]), size=s)
+                    self.dataset.processing(x, base_data=self.dataset.train_data[:], 
+                                            apply_transforms=transform), 
+                                        size=s)
                 return IterLayer(self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw))
-            elif transform is True and chunk_size == 0:
+            elif chunk_size == 0:
                 data = self.transform_shape(self.dataset.processing(data, 
-                    base_data=self.dataset.train_data[:]))
-                return IterLayer(self._predict(data, raw=raw))
-            elif transform is False and chunk_size > 0:
-                fn = lambda x, s: self.transform_shape(x, size=s)
-                return IterLayer(self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw))
-            elif transform is False and chunk_size == 0:
-                if len(data.shape) == 1:
-                    data = self.transform_shape(data)
+                    base_data=self.dataset.train_data[:], apply_transforms=transform))
                 return IterLayer(self._predict(data, raw=raw))
 
     def _pred_erros(self, predictions, test_data, test_labels, valid_size=.1):
