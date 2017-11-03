@@ -136,11 +136,10 @@ class TestTransforms(unittest.TestCase):
     def test_apply_col(self):
         from ml.processing import FitStandardScaler, FitTruncatedSVD
         transforms = Transforms()
-        base_numbers = np.random.rand(1000, 3)
         transforms.add(FitStandardScaler, type="column")
         transforms.add(FitTruncatedSVD, type="column", n_components=2)
         numbers = np.random.rand(1000, 3)
-        result = np.asarray(list(transforms.apply(numbers, base_data=base_numbers)))
+        result = np.asarray(list(transforms.apply(numbers)))
         print(result)
         #self.assertEqual(-.1 <= result.mean() < .1, True)
         #self.assertEqual(.9 <= result.std() <= 1.1, True)
@@ -151,12 +150,8 @@ class TestTransforms(unittest.TestCase):
         transforms.add(linear)
         transforms.add(linear_p, b=10)
         transforms.add(FitStandardScaler, type="column")
-        base_numbers = np.random.rand(1000, 2)
         numbers = np.random.rand(1000, 2)        
-        result = np.asarray(list(transforms.apply(base_numbers, base_data=None)))
-        self.assertEqual(.95 <= result.std() <= 1.05, True)
-        self.assertEqual(-0.1 <= result.mean() <= 0.1, True)
-        result =  np.asarray(list(transforms.apply(numbers, base_data=base_numbers)))
+        result =  np.asarray(list(transforms.apply(numbers)))
         self.assertEqual(.95 <= result.std() <= 1.05, True)
         self.assertEqual(-0.1 <= result.mean() <= 0.1, True)
 

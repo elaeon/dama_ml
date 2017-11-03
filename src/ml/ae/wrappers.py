@@ -114,28 +114,19 @@ class BaseAe(DataDrive):
 
             if transform is True:
                 fn = lambda x: self.transform_shape(
-                    self.dataset.processing(np.asarray(list(x)), 
-                    base_data=self.dataset.train_data[:]))
+                    self.dataset.processing(np.asarray(list(x))))
             else:
                 fn = list
             return IterLayer(iter_(fn))
         else:
-            if transform is True and chunk_size > 0:
+            if chunk_size > 0:
                 fn = lambda x, s: self.transform_shape(
-                    self.dataset.processing(x, base_data=self.dataset.train_data[:]), size=s)
+                    self.dataset.processing(x, apply_transforms=transform), size=s)
                 return IterLayer(self.chunk_iter(data, chunk_size, transform_fn=fn, 
                     uncertain=raw, decoder=decoder))
-            elif transform is True and chunk_size == 0:
+            else:
                 data = self.transform_shape(self.dataset.processing(data, 
-                    base_data=self.dataset.train_data[:]))
-                return IterLayer(self._predict(data, raw=raw, decoder=decoder))
-            elif transform is False and chunk_size > 0:
-                fn = lambda x, s: self.transform_shape(x, size=s)
-                return IterLayer(self.chunk_iter(data, chunk_size, transform_fn=fn, 
-                    uncertain=raw, decoder=decoder))
-            elif transform is False and chunk_size == 0:
-                if len(data.shape) == 1:
-                    data = self.transform_shape(data)
+                    apply_transforms=transform))
                 return IterLayer(self._predict(data, raw=raw, decoder=decoder))
 
     def _metadata(self):

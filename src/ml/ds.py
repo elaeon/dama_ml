@@ -388,12 +388,12 @@ class Data(ReadWriteData):
         return self.type_t(self.dtype, data)
 
     def exist(self):
-        try:
-            return self.md5 != None
-        except IOError:
-            return os.path.isfile(self.url())
-        else:
-            return True
+        #try:
+        return self.md5 != None
+        #except IOError:
+        #    return os.path.isfile(self.url())
+        #else:
+        #    return True
 
     def info(self, classes=False):
         """
@@ -550,7 +550,7 @@ class Data(ReadWriteData):
         data._applied_transforms = self._applied_transforms
         return data
 
-    def processing(self, data, base_data=None, apply_transforms=True):
+    def processing(self, data, apply_transforms=True):
         """
         :type data: array
         :param data: data to transform
@@ -564,7 +564,7 @@ class Data(ReadWriteData):
         """
         if apply_transforms:
             #log.debug("Apply transforms " + str(data.shape))
-            return self.transforms.apply(data, base_data=base_data)
+            return self.transforms.apply(data)
         else:
             #log.debug("No transforms applied " + str(data.shape))
             return data if isinstance(data, np.ndarray) else np.asarray(data)
@@ -1469,11 +1469,11 @@ class DataSetBuilder(DataLabel):
                                         apply_transforms=self.apply_transforms)
             self._set_space_data(f, 'train_data', self.dtype_t(train_data))
 
-            test_data = self.processing(data_labels[2], base_data=data_labels[0], 
+            test_data = self.processing(data_labels[2], 
                                         apply_transforms=self.apply_transforms)
             self._set_space_data(f, 'test_data', self.dtype_t(test_data))
             
-            validation_data = self.processing(data_labels[1], base_data=data_labels[0],
+            validation_data = self.processing(data_labels[1],
                                              apply_transforms=self.apply_transforms)
             self._set_space_data(f, 'validation_data', self.dtype_t(validation_data))
 

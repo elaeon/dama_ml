@@ -198,21 +198,18 @@ class BaseClassif(DataDrive):
 
             if transform is True:
                 fn = lambda x: self.transform_shape(
-                    self.dataset.processing(np.asarray(list(x)), 
-                    base_data=self.dataset.train_data[:]))
+                    self.dataset.processing(np.asarray(list(x))))
             else:
                 fn = list
             return IterLayer(iter_(fn))
         else:
             if chunk_size > 0:
                 fn = lambda x, s: self.transform_shape(
-                    self.dataset.processing(x, base_data=self.dataset.train_data[:], 
-                                            apply_transforms=transform), 
-                                        size=s)
+                    self.dataset.processing(x, apply_transforms=transform), size=s)
                 return IterLayer(self.chunk_iter(data, chunk_size, transform_fn=fn, uncertain=raw))
-            elif chunk_size == 0:
+            else:
                 data = self.transform_shape(self.dataset.processing(data, 
-                    base_data=self.dataset.train_data[:], apply_transforms=transform))
+                    apply_transforms=transform))
                 return IterLayer(self._predict(data, raw=raw))
 
     def _pred_erros(self, predictions, test_data, test_labels, valid_size=.1):

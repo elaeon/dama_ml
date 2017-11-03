@@ -110,7 +110,7 @@ class TransformsRow(object):
             transforms.add(locate(fn), **params)
         return transforms
 
-    def apply(self, data, base_data=None):
+    def apply(self, data):
         """
         :type data: array
         :param data: apply the transforms added to the data
@@ -164,17 +164,17 @@ class TransformsCol(TransformsRow):
                 name = None
             yield fn(data, name=name, **params)
 
-    def apply(self, data, base_data=None):
+    def apply(self, data):
         """
         :type data: array
         :param data: apply the transforms added to the data
         """
-        if base_data is None:
-            for fn_fit in self.initial_fn(data):
-                data = np.asarray(list(fn_fit.transform(data)))
-        else:
-            for fn_fit in self.initial_fn(base_data):
-                data = np.asarray(list(fn_fit.transform(data)))
+        #if base_data is None:
+        for fn_fit in self.initial_fn(data):
+            data = np.asarray(list(fn_fit.transform(data)))
+        #else:
+        #    for fn_fit in self.initial_fn(base_data):
+        #        data = np.asarray(list(fn_fit.transform(data)))
 
         if data is None:
             raise Exception
@@ -293,7 +293,7 @@ class Transforms(object):
                         print(e.message)
         return transforms
 
-    def apply(self, data, base_data=None):
+    def apply(self, data):
         """
         :type data: array
         :param data: apply the transforms added to the data
@@ -302,14 +302,14 @@ class Transforms(object):
             return data
         else:
             transforms = self.compact()
-            if base_data is None:
-                for t_obj in transforms:
-                    data = t_obj.apply(data)
-            else:
-                for t0_obj, t1_obj in zip(transforms, transforms[:-1] + [None]):
-                    data = t0_obj.apply(data, base_data=base_data)
-                    if t1_obj is not None:
-                        base_data = t1_obj.apply(base_data)
+            #if base_data is None:
+            for t_obj in transforms:
+                data = t_obj.apply(data)
+            #else:
+            #    for t0_obj, t1_obj in zip(transforms, transforms[:-1] + [None]):
+            #        data = t0_obj.apply(data, base_data=base_data)
+            #        if t1_obj is not None:
+            #            base_data = t1_obj.apply(base_data)
 
             if data is None:
                 raise Exception
