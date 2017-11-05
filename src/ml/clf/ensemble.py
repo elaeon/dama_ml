@@ -146,13 +146,13 @@ class Grid(DataDrive):
         from tqdm import tqdm
         if measures is None or isinstance(measures, str):
             measures = Measure.make_metrics(measures, name=self.model_name)
-        #predictions = np.asarray(list(tqdm(
-        #    self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), 
-        #    transform=True, chunk_size=0), 
-        #    total=self.dataset.test_labels.shape[0])))
-        predictions = list(self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), 
-            transform=True, chunk_size=0))
-        print(predictions)
+        predictions = np.asarray(list(tqdm(
+            self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), 
+            transform=True, chunk_size=0), 
+            total=self.dataset.test_labels.shape[0])))
+        #predictions = list(self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), 
+        #    transform=True, chunk_size=0))
+        #print(predictions)
         measures.set_data(predictions[:self.dataset.test_labels.shape[0]], 
             self.dataset.test_labels[:], self.numerical_labels2classes)
         list_measure = measures.to_list()

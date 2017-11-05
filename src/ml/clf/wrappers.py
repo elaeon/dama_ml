@@ -109,7 +109,7 @@ class BaseClassif(DataDrive):
 
     def position_index(self, label):
         if isinstance(label, np.ndarray) or isinstance(label, list):
-            return np.argmax(label)
+            return np.argmax(label, axis=1)
         return label
 
     def convert_label(self, label, raw=False):
@@ -290,10 +290,10 @@ class BaseClassif(DataDrive):
             self.model.load('{}.{}'.format(path, self.ext))
 
     def _predict(self, data, raw=False):
-        for prediction in self.model.predict(data):
-            if not isinstance(prediction, np.ndarray):
-                prediction = np.asarray(prediction)
-            yield self.convert_label(prediction, raw=raw)
+        prediction = self.model.predict(data)
+        if not isinstance(prediction, np.ndarray):
+            prediction = np.asarray(prediction)
+        return self.convert_label(prediction, raw=raw)
 
     def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2, obj_fn=None, 
                     model_params={}):

@@ -4,9 +4,22 @@ from ml.models import MLModel
 from sklearn.calibration import CalibratedClassifierCV
 import xgboost as xgb
 import os
+import numpy as np
 
 
 class Xgboost(XGB):
+    def convert_label(self, label, raw=False):
+        if raw is True:
+            if len(label.shape) == 1:
+                label = label.reshape(-1, 1)
+                return np.concatenate((np.abs(label - 1), label), axis=1)
+            else:
+                return label
+        elif raw is None:
+            return self.position_index(label)
+        else:
+            return self.le.inverse_transform(self.position_index(label))
+
     def prepare_model(self, obj_fn=None, **params):
         d_train = xgb.DMatrix(self.dataset.train_data, self.dataset.train_labels) 
         d_valid = xgb.DMatrix(self.dataset.validation_data, self.dataset.validation_labels) 
