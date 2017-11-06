@@ -150,9 +150,6 @@ class Grid(DataDrive):
             self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), 
             transform=True, chunk_size=0), 
             total=self.dataset.test_labels.shape[0])))
-        #predictions = list(self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), 
-        #    transform=True, chunk_size=0))
-        #print(predictions)
         measures.set_data(predictions[:self.dataset.test_labels.shape[0]], 
             self.dataset.test_labels[:], self.numerical_labels2classes)
         list_measure = measures.to_list()
@@ -342,7 +339,6 @@ class EnsembleLayers(DataDrive):
             others_models_args_c = add_params_to_params(second_layer.classifs, 
                                                         others_models_args,
                                                         n_splits=n_splits)
-
             second_layer.train(others_models_args=others_models_args_c)
 
         self.clf_models_namespace = {}
@@ -379,7 +375,7 @@ class EnsembleLayers(DataDrive):
             measures = Measure.make_metrics(measures, name=self.model_name)
         predictions = np.asarray(list(tqdm(
             self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), 
-                        transform=False, chunk_size=258), 
+                        transform=not self.dataset._applied_transforms, chunk_size=258), 
             total=self.dataset.test_labels.shape[0])))
         measures.set_data(predictions, self.dataset.test_labels[:], self.numerical_labels2classes)
         return measures.to_list()
