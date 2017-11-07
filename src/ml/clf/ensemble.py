@@ -228,7 +228,8 @@ class Grid(DataDrive):
                 yield classif.predict(data, raw=raw, transform=transform, 
                                         chunk_size=chunk_size)
 
-        if self.fn_output is None:
+        print("FFFFFFF", self.fn_output)
+        if self.fn_output is None or self.fn_output == "stack":
             from ml.layers import IterLayer
             return IterLayer.concat_n(iter_())
         elif self.fn_output == "avg":
@@ -317,25 +318,12 @@ class EnsembleLayers(DataDrive):
 
         deep = len(initial_layer.classifs[initial_layer.active_network()])
         size = self.dataset.test_data.shape[0] * deep
-        shape = (size, num_labels)
-        data = np.zeros((size, num_labels))
-        labels = np.empty(size, dtype=self.dataset.dtype)
-        for i, y in enumerate(y_submission):
-            row_c = i % self.dataset.test_labels.shape[0]
-            data[i] = y
-            labels[i] = self.dataset.test_labels[row_c]
-
-        labels = labels[:i]
-        data = data[:i]
-        #fixme: add a dataset chunk writer
-        dataset = DataSetBuilder(dataset_path=settings["dataset_model_path"], 
-                                rewrite=True)
-        dataset.build_dataset(data, labels)
+        dataset = y_submission.to_datamodelset(self.dataset.test_labels, num_labels, 
+                                                size, self.dataset.dtype)
 
         if len(self.layers) > 1:
             second_layer = self.layers[1]
             second_layer.reset_dataset(dataset)
-            #n_splits = 2*deep + 1
             others_models_args_c = add_params_to_params(second_layer.classifs, 
                                                         others_models_args,
                                                         n_splits=n_splits)

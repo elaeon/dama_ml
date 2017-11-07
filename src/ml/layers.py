@@ -124,5 +124,24 @@ class IterLayer(object):
     def shape(self):
         return (None, None)
 
+    def to_datamodelset(self, labels, features, size, ltype):
+        from ml.ds import DataSetBuilder
+        from ml.utils.config import get_settings
+        import numpy as np
+
+        settings = get_settings("ml")
+
+        data = np.zeros((size, features))
+        label_m = np.empty(size, dtype=ltype)
+        for i, y in enumerate(self):
+            row_c = i % labels.shape[0]
+            data[i] = y
+            label_m[i] = labels[row_c]
+
+        #fixme: add a dataset chunk writer
+        dataset = DataSetBuilder(dataset_path=settings["dataset_model_path"])
+        dataset.build_dataset(data, label_m)
+        return dataset
+
     def __iter__(self):
         return self.fn_iter
