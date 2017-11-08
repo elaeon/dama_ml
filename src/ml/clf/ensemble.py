@@ -228,7 +228,6 @@ class Grid(DataDrive):
                 yield classif.predict(data, raw=raw, transform=transform, 
                                         chunk_size=chunk_size)
 
-        print("FFFFFFF", self.fn_output)
         if self.fn_output is None or self.fn_output == "stack":
             from ml.layers import IterLayer
             return IterLayer.concat_n(iter_())
@@ -306,8 +305,8 @@ class EnsembleLayers(DataDrive):
         initial_layer.train(others_models_args=others_models_args[0], 
                             calc_scores=calc_scores)
         y_submission = initial_layer.predict(
-            self.dataset.test_data, raw=True, 
-            transform=not self.dataset._applied_transforms, chunk_size=100)
+            self.dataset.data_validation, raw=True, 
+            transform=not self.dataset._applied_transforms, chunk_size=258)
 
         for classif in initial_layer.load_models():
             num_labels = classif.num_labels
@@ -317,9 +316,9 @@ class EnsembleLayers(DataDrive):
             num_labels = num_labels + self.dataset.shape[1]
 
         deep = len(initial_layer.classifs[initial_layer.active_network()])
-        size = self.dataset.test_data.shape[0] * deep
-        dataset = y_submission.to_datamodelset(self.dataset.test_labels, num_labels, 
-                                                size, self.dataset.dtype)
+        size = self.dataset.data_validation.shape[0] * deep
+        dataset = y_submission.to_datamodelset(self.dataset.data_validation_labels, 
+                                                num_labels, size, self.dataset.dtype)
 
         if len(self.layers) > 1:
             second_layer = self.layers[1]
@@ -378,17 +377,26 @@ class EnsembleLayers(DataDrive):
             "num_layers": len(self.layers)}
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
+        stack = False
         for (raw_l, transform_l), layer in zip([(True, transform), (raw, False)], self.layers):
             if layer.fn_output is None:
-                layer.output("avg")
-            if isinstance(data, IterLayer):
-                y_submission = np.asarray(list(data))
-            else:
-                y_submission = data
+                layer.output("stack")
 
-            data = layer.predict(y_submission, raw=raw_l, transform=transform_l, 
-                chunk_size=chunk_size)
+            data = np.asarray(list(layer.predict(data, raw=raw_l, transform=transform_l, 
+                chunk_size=chunk_size)))
 
+        if self.layers[0].fn_output == "stack":
+            size = len(self.layers[0].classifs["0"])
+            batch = data.shape[0] / size
+            def sub_matrix(size, batch):                
+                i = 0
+                step = batch
+                while i < data.shape[0]:
+                    yield data[i:step]
+                    i = step
+                    step += batch
+
+            data = sum(sub_matrix(size, batch)) / float(size)
         return data
         
     def destroy(self):
