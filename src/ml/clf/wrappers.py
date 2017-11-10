@@ -379,6 +379,24 @@ class XGB(BaseClassif):
         return xgb.DMatrix(data)
 
 
+class LGB(BaseClassif):
+    def ml_model(self, model, model_2=None):
+        return MLModel(fit_fn=model.train, 
+                            predictors=[model_2.predict],
+                            load_fn=self.load_fn,
+                            save_fn=model_2.save_model)
+                            #transform_data=self.array2dmatrix)
+
+    def load_fn(self, path):
+        import lightgbm as lgb
+        bst = lgb.Booster(model_file=path)
+        self.model = self.ml_model(lgb, model_2=bst)
+
+    def array2dmatrix(self, data):
+        import lightgbm as lgb
+        return lgb.Dataset(data)
+
+
 class TFL(BaseClassif):
 
     def reformat(self, data, labels):

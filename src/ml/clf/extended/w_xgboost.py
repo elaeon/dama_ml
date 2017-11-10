@@ -26,7 +26,7 @@ class Xgboost(XGB):
         watchlist = [(d_train, 'train'), (d_valid, 'valid')]
         nrounds = 200
         xgb_model = xgb.train(params, d_train, nrounds, watchlist, early_stopping_rounds=100, 
-                          feval=obj_fn, maximize=True, verbose_eval=100)
+                          feval=obj_fn, maximize=True, verbose_eval=100, tree_method="hist")
         return self.ml_model(xgb, model_2=xgb_model)
     
     def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2, obj_fn=None, model_params={}):
