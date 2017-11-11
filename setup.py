@@ -4,24 +4,25 @@ from setuptools import find_packages, setup
 from os.path import abspath, dirname, join
 
 install_requires = [
-    'matplotlib>=1.5.1',
-    'networkx>=1.11',
-    'numpy>=1.11.2',
-    'pandas>=0.18.0',
-    'Pillow>=3.4.2',
-    'scikit-image>=0.12.3',
-    'scikit-learn>=0.18',
-    'scipy>=0.18.1',
-    'tabulate>=0.7.5',
+    'matplotlib==1.5.1',
+    'networkx==1.11',
+    'numpy==1.12',
+    'pandas==0.19.2',
+    'Pillow==3.4.2',
+    'scikit-image==0.12.3',
+    'scikit-learn==0.18',
+    'scipy==0.18.1',
+    'tabulate==0.7.5',
     'tensorflow==1.0.1',
     'tflearn==0.2.1',
-    'tqdm>=4.5.0',
+    'tqdm==4.5.0',
     'h5py==2.6.0',
-    'GPy>=1.5.6',
-    'climin>=0.1a1',
-    'xmltodict>=0.10.2',
-    'dill>=0.2.6.',
-    'keras==2.0.2'
+    'GPy==1.5.6',
+    'climin==0.1a1',
+    'xmltodict==0.10.2',
+    'dill==0.2.6.',
+    'keras==2.0.2',
+    'seaborn==0.7.1'
 ]
 
 this_dir = abspath(dirname(__file__))
