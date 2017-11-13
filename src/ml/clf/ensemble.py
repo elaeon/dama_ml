@@ -58,23 +58,11 @@ class Grid(DataDrive):
         self.classifs = self.check_clfs(meta.get('models', {})["0"], fn=locate)
         self.output(meta["output"])
 
-    #def check_layers(self, classifs):
-    #    try:
-    #        for layer, classifs in classifs.items():
-    #            for classif, dataset in classifs:
-    #                continue
-    #        return True
-    #    except TypeError:
-    #        return False
-    #    except ValueError:
-    #        return False
-
     def string_namespaces(self, classifs):
         namespaces = {}
-        models = classifs["0"]
         namespaces["0"] = [(model.module_cls_name(), 
-            model.model_name, model.model_version, model.check_point_path) 
-            for model in self.load_models(autoload=False)]
+            model_name, model_version, check_point_path) 
+            for model, model_name, model_version, check_point_path, _ in classifs["0"]]
         return namespaces
 
     def check_clfs(self, classifs, fn=None):
@@ -258,14 +246,12 @@ class Grid(DataDrive):
         return {
                 "dataset_path": dataset_path,
                 "dataset_name": dataset_name,
-                "models": self.clf_models_namespace,
+                "models": self.string_namespaces(self.classifs),
                 "model_name": self.model_name,
-                #"individual_ds": self.individual_ds,
                 "output": self.fn_output,
                 "score": list_measure.measures_to_dict()}
 
     def save_model(self):
-        self.clf_models_namespace = self.string_namespaces(self.classifs)
         if self.check_point_path is not None:
             path = self.make_model_file()
             self.save_meta()
@@ -308,8 +294,12 @@ class EnsembleLayers(DataDrive):
 
         if initial_layer.fn_output == "bagging":
             num_labels = num_labels + self.dataset.shape[1]
+            deep = 1
+        elif initial_layer.fn_output == "stack" or initial_layer.fn_output is None:
+            deep = len(initial_layer.classifs["0"])
+        else:
+            deep = 1
 
-        deep = len(initial_layer.classifs["0"])
         size = self.dataset.data_validation.shape[0] * deep
         dataset = y_submission.to_datamodelset(self.dataset.data_validation_labels, 
                                                 num_labels, size, self.dataset.dtype)
@@ -321,15 +311,6 @@ class EnsembleLayers(DataDrive):
                                                         others_models_args,
                                                         n_splits=n_splits)
             second_layer.train(others_models_args=others_models_args_c)
-
-        self.clf_models_namespace = {}
-        for i, layer in enumerate(self.layers, 1):
-            self.clf_models_namespace["layer"+str(i)] = {
-                "model": layer.module_cls_name(),
-                "model_name": layer.model_name,
-                "model_version": layer.model_version,
-                "check_point_path": layer.check_point_path
-            }
 
         self.save_model()
         self.reload()
@@ -363,10 +344,18 @@ class EnsembleLayers(DataDrive):
 
     def _metadata(self):
         list_measure = self.scores(self.metrics)
+        clf_models_namespace = {}
+        for i, layer in enumerate(self.layers, 1):
+            clf_models_namespace["layer"+str(i)] = {
+                "model": layer.module_cls_name(),
+                "model_name": layer.model_name,
+                "model_version": layer.model_version,
+                "check_point_path": layer.check_point_path
+            }
         return {
             "dataset_path": self.dataset.dataset_path,
             "dataset_name": self.dataset.name,
-            "models": self.clf_models_namespace,
+            "models": clf_models_namespace,
             "score": list_measure.measures_to_dict(),
             "num_layers": len(self.layers)}
 
@@ -406,7 +395,7 @@ class EnsembleLayers(DataDrive):
         meta = self.load_meta()
         models = meta.get('models', {})
         for i in range(1, meta.get("num_layers", 0)+1): 
-            key = "layer{}".format(i)        
+            key = "layer{}".format(i)     
             model_1 = locate(models[key]["model"])
             log.debug("Load {} {} {} {}".format(
                 models[key]["model"], models[key]["model_name"], 
@@ -429,7 +418,7 @@ class Boosting(Grid):
             **kwargs):
         super(Boosting, self).__init__(classifs, meta_name="boosting", **kwargs)
         if len(classifs) > 0:
-            self.weights = self.set_weights(0, self.classifs[self.active_network()], weights)
+            self.weights = self.set_weights(0, self.classifs["0"], weights)
             self.election = election
             self.num_max_clfs = num_max_clfs
         else:

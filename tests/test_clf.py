@@ -106,37 +106,37 @@ class TestSKL(unittest.TestCase):
         table.print_scores()
 
 
-class TestGpy(unittest.TestCase):
-    def setUp(self):
-        from ml.ds import DataSetBuilder
-        from ml.clf.extended.w_gpy import SVGPC, GPC
+#class TestGpy(unittest.TestCase):
+#    def setUp(self):
+#        from ml.ds import DataSetBuilder
+#        from ml.clf.extended.w_gpy import SVGPC, GPC
 
-        X = np.asarray([1, 0]*10)
-        Y = X*1
-        self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
-            ltype='int', rewrite=True)
-        self.dataset.build_dataset(X, Y)
-        self.classif = SVGPC(dataset=self.dataset, 
-            model_name="test", 
-            model_version="1",
-            check_point_path="/tmp/")
-        self.classif2 = GPC(dataset=self.dataset, 
-            model_name="test2", 
-            model_version="1",
-            check_point_path="/tmp/")
-        self.classif.train(num_steps=2, batch_size=128)
-        self.classif2.train(num_steps=2, batch_size=128)
+#        X = np.random.rand(100, 10)
+#        Y = (X[:,0] > .5).astype(int)
+#        self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+#            ltype='int', rewrite=True)
+#        self.dataset.build_dataset(X, Y)
+#        self.classif = SVGPC(dataset=self.dataset, 
+#            model_name="test", 
+#            model_version="1",
+#            check_point_path="/tmp/")
+#        self.classif2 = GPC(dataset=self.dataset, 
+#            model_name="test2", 
+#            model_version="1",
+#            check_point_path="/tmp/")
+#        self.classif.train(num_steps=2, batch_size=128)
+#        self.classif2.train(num_steps=2, batch_size=128)
 
-    def tearDown(self):
-        self.dataset.destroy()
-        self.classif.destroy()
-        self.classif2.destroy()
+#    def tearDown(self):
+#        self.dataset.destroy()
+#        self.classif.destroy()
+#        self.classif2.destroy()
 
-    def test_load_meta(self):
-        list(self.classif.predict(self.dataset.data[:2]))
-        list(self.classif2.predict(self.dataset.data[:2]))
-        self.assertEqual(type(self.classif.load_meta()), type({}))
-        self.assertEqual(type(self.classif2.load_meta()), type({}))
+#    def test_load_meta(self):
+#        list(self.classif.predict(self.dataset.data[:2]))
+#        list(self.classif2.predict(self.dataset.data[:2]))
+#        self.assertEqual(type(self.classif.load_meta()), type({}))
+#        self.assertEqual(type(self.classif2.load_meta()), type({}))
 
 
 class TestGrid(unittest.TestCase):
@@ -248,9 +248,11 @@ class TestGrid(unittest.TestCase):
         ensemble.add(classif_2)
 
         ensemble.train([self.others_models_args])
-        s = classif_1.scores()
-        st = ensemble.scores()
-        (s + st).print_scores()
+        t0 = classif_1.scores()
+        t1 = ensemble.scores()
+        all_ = (t0 + t1)
+        all_.print_scores()
+        self.assertEqual(len(all_.measures), 2)
         ensemble.destroy()
 
     def test_compose_grid_predict(self):
@@ -303,7 +305,7 @@ class TestGrid(unittest.TestCase):
         from ml.clf.extended.w_sklearn import LogisticRegression
         from ml.clf.ensemble import Grid, EnsembleLayers
 
-        classif_1 = Grid([RandomForest, AdaBoost, KNN],
+        classif_1 = Grid([(RandomForest, self.dataset), (AdaBoost, self.dataset), (KNN, self.dataset)],
             dataset=self.dataset,
             model_name="test_grid0",            
             check_point_path="/tmp/",
@@ -327,7 +329,7 @@ class TestGrid(unittest.TestCase):
         #classif_2.destroy()
         ensemble.add(classif_1)
         ensemble.add(classif_2)
-        others_models_args = {"RandomForest": [{"n_splits": 2}]}
+        others_models_args = {"RandomForest": [{"n_splits": None}]}
         ensemble.train([others_models_args], calc_scores=False)
         ensemble.scores().print_scores()
 
@@ -337,53 +339,53 @@ class TestGrid(unittest.TestCase):
             check_point_path="/tmp/")
         
         for p in ensemble.predict(self.dataset.data[:1], raw=True):
-            print(list(p))
+            self.assertEqual(len(list(p)), 2)
 
         ensemble.destroy()
 
 
-class TestBoosting(unittest.TestCase):
-    def setUp(self):
-        from ml.ds import DataSetBuilder
-        from ml.clf.ensemble import Boosting
-        from ml.clf.extended.w_sklearn import RandomForest
-        from ml.clf.extended.w_sklearn import ExtraTrees, AdaBoost
+#class TestBoosting(unittest.TestCase):
+#    def setUp(self):
+#        from ml.ds import DataSetBuilder
+#        from ml.clf.ensemble import Boosting
+#        from ml.clf.extended.w_sklearn import RandomForest
+#        from ml.clf.extended.w_sklearn import ExtraTrees, AdaBoost
 
-        X = np.asarray([1, 0]*1000)
-        Y = X*1
-        self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
-        self.dataset.build_dataset(X, Y)
+#        X = np.asarray([1, 0]*1000)
+#        Y = X*1
+#        self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
+#        self.dataset.build_dataset(X, Y)
 
-        classif = Boosting([
-            ExtraTrees,
-            RandomForest,
-            AdaBoost],
-            dataset=self.dataset, 
-            model_name="test_boosting", 
-            model_version="1",
-            check_point_path="/tmp/",
-            weights=[3, 1],
-            election='best-c',
-            num_max_clfs=5)
-        classif.train(num_steps=1)
+#        classif = Boosting([
+#            ExtraTrees,
+#            RandomForest,
+#            AdaBoost],
+#            dataset=self.dataset, 
+#            model_name="test_boosting", 
+#            model_version="1",
+#            check_point_path="/tmp/",
+#            weights=[3, 1],
+#            election='best-c',
+#            num_max_clfs=5)
+#        classif.train(num_steps=1)
 
-    def tearDown(self):
-        self.dataset.destroy()
+#    def tearDown(self):
+#        self.dataset.destroy()
 
-    def test_load_meta(self):
-        from ml.clf.ensemble import Boosting
+#    def test_load_meta(self):
+#        from ml.clf.ensemble import Boosting
         
-        classif = Boosting([], 
-            model_name="test_boosting", 
-            model_version="1",
-            check_point_path="/tmp/")
+#        classif = Boosting([], 
+#            model_name="test_boosting", 
+#            model_version="1",
+#            check_point_path="/tmp/")
         
-        self.assertEqual(type(classif.load_meta()), type({}))
+#        self.assertEqual(type(classif.load_meta()), type({}))
 
-        for p in classif.predict(self.dataset.data[:1], raw=True):
-            print(list(p))
+#        for p in classif.predict(self.dataset.data[:1], raw=True):
+#            print(list(p))
 
-        classif.destroy()
+#        classif.destroy()
 
 
 class TestXgboost(unittest.TestCase):
