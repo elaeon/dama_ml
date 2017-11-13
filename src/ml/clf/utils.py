@@ -23,11 +23,11 @@ def proximity_dataset(label_ref, labels, dataset):
 
 def add_params_to_params(classifs_layer, others_models_args, n_splits=5):
     if len(others_models_args) == 1:
-        others_models_args_c = {m.cls_name(): [{}] for m, _ in classifs_layer["0"]}
+        others_models_args_c = {m[0].cls_name(): [{}] for m in classifs_layer["0"]}
     else:
         others_models_args_c = others_models_args[1].copy()
 
-    for m, _ in classifs_layer["0"]:
+    for m, _, _, _, _ in classifs_layer["0"]:
         n_params = []
         for params in others_models_args_c.get(m.cls_name(), [{}]):
             if not "n_splits" in params:

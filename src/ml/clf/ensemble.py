@@ -7,12 +7,16 @@ from ml.layers import IterLayer
 
 from pydoc import locate
 import inspect
+import logging
 
 settings = get_settings("ml")
+log = logging.getLogger(__name__)
+#log.addHandler(logging.StreamHandler())
+log.setLevel(logging.DEBUG)
 
 
 class Grid(DataDrive):
-    def __init__(self, classifs, model_name=None, dataset=None, 
+    def __init__(self, clfs=[], model_name=None, dataset=None, 
             check_point_path=None, model_version=None, meta_name="", 
             group_name=None, metrics=None):
         super(Grid, self).__init__(
@@ -27,42 +31,31 @@ class Grid(DataDrive):
         self.metrics = metrics
         self.calc_scores = True
 
-        if len(classifs) == 0:
+        if len(clfs) == 0:
             self.reload()
         else:
-            classifs = {"0": classifs}
-            classifs_layers = self.rename_namespaces(classifs)
-            self.individual_ds = self.check_layers(classifs_layers)
-            if self.individual_ds != True:
-                classifs_layers = self.load_namespaces(classifs_layers, dataset=dataset,
-                    fn=lambda x: x)
-            self.classifs = classifs_layers
-        self.dataset = dataset
+            self.classifs = self.check_clfs(clfs, fn=lambda x: x)
+            self.dataset = dataset
         self.params = {}
 
-    def reset_dataset(self, dataset, individual_ds=False):
-        self.individual_ds = individual_ds
+    def reset_dataset(self, dataset):
         clf_layers = {}
-        for layer, classifs in self.classifs.items():
-            clf_layers[layer] = [(classif, dataset) for classif, _ in classifs]
-        self.classifs = clf_layers
+        classifs = self.classifs["0"]
+        self.classifs = self.check_clfs(
+            [(classif[0], dataset) for classif in classifs], 
+            fn=lambda x: x)
         self.dataset = dataset
 
-    def active_network(self):
-        if self.meta_name is None or self.meta_name == "":
-            return "0"
-        else:
-            return ".".join([self.meta_name, "0"])
+    #def active_network(self):
+    #    if self.meta_name is None or self.meta_name == "":
+    #        return "0"
+    #    else:
+    #        return ".".join([self.meta_name, "0"])
 
     def reload(self):
         meta = self.load_meta()
-        self.individual_ds = meta.get('individual_ds', None)
-        classifs_layers = meta.get('models', {})
-        if self.individual_ds == True:
-            for layer, classifs in classifs_layers.items():
-                classifs_layers[layer] = [(classif, None) for classif in classifs]
-        classifs_layers = self.load_namespaces(classifs_layers, fn=locate)
-        self.classifs = classifs_layers
+        self.dataset = Data.original_ds(meta["dataset_name"], meta["dataset_path"])
+        self.classifs = self.check_clfs(meta.get('models', {})["0"], fn=locate)
         self.output(meta["output"])
 
     def check_layers(self, classifs):
@@ -78,46 +71,41 @@ class Grid(DataDrive):
 
     def string_namespaces(self, classifs):
         namespaces = {}
-        for namespace, models in classifs.items():
-            namespaces[namespace] = [model.module_cls_name() for model, dataset in models]
+        models = classifs["0"]
+        namespaces["0"] = [(model.module_cls_name(), 
+            model.model_name, model.model_version, model.check_point_path) 
+            for model in self.load_models(autoload=False)]
         return namespaces
 
-    def load_namespaces(self, classifs_layers, dataset=None, fn=None):
+    def check_clfs(self, classifs, fn=None):
+        layer = []
+        for classif_obj in classifs:
+            if isinstance(classif_obj, tuple) and len(classif_obj) == 2:
+                classif, dataset = classif_obj
+                layer.append((fn(classif), classif.cls_name(), "1", self.check_point_path, dataset))
+            elif isinstance(classif_obj, tuple) and len(classif_obj) == 4:
+                classif, model_name, model_version, check_point_path = classif_obj
+                layer.append((fn(classif), model_name, model_version, 
+                    check_point_path, None))
+            else:
+                layer.append((fn(classif_obj), None, None, None, None))
         clf_layers = {}
-        if self.individual_ds == False:
-            for layer, classifs in classifs_layers.items():
-                clf_layers[layer] = [(fn(classif), dataset) for classif in classifs]
-        else:
-            for layer, classifs in classifs_layers.items():
-                clf_layers[layer] = [(fn(classif), dataset) for classif, dataset in classifs]
+        clf_layers["0"] = layer
         return clf_layers
 
-    def rename_namespaces(self, classifs):
-        namespaces = {}
-        for namespace, models in classifs.items():
-            n_namespace = namespace if self.meta_name == "" else self.meta_name + "." + namespace                
-            namespaces[n_namespace] = models                
-        return namespaces
-
-    def model_namespace2str(self, namespace):
-        if namespace is None:
-            return self.model_name
-        else:
-            return "{}.{}".format(self.model_name, namespace)
-
     def load_models(self, autoload=True):
-        namespace = self.active_network()
-        for index, (classif, dataset) in enumerate(self.classifs[namespace]):
-            yield self.load_model(classif, dataset=dataset, 
-                namespace=namespace, autoload=autoload, index=index)
+        for index, clf in enumerate(self.classifs["0"]):
+            yield self.load_model(clf[0], model_name=clf[1], 
+                model_version=clf[2], check_point_path=clf[3],
+                dataset=clf[4], autoload=autoload, index=index)
 
-    def load_model(self, model, dataset=None, namespace=None, autoload=True, index=0):
-        namespace = self.model_namespace2str("" if namespace is None else namespace)
+    def load_model(self, model, model_name=None, model_version=None,
+        check_point_path=None, dataset=None, autoload=True, index=0):
         if inspect.isclass(model):
             return model(dataset=dataset, 
-                    model_name=namespace, 
-                    model_version=self.model_version, 
-                    check_point_path=self.check_point_path,
+                    model_name=model_name, 
+                    model_version=model_version, 
+                    check_point_path=check_point_path,
                     group_name=self.group_name,
                     autoload=autoload,
                     **self.get_params(model.cls_name(), index))
@@ -129,7 +117,7 @@ class Grid(DataDrive):
         self.calc_scores = calc_scores
         for classif in self.load_models():
             if not classif.has_model_file():
-                print("Training [{}]".format(classif.__class__.__name__))
+                log.info("Training [{}]".format(classif.__class__.__name__))
                 params = others_models_args.get(classif.cls_name(), [default_params]).pop(0)
                 classif.train(**params)
         self.save_model()
@@ -233,11 +221,11 @@ class Grid(DataDrive):
             return IterLayer.concat_n(iter_())
         elif self.fn_output == "avg":
             from ml.layers import IterLayer
-            namespace = self.active_network()
+            namespace = "0"#self.active_network()
             return IterLayer.avg(iter_(), len(self.classifs[namespace]))
         elif self.fn_output == "bagging":
             from ml.layers import IterLayer
-            namespace = self.active_network()
+            namespace = "0"#self.active_network()
             predictions = IterLayer.avg(iter_(), len(self.classifs[namespace]), method="geometric")
             return predictions.concat_elems(data)
         else:
@@ -266,7 +254,7 @@ class Grid(DataDrive):
                 "dataset_name": dataset_name,
                 "models": self.clf_models_namespace,
                 "model_name": self.model_name,
-                "individual_ds": self.individual_ds,
+                #"individual_ds": self.individual_ds,
                 "output": self.fn_output,
                 "score": list_measure.measures_to_dict()}
 
@@ -315,7 +303,7 @@ class EnsembleLayers(DataDrive):
         if initial_layer.fn_output == "bagging":
             num_labels = num_labels + self.dataset.shape[1]
 
-        deep = len(initial_layer.classifs[initial_layer.active_network()])
+        deep = len(initial_layer.classifs["0"])
         size = self.dataset.data_validation.shape[0] * deep
         dataset = y_submission.to_datamodelset(self.dataset.data_validation_labels, 
                                                 num_labels, size, self.dataset.dtype)
@@ -406,9 +394,12 @@ class EnsembleLayers(DataDrive):
     def reload(self):
         meta = self.load_meta()
         models = meta.get('models', {})
-        for i in range(models.get("num_layers", 0)): 
-            key = "layer{}".format(i)           
+        for i in range(1, meta.get("num_layers", 0)+1): 
+            key = "layer{}".format(i)        
             model_1 = locate(models[key]["model"])
+            log.debug("Load {} {} {} {}".format(
+                models[key]["model"], models[key]["model_name"], 
+                models[key]["model_version"], models[key]["check_point_path"]))
             classif = model_1([], 
                 model_name=models[key]["model_name"], 
                 model_version=models[key]["model_version"],
@@ -450,7 +441,7 @@ class Boosting(Grid):
         self.calc_score = calc_score
         if only_voting is False:
             for classif in self.load_models():
-                print("Training [{}]".format(classif.__class__.__name__))
+                log.info("Training [{}]".format(classif.__class__.__name__))
                 classif.train(batch_size=batch_size, num_steps=num_steps)
 
         if self.election == "best":

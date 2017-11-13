@@ -10,13 +10,8 @@ from ml.clf import measures as metrics
 from ml.layers import IterLayer
 
 settings = get_settings("ml")
-logging.basicConfig()
-console = logging.StreamHandler()
-console.setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
-log.addHandler(console)
-#np.random.seed(133)
 
 
 
@@ -187,8 +182,8 @@ class BaseClassif(DataDrive):
             self.load_model()
 
         if not isinstance(chunk_size, int):
-            log.warning("The parameter chunk_size must be an integer.")            
-            log.warning("Chunk size is set to 1")
+            log.info("The parameter chunk_size must be an integer.")            
+            log.info("Chunk size is set to 1")
             chunk_size = 258
 
         if isinstance(data, IterLayer):
@@ -250,21 +245,20 @@ class BaseClassif(DataDrive):
         
     def get_dataset(self):
         from ml.ds import DataSetBuilder, Data
+        log.debug("GET DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name, 
+            self.model_version, self.check_point_path))
         meta = self.load_meta()
-        try:
-            dataset = DataSetBuilder(name=meta["dataset_name"], dataset_path=meta["dataset_path"],
-                apply_transforms=False)
-            self._original_dataset_md5 = meta["original_ds_md5"]
-            self.labels_encode(meta["base_labels"])
-            self.dl = Data.original_ds(name=meta["dl"], dataset_path=settings["dataset_model_path"])
-        except KeyError:
-            raise Exception, "No metadata found"
-        else:
-            self.group_name = meta.get('group_name', None)
-            if meta.get('md5', None) != dataset.md5:
-                log.warning("The dataset md5 is not equal to the model '{}'".format(
-                    self.__class__.__name__))
-            return dataset
+        dataset = DataSetBuilder(name=meta["dataset_name"], dataset_path=meta["dataset_path"],
+            apply_transforms=False)
+        self._original_dataset_md5 = meta["original_ds_md5"]
+        self.labels_encode(meta["base_labels"])
+        self.dl = Data.original_ds(name=meta["dl"], dataset_path=settings["dataset_model_path"])
+    
+        self.group_name = meta.get('group_name', None)
+        if meta.get('md5', None) != dataset.md5:
+            log.info("The dataset md5 is not equal to the model '{}'".format(
+                self.__class__.__name__))
+        return dataset
 
     def preload_model(self):
         self.model = MLModel(fit_fn=None, 
@@ -385,7 +379,6 @@ class LGB(BaseClassif):
                             predictors=[model_2.predict],
                             load_fn=self.load_fn,
                             save_fn=model_2.save_model)
-                            #transform_data=self.array2dmatrix)
 
     def load_fn(self, path):
         import lightgbm as lgb
@@ -456,7 +449,7 @@ class Keras(BaseClassif):
         cv = StratifiedKFold(n_splits=n_splits)
         
         if self.dl is None:
-            log.warning("The dataset dl is not set in the path, rebuilding...".format(
+            log.info("The dataset dl is not set in the path, rebuilding...".format(
                 self.__class__.__name__))
             dl = self.dataset.desfragment(dataset_path=settings["dataset_model_path"])
         else:
