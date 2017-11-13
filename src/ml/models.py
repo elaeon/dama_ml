@@ -1,6 +1,7 @@
 from ml.utils.config import get_settings
 import tensorflow as tf
 import os
+import uuid
 
 settings = get_settings("ml")
 
@@ -40,7 +41,7 @@ class DataDrive(object):
         else:
             self.check_point_path = check_point_path
         self.model_version = model_version
-        self.model_name = model_name
+        self.model_name = uuid.uuid4().hex if model_name is None else model_name
         self.group_name = group_name
 
     def _metadata(self):
@@ -98,11 +99,13 @@ class DataDrive(object):
     def destroy(self):
         """remove the dataset associated to the model and his checkpoints"""
         from ml.utils.files import rm
-        self.dataset.destroy()
-        if hasattr(self, 'dl') and self.dl is not None:
-            self.dl.destroy()
+        #print("################", self.cls_name())
         rm(self.get_model_path()+"."+self.ext)
         rm(self.get_model_path()+".xmeta")
+        self.dataset.destroy()
+        #print("XXXXXXXXXXXXXXX")
+        #if hasattr(self, 'dl') and self.dl is not None:
+        #    self.dl.destroy()        
 
     @classmethod
     def cls_name(cls):

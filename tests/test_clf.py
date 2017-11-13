@@ -231,8 +231,7 @@ class TestGrid(unittest.TestCase):
             model_name="test_grid0", 
             model_version="1",
             check_point_path="/tmp/")
-        #classif_1.output("avg")
-        classif_1.train(others_models_args=self.others_models_args)
+
         classif_2 = Grid([AdaBoost, KNN],
             dataset=None, 
             model_name="test_grid1", 

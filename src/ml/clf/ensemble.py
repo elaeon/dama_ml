@@ -58,16 +58,16 @@ class Grid(DataDrive):
         self.classifs = self.check_clfs(meta.get('models', {})["0"], fn=locate)
         self.output(meta["output"])
 
-    def check_layers(self, classifs):
-        try:
-            for layer, classifs in classifs.items():
-                for classif, dataset in classifs:
-                    continue
-            return True
-        except TypeError:
-            return False
-        except ValueError:
-            return False
+    #def check_layers(self, classifs):
+    #    try:
+    #        for layer, classifs in classifs.items():
+    #            for classif, dataset in classifs:
+    #                continue
+    #        return True
+    #    except TypeError:
+    #        return False
+    #    except ValueError:
+    #        return False
 
     def string_namespaces(self, classifs):
         namespaces = {}
@@ -80,13 +80,16 @@ class Grid(DataDrive):
     def check_clfs(self, classifs, fn=None):
         layer = []
         for classif_obj in classifs:
+            #Case: class, dataset
             if isinstance(classif_obj, tuple) and len(classif_obj) == 2:
                 classif, dataset = classif_obj
-                layer.append((fn(classif), classif.cls_name(), "1", self.check_point_path, dataset))
+                layer.append((fn(classif), None, "1", self.check_point_path, dataset))
+            #Case: load model from metadata, 
             elif isinstance(classif_obj, tuple) and len(classif_obj) == 4:
                 classif, model_name, model_version, check_point_path = classif_obj
                 layer.append((fn(classif), model_name, model_version, 
                     check_point_path, None))
+            #Case: class. Second layer
             else:
                 layer.append((fn(classif_obj), None, None, None, None))
         clf_layers = {}
@@ -102,15 +105,18 @@ class Grid(DataDrive):
     def load_model(self, model, model_name=None, model_version=None,
         check_point_path=None, dataset=None, autoload=True, index=0):
         if inspect.isclass(model):
-            return model(dataset=dataset, 
+            model = model(dataset=dataset, 
                     model_name=model_name, 
                     model_version=model_version, 
                     check_point_path=check_point_path,
                     group_name=self.group_name,
                     autoload=autoload,
                     **self.get_params(model.cls_name(), index))
-        else:
-            return model
+        
+        self.classifs["0"][index] = (self.classifs["0"][index][0], 
+            model.model_name, model.model_version, model.check_point_path, 
+            self.classifs["0"][index][-1])
+        return model
 
     def train(self, others_models_args={}, calc_scores=True):
         default_params = {"batch_size": 128, "num_steps": 1}
@@ -388,10 +394,15 @@ class EnsembleLayers(DataDrive):
         return data
         
     def destroy(self):
-        for layer in self.layers:
-            layer.destroy()
+        for grid in self.layers:
+            grid.destroy()
+
+    def clean(self):
+        self.layers = []
+        self.dataset = None
 
     def reload(self):
+        self.clean()
         meta = self.load_meta()
         models = meta.get('models', {})
         for i in range(1, meta.get("num_layers", 0)+1): 
@@ -405,6 +416,7 @@ class EnsembleLayers(DataDrive):
                 model_version=models[key]["model_version"],
                 check_point_path=models[key]["check_point_path"])
             self.add(classif)
+        self.dataset = Data.original_ds(meta["dataset_name"], meta["dataset_path"])
         return models
 
     def scores2table(self):
