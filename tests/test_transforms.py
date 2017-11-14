@@ -140,9 +140,9 @@ class TestTransforms(unittest.TestCase):
         transforms.add(FitTruncatedSVD, type="column", n_components=2)
         numbers = np.random.rand(1000, 3)
         result = np.asarray(list(transforms.apply(numbers)))
-        print(result)
-        #self.assertEqual(-.1 <= result.mean() < .1, True)
-        #self.assertEqual(.9 <= result.std() <= 1.1, True)
+        self.assertEqual(-.1 <= result.mean() < .1, True)
+        self.assertEqual(.9 <= result.std() <= 1.1, True)
+        self.assertEqual(result.shape, (1000, 2))
 
     def test_apply(self):
         from ml.processing import FitStandardScaler
@@ -245,13 +245,13 @@ class TestTransforms(unittest.TestCase):
             [None,2,   3,5,   None]
         ]
         data = np.array(data, dtype=float)
-        ft = FitReplaceNan(data, path='/tmp/')
+        ft = FitReplaceNan(data, name="test_nan_fit", path='/tmp/')
         data_nonan = np.array(list(ft.transform(data)))
         self.assertItemsEqual(data_nonan[:,0], [1,0,0,-1])
         self.assertItemsEqual(data_nonan[:,1], [2,2,2.5,2])
         self.assertItemsEqual(data_nonan[:,2], [3,3,3,3])
-        self.assertItemsEqual(data_nonan[:,3], [5,5,5,5])
-        self.assertItemsEqual(data_nonan[:,4], [9,9,9,9])
+        self.assertItemsEqual(data_nonan[:,3], [5,5,-1,5])
+        self.assertItemsEqual(data_nonan[:,4], [-1,9,9,-1])
         ft.destroy()
 
     def test_transforms_convert_apply(self):

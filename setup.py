@@ -15,7 +15,7 @@ install_requires = [
     'tabulate==0.7.5',
     'tensorflow==1.0.1',
     'tflearn==0.2.1',
-    'tqdm==4.5.0',
+    'tqdm==4.11.2',
     'h5py==2.6.0',
     'GPy==1.5.6',
     'climin==0.1a1',
