@@ -93,12 +93,24 @@ def is_binary(array, include_null=True):
         return np.all((array==0)|(array==1)|(np.isnan(array)))
 
 
-def is_integer(array, include_null=True):
+def is_integer(array):
     mask = np.isnan(array)
     if any(mask):
         return all(np.equal(np.mod(array[~mask], 1), 0))
     else:
         return all(np.equal(np.mod(array, 1), 0))
+
+
+def is_integer_if(array, min_size=4):
+    return is_integer(array) and np.unique(array).size >= min_size
+
+
+def index_if_type_row(array, fn):
+    return [i for i, row in enumerate(array) if fn(row)]
+
+
+def index_if_type_col(array, fn):
+    return [i for i, col in enumerate(array.T) if fn(col)]
 
 
 def gini(actual, pred):

@@ -41,5 +41,51 @@ class TestLinearOutLayer(unittest.TestCase):
         self.assertItemsEqual(list(outlayers), [0, 8, 13, 15])
 
 
+class TestNumericFn(unittest.TestCase):
+    def test_binary_data(self):
+        from ml.utils.numeric_functions import is_binary
+        binary = np.asarray([0,0,0,1,1,1,0,1])
+        self.assertEqual(is_binary(binary, include_null=False), True)
+        self.assertEqual(is_binary(binary, include_null=True), True)
+        ternary = np.asarray([0,0,0,np.nan,1,1,0,np.nan])
+        self.assertEqual(is_binary(ternary, include_null=True), True)
+        self.assertEqual(is_binary(ternary, include_null=False), False)
+
+    def test_categorical_data(self):
+        from ml.utils.numeric_functions import is_integer
+        integer = np.asarray([0,0,0,1,1,1,0,1,2,3,4,5])
+        self.assertEqual(is_integer(integer), True)
+        self.assertEqual(is_integer(integer), True)
+        integer = np.asarray([-1,0,0,np.nan,1,1,0,1,2,3,4,5])
+        self.assertEqual(is_integer(integer), True)
+        integer = np.asarray([0,0,0,np.nan,1.1,1,0,1,2,3,4,5])
+        self.assertEqual(is_integer(integer), False)
+
+    def test_categorical_if(self):
+        from ml.utils.numeric_functions import is_integer_if
+        binary = np.asarray([0,0,0,1,1,1,0,1])
+        self.assertEqual(is_integer_if(binary, min_size=2), True)
+        self.assertEqual(is_integer_if(binary, min_size=3), False)
+        binary = np.asarray([0,0,0,1,np.nan,1,0,1])
+        self.assertEqual(is_integer_if(binary, min_size=3), True)
+
+    def test_index_if_type(self):
+        from ml.utils.numeric_functions import index_if_type_row, index_if_type_col
+        from ml.utils.numeric_functions import is_binary, is_integer
+
+        array = np.asarray([
+            [0, 1, 2, 0, 4, 5],
+            [1, 0, 0, 1, 1, 0],
+            [1, 1, 1, 1, 1, 0],
+            [1, 1, 5, 7, 8, 10],
+            [0, 0,.3,.1, 0, 1],
+            [0, 1, 0, 0, 1, 1]
+        ])
+        self.assertEqual(index_if_type_row(array, is_binary), [1, 2, 5])
+        self.assertEqual(index_if_type_row(array, is_integer), [0, 1, 2, 3, 5])
+        self.assertEqual(index_if_type_col(array, is_binary), [0, 1])
+        self.assertEqual(index_if_type_col(array, is_integer), [0, 1, 4, 5])
+
+
 if __name__ == '__main__':
     unittest.main()
