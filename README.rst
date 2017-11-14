@@ -1,4 +1,6 @@
 
+.. image:: https://travis-ci.org/elaeon/ML.svg?branch=master
+
 Welcome to mlPyp's documentation!
 =====================================
 
