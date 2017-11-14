@@ -4,6 +4,7 @@ checkpoints_path = {home}/ml_data/checkpoints/
 dataset_model_path = {home}/ml_data/dataset_models/
 dataset_folds_path = {home}/ml_data/dataset_folds/
 class_path = {home}
+loglevel = 20 ;INFO
 
 [numerai]
 predictions_file_path = {home}/predictions.csv

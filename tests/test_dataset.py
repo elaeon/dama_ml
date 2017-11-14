@@ -147,18 +147,6 @@ class TestDataset(unittest.TestCase):
         copy.destroy()
         dataset.destroy()
 
-    def test_apply_tranforms(self):
-        dataset = DataSetBuilder(
-            name="test_ds",
-            dataset_path="/tmp/",
-            train_size=.5,
-            valid_size=.2,
-            ltype='int',
-            validator="cross",
-            rewrite=True,
-            apply_transforms=True)
-        
-
     def test_convert(self):
         dataset = DataSetBuilder(
             name="test_ds",
@@ -169,13 +157,15 @@ class TestDataset(unittest.TestCase):
             validator="cross",
             rewrite=True)
         dataset.build_dataset(self.X, self.Y)
-        dsb = dataset.convert("convert_test", dtype='float32', ltype='|S1')
+        dsb = dataset.convert("convert_test", dtype='float32', ltype='|S1', 
+                            dataset_path="/tmp/")
         #apply_transforms=False, percentaje=1, applied_transforms=False):
         self.assertEqual(dsb.train_data.dtype, np.dtype('float32'))
         self.assertEqual(dsb.train_labels.dtype, np.dtype('|S1'))
         dsb.destroy()
 
-        dsb = dataset.convert("convert_test", dtype='auto', ltype='auto')
+        dsb = dataset.convert("convert_test", dtype='auto', ltype='auto',
+                            dataset_path="/tmp/")
         self.assertEqual(dsb.train_data.dtype, dataset.train_data.dtype)
         self.assertEqual(dsb.train_labels.dtype, dataset.train_labels.dtype)
         dsb.destroy()
@@ -245,21 +235,6 @@ class TestDataset(unittest.TestCase):
         dataset.build_dataset(self.X, self.Y)
         outlayers = dataset.outlayers()
         dataset.remove_outlayers(list(outlayers))
-        dataset.destroy()
-
-    def test_plot(self):
-        X = np.random.rand(100, 2)
-        Y = np.asarray([0 if .5 < sum(e) <= 1 else -1 if 0 < sum(e) < .5 else 1 for e in X])
-        dataset = DataSetBuilder(
-            name="test_ds_1",
-            dataset_path="/tmp/",
-            ltype='int',
-            validator="cross",
-            rewrite=True)
-        dataset.build_dataset(X, Y)
-        #dataset.plot(view="columns", type_g="violin")
-        #dataset.plot(view="rows", type_g="pairplot")
-        dataset.plot(view="rows", type_g="scatter")
         dataset.destroy()
 
     def test_dsb_build_iter(self):
@@ -349,9 +324,18 @@ class TestDataset(unittest.TestCase):
             description="description text", train_size=.7, valid_size=.1, 
             validator="cross", compression_level=5, ltype='int',
             apply_transforms=False)
+        dsb.md5 = ""
+        timestamp = dsb.timestamp
 
-        dsb2 = DataSetBuilder(name="test", dataset_path="/tmp", rewrite=True)
-        dsb2.info()
+        dsb2 = DataSetBuilder(name="test", dataset_path="/tmp")
+        self.assertEqual(dsb2.author, "AGMR")
+        self.assertEqual(dsb2.hash_header is not None, True)
+        self.assertEqual(dsb2.description, "description text")
+        self.assertEqual(dsb2.timestamp, timestamp)
+        self.assertEqual(dsb2.dtype, "float32")
+        self.assertEqual(dsb2.ltype, "int")
+        self.assertEqual(dsb2.compression_level, 5)
+        self.assertEqual(dsb2.dataset_class, "ml.ds.DataSetBuilder")
         dsb.destroy()
 
     def test_to_data(self):
@@ -363,6 +347,7 @@ class TestDataset(unittest.TestCase):
             rewrite=True)
         dataset.build_dataset(self.X, self.Y)
         data = dataset.to_data()
+        self.assertEqual(data.shape, (10, 10))
         dataset.destroy()
         data.destroy()
 
@@ -375,6 +360,7 @@ class TestDataset(unittest.TestCase):
             rewrite=True)
         dataset.build_dataset(self.X, self.Y)
         data = dataset.to_datalabel()
+        self.assertEqual(data.shape, (10, 10))
         dataset.destroy()
         data.destroy()
 
@@ -386,6 +372,7 @@ class TestDataset(unittest.TestCase):
             rewrite=True)
         dataset.build_dataset(self.X, self.Y)
         data = dataset.to_data()
+        self.assertEqual(data.shape, (10, 10))
         dataset.destroy()
         data.destroy()
 
@@ -415,13 +402,13 @@ class TestDataset(unittest.TestCase):
     def test_text_ds(self):
         import h5py
         X = np.asarray([str(line)*10 for line in range(100)])
-        ds = Data(name="test", dtype='object')
+        ds = Data(name="test", dtype='object', dataset_path="/tmp/")
         ds.build_dataset(X)
         self.assertEqual(ds.shape[0], 100)
         ds.destroy()
 
         X = np.asarray([(str(line)*10, "1") for line in range(100)])
-        ds = Data(name="test", dtype='object')
+        ds = Data(name="test", dtype='object', dataset_path="/tmp/")
         ds.build_dataset(X)
         self.assertEqual(ds.shape, (100, 2))
         ds.destroy()
@@ -432,20 +419,11 @@ class TestDataset(unittest.TestCase):
 
         dbf = DataSetBuilderFile(name="test", 
             training_data_path=['/tmp/test_X.csv', '/tmp/test_Y.csv'], 
-                sep=[",", "|"], merge_field="id")
+                sep=[",", "|"], merge_field="id", dataset_path="/tmp/")
         dbf.build_dataset(labels_column="0_y")
         self.assertEqual(dbf.shape, self.X.shape)
         self.assertEqual(dbf.labels.shape, self.Y.shape)
         dbf.destroy()
-
-    def delete_columns(self):
-        X = np.random.rand(100, 10)
-        dsb = Data(name="test")
-        dsb.build_dataset(X)
-        ndsb = dsb.delete_columns([1,5,8])
-        print(ndsb.shape)
-        dsb.destroy()
-        ndsb.destroy()
 
 
 class TestDataSetFile(unittest.TestCase):
@@ -490,7 +468,7 @@ class TestDataSetFold(unittest.TestCase):
 
     def test_fold(self):
         n_splits = 5
-        dsbf = DataSetBuilderFold(n_splits=n_splits)
+        dsbf = DataSetBuilderFold(n_splits=n_splits, dataset_path="/tmp")
         dsbf.build_dataset(self.dataset)
         for dsb in dsbf.get_splits():
             self.assertEqual(dsb.shape[0], 10)

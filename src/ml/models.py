@@ -99,13 +99,9 @@ class DataDrive(object):
     def destroy(self):
         """remove the dataset associated to the model and his checkpoints"""
         from ml.utils.files import rm
-        #print("################", self.cls_name())
         rm(self.get_model_path()+"."+self.ext)
         rm(self.get_model_path()+".xmeta")
-        self.dataset.destroy()
-        #print("XXXXXXXXXXXXXXX")
-        #if hasattr(self, 'dl') and self.dl is not None:
-        #    self.dl.destroy()        
+        self.dataset.destroy()       
 
     @classmethod
     def cls_name(cls):

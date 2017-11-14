@@ -11,8 +11,10 @@ import logging
 
 settings = get_settings("ml")
 log = logging.getLogger(__name__)
-#log.addHandler(logging.StreamHandler())
-log.setLevel(logging.DEBUG)
+logFormatter = logging.Formatter("[%(name)s] - [%(levelname)s] %(message)s")
+handler = logging.StreamHandler()
+handler.setFormatter(logFormatter)
+log.setLevel(int(settings["loglevel"]))
 
 
 class Grid(DataDrive):
@@ -357,7 +359,8 @@ class EnsembleLayers(DataDrive):
             "dataset_name": self.dataset.name,
             "models": clf_models_namespace,
             "score": list_measure.measures_to_dict(),
-            "num_layers": len(self.layers)}
+            "num_layers": len(self.layers),
+            "group_name": self.group_name}
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
         stack = False

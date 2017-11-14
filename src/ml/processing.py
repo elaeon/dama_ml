@@ -17,13 +17,13 @@ from ml.utils.config import get_settings
 from ml.layers import IterLayer
 
 settings = get_settings("ml")
-logging.basicConfig()
-console = logging.StreamHandler()
-console.setLevel(logging.WARNING)
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-log.addHandler(console)
 
+log = logging.getLogger(__name__)
+logFormatter = logging.Formatter("[%(name)s] - [%(levelname)s] %(message)s")
+handler = logging.StreamHandler()
+handler.setFormatter(logFormatter)
+log.addHandler(handler)
+log.setLevel(int(settings["loglevel"]))
 
 if not settings["class_path"] in sys.path:
     sys.path.insert(0, settings["class_path"])
@@ -85,7 +85,6 @@ class TransformsRow(object):
             fn_name = "{}.{}".format(fn_module, fn.__name__)
             self.transforms.append((fn_name, params))
             
-
     def is_empty(self):
         """
         return True if not transforms was added.
@@ -151,12 +150,12 @@ class TransformsCol(TransformsRow):
         """
         transforms_loaded = json.loads(json_transforms)#, object_pairs_hook=OrderedDict)
         transforms = TransformsCol()
-        for fn, params in transforms_loaded:#.items():
+        for fn, params in transforms_loaded:
             transforms.add(locate(fn), **params)
         return transforms
 
     def initial_fn(self, data):
-        for fn, params in self.transforms:#.items():
+        for fn, params in self.transforms:
             fn = locate(fn)
             if "name_00_ml" in params:
                 name = params.pop("name_00_ml")
@@ -169,12 +168,8 @@ class TransformsCol(TransformsRow):
         :type data: array
         :param data: apply the transforms added to the data
         """
-        #if base_data is None:
         for fn_fit in self.initial_fn(data):
             data = np.asarray(list(fn_fit.transform(data)))
-        #else:
-        #    for fn_fit in self.initial_fn(base_data):
-        #        data = np.asarray(list(fn_fit.transform(data)))
 
         if data is None:
             raise Exception
@@ -303,6 +298,7 @@ class Transforms(object):
         else:
             transforms = self.compact()
             for t_obj in transforms:
+                log.debug("APPLY TRANSFORMS:" + str(t_obj.transforms))
                 data = t_obj.apply(data)
 
             if data is None:
@@ -319,7 +315,7 @@ class Transforms(object):
 class Fit(object):
     def __init__(self, data, name=None, path="", **kwargs):
         self.name = name if name is not None else uuid.uuid4().hex        
-        self.meta_path = path + self.module_cls_name()
+        self.meta_path = path + self.module_cls_name() + "_" + self.name
         self.t = self.fit(data, **kwargs)
 
     @classmethod
@@ -438,13 +434,12 @@ class FitReplaceNan(Fit):
                     if is_binary(column):
                         replace_value = -1
                     elif is_integer(column):
-                        replace_value = round(np.nanpercentile(column, [50]), 0)
+                        replace_value = -1
                     else:
                         replace_value = np.nanpercentile(column, [50])[0]
                     columns[i] = replace_value
             self.write_meta(columns)
 
-        #print(self.read_meta())
         def transform(n_data):
             columns = self.read_meta()
             for row in n_data:

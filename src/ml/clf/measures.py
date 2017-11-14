@@ -1,9 +1,15 @@
 import numpy as np
 import logging
 
-logging.basicConfig()
+from ml.utils.config import get_settings
+
+settings = get_settings("ml")
 log = logging.getLogger(__name__)
-#np.random.seed(133)
+logFormatter = logging.Formatter("[%(name)s] - [%(levelname)s] %(message)s")
+handler = logging.StreamHandler()
+handler.setFormatter(logFormatter)
+log.addHandler(handler)
+log.setLevel(int(settings["loglevel"]))
 
 
 def greater_is_better_fn(reverse, uncertain):

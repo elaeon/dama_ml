@@ -11,8 +11,11 @@ from ml.layers import IterLayer
 
 settings = get_settings("ml")
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-
+logFormatter = logging.Formatter("[%(name)s] - [%(levelname)s] %(message)s")
+handler = logging.StreamHandler()
+handler.setFormatter(logFormatter)
+log.addHandler(handler)
+log.setLevel(int(settings["loglevel"]))
 
 
 class BaseClassif(DataDrive):

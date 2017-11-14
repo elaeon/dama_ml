@@ -18,12 +18,12 @@ from ml.utils.config import get_settings
 
 settings = get_settings("ml")
 
-logging.basicConfig()
-console = logging.StreamHandler()
-console.setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-log.addHandler(console)
+logFormatter = logging.Formatter("[%(name)s] - [%(levelname)s] %(message)s")
+handler = logging.StreamHandler()
+handler.setFormatter(logFormatter)
+log.addHandler(handler)
+log.setLevel(int(settings["loglevel"]))
 
 
 def save_metadata(file_path, data):
@@ -200,6 +200,7 @@ class Data(ReadWriteData):
         self.chunks = chunks
         self.rewrite = rewrite
         self.apply_transforms = apply_transforms
+        self.header_map = ["author", "description", "timestamp", "transforms_str"]
 
         if dataset_path is None:
             self.dataset_path = settings["dataset_path"]
@@ -209,7 +210,7 @@ class Data(ReadWriteData):
         if transforms is None:
             transforms = Transforms()
 
-        self._attrs = ["author", "dtype", "transforms"]
+        #self._attrs = ["author", "dtype", "transforms"]
         ds_exist = self.exist()
         if not ds_exist or self.rewrite:
             if ds_exist:
@@ -224,6 +225,7 @@ class Data(ReadWriteData):
             self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
             self.dataset_class = self.module_cls_name()
             self._applied_transforms = apply_transforms
+            self.hash_header = self.calc_hash_H()
         else:
             self.mode = "r"
 
@@ -258,6 +260,10 @@ class Data(ReadWriteData):
         if self.mode == 'w':
             with h5py.File(self.url(), 'a') as f:
                 f.attrs['transforms'] = value.to_json()
+
+    @property
+    def transforms_str(self):
+        return self._get_attr('transforms')
 
     def reset_transforms(self, transforms):
         if self._applied_transforms is False:
@@ -313,6 +319,15 @@ class Data(ReadWriteData):
     def _applied_transforms(self, value):
         if self.mode == 'w':
             self._set_attr('applied_transforms', value)
+
+    @property
+    def hash_header(self):
+        return self._get_attr('hash_H')
+
+    @hash_header.setter
+    def hash_header(self, value):
+        if self.mode == 'w':
+            self._set_attr('hash_H', value)
 
     @property
     def md5(self):
@@ -388,12 +403,7 @@ class Data(ReadWriteData):
         return self.type_t(self.dtype, data)
 
     def exist(self):
-        #try:
         return self.md5 != None
-        #except IOError:
-        #    return os.path.isfile(self.url())
-        #else:
-        #    return True
 
     def info(self, classes=False):
         """
@@ -422,6 +432,15 @@ class Data(ReadWriteData):
         """
         import hashlib
         h = hashlib.md5(self.data[:])
+        return h.hexdigest()
+
+    def calc_hash_H(self):
+        """
+        hash digest for the header.
+        """
+        import hashlib
+        header = [getattr(self, attr) for attr in self.header_map]
+        h = hashlib.md5("".join(header))
         return h.hexdigest()
 
     def distinct_data(self):
@@ -760,7 +779,7 @@ class DataLabel(Data):
             description=description, author=author, compression_level=compression_level,
             chunks=chunks, rewrite=rewrite)
         
-        self._attrs.append("ltype")
+        #self._attrs.append("ltype")
         if self.mode == "w" or self.rewrite:
             self.ltype = ltype
 
@@ -1761,10 +1780,11 @@ class DataSetBuilderFold(object):
     :type n_splits: int
     :param n_plists: numbers of splits for apply to the dataset
     """
-    def __init__(self, n_splits=2):
+    def __init__(self, n_splits=2, dataset_path=None):
         self.name = uuid.uuid4().hex
         self.splits = []
         self.n_splits = n_splits
+        self.dataset_path = settings["dataset_folds_path"] if dataset_path is None else dataset_path
     
     def create_folds(self, dl):
         """
@@ -1780,7 +1800,7 @@ class DataSetBuilderFold(object):
             validation = train[:validation_index]
             train = train[validation_index:]
             dsb = DataSetBuilder(name=self.name+"_"+str(i), 
-                dataset_path=settings["dataset_folds_path"],
+                dataset_path=self.dataset_path,
                 transforms=None,
                 apply_transforms=False,
                 dtype=dl.dtype,
@@ -1814,7 +1834,7 @@ class DataSetBuilderFold(object):
         return an iterator of datasets with the splits of original data
         """
         for split in self.splits:
-            yield DataSetBuilder(name=split, dataset_path=settings["dataset_folds_path"])
+            yield DataSetBuilder(name=split, dataset_path=self.dataset_path)
 
     def destroy(self):
         for split in self.get_splits():
