@@ -1048,110 +1048,103 @@ class DataLabel(Data):
         dl.destroy()
         return data
 
-    def plot(self, view="columns", type_g=None, columns=None):        
+    def plot(self, view=None, type_g=None, columns=None):        
         import seaborn as sns
         import matplotlib.pyplot as plt
         import matplotlib.cm as cm
 
-        if view == "columns":
-            if type_g == 'box':
-                sns.set(style="whitegrid", palette="pastel", color_codes=True)
-                data = self.features2rows(labels=True)
-                sns.boxplot(x=data[:,0], y=data[:,1], hue=data[:,2], palette="PRGn")
-                sns.despine(offset=10, trim=True)
-            elif type_g == "violin":
-                sns.set(style="whitegrid", palette="pastel", color_codes=True)
-                data = self.features2rows(labels=True)
-                sns.violinplot(x=data[:,0], y=data[:,1], hue=data[:,2], palette="PRGn", inner="box")
-                sns.despine(offset=10, trim=True)
-            elif type_g == "hist" and self.num_features() <= 64:
-                size = int(round(self.num_features() ** .5))
-                f, axarr = plt.subplots(size, size, sharey=True, sharex=True)
-                base = 0
-                for i in range(size):
-                    for j in range(size):
-                        axarr[i, j].set_title('Feature {}'.format(base+1))
-                        sns.distplot(self.data[:, base:base+1], bins=50, 
-                            kde=False, rug=False, color="b", ax=axarr[i, j])
-                        base += 1
-            elif type_g == "hist_label" and self.is_binary() and self.num_features() <= 64:
-                labels_info = self.labels_info()
-                label_0 = labels_info.keys()[0]
-                label_1 = labels_info.keys()[1]
-                ds0, _ = self.only_labels_from_data(self, [label_0])
-                ds1, _ = self.only_labels_from_data(self, [label_1])
-                ds0 = np.asarray(ds0)
-                ds1 = np.asarray(ds1)
-                size = int(round(self.num_features() ** .5))
-                f, axarr = plt.subplots(size, size, sharey=True, sharex=True)
-                base = 0
-                for i in range(size):
-                    for j in range(size):
-                        axarr[i, j].set_title('Feature {}'.format(base+1))
-                        sns.distplot(ds0[:, base:base+1], bins=50, 
-                            kde=False, rug=False, color="b", ax=axarr[i, j])
-                        sns.distplot(ds1[:, base:base+1], bins=50, 
-                            kde=False, rug=False, color="r", ax=axarr[i, j])
-                        base += 1
-            elif type_g == "corr":
-                df = self.to_df()
-                df = df.iloc[:, 0:self.num_features()].astype(np.float64) 
-                corr = df.corr()
-                mask = np.zeros_like(corr, dtype=np.bool)
-                mask[np.triu_indices_from(mask)] = True
-                cmap = sns.diverging_palette(220, 10, as_cmap=True)
-                sns.heatmap(corr, mask=mask, cmap=cmap, vmax=.3,
-                    square=True, xticklabels=5, yticklabels=5,
-                    linewidths=.5, cbar_kws={"shrink": .5})
+        if type_g == 'box':
+            sns.set(style="whitegrid", palette="pastel", color_codes=True)
+            col = int(view)
+            sns.boxplot(x=self.labels, y=self.data[:,col], palette="PRGn")
+            #sns.despine(offset=10, trim=True)
+        elif type_g == "violin":
+            sns.set(style="whitegrid", palette="pastel", color_codes=True)
+            col = int(view)
+            sns.violinplot(x=self.labels, y=self.data[:,col], palette="PRGn", inner="box")
+            #sns.despine(offset=10, trim=True)
+        elif type_g == "hist" and self.num_features() <= 64:
+            #size = int(round(self.num_features() ** .5))
+            #f, axarr = plt.subplots(size, size, sharey=True, sharex=True)
+            #base = 0
+            #for i in range(size):
+            #    for j in range(size):
+            #        axarr[i, j].set_title('Feature {}'.format(base+1))
+            col = int(view)
+            sns.distplot(self.data[:, col], bins=50, 
+                kde=False, rug=False, color="b")#, ax=axarr[i, j])
+        elif type_g == "hist_label" and self.is_binary() and self.num_features() <= 64:
+            labels_info = self.labels_info()
+            label_0 = labels_info.keys()[0]
+            label_1 = labels_info.keys()[1]
+            ds0, _ = self.only_labels_from_data(self, [label_0])
+            ds1, _ = self.only_labels_from_data(self, [label_1])
+            ds0 = np.asarray(ds0)
+            ds1 = np.asarray(ds1)
+            size = int(round(self.num_features() ** .5))
+            f, axarr = plt.subplots(size, size, sharey=True, sharex=True)
+            base = 0
+            for i in range(size):
+                for j in range(size):
+                    axarr[i, j].set_title('Feature {}'.format(base+1))
+                    sns.distplot(ds0[:, base:base+1], bins=50, 
+                        kde=False, rug=False, color="b", ax=axarr[i, j])
+                    sns.distplot(ds1[:, base:base+1], bins=50, 
+                        kde=False, rug=False, color="r", ax=axarr[i, j])
+                    base += 1
+        elif type_g == "corr":
+            df = self.to_df()
+            df = df.iloc[:, :self.num_features()].astype(np.float64) 
+            corr = df.corr()
+            mask = np.zeros_like(corr, dtype=np.bool)
+            mask[np.triu_indices_from(mask)] = True
+            cmap = sns.diverging_palette(220, 10, as_cmap=True)
+            sns.heatmap(corr, mask=mask, cmap=cmap, vmax=.3,
+                square=True, xticklabels=5, yticklabels=5,
+                linewidths=.5, cbar_kws={"shrink": .5})
         else:
-            if columns is not None:
-                columns = columns.split(",")
-                if type_g == "lm":
-                    df = self.to_df(labels2numbers=True)
-                    sns.lmplot(x=columns[0], y=columns[1], data=df, col="target", hue="target")
+            if self.shape[1] > 2:
+                from ml.ae.extended.w_keras import PTsne
+                dl = DataLabel(name=self.name+"_2d_", 
+                        dataset_path=self.dataset_path,
+                        transforms=None,
+                        apply_transforms=False,
+                        dtype=self.dtype,
+                        ltype=self.ltype,
+                        compression_level=9,
+                        rewrite=False)
+
+                if not dl.exist():
+                    ds = self.to_data()
+                    classif = PTsne(model_name="tsne", model_version="1", 
+                        check_point_path="/tmp/", dataset=ds, latent_dim=2)
+                    classif.train(batch_size=50, num_steps=120)
+                    data = np.asarray(list(classif.predict(self.data)))
+                    dl.build_dataset(data, self.labels[:])
+                    ds.destroy()
             else:
-                if self.shape[1] > 2:
-                    from ml.ae.extended.w_keras import PTsne
-                    dl = DataLabel(name=self.name+"_2d_", 
-                            dataset_path=self.dataset_path,
-                            transforms=None,
-                            apply_transforms=False,
-                            dtype=self.dtype,
-                            ltype=self.ltype,
-                            compression_level=9,
-                            rewrite=False)
+                dl = self
 
-                    if not dl.exist():
-                        ds = self.to_data()
-                        classif = PTsne(model_name="tsne", model_version="1", 
-                            check_point_path="/tmp/", dataset=ds, latent_dim=2)
-                        classif.train(batch_size=50, num_steps=100)
-                        data = np.asarray(list(classif.predict(self.data)))
-                        dl.build_dataset(data, self.labels[:])
-                        ds.destroy()
-                else:
-                    dl = self
-
-                if dl.shape[1] == 2:
-                    if type_g == "lm":
-                        df = dl.to_df(labels2numbers=True)
-                        sns.lmplot(x="c0", y="c1", data=df, hue="target")
-                    elif type_g == "scatter":
-                        df = dl.to_df()
-                        legends = []
-                        labels = self.labels_info()
-                        colors = cm.rainbow(np.linspace(0, 1, len(labels)))
-                        for color, label in zip(colors, labels):
-                            df_tmp = df[df["target"] == label]
-                            legends.append((plt.scatter(df_tmp["c0"].astype("float64"), 
-                                df_tmp["c1"].astype("float64"), color=color), label))
-                        p, l = zip(*legends)
-                        plt.legend(p, l, loc='lower left', ncol=3, fontsize=8, 
-                            scatterpoints=1, bbox_to_anchor=(0,0))
-                    elif type_g == "pairplot":
-                        df = dl.to_df(labels2numbers=True)
-                        sns.pairplot(df.astype("float64"), hue='target', 
-                            vars=df.columns[:-1], diag_kind="kde", palette="husl")
+            if dl.shape[1] == 2:
+                if type_g == "lm":
+                    df = dl.to_df(labels2numbers=True)
+                    sns.lmplot(x="c0", y="c1", data=df, hue="target")
+                elif type_g == "scatter":
+                    df = dl.to_df()
+                    legends = []
+                    labels = self.labels_info()
+                    colors = cm.rainbow(np.linspace(0, 1, len(labels)))
+                    for color, label in zip(colors, labels):
+                        df_tmp = df[df["target"] == label]
+                        legends.append((plt.scatter(df_tmp["c0"].astype("float64"), 
+                            df_tmp["c1"].astype("float64"), color=color), label))
+                    p, l = zip(*legends)
+                    plt.legend(p, l, loc='lower left', ncol=3, fontsize=8, 
+                        scatterpoints=1, bbox_to_anchor=(0,0))
+                elif type_g == "pairplot":
+                    df = dl.to_df(labels2numbers=True)
+                    sns.pairplot(df.astype("float64"), hue='target', 
+                        vars=df.columns[:-1], diag_kind="kde", palette="husl")
         plt.show()
 
     def labels2num(self):

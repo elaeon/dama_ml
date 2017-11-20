@@ -101,16 +101,16 @@ def is_integer(array):
         return all(np.equal(np.mod(array, 1), 0))
 
 
-def is_integer_if(array, min_size=4):
-    return is_integer(array) and np.unique(array).size >= min_size
+def is_integer_if(array, card_size=4):
+    return is_integer(array) and np.unique(array).size >= card_size
 
 
-def index_if_type_row(array, fn):
-    return [i for i, row in enumerate(array) if fn(row)]
+def index_if_type_row(array, fn, **params):
+    return [i for i, row in enumerate(array) if fn(row, **params)]
 
 
-def index_if_type_col(array, fn):
-    return [i for i, col in enumerate(array.T) if fn(col)]
+def index_if_type_col(array, fn, **params):
+    return [i for i, col in enumerate(array.T) if fn(col, **params)]
 
 
 def gini(actual, pred):

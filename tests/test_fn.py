@@ -64,10 +64,10 @@ class TestNumericFn(unittest.TestCase):
     def test_categorical_if(self):
         from ml.utils.numeric_functions import is_integer_if
         binary = np.asarray([0,0,0,1,1,1,0,1])
-        self.assertEqual(is_integer_if(binary, min_size=2), True)
-        self.assertEqual(is_integer_if(binary, min_size=3), False)
+        self.assertEqual(is_integer_if(binary, card_size=2), True)
+        self.assertEqual(is_integer_if(binary, card_size=3), False)
         binary = np.asarray([0,0,0,1,np.nan,1,0,1])
-        self.assertEqual(is_integer_if(binary, min_size=3), True)
+        self.assertEqual(is_integer_if(binary, card_size=3), True)
 
     def test_index_if_type(self):
         from ml.utils.numeric_functions import index_if_type_row, index_if_type_col
@@ -79,9 +79,10 @@ class TestNumericFn(unittest.TestCase):
             [1, 1, 1, 1, 1, 0],
             [1, 1, 5, 7, 8, 10],
             [0, 0,.3,.1, 0, 1],
-            [0, 1, 0, 0, 1, 1]
+            [0, 1, np.nan, 0, 1, 1]
         ])
         self.assertEqual(index_if_type_row(array, is_binary), [1, 2, 5])
+        self.assertEqual(index_if_type_row(array, is_binary, include_null=False), [1, 2])
         self.assertEqual(index_if_type_row(array, is_integer), [0, 1, 2, 3, 5])
         self.assertEqual(index_if_type_col(array, is_binary), [0, 1])
         self.assertEqual(index_if_type_col(array, is_integer), [0, 1, 4, 5])
