@@ -446,6 +446,13 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(dsb.author, "AGMR")
         dsb.destroy()
 
+    def test_fmtypes(self):
+        data = Data(name="test", dataset_path="/tmp/")
+        data.build_dataset(self.X)
+        data.build_fmtypes()
+        self.assertEqual(data.fmtypes.shape[0], self.X.shape[1])
+        data.destroy()
+
 
 class TestDataSetFile(unittest.TestCase):
     def setUp(self):

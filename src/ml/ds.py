@@ -81,6 +81,22 @@ class ReadWriteData(object):
         key = '/data/' + name
         return self.f[key]
 
+    def _set_space_fmtypes(self, f, data):
+        f['pp'].require_dataset("fmtypes", data.shape, dtype=np.dtype(int), data=data, 
+            exact=True, chunks=True, **self.zip_params)
+
+    def _set_pp(self, f, name, data):
+        """ set the preprocesed meta data"""
+        key = '/pp/' + name
+        f[key] = data
+
+    def _get_pp(self, name):
+        """ get the preprocesed meta data"""
+        if not hasattr(self, 'f'):
+            self.f = h5py.File(self.url(), 'r')
+        key = '/pp/' + name
+        return self.f[key]
+
     def _set_attr(self, name, value):
         if self.mode == 'w':
             while True:
@@ -321,6 +337,30 @@ class Data(ReadWriteData):
     def md5(self, value):
         self._set_attr('md5', value)
                 
+    @property
+    def fmtypes(self):
+        return self._get_pp("fmtypes")
+
+    @fmtypes.setter
+    def fmtypes(self, value):
+        self.close_reader()
+        with h5py.File(self.url(), 'a') as f:
+            f.require_group("pp")
+            self._set_space_fmtypes(f, value)
+
+    def build_fmtypes(self):
+        from ml.utils.numeric_functions import unique_size, data_type
+        fmtypes = np.empty((self.num_features()), dtype=np.dtype(int))
+        for ci in range(self.num_features()):
+            feature = self.data[:, ci]
+            usize = unique_size(feature)
+            data_t = data_type(usize, feature.size, index=True)
+            fmtypes[ci] = data_t
+        self.fmtypes = fmtypes
+
+    def feature_fmtype(self, fmtype):
+        pass
+
     @classmethod
     def module_cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
@@ -692,24 +732,6 @@ class Data(ReadWriteData):
         dl.destroy()
         return dl_ol
 
-    def features2rows(self):
-        """
-        :type labels: bool
-
-        transforms a matrix of dim (n, m) to a matrix of dim (n*m, 2) where
-        the rows are described as [feature_column, feature_data]
-        """
-        data = np.empty((self.data.shape[0] * self.data.shape[1], 3))
-        base = 0
-        for index_column in range(1, self.data.shape[1] + 1):
-            next = self.data.shape[0] + base
-            data[base:next] = np.append(
-                np.zeros((self.data.shape[0], 1)) + (index_column - 1), 
-                self.data[:, index_column-1:index_column], 
-                axis=1)
-            base = next
-        return data
-
 
 class DataLabel(Data):
     """
@@ -786,9 +808,7 @@ class DataLabel(Data):
         """
         return a counter of labels
         """
-        from collections import Counter
-        counter = Counter(self.labels)
-        return counter
+        return dict(zip(*np.unique(self.labels, return_counts=True)))
 
     def only_labels(self, labels):
         """
@@ -998,30 +1018,6 @@ class DataLabel(Data):
         dl.destroy()
         return dl_ol
 
-    def features2rows(self, labels=False):
-        """
-        :type labels: bool
-        :param labels: if true, labels are included
-
-        transforms a matrix of dim (n, m) to a matrix of dim (n*m, 2) or (n*m, 3) where
-        the rows are described as [feature_column, feature_data]
-        """
-        if labels == False:
-            data = super(DataLabel, self).features2rows()
-        else:
-            data = np.empty((self.data.shape[0] * self.data.shape[1], 3))
-            labels = self.labels[:].reshape(1, -1)
-            base = 0
-            for index_column in range(1, self.data.shape[1] + 1):
-                tmp_data = np.append(
-                    np.zeros((self.data.shape[0], 1)) + (index_column - 1), 
-                    self.data[:, index_column-1:index_column], 
-                    axis=1)
-                next = self.data.shape[0] + base
-                data[base:next] = np.append(tmp_data, labels.T, axis=1)
-                base = next
-        return data
-
     def to_data(self):
         dl = self.desfragment()
         name = self.name + "_data_" + uuid.uuid4().hex
@@ -1156,7 +1152,7 @@ class DataLabel(Data):
         from ml.utils.numeric_functions import missing, zeros
 
         headers = ["feature", "label", "missing", "mean", "std dev", "zeros", 
-            "min", "25%", "50%", "75%", "max", "type", "cardinal"]
+            "min", "25%", "50%", "75%", "max", "type", "unique"]
         table = []
         li = self.labels_info()
         feature_column = defaultdict(dict)

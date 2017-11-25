@@ -87,6 +87,34 @@ class TestNumericFn(unittest.TestCase):
         self.assertEqual(index_if_type_col(array, is_binary), [0, 1])
         self.assertEqual(index_if_type_col(array, is_integer), [0, 1, 4, 5])
 
+    def test_features2rows(self):
+        from ml.utils.numeric_functions import features2rows
+        data = np.asarray([['a', 'b'], ['c', 'd'], ['e', 'f']])
+        f2r = features2rows(data)
+        self.assertItemsEqual(f2r[0], ['0', 'a'])
+        self.assertItemsEqual(f2r[1], ['0', 'c']) 
+        self.assertItemsEqual(f2r[2], ['0', 'e']) 
+        self.assertItemsEqual(f2r[3], ['1', 'b']) 
+        self.assertItemsEqual(f2r[4], ['1', 'd']) 
+        self.assertItemsEqual(f2r[5], ['1', 'f'])
+
+    def test_data_type(self):
+        from ml.utils.numeric_functions import data_type, unique_size
+
+        array = np.asarray([
+            [0, 1, 2, 0, 4, 5],
+            [1, 0, 0, 1, 1, 0],
+            [1, 1, 1, 1, 1, 0],
+            [1, 1, 5, 7, 8, 10],
+            [0, 0,.3,.1, 0, 1],
+            [0, -1, np.nan, 0, 1, 1]
+        ])
+
+        d_type = []
+        for column in array.T:
+            d_type.append(data_type(unique_size(column), column.size, index=False))
+        self.assertEqual(d_type, ['boolean', 'nan boolean', 'ordinal', 'ordinal', 'ordinal', 'ordinal'])
+
 
 if __name__ == '__main__':
     unittest.main()

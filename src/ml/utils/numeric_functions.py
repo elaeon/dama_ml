@@ -119,24 +119,42 @@ def unique_size(array):
     return np.unique(array).size
 
 
-def data_type(size, total_size):
+def data_type(usize, total_size, index=False):
     types = {
-        "bin": "boolean",
-        "nbn": "nan boolean",
-        "ord": "ordinal",
-        "car": "cardinal",
-        "den": "dense"
+        0: "boolean",
+        1: "nan boolean",
+        2: "ordinal",
+        3: "cardinal",
+        4: "dense"
     }
     critery = [
-        ("bin", size == 2),
-        ("nbn", size == 3),
-        ("ord", size > 3 and total_size*.0001 > size),
-        ("den", True)
+        (0, usize == 2),
+        (1, usize == 3),
+        (2, usize > 3 and total_size*.0001 > usize or total_size <= 1000),
+        (4, True)
     ]
 
     for name, value in critery:
         if value is True:
-            return types[name]
+            return types[name] if index is False else name
+
+
+def features2rows(data):
+    """
+    :type labels: bool
+
+    transforms a matrix of dim (n, m) to a matrix of dim (n*m, 2) where
+    each row has the form [feature_column, feature_data]
+    e.g
+    [['a', 'b'], ['c', 'd'], ['e', 'f']] => [[0, 'a'], [0, 'c'], [0, 'e'], [1, 'b'], [1, 'd'], [1, 'f']]
+    """
+    ndata = np.empty((data.shape[0] * data.shape[1], 2), dtype=data.dtype)
+    index = 0
+    for ci, column in enumerate(data.T):
+        for value in column:
+            ndata[index] = np.asarray([ci, value])
+            index += 1 
+    return ndata
 
 
 def gini(actual, pred):
