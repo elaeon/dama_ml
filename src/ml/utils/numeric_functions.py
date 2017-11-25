@@ -153,3 +153,11 @@ def gini_normalized(a, p):
     if p.ndim == 2:
         p = p[:,1] #just pick class 1 if is a binary array
     return gini(a, p) / gini(a, a)
+
+
+def missing(column):
+    return (np.count_nonzero(np.isnan(column)) / float(column.size)) * 100
+
+
+def zeros(column):
+    return ((column.size - np.count_nonzero(column)) / float(column.size)) * 100

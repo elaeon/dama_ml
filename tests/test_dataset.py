@@ -159,7 +159,6 @@ class TestDataset(unittest.TestCase):
         dataset.build_dataset(self.X, self.Y)
         dsb = dataset.convert("convert_test", dtype='float32', ltype='|S1', 
                             dataset_path="/tmp/")
-        #apply_transforms=False, percentaje=1, applied_transforms=False):
         self.assertEqual(dsb.train_data.dtype, np.dtype('float32'))
         self.assertEqual(dsb.train_labels.dtype, np.dtype('|S1'))
         dsb.destroy()
@@ -272,9 +271,10 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(dsb.dataset_class, 'ml.ds.DataSetBuilder')
         self.assertEqual(type(dsb.timestamp), type(''))
         self.assertEqual(dsb.apply_transforms, False)
+        self.assertEqual(dsb.hash_header is not None, True)
 
         dsb.build_dataset(self.X, self.Y)
-        self.assertEqual(type(dsb.md5), type(''))
+        self.assertEqual(dsb.md5 is not None, True)
         dsb.destroy()
 
     def test_to_libsvm(self):
@@ -424,6 +424,27 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(dbf.shape, self.X.shape)
         self.assertEqual(dbf.labels.shape, self.Y.shape)
         dbf.destroy()
+
+    def test_no_rewrite(self):
+        dsb = DataLabel(
+            name="test_ds_1",
+            dataset_path="/tmp/",
+            author="AGMR",
+            description="description text",
+            ltype='int',
+            rewrite=True)
+        dsb.md5 = ""
+        dsb = DataLabel(
+            name="test_ds_1",
+            dataset_path="/tmp/",
+            author="0000",
+            description="1111",
+            ltype='int',
+            rewrite=False)
+        self.assertEqual(dsb.author, "AGMR")
+        dsb.author = "000"
+        self.assertEqual(dsb.author, "AGMR")
+        dsb.destroy()
 
 
 class TestDataSetFile(unittest.TestCase):

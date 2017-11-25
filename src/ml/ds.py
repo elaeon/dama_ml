@@ -82,14 +82,15 @@ class ReadWriteData(object):
         return self.f[key]
 
     def _set_attr(self, name, value):
-        while True:
-            try:
-                with h5py.File(self.url(), 'r+') as f:
-                    f.attrs[name] = value
-                break
-            except IOError:
-                self.f.close()
-                del self.f
+        if self.mode == 'w':
+            while True:
+                try:
+                    with h5py.File(self.url(), 'a') as f:
+                        f.attrs[name] = value
+                    break
+                except IOError:
+                    self.f.close()
+                    del self.f
             
     def _get_attr(self, name):
         try:
@@ -210,7 +211,6 @@ class Data(ReadWriteData):
         if transforms is None:
             transforms = Transforms()
 
-        #self._attrs = ["author", "dtype", "transforms"]
         ds_exist = self.exist()
         if not ds_exist or self.rewrite:
             if ds_exist:
@@ -237,9 +237,7 @@ class Data(ReadWriteData):
 
     @author.setter
     def author(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['author'] = value
+        self._set_attr('author', value)
 
     @property
     def dtype(self):
@@ -247,9 +245,7 @@ class Data(ReadWriteData):
 
     @dtype.setter
     def dtype(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['dtype'] = value
+        self._set_attr('dtype', value)
 
     @property
     def transforms(self):
@@ -257,9 +253,7 @@ class Data(ReadWriteData):
 
     @transforms.setter
     def transforms(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['transforms'] = value.to_json()
+        self._set_attr('transforms', value.to_json())
 
     @property
     def transforms_str(self):
@@ -277,9 +271,7 @@ class Data(ReadWriteData):
 
     @description.setter
     def description(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['description'] = value
+        self._set_attr('description', value)
 
     @property
     def timestamp(self):
@@ -287,9 +279,7 @@ class Data(ReadWriteData):
 
     @timestamp.setter
     def timestamp(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['timestamp'] = value
+        self._set_attr('timestamp', value)
 
     @property
     def compression_level(self):
@@ -297,9 +287,7 @@ class Data(ReadWriteData):
 
     @compression_level.setter
     def compression_level(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['compression_level'] = value
+        self._set_attr('compression_level', value)
 
     @property
     def dataset_class(self):
@@ -307,9 +295,7 @@ class Data(ReadWriteData):
 
     @dataset_class.setter
     def dataset_class(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['dataset_class'] = value
+        self._set_attr('dataset_class', value)
 
     @property
     def _applied_transforms(self):
@@ -317,8 +303,7 @@ class Data(ReadWriteData):
 
     @_applied_transforms.setter
     def _applied_transforms(self, value):
-        if self.mode == 'w':
-            self._set_attr('applied_transforms', value)
+        self._set_attr('applied_transforms', value)
 
     @property
     def hash_header(self):
@@ -326,8 +311,7 @@ class Data(ReadWriteData):
 
     @hash_header.setter
     def hash_header(self, value):
-        if self.mode == 'w':
-            self._set_attr('hash_H', value)
+        self._set_attr('hash_H', value)
 
     @property
     def md5(self):
@@ -335,8 +319,7 @@ class Data(ReadWriteData):
 
     @md5.setter
     def md5(self, value):
-        if self.mode == 'w':
-            self._set_attr('md5', value)
+        self._set_attr('md5', value)
                 
     @classmethod
     def module_cls_name(cls):
@@ -418,7 +401,8 @@ class Data(ReadWriteData):
         print('Author: {}'.format(self.author))
         print('Transforms: {}'.format(self.transforms.to_json()))
         print('Applied transforms: {}'.format(self._applied_transforms))
-        print('MD5: {}'.format(self.md5))
+        print('Header Hash: {}'.format(self.hash_header))
+        print('Body Hash: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
         print('       ')
         headers = ["Dataset", "Shape", "dType"]
@@ -789,9 +773,7 @@ class DataLabel(Data):
 
     @ltype.setter
     def ltype(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['ltype'] = value
+        self._set_attr('ltype', value)
 
     @property
     def labels(self):
@@ -864,7 +846,8 @@ class DataLabel(Data):
         print('Author: {}'.format(self.author))
         print('Transforms: {}'.format(self.transforms.to_json()))
         print('Applied transforms: {}'.format(self._applied_transforms))
-        print('MD5: {}'.format(self.md5))
+        print('Header Hash: {}'.format(self.hash_header))
+        print('Body Hash: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
         print('       ')
         headers = ["Dataset", "Shape", "dType", "Labels"]
@@ -1170,6 +1153,7 @@ class DataLabel(Data):
         from tabulate import tabulate
         from collections import defaultdict
         from ml.utils.numeric_functions import unique_size, data_type
+        from ml.utils.numeric_functions import missing, zeros
 
         headers = ["feature", "label", "missing", "mean", "std dev", "zeros", 
             "min", "25%", "50%", "75%", "max", "type", "cardinal"]
@@ -1182,11 +1166,10 @@ class DataLabel(Data):
             for i, column in enumerate(data.T):
                 percentile = np.nanpercentile(column, [0, 25, 50, 75, 100])
                 values = [
-                    "{0:.{1}f}%".format((np.count_nonzero(np.isnan(column)) / float(column.size)) * 100, 2),
+                    "{0:.{1}f}%".format(missing(column), 2),
                     np.mean(column),  
                     np.std(column),
-                    "{0:.{1}f}%".format((
-                    (column.size - np.count_nonzero(column)) / float(column.size)) * 100, 2),
+                    "{0:.{1}f}%".format(zeros(column), 2),
                     ]
                 values.extend(percentile)
                 feature_column[i][label] = values
@@ -1284,9 +1267,7 @@ class DataSetBuilder(DataLabel):
 
     @valid_size.setter
     def valid_size(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['valid_size'] = value
+        self._set_attr('valid_size', value)
 
     @property
     def train_size(self):
@@ -1294,9 +1275,7 @@ class DataSetBuilder(DataLabel):
 
     @train_size.setter
     def train_size(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['train_size'] = value
+        self._set_attr('train_size', value)
 
     @property
     def validator(self):
@@ -1304,9 +1283,7 @@ class DataSetBuilder(DataLabel):
 
     @validator.setter
     def validator(self, value):
-        if self.mode == 'w':
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs['validator'] = value
+        self._set_attr('validator', value)
 
     @property
     def train_data(self):
@@ -1401,7 +1378,8 @@ class DataSetBuilder(DataLabel):
         print('Author: {}'.format(self.author))
         print('Transforms: {}'.format(self.transforms.to_json()))
         print('Applied transforms: {}'.format(self._applied_transforms))
-        print('MD5: {}'.format(self.md5))
+        print('Header Hash: {}'.format(self.hash_header))
+        print('Body Hash: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
         print('       ')
         try:
