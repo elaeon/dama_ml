@@ -1169,10 +1169,10 @@ class DataLabel(Data):
     def stadistics(self):
         from tabulate import tabulate
         from collections import defaultdict
-        from ml.utils.numeric_functions import is_binary, is_integer
+        from ml.utils.numeric_functions import unique_size, data_type
 
         headers = ["feature", "label", "missing", "mean", "std dev", "zeros", 
-            "min", "25%", "50%", "75%", "max", "type"]
+            "min", "25%", "50%", "75%", "max", "type", "cardinal"]
         table = []
         li = self.labels_info()
         feature_column = defaultdict(dict)
@@ -1189,18 +1189,18 @@ class DataLabel(Data):
                     (column.size - np.count_nonzero(column)) / float(column.size)) * 100, 2),
                     ]
                 values.extend(percentile)
-                if is_binary(column, include_null=True):
-                    values.append("binary")
-                elif is_integer(column):
-                    values.append("integer")
-                else:
-                    values.append("continuos")
                 feature_column[i][label] = values
 
+        data = self.data
         for feature, rows in feature_column.items():
+            column = data[:, feature]
+            usize = unique_size(column)
+            data_t = data_type(usize, column.size)
             for label, row in rows.items():
-                table.append([feature, label] + row)
-                feature = ""
+                table.append([feature, label] + row + [data_t, str(usize)])
+                feature = "-"
+                data_t = "-"
+                usize = "-"
         return tabulate(table, headers)
 
 

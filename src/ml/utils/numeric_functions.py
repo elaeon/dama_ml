@@ -113,6 +113,32 @@ def index_if_type_col(array, fn, **params):
     return [i for i, col in enumerate(array.T) if fn(col, **params)]
 
 
+def unique_size(array):
+    mask = np.isnan(array)
+    array[mask] = -1
+    return np.unique(array).size
+
+
+def data_type(size, total_size):
+    types = {
+        "bin": "boolean",
+        "nbn": "nan boolean",
+        "ord": "ordinal",
+        "car": "cardinal",
+        "den": "dense"
+    }
+    critery = [
+        ("bin", size == 2),
+        ("nbn", size == 3),
+        ("ord", size > 3 and total_size*.0001 > size),
+        ("den", True)
+    ]
+
+    for name, value in critery:
+        if value is True:
+            return types[name]
+
+
 def gini(actual, pred):
     assert(len(actual) == len(pred))
     actual = np.asarray(actual, dtype=np.float)
