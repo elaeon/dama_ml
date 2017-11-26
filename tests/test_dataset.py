@@ -453,6 +453,22 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(data.fmtypes.shape[0], self.X.shape[1])
         data.destroy()
 
+    def test_feature_fmtype(self):
+        data = Data(name="test", dataset_path="/tmp/")
+        array = [
+            [0, 1, -1, 3, 4, 0],
+            [1, -1, 0, 2 ,5, 1],
+            [0, 0, 1, 2, 2, 1],
+            [0, 1, 1, 3, 6, 0],
+            [1, 1, 0, 7, 7, 1]
+        ]
+        data.build_dataset(array)
+        data.build_fmtypes()
+        self.assertEqual(data.feature_fmtype(0), [0, 5])
+        self.assertEqual(data.feature_fmtype(1), [1, 2, 3])
+        self.assertEqual(data.feature_fmtype(2), [4])
+        data.destroy()
+
 
 class TestDataSetFile(unittest.TestCase):
     def setUp(self):

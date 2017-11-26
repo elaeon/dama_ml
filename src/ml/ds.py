@@ -359,7 +359,11 @@ class Data(ReadWriteData):
         self.fmtypes = fmtypes
 
     def feature_fmtype(self, fmtype):
-        pass
+        from collections import defaultdict
+        map_col = defaultdict(list)
+        for ci, c_fmtype in enumerate(self.fmtypes[:]):
+            map_col[c_fmtype].append(ci)
+        return map_col[fmtype]
 
     @classmethod
     def module_cls_name(cls):
