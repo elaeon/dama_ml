@@ -354,8 +354,8 @@ class Data(ReadWriteData):
         for ci in range(self.num_features()):
             feature = self.data[:, ci]
             usize = unique_size(feature)
-            data_t = data_type(usize, feature.size, index=True)
-            fmtypes[ci] = data_t
+            data_t = data_type(usize, feature.size)
+            fmtypes[ci] = data_t.id
         self.fmtypes = fmtypes
 
     def feature_fmtype(self, fmtype):
@@ -363,7 +363,7 @@ class Data(ReadWriteData):
         map_col = defaultdict(list)
         for ci, c_fmtype in enumerate(self.fmtypes[:]):
             map_col[c_fmtype].append(ci)
-        return map_col[fmtype]
+        return map_col[fmtype.id]
 
     @classmethod
     def module_cls_name(cls):

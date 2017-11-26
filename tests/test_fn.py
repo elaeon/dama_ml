@@ -112,7 +112,7 @@ class TestNumericFn(unittest.TestCase):
 
         d_type = []
         for column in array.T:
-            d_type.append(data_type(unique_size(column), column.size, index=False))
+            d_type.append(data_type(unique_size(column), column.size).name)
         self.assertEqual(d_type, ['boolean', 'nan boolean', 'ordinal', 'ordinal', 'ordinal', 'ordinal'])
 
 

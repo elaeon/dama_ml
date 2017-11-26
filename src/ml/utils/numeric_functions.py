@@ -119,24 +119,19 @@ def unique_size(array):
     return np.unique(array).size
 
 
-def data_type(usize, total_size, index=False):
-    types = {
-        0: "boolean",
-        1: "nan boolean",
-        2: "ordinal",
-        3: "cardinal",
-        4: "dense"
-    }
+def data_type(usize, total_size):
+    from ml import fmtypes
+    
     critery = [
-        (0, usize == 2),
-        (1, usize == 3),
-        (2, usize > 3 and total_size*.0001 > usize or total_size <= 1000),
-        (4, True)
+        (fmtypes.BOOLEAN, usize == 2),
+        (fmtypes.NANBOOLEAN, usize == 3),
+        (fmtypes.ORDINAL, usize > 3 and total_size*.0001 > usize or total_size <= 1000),
+        (fmtypes.CARDINAL, True)
     ]
 
-    for name, value in critery:
+    for fmtype, value in critery:
         if value is True:
-            return types[name] if index is False else name
+            return fmtype
 
 
 def features2rows(data):

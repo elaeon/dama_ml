@@ -454,6 +454,7 @@ class TestDataset(unittest.TestCase):
         data.destroy()
 
     def test_feature_fmtype(self):
+        from ml import fmtypes
         data = Data(name="test", dataset_path="/tmp/")
         array = [
             [0, 1, -1, 3, 4, 0],
@@ -464,9 +465,9 @@ class TestDataset(unittest.TestCase):
         ]
         data.build_dataset(array)
         data.build_fmtypes()
-        self.assertEqual(data.feature_fmtype(0), [0, 5])
-        self.assertEqual(data.feature_fmtype(1), [1, 2, 3])
-        self.assertEqual(data.feature_fmtype(2), [4])
+        self.assertEqual(data.feature_fmtype(fmtypes.BOOLEAN), [0, 5])
+        self.assertEqual(data.feature_fmtype(fmtypes.NANBOOLEAN), [1, 2, 3])
+        self.assertEqual(data.feature_fmtype(fmtypes.ORDINAL), [4])
         data.destroy()
 
 
