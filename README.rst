@@ -1,5 +1,5 @@
-
 .. image:: https://travis-ci.org/elaeon/ML.svg?branch=master
+    :target: https://travis-ci.org/elaeon/ML
 
 Welcome to mlPyp's documentation!
 =====================================
@@ -21,7 +21,7 @@ For more detail read the docs_.
 
 .. _docs: https://elaeon.github.io/ML/
 
-Instalation
+Installation
 =====================
 
 .. code-block:: bash
