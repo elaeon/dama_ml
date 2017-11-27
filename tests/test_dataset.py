@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import csv
 
-from ml.ds import DataSetBuilder, DataSetBuilderFile, DataSetBuilderFold, DataLabel
+from ml.ds import DataSetBuilder, DataLabelSetFile, DataSetBuilderFold, DataLabel
 from ml.ds import Data
 from ml.processing import Transforms
 
@@ -417,7 +417,7 @@ class TestDataset(unittest.TestCase):
         build_csv_file('/tmp/test_X.csv', self.X, sep=",")
         build_csv_file('/tmp/test_Y.csv', self.Y.reshape(-1, 1), sep="|")
 
-        dbf = DataSetBuilderFile(name="test", 
+        dbf = DataLabelSetFile(name="test", 
             training_data_path=['/tmp/test_X.csv', '/tmp/test_Y.csv'], 
                 sep=[",", "|"], merge_field="id", dataset_path="/tmp/")
         dbf.build_dataset(labels_column="0_y")
@@ -453,7 +453,7 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(data.fmtypes.shape[0], self.X.shape[1])
         data.destroy()
 
-    def test_feature_fmtype(self):
+    def test_features_fmtype(self):
         from ml import fmtypes
         data = Data(name="test", dataset_path="/tmp/")
         array = [
@@ -465,12 +465,12 @@ class TestDataset(unittest.TestCase):
         ]
         data.build_dataset(array)
         data.build_fmtypes()
-        self.assertEqual(data.feature_fmtype(fmtypes.BOOLEAN), [0, 5])
-        self.assertEqual(data.feature_fmtype(fmtypes.NANBOOLEAN), [1, 2, 3])
-        self.assertEqual(data.feature_fmtype(fmtypes.ORDINAL), [4])
+        self.assertEqual(data.features_fmtype(fmtypes.BOOLEAN), [0, 5])
+        self.assertEqual(data.features_fmtype(fmtypes.NANBOOLEAN), [1, 2, 3])
+        self.assertEqual(data.features_fmtype(fmtypes.ORDINAL), [4])
         data.destroy()
 
-    def test_feature_fmtype_edit(self):
+    def test_features_fmtype_edit(self):
         from ml import fmtypes
         data = Data(name="test", dataset_path="/tmp/")
         array = [
@@ -501,10 +501,9 @@ class TestDataSetFile(unittest.TestCase):
                 csv_writer.writerow(row)
 
     def test_load(self):
-        dataset = DataSetBuilderFile(
+        dataset = DataLabelSetFile(
             name="test",
-            dataset_path="/tmp/",
-            validator="cross")
+            dataset_path="/tmp/")
         data, labels = dataset.from_csv('/tmp/test.csv', 'target')
         self.assertItemsEqual(self.Y, labels.astype(int))
 

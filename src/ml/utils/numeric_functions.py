@@ -126,7 +126,7 @@ def data_type(usize, total_size):
         (fmtypes.BOOLEAN, usize == 2),
         (fmtypes.NANBOOLEAN, usize == 3),
         (fmtypes.ORDINAL, usize > 3 and total_size*.0001 > usize or total_size <= 1000),
-        (fmtypes.CARDINAL, True)
+        (fmtypes.DENSE, True)
     ]
 
     for fmtype, value in critery:

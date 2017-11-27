@@ -90,7 +90,7 @@ class ReadWriteData(object):
         if not hasattr(self, 'f'):
             self.f = h5py.File(self.url(), 'r')
         key = '/pp/' + name
-        return self.f[key]
+        return self.f.get(key, None)
 
     def _set_attr(self, name, value):
         if self.mode == 'w':
@@ -364,7 +364,7 @@ class Data(ReadWriteData):
             f.close()
         self.fmtypes = fmtypes
 
-    def feature_fmtype(self, fmtype):
+    def features_fmtype(self, fmtype):
         from collections import defaultdict
         map_col = defaultdict(list)
         for ci, c_fmtype in enumerate(self.fmtypes[:]):
@@ -1159,6 +1159,7 @@ class DataLabel(Data):
         from collections import defaultdict
         from ml.utils.numeric_functions import unique_size, data_type
         from ml.utils.numeric_functions import missing, zeros
+        from ml.fmtypes import fmtypes_map
 
         headers = ["feature", "label", "missing", "mean", "std dev", "zeros", 
             "min", "25%", "50%", "75%", "max", "type", "unique"]
@@ -1166,29 +1167,35 @@ class DataLabel(Data):
         li = self.labels_info()
         feature_column = defaultdict(dict)
         for label in li:
-            mask = (self.labels == label)
-            data = self.data[mask]
+            mask = (self.labels[:] == label)
+            data = self.data[:][mask]
             for i, column in enumerate(data.T):
                 percentile = np.nanpercentile(column, [0, 25, 50, 75, 100])
                 values = [
                     "{0:.{1}f}%".format(missing(column), 2),
-                    np.mean(column),  
-                    np.std(column),
+                    np.nanmean(column),  
+                    np.nanstd(column),
                     "{0:.{1}f}%".format(zeros(column), 2),
                     ]
                 values.extend(percentile)
                 feature_column[i][label] = values
 
         data = self.data
+        fmtypes = self.fmtypes
         for feature, rows in feature_column.items():
-            column = data[:, feature]
+            column = data[:, feature]            
             usize = unique_size(column)
-            data_t = data_type(usize, column.size)
+            if fmtypes is None:
+                data_t = data_type(usize, column.size).name
+            else:
+                data_t = fmtypes_map[fmtypes[feature]]
+
             for label, row in rows.items():
                 table.append([feature, label] + row + [data_t, str(usize)])
                 feature = "-"
                 data_t = "-"
                 usize = "-"
+
         return tabulate(table, headers)
 
 
@@ -1670,7 +1677,7 @@ class DataSetBuilderImage(DataSetBuilder):
         return dataset
 
 
-class DataSetBuilderFile(DataSetBuilder):
+class DataLabelSetFile(DataLabel):
     """
     Class for csv dataset build. Get the data from a csv's file.
     
@@ -1685,7 +1692,7 @@ class DataSetBuilderFile(DataSetBuilder):
 
     def __init__(self, name=None, training_data_path=None, test_data_path=None,
                 sep=None, merge_field="id", na_values=None, **kwargs):
-        super(DataSetBuilderFile, self).__init__(name, **kwargs)
+        super(DataLabelSetFile, self).__init__(name, **kwargs)
         self.training_data_path = training_data_path
         self.test_data_path = test_data_path
         self.sep = sep
@@ -1746,7 +1753,7 @@ class DataSetBuilderFile(DataSetBuilder):
             data, labels = self.from_csv(self.training_data_path, labels_column, 
                                         nrows=nrows, 
                                         exclude_columns=exclude_columns)
-        super(DataSetBuilderFile, self).build_dataset(data, labels)
+        super(DataLabelSetFile, self).build_dataset(data, labels)
 
 
 class DataSetBuilderFold(object):
