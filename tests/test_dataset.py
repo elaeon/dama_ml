@@ -470,6 +470,23 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(data.feature_fmtype(fmtypes.ORDINAL), [4])
         data.destroy()
 
+    def test_feature_fmtype_edit(self):
+        from ml import fmtypes
+        data = Data(name="test", dataset_path="/tmp/")
+        array = [
+            [0, 1, -1, 3, 4, 0],
+            [1, -1, 0, 2 ,5, 1],
+            [0, 0, 1, 2, 2, 1],
+            [0, 1, 1, 3, 6, 0],
+            [1, 1, 0, 7, 7, 1]
+        ]
+        data.build_dataset(array)
+        data.build_fmtypes()
+        data.set_fmtypes(3, fmtypes.DENSE)
+        data.set_fmtypes(4, fmtypes.DENSE)
+        self.assertItemsEqual(data.fmtypes[:], [0, 1, 1, 4, 4, 0])
+        data.destroy()
+
 
 class TestDataSetFile(unittest.TestCase):
     def setUp(self):

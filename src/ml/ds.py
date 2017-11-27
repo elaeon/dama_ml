@@ -71,9 +71,9 @@ class ReadWriteData(object):
         f['data'].require_dataset(name, data.shape, dtype=dtype, data=data, 
             exact=True, chunks=True, **self.zip_params)
 
-    def _set_data(self, f, name, data):
-        key = '/data/' + name
-        f[key] = data
+    #def _set_data(self, f, name, data):
+    #    key = '/data/' + name
+    #    f[key] = data
 
     def _get_data(self, name):
         if not hasattr(self, 'f'):
@@ -81,14 +81,9 @@ class ReadWriteData(object):
         key = '/data/' + name
         return self.f[key]
 
-    def _set_space_fmtypes(self, f, data):
-        f['pp'].require_dataset("fmtypes", data.shape, dtype=np.dtype(int), data=data, 
+    def _set_space_fmtypes(self, f, shape):
+        f['pp'].require_dataset("fmtypes", shape, dtype=np.dtype(int), 
             exact=True, chunks=True, **self.zip_params)
-
-    def _set_pp(self, f, name, data):
-        """ set the preprocesed meta data"""
-        key = '/pp/' + name
-        f[key] = data
 
     def _get_pp(self, name):
         """ get the preprocesed meta data"""
@@ -345,8 +340,14 @@ class Data(ReadWriteData):
     def fmtypes(self, value):
         self.close_reader()
         with h5py.File(self.url(), 'a') as f:
-            f.require_group("pp")
-            self._set_space_fmtypes(f, value)
+            data = f['pp/fmtypes']
+            data[...] = value
+            f.close()
+
+    def set_fmtypes(self, column, fmtype):
+        ndata = self.fmtypes[:]
+        ndata[column] = fmtype.id
+        self.fmtypes = ndata
 
     def build_fmtypes(self):
         from ml.utils.numeric_functions import unique_size, data_type
@@ -356,6 +357,11 @@ class Data(ReadWriteData):
             usize = unique_size(feature)
             data_t = data_type(usize, feature.size)
             fmtypes[ci] = data_t.id
+        self.close_reader()
+        with h5py.File(self.url(), 'a') as f:
+            f.require_group("pp")
+            self._set_space_fmtypes(f, fmtypes.shape)
+            f.close()
         self.fmtypes = fmtypes
 
     def feature_fmtype(self, fmtype):
@@ -789,7 +795,6 @@ class DataLabel(Data):
             description=description, author=author, compression_level=compression_level,
             chunks=chunks, rewrite=rewrite)
         
-        #self._attrs.append("ltype")
         if self.mode == "w" or self.rewrite:
             self.ltype = ltype
 
