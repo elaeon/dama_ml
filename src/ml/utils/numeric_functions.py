@@ -174,3 +174,11 @@ def missing(column):
 
 def zeros(column):
     return ((column.size - np.count_nonzero(column)) / float(column.size)) * 100
+
+
+def features_fmtype(fmtypes, fmtype):
+    from collections import defaultdict
+    map_col = defaultdict(list)
+    for ci, c_fmtype in enumerate(fmtypes):
+        map_col[c_fmtype].append(ci)
+    return map_col[fmtype.id]

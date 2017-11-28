@@ -364,12 +364,17 @@ class Data(ReadWriteData):
             f.close()
         self.fmtypes = fmtypes
 
+    def build_empty_fmtypes(self, num_features):
+        fmtypes = np.empty((num_features), dtype=np.dtype(int))
+        self.close_reader()
+        with h5py.File(self.url(), 'a') as f:
+            f.require_group("pp")
+            self._set_space_fmtypes(f, fmtypes.shape)
+            f.close()
+
     def features_fmtype(self, fmtype):
-        from collections import defaultdict
-        map_col = defaultdict(list)
-        for ci, c_fmtype in enumerate(self.fmtypes[:]):
-            map_col[c_fmtype].append(ci)
-        return map_col[fmtype.id]
+        from ml.utils.numeric_functions import features_fmtype
+        return features_fmtype(self.fmtypes, fmtype)
 
     @classmethod
     def module_cls_name(cls):
@@ -585,6 +590,8 @@ class Data(ReadWriteData):
         """
         data = self.empty(name, dataset_path=dataset_path, dtype=dtype, 
             ltype=ltype, apply_transforms=apply_transforms, transforms=transforms)
+        data.build_empty_fmtypes(self.num_features())
+        data.fmtypes = self.fmtypes[:]
         data.build_dataset(calc_nshape(self.data, percentaje))
         data.close_reader()
         return data
@@ -616,10 +623,8 @@ class Data(ReadWriteData):
 
         """
         if apply_transforms:
-            #log.debug("Apply transforms " + str(data.shape))
-            return self.transforms.apply(data)
+            return self.transforms.apply(data, fmtypes=self.fmtypes)
         else:
-            #log.debug("No transforms applied " + str(data.shape))
             return data if isinstance(data, np.ndarray) else np.asarray(data)
 
     @property
@@ -883,6 +888,12 @@ class DataLabel(Data):
         table = []
         table.append(["dataset", self.data.shape, self.data.dtype, self.labels.size])
         order_table_print(headers, table, "shape")
+        if classes == True:
+            headers = ["class", "# items", "%"]
+            items = [(cls, total, (total/float(self.shape[0]))*100) 
+                    for cls, total in self.labels_info().items()]
+            items_p = [0, 0]
+            order_table_print(headers, items, "# items")
 
     def build_dataset_from_dsb(self, dsb):
         """
@@ -955,6 +966,8 @@ class DataLabel(Data):
         dl = self.empty(name, dtype=dtype, ltype=ltype, 
                         apply_transforms=apply_transforms, 
                         dataset_path=dataset_path, transforms=transforms)
+        dl.build_empty_fmtypes(self.num_features())
+        dl.fmtypes = self.fmtypes[:]
         dl.build_dataset(calc_nshape(self.data, percentaje), calc_nshape(self.labels, percentaje))
         dl.close_reader()
         return dl
@@ -1185,7 +1198,7 @@ class DataLabel(Data):
         for feature, rows in feature_column.items():
             column = data[:, feature]            
             usize = unique_size(column)
-            if fmtypes is None:
+            if fmtypes is None or len(fmtypes) != self.num_features():
                 data_t = data_type(usize, column.size).name
             else:
                 data_t = fmtypes_map[fmtypes[feature]]

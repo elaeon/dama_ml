@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from ml.processing import Transforms
+from ml.processing import Transforms, Fit
 
 
 def linear(x):
@@ -14,6 +14,17 @@ def linear_p(x, b):
 
 def parabole(x):
     return x*x
+
+
+class FitIdent(Fit):
+    def fit(self, data, **params):
+        def transform(data):
+            from ml.utils.numeric_functions import features_fmtype
+            from ml import fmtypes
+            col_i = features_fmtype(self.fmtypes, fmtypes.NANBOOLEAN)
+            data[:, col_i] = np.nan
+            return data
+        return transform
 
 
 class TestTransforms(unittest.TestCase):
@@ -154,6 +165,17 @@ class TestTransforms(unittest.TestCase):
         result =  np.asarray(list(transforms.apply(numbers)))
         self.assertEqual(.95 <= result.std() <= 1.05, True)
         self.assertEqual(-0.1 <= result.mean() <= 0.1, True)
+
+    def test_apply_fmtypes(self):
+        from ml import fmtypes
+        transforms = Transforms()
+        transforms.add(linear)
+        transforms.add(linear_p, b=10)
+        transforms.add(FitIdent, type="column")
+        numbers = np.empty((1000, 2))
+        fmtypes = [fmtypes.BOOLEAN.id, fmtypes.NANBOOLEAN.id]
+        result =  np.asarray(list(transforms.apply(numbers, fmtypes=fmtypes)))
+        self.assertEqual(all(np.isnan(result[:, 1])), True)
 
     def test_apply_to_clf(self):
         from ml.ds import DataSetBuilder

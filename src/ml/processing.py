@@ -154,27 +154,27 @@ class TransformsCol(TransformsRow):
             transforms.add(locate(fn), **params)
         return transforms
 
-    def initial_fn(self, data):
+    def initial_fn(self, data, fmtypes=None):
         for fn, params in self.transforms:
             fn = locate(fn)
             if "name_00_ml" in params:
                 name = params.pop("name_00_ml")
             else:
                 name = None
-            yield fn(data, name=name, **params)
+            yield fn(data, name=name, fmtypes=fmtypes, **params)
 
-    def apply(self, data):
+    def apply(self, data, fmtypes=None):
         """
         :type data: array
         :param data: apply the transforms added to the data
         """
-        for fn_fit in self.initial_fn(data):
+        for fn_fit in self.initial_fn(data, fmtypes=fmtypes):
             data = np.asarray(list(fn_fit.transform(data)))
 
         if data is None:
             raise Exception
         else:
-            return data
+            return data, fn_fit.fmtypes
 
     def destroy(self):
         for transform in self.initial_fn(None):
@@ -288,7 +288,7 @@ class Transforms(object):
                         print(e.message)
         return transforms
 
-    def apply(self, data):
+    def apply(self, data, fmtypes=None):
         """
         :type data: array
         :param data: apply the transforms added to the data
@@ -299,7 +299,11 @@ class Transforms(object):
             transforms = self.compact()
             for t_obj in transforms:
                 log.debug("APPLY TRANSFORMS:" + str(t_obj.transforms))
-                data = t_obj.apply(data)
+                log.debug("Transform type:" + t_obj.type())
+                if t_obj.type() == "column":
+                    data, fmtypes = t_obj.apply(data, fmtypes=fmtypes)
+                else:
+                    data = t_obj.apply(data)
 
             if data is None:
                 raise Exception
@@ -313,9 +317,10 @@ class Transforms(object):
             
 
 class Fit(object):
-    def __init__(self, data, name=None, path="", **kwargs):
+    def __init__(self, data, name=None, fmtypes=None, path="", **kwargs):
         self.name = name if name is not None else uuid.uuid4().hex        
         self.meta_path = path + self.module_cls_name() + "_" + self.name
+        self.fmtypes = fmtypes
         self.t = self.fit(data, **kwargs)
 
     @classmethod
