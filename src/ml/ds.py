@@ -591,7 +591,8 @@ class Data(ReadWriteData):
         data = self.empty(name, dataset_path=dataset_path, dtype=dtype, 
             ltype=ltype, apply_transforms=apply_transforms, transforms=transforms)
         data.build_empty_fmtypes(self.num_features())
-        data.fmtypes = self.fmtypes[:]
+        if self.fmtypes is not None:
+            data.fmtypes = self.fmtypes[:]
         data.build_dataset(calc_nshape(self.data, percentaje))
         data.close_reader()
         return data
@@ -967,7 +968,8 @@ class DataLabel(Data):
                         apply_transforms=apply_transforms, 
                         dataset_path=dataset_path, transforms=transforms)
         dl.build_empty_fmtypes(self.num_features())
-        dl.fmtypes = self.fmtypes[:]
+        if self.fmtypes is not None:
+            dl.fmtypes = self.fmtypes[:]
         dl.build_dataset(calc_nshape(self.data, percentaje), calc_nshape(self.labels, percentaje))
         dl.close_reader()
         return dl
