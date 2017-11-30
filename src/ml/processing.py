@@ -157,10 +157,7 @@ class TransformsCol(TransformsRow):
     def initial_fn(self, data, fmtypes=None):
         for fn, params in self.transforms:
             fn = locate(fn)
-            if "name_00_ml" in params:
-                name = params.pop("name_00_ml")
-            else:
-                name = None
+            name = params.get("name_00_ml", None)
             yield fn(data, name=name, fmtypes=fmtypes, **params)
 
     def apply(self, data, fmtypes=None):
