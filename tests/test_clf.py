@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from ml.ds import DataSetBuilder
+from ml.ds import DataLabel
 from ml.clf.extended.w_sklearn import RandomForest
 
 
@@ -43,7 +43,7 @@ class TestSKL(unittest.TestCase):
     def setUp(self):
         self.X = np.random.rand(100, 10)
         self.Y = self.X[:,0] > .5
-        self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+        self.dataset = DataLabel(name="test", dataset_path="/tmp/", 
             ltype='int', rewrite=True)
         self.dataset.build_dataset(self.X, self.Y)
 

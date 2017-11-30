@@ -141,12 +141,13 @@ class BaseClassif(DataDrive):
         self.labels_encode(dataset.labels)
         log.info("Labels encode finished")
         if dsb.mode == "w":
-            train_data, train_labels = self.reformat(dataset.train_data, 
-                                        self.le.transform(dataset.train_labels))
-            test_data, test_labels = self.reformat(dataset.test_data, 
-                                        self.le.transform(dataset.test_labels))
-            validation_data, validation_labels = self.reformat(dataset.validation_data, 
-                                        self.le.transform(dataset.validation_labels))
+            train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv()
+            train_data, train_labels = self.reformat(train_data, 
+                                        self.le.transform(train_labels))
+            test_data, test_labels = self.reformat(test_data, 
+                                        self.le.transform(test_labels))
+            validation_data, validation_labels = self.reformat(validation_data, 
+                                        self.le.transform(validation_labels))
             dsb.build_dataset(train_data, train_labels, test_data=test_data, 
                             test_labels=test_labels, validation_data=validation_data, 
                             validation_labels=validation_labels)

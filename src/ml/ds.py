@@ -1213,6 +1213,20 @@ class DataLabel(Data):
 
         return tabulate(table, headers)
 
+    
+    def cv(self, train_size=.7, valid_size=.1):
+        from sklearn.model_selection import train_test_split
+        X_train, X_test, y_train, y_test = train_test_split(
+            self.data[:], self.labels[:], train_size=round(train_size+valid_size, 2), random_state=0)
+        size = self.data.shape[0]
+
+        valid_size_index = int(round(size * valid_size))
+        X_validation = X_train[:valid_size_index]
+        y_validation = y_train[:valid_size_index]
+        X_train = X_train[valid_size_index:]
+        y_train = y_train[valid_size_index:]
+        return X_train, X_validation, X_test, y_train, y_validation, y_test
+
 
 class DataSetBuilder(DataLabel):
     """
