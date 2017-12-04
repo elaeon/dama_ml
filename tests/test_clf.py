@@ -3,6 +3,7 @@ import numpy as np
 
 from ml.ds import DataLabel
 from ml.clf.extended.w_sklearn import RandomForest
+np.random.seed(99)
 
 
 def sizes(seq):
