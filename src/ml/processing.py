@@ -158,7 +158,9 @@ class TransformsCol(TransformsRow):
         for fn, params in self.transforms:
             fn = locate(fn)
             name = params.get("name_00_ml", None)
-            yield fn(data, name=name, fmtypes=fmtypes, **params)
+            n_params = params.copy()
+            del n_params["name_00_ml"]
+            yield fn(data, name=name, fmtypes=fmtypes, **n_params)
 
     def apply(self, data, fmtypes=None):
         """

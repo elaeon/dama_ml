@@ -885,9 +885,9 @@ class DataLabel(Data):
         print('Body Hash: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
         print('       ')
-        headers = ["Dataset", "Shape", "dType", "Labels"]
+        headers = ["Dataset", "Shape", "dType", "Labels", "ltype"]
         table = []
-        table.append(["dataset", self.data.shape, self.data.dtype, self.labels.size])
+        table.append(["dataset", self.data.shape, self.data.dtype, self.labels.size, self.labels.dtype])
         order_table_print(headers, table, "shape")
         if classes == True:
             headers = ["class", "# items", "%"]
