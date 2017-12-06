@@ -182,3 +182,17 @@ def features_fmtype(fmtypes, fmtype):
     for ci, c_fmtype in enumerate(fmtypes):
         map_col[c_fmtype].append(ci)
     return map_col[fmtype.id]
+
+
+def swap_noise(x, y, p=.15, cols=[1]):
+    indexes_o = [int(round(i, 0)) for i in np.random.uniform(0, x.size-1, size=int(round(x.size * p, 0)))]
+    indexes_d = [int(round(i, 0)) for i in np.random.uniform(0, x.size-1, size=int(round(x.size * p, 0)))]
+
+    M = np.c_[x, y]
+    vo = M[indexes_o, cols]
+    vd = M[indexes_d, cols]
+    for s0, s1, nv0, nv1 in zip(indexes_o, indexes_d, vo, vd):
+        M[s1, cols] = nv0
+        M[s0, cols] = nv1
+
+    return M

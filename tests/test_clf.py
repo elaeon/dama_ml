@@ -3,7 +3,7 @@ import numpy as np
 
 from ml.ds import DataLabel
 from ml.clf.extended.w_sklearn import RandomForest
-np.random.seed(99)
+np.random.seed(0)
 
 
 def sizes(seq):
@@ -79,7 +79,10 @@ class TestSKL(unittest.TestCase):
             model_version="1",
             check_point_path="/tmp/")
         classif.train(num_steps=1)
-        classif.scores().print_scores()
+        scores_table = classif.scores2table()
+        classif.destroy()
+        self.assertEqual(scores_table.headers, ['', 'f1', 'auc', 'recall', 'precision', 
+            'logloss', 'accuracy'])
 
     def test_new_scores(self):
         from ml.utils.numeric_functions import gini_normalized
@@ -96,15 +99,6 @@ class TestSKL(unittest.TestCase):
         self.assertEqual(scores_table.headers, ['', 'f1', 'auc', 'recall', 'precision', 
             'logloss', 'gini_normalized', 'accuracy'])
         classif.destroy()
-
-    def test_scores2table(self):
-        classif = RandomForest(dataset=self.dataset, 
-            model_name="test", 
-            model_version="1",
-            check_point_path="/tmp/")
-        classif.train(num_steps=1)
-        table = classif.scores2table()
-        table.print_scores()
 
 
 #class TestGpy(unittest.TestCase):

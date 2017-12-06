@@ -426,10 +426,10 @@ class Data(ReadWriteData):
         if isinstance(data, IterLayer):
             data = np.asarray(list(data))
             return data.astype(ttype)
-        elif data.dtype != ttype and data.dtype != np.object:
-            return data.astype(ttype)
+        #elif data.dtype != ttype and data.dtype != np.object:
+        #    return data.astype(ttype)
         else:
-            return data
+            return np.asarray(data).astype(ttype)
 
     def dtype_t(self, data):
         """
@@ -557,7 +557,8 @@ class Data(ReadWriteData):
 
         with h5py.File(self.url(), 'a') as f:
             f.require_group("data")
-            data = self.processing(data, apply_transforms=self.apply_transforms)
+            if self.apply_transforms:
+                data = self.transforms.apply(data, fmtypes=self.fmtypes)
             self._set_space_data(f, 'data', self.dtype_t(data))
 
         self.md5 = self.calc_md5()
@@ -930,7 +931,8 @@ class DataLabel(Data):
         """
         with h5py.File(self.url(), 'a') as f:
             f.require_group("data")
-            data = self.processing(data, apply_transforms=self.apply_transforms)
+            if self.apply_transforms:
+                data = self.transforms.apply(data, fmtypes=self.fmtypes)
             self._set_space_data(f, 'data', self.dtype_t(data))
             self._set_space_data(f, 'labels', self.ltype_t(labels), label=True)
 
@@ -1754,8 +1756,8 @@ class DataLabelSetFile(DataLabel):
             else:
                 drops.extend([exclude_columns])
 
-        dataset = df.drop(drops, axis=1).as_matrix()
-        labels = df[labels_column].as_matrix()
+        dataset = df.drop(drops, axis=1)#.as_matrix()
+        labels = df[labels_column]#.as_matrix()
         return dataset, labels        
 
     def build_dataset(self, labels_column=None, nrows=None, exclude_columns=None):
@@ -1765,11 +1767,11 @@ class DataLabelSetFile(DataLabel):
         """
         if isinstance(self.training_data_path, list):
             if not isinstance(self.sep, list):
-                sep = [self.sep for _ in self.training_data_path]
+                sep_l = [self.sep for _ in self.training_data_path]
             else:
-                sep = self.sep
+                sep_l = self.sep
             old_df = None
-            for sep, path in zip(sep, self.training_data_path):
+            for sep, path in zip(sep_l, self.training_data_path):
                 data_df = pd.read_csv(path, sep=sep, nrows=nrows)
                 if old_df is not None:
                     old_df = pd.merge(old_df, data_df, on=self.merge_field)

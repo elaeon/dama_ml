@@ -148,8 +148,8 @@ class VAE(Keras):
         x = self.calculate_batch(X, batch_size=self.batch_size)
         z = self.calculate_batch(Z, batch_size=self.batch_size)
         self.model.fit(x,
-            self.batch_size,
-            num_steps,
+            steps_per_epoch=self.batch_size,
+            epochs=num_steps,
             validation_data=z,
             nb_val_samples=batch_size_z)
         self.save_model()
@@ -163,3 +163,85 @@ class VAE(Keras):
         meta = self.load_meta()
         self.intermediate_dim = meta["intermediate_dim"]
         return super(VAE, self).get_dataset()
+
+
+class DAE(Keras):
+    def __init__(self, intermediate_dim=5, epsilon_std=1.0,**kwargs):
+        self.intermediate_dim = intermediate_dim
+        self.epsilon_std = epsilon_std
+        super(DAE, self).__init__(**kwargs)
+
+    def custom_objects(self):
+        return {}
+
+    def encoder(self):
+        from keras.layers import Input, Dense
+        from keras.models import Model
+
+        x = Input(shape=(self.num_features,))
+        h = Dense(self.intermediate_dim, activation='relu')(x)
+
+        model = Model(x, h)
+        self.encoder_m = self.default_model(model, self.load_e_fn)
+        return x, h
+ 
+    def decoder(self, h):
+        from keras.layers import Dense, Input, Lambda
+        from keras.models import Model
+
+        decoder_input = Input(shape=(self.intermediate_dim,))
+        decoder_h = Dense(self.intermediate_dim, activation='relu')
+        decoder_mean = Dense(self.num_features, activation='sigmoid')
+
+        x_decoded_mean = decoder_mean(h)
+
+        _h_decoded = decoder_h(decoder_input)
+        _x_decoded_mean = decoder_mean(_h_decoded)
+
+        model = Model(decoder_input, _x_decoded_mean)
+        self.decoder_m = self.default_model(model, self.load_d_fn)
+        return x_decoded_mean
+
+    def prepare_model(self):
+        from keras.models import Model
+
+        x, h = self.encoder()
+        decoder_mean = self.decoder(h)        
+
+        model = Model(x, decoder_mean)
+        model.compile(optimizer='rmsprop', loss='binary_crossentropy')
+        self.model = self.default_model(model, self.load_fn)
+
+    def calculate_batch(self, X, batch_size=1):
+        print("Computing batches...")
+        while 1:
+            n = X.shape[0]
+            for i in xrange(0, n, batch_size):
+                yield (X[i:i + batch_size], X[i:i + batch_size])
+
+    def train(self, batch_size=100, num_steps=50):
+        limit = int(round(self.dataset.data.shape[0] * .9))
+        X = self.dataset.data[:limit]
+        Z = self.dataset.data[limit:]
+        batch_size_x = min(X.shape[0], batch_size)
+        batch_size_z = min(Z.shape[0], batch_size)
+        self.batch_size = min(batch_size_x, batch_size_z)
+        self.prepare_model()
+        x = self.calculate_batch(X, batch_size=self.batch_size)
+        z = self.calculate_batch(Z, batch_size=self.batch_size)
+        self.model.fit(x,
+            steps_per_epoch=self.batch_size,
+            epochs=num_steps,
+            validation_data=z,
+            nb_val_samples=batch_size_z)
+        self.save_model()
+        
+    def _metadata(self):
+        meta = super(DAE, self)._metadata()
+        meta["intermediate_dim"] = self.intermediate_dim
+        return meta
+
+    def get_dataset(self):
+        meta = self.load_meta()
+        self.intermediate_dim = meta["intermediate_dim"]
+        return super(DAE, self).get_dataset()

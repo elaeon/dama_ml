@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+from ml.ds import Data
 
 
 class TestAE(unittest.TestCase):
@@ -10,7 +11,6 @@ class TestAE(unittest.TestCase):
         pass
 
     def test_parametric_tsne(self):
-        from ml.ds import Data
         from ml.ae.extended.w_keras import PTsne
 
         dataset = Data(
@@ -31,7 +31,6 @@ class TestAE(unittest.TestCase):
 
     def test_vae(self):
         from ml.ae.extended.w_keras import VAE
-        from ml.ds import Data
 
         X = np.random.rand(1000, 10)
         X = (X * 10) % 2
@@ -54,29 +53,35 @@ class TestAE(unittest.TestCase):
         decoder = np.asarray(list(vae.predict(X[0:1], chunk_size=10, model_type="decoder")))
         self.assertEqual(encoder.shape, (1, 2))
         self.assertEqual(decoder.shape, (1, 10))
+        dataset.destroy()
+        vae.destroy()
 
-    #def test_ensemble(self):
-    #    from ml.clf.ensemble import Bagging
-    #    from ml.ae.extended.w_keras import PTsne
-    #    from ml.clf.extended.w_sklearn import RandomForest
-    #    from ml.ds import DataSetBuilder
+    def test_dae(self):
+        from ml.ae.extended.w_keras import DAE
+        X = np.random.rand(1000, 10)
+        X = (X * 10) % 2
+        X = X.astype(int)
+        dataset = Data(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset.build_dataset(X)
 
-    #    X = np.asarray([1, 0]*1000)
-    #    Y = X*1
-    #    dataset = DataSetBuilder("test_ae_ensemble", dataset_path="/tmp/", rewrite=False)
-    #    dataset.build_dataset(X, Y)
-    #    bagging = Bagging(RandomForest, [PTsne, PTsne],
-    #            dataset=dataset,
-    #            model_name="test_bag",
-    #            model_version="1")
-    #    bagging.add_params("PTsne", 0, perplexity=50)
-    #    bagging.add_params("PTsne", 1, perplexity=30)
-    #    model_base_args = {"batch_size": 50, "num_steps": 1}
-    #    others_models_args = {"PTsne": 
-    #        [{"batch_size": 50, "num_steps": 5}, {"batch_size": 50, "num_steps": 5}]}
-    #    bagging.train(model_base_args=model_base_args, others_models_args=others_models_args)
-    #    bagging.scores().print_scores()
-    #    dataset.destroy()
+        dae = DAE(dataset=dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/",
+            intermediate_dim=5)
+        dae.train(batch_size=1, num_steps=10)
+
+        dae = DAE( 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        encoder = np.asarray(list(dae.predict(X[0:1], chunk_size=10, model_type="encoder")))
+        #decoder = np.asarray(list(dae.predict(X[0:1], chunk_size=10, model_type="decoder")))
+        print(encoder)
+
+        dataset.destroy()
+        dae.destroy()
+
 
 if __name__ == '__main__':
     unittest.main()
