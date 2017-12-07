@@ -1773,8 +1773,8 @@ class DataLabelSetFile(DataLabel):
             data, labels = self.from_csv(self.training_data_path, labels_column, 
                                         nrows=nrows, 
                                         exclude_columns=exclude_columns)
-        print(data.shape)
-        #super(DataLabelSetFile, self).build_dataset(data, labels)
+        #print(data.shape)
+        super(DataLabelSetFile, self).build_dataset(data, labels)
 
 
 class DataSetBuilderFold(object):

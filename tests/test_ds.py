@@ -423,7 +423,7 @@ class TestDataset(unittest.TestCase):
         build_csv_file('/tmp/test_X.csv', self.X, sep=",")
         build_csv_file('/tmp/test_Y.csv', self.Y.reshape(-1, 1), sep="|")
 
-        dbf = DataLabelSetFile(name="test", ltype='int',
+        dbf = DataLabelSetFile(ltype='int',
             training_data_path=['/tmp/test_X.csv', '/tmp/test_Y.csv'], 
                 sep=[",", "|"], merge_field="id", dataset_path="/tmp/")
         dbf.build_dataset(labels_column="0_y")

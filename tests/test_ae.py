@@ -35,14 +35,15 @@ class TestAE(unittest.TestCase):
         X = np.random.rand(1000, 10)
         X = (X * 10) % 2
         X = X.astype(int)
-        dataset = Data(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset = Data(name="test", dataset_path="/tmp/", rewrite=True, dtype="int")
         dataset.build_dataset(X)
 
         vae = VAE(dataset=dataset, 
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/",
-            intermediate_dim=5)
+            intermediate_dim=5,
+            dtype="int")
         vae.train(batch_size=1, num_steps=10)
 
         vae = VAE( 
@@ -61,14 +62,15 @@ class TestAE(unittest.TestCase):
         X = np.random.rand(1000, 10)
         X = (X * 10) % 2
         X = X.astype(int)
-        dataset = Data(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset = Data(name="test", dataset_path="/tmp/", rewrite=True, dtype="int")
         dataset.build_dataset(X)
 
         dae = DAE(dataset=dataset, 
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/",
-            intermediate_dim=5)
+            intermediate_dim=5,
+            dtype="int")
         dae.train(batch_size=1, num_steps=10)
 
         dae = DAE( 
@@ -77,7 +79,7 @@ class TestAE(unittest.TestCase):
             check_point_path="/tmp/")
         encoder = np.asarray(list(dae.predict(X[0:1], chunk_size=10, model_type="encoder")))
         #decoder = np.asarray(list(dae.predict(X[0:1], chunk_size=10, model_type="decoder")))
-        print(encoder)
+        #print(encoder)
 
         dataset.destroy()
         dae.destroy()

@@ -25,7 +25,7 @@ class BaseAe(DataDrive):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
                 model_version=None, dataset_train_limit=None, info=True, 
                 autoload=True, group_name=None, latent_dim=2,
-                dtype='float64'):
+                dtype='float64', rewrite=False):
         self.model = None
         self.model_encoder = None
         self.model_decoder = None
@@ -35,6 +35,7 @@ class BaseAe(DataDrive):
         self.latent_dim = latent_dim
         self.ext = "ckpt"
         self.dtype = dtype
+        self.rewrite = rewrite
         super(BaseAe, self).__init__(
             check_point_path=check_point_path,
             model_version=model_version,
@@ -63,19 +64,20 @@ class BaseAe(DataDrive):
     def reformat_all(self, dataset):
         log.info("Reformating {}...".format(self.cls_name()))
         ds = Data(
-            name=dataset.name+"_"+self.model_name+"_"+self.cls_name(),
+            name=dataset.name+"_"+self.model_name+"_"+self.model_version+"_"+self.cls_name(),
             dataset_path=settings["dataset_model_path"],
-            apply_transforms=True,#not dataset.apply_transforms,
+            apply_transforms=not dataset._applied_transforms,
             compression_level=9,
             dtype=self.dtype,
             transforms=dataset.transforms,
             chunks=1000,
-            rewrite=False)
+            rewrite=self.rewrite)
 
         if ds.mode == "w":
-            #ds._applied_transforms = dataset.apply_transforms
             data = self.reformat(dataset.data)
             ds.build_dataset(data)
+            ds.apply_transforms = True
+            ds._applied_transforms = dataset._applied_transforms
         ds.close_reader()
         return ds
 

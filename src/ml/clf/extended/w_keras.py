@@ -24,6 +24,3 @@ class FCNet(Keras):
     def prepare_model_k(self, obj_fn=None):
         return self.prepare_model()
 
-    def ltype(self):
-        return 'float32'
-

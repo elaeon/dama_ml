@@ -397,7 +397,9 @@ class TestXgboost(unittest.TestCase):
             classif = Xgboost(dataset=self.dataset, 
                 model_name="test", 
                 model_version="1",
-                check_point_path="/tmp/")
+                check_point_path="/tmp/",
+                dtype="int",
+                ltype="int")
             params={'max_depth':2, 'eta':1, 'silent':1, 'objective':'binary:logistic'}
             classif.train(num_steps=1, model_params=params)
         except ImportError:
@@ -425,15 +427,18 @@ class TestKFold(unittest.TestCase):
     def setUp(self):
         from ml.ds import DataSetBuilder
         from ml.clf.extended.w_keras import FCNet
-        X = np.asarray([1, 0]*10)
-        Y = X*1
-        self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
-            dtype='int', ltype='int', rewrite=True)
+        X = np.random.rand(10, 2)
+        Y = (X[:,0] > .5).astype(float)
+        self.dataset = DataSetBuilder(dataset_path="/tmp/", 
+            dtype='float', ltype='float', rewrite=True)
         self.dataset.build_dataset(X, Y)
         classif = FCNet(dataset=self.dataset, 
             model_name="test", 
             model_version="1",
-            check_point_path="/tmp/")
+            check_point_path="/tmp/",
+            dtype="float",
+            ltype="float32",
+            rewrite=True)
         classif.train(num_steps=1, batch_size=128, n_splits=4)
 
     def tearDown(self):
