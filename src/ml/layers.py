@@ -139,7 +139,7 @@ class IterLayer(object):
             label_m[i] = labels[row_c]
         
         #fixme: add a dataset chunk writer
-        dataset = DataSetBuilder(dataset_path=settings["dataset_model_path"])
+        dataset = DataSetBuilder(dataset_path=settings["dataset_model_path"], ltype=ltype)
         dataset.build_dataset(data, label_m)
         return dataset
 

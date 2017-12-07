@@ -124,6 +124,9 @@ class BaseClassif(DataDrive):
         else:
             return self.le.inverse_transform(labels.astype('int'))
 
+    def ltype(self):
+        return 'int'
+
     def reformat_all(self, dataset):
         log.info("Reformating {}...".format(self.cls_name()))
         dsb = DataSetBuilder(
@@ -133,7 +136,7 @@ class BaseClassif(DataDrive):
             compression_level=9,
             dtype=dataset.dtype,
             transforms=dataset.transforms,
-            ltype='int',
+            ltype=self.ltype(),
             validator='',
             chunks=1000,
             rewrite=self.rewrite)

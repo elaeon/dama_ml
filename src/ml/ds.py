@@ -51,29 +51,25 @@ def calc_nshape(data, value):
 
 class ReadWriteData(object):
 
-    def auto_dtype(self, data, ttype):
-        if ttype == "auto" and data is not None:
-            return data.dtype
-        elif ttype == "auto" and data is None:
+    def auto_dtype(self, ttype):
+        if ttype == "auto":
             return "float64"
         elif ttype == "object":
             return h5py.special_dtype(vlen=unicode)
         else:
             return np.dtype(ttype)
 
-    def _set_space_shape(self, f, name, shape, label=False):
-        dtype = self.auto_dtype(None, self.dtype) if label == False else self.auto_dtype(None, self.ltype)
+    def _set_space_shape(self, f, name, shape, dtype):
+        dtype = self.auto_dtype(dtype)
         f['data'].require_dataset(name, shape, dtype=dtype, chunks=True, 
             exact=True, **self.zip_params)
 
-    def _set_space_data(self, f, name, data, label=False):
-        dtype = self.auto_dtype(data, self.dtype) if label == False else self.auto_dtype(data, self.ltype)
+    def _set_space_data(self, f, name, data, dtype):
+        dtype = self.auto_dtype(dtype)
+        if dtype != 'object' and dtype != data.dtype:
+            raise Exception, "Dataset is set with type '{}' and data type is '{}'".format(dtype, data.dtype)
         f['data'].require_dataset(name, data.shape, dtype=dtype, data=data, 
             exact=True, chunks=True, **self.zip_params)
-
-    #def _set_data(self, f, name, data):
-    #    key = '/data/' + name
-    #    f[key] = data
 
     def _get_data(self, name):
         if not hasattr(self, 'f'):
@@ -114,15 +110,25 @@ class ReadWriteData(object):
             log.debug("Error opening {} in file {}".format(name, self.url()))
             return None
 
-    def chunks_writer(self, f, name, data, chunks=258, init=0, type_t=None):
+    def chunks_writer(self, f, name, data, dtype, shape, chunks=258, init=0):
         from ml.utils.seq import grouper_chunk
         from tqdm import tqdm
         log.info("chunk size {}".format(chunks))
         end = init
+        shape = list(shape)
+        shape = [chunks] + shape[1:]
+        def map_dtype(seq):
+            if dtype == np.dtype("object"):
+                return map(str, seq)
+            else:
+                return seq
+
         for row in tqdm(grouper_chunk(chunks, data)):
-            seq = type_t(np.asarray(list(row)))
-            end += seq.shape[0]
-            f[name][init:end] = seq
+            seq = np.empty(shape, dtype=dtype)
+            for i, e in enumerate(row):
+                seq[i] = map_dtype(e)
+            end += i+1
+            f[name][init:end] = seq[:i+1]
             init = end
         return end
 
@@ -349,19 +355,24 @@ class Data(ReadWriteData):
         ndata[column] = fmtype.id
         self.fmtypes = ndata
 
-    def build_fmtypes(self):
+    def build_fmtypes(self, fmtypes=None):
         from ml.utils.numeric_functions import unique_size, data_type
-        fmtypes = np.empty((self.num_features()), dtype=np.dtype(int))
-        for ci in range(self.num_features()):
-            feature = self.data[:, ci]
-            usize = unique_size(feature)
-            data_t = data_type(usize, feature.size)
-            fmtypes[ci] = data_t.id
-        self.close_reader()
-        with h5py.File(self.url(), 'a') as f:
-            f.require_group("pp")
-            self._set_space_fmtypes(f, fmtypes.shape)
-            f.close()
+        if fmtypes is None:
+            fmtypes = np.empty((self.num_features()), dtype=np.dtype(int))
+            for ci in range(self.num_features()):
+                feature = self.data[:, ci]
+                usize = unique_size(feature)
+                data_t = data_type(usize, feature.size)
+                fmtypes[ci] = data_t.id
+        elif not isinstance(fmtypes, np.ndarray):
+            fmtypes = np.asarray(fmtypes, dtype=np.dtype(int))
+
+        if self.fmtypes is None:
+            self.close_reader()
+            with h5py.File(self.url(), 'a') as f:
+                f.require_group("pp")
+                self._set_space_fmtypes(f, fmtypes.shape)
+                f.close()
         self.fmtypes = fmtypes
 
     def build_empty_fmtypes(self, num_features):
@@ -406,39 +417,6 @@ class Data(ReadWriteData):
         """
         log.debug("Desfragment...Data")
         return self.copy(dataset_path=dataset_path)
-
-    def type_t(self, ttype, data):
-        """
-        :type ttype: string
-        :param ttype: name of the type to convert the data. If ttype is 'auto' 
-        the data is returned without be converted.
-
-        :type data: array
-        :param data: data to be converted
-
-        convert the data to the especified ttype.
-        """
-        from ml.layers import IterLayer
-        if ttype == 'auto':
-            return data
-
-        ttype = np.dtype(ttype)
-        if isinstance(data, IterLayer):
-            data = np.asarray(list(data))
-            return data.astype(ttype)
-        #elif data.dtype != ttype and data.dtype != np.object:
-        #    return data.astype(ttype)
-        else:
-            return np.asarray(data).astype(ttype)
-
-    def dtype_t(self, data):
-        """
-        :type data: narray
-        :param data: narray to cast
-
-        cast the data to the predefined dataset dtype
-        """
-        return self.type_t(self.dtype, data)
 
     def exist(self):
         return self.md5 != None
@@ -524,13 +502,16 @@ class Data(ReadWriteData):
 
         with h5py.File(self.url(), 'a') as f:
             f.require_group("data")
-            self._set_space_shape(f, "data", dsb.shape)
-            end = self.chunks_writer(f, "/data/data", dsb.train_data[:], 
-                chunks=self.chunks, type_t=self.dtype_t)
-            end = self.chunks_writer(f, "/data/data", dsb.test_data[:], chunks=self.chunks, 
-                                    init=end, type_t=self.dtype_t)
-            self.chunks_writer(f, "/data/data", dsb.validation_data[:], chunks=self.chunks, 
-                                init=end, type_t=self.dtype_t)
+            self._set_space_shape(f, "data", dsb.shape, self.dtype)
+            end = self.chunks_writer(f, "/data/data", dsb.train_data[:],
+                self.dtype, dsb.train_data.shape, 
+                chunks=self.chunks)
+            end = self.chunks_writer(f, "/data/data", dsb.test_data[:], 
+                self.dtype, dsb.test_data.shape, 
+                chunks=self.chunks, init=end)
+            self.chunks_writer(f, "/data/data", dsb.validation_data[:], 
+                self.dtype, dsb.validation_data.shape, 
+                chunks=self.chunks, init=end)
         
         self.md5 = self.calc_md5()
 
@@ -543,9 +524,10 @@ class Data(ReadWriteData):
 
         with h5py.File(self.url(), 'a') as f:
             f.require_group("data")
-            self._set_space_shape(f, name, shape)
+            self._set_space_shape(f, name, shape, self.dtype)
             end = self.chunks_writer(f, "/data/{}".format(name), iter_, 
-                chunks=self.chunks, init=init, type_t=type_t)
+                self.dtype, shape,
+                chunks=self.chunks, init=init)
         return end
 
     def build_dataset(self, data):
@@ -557,9 +539,8 @@ class Data(ReadWriteData):
 
         with h5py.File(self.url(), 'a') as f:
             f.require_group("data")
-            if self.apply_transforms:
-                data = self.transforms.apply(data, fmtypes=self.fmtypes)
-            self._set_space_data(f, 'data', self.dtype_t(data))
+            data = self.processing(data, apply_transforms=self.apply_transforms)
+            self._set_space_data(f, 'data', data, self.dtype)
 
         self.md5 = self.calc_md5()
 
@@ -907,21 +888,27 @@ class DataLabel(Data):
         labels_shape = tuple(dsb.shape[0:1] + dsb.train_labels.shape[1:])
         with h5py.File(self.url(), 'a') as f:
             f.require_group("data")
-            self._set_space_shape(f, "data", dsb.shape)
-            self._set_space_shape(f, "labels", labels_shape, label=True)
-            end = self.chunks_writer(f, "/data/data", dsb.train_data[:], chunks=self.chunks,
-                type_t=self.dtype_t)
-            end = self.chunks_writer(f, "/data/data", dsb.test_data[:], chunks=self.chunks, 
-                                    init=end, type_t=self.dtype_t)
-            self.chunks_writer(f, "/data/data", dsb.validation_data[:], chunks=self.chunks, 
-                                init=end, type_t=self.dtype_t)
+            self._set_space_shape(f, "data", dsb.shape, self.dtype)
+            self._set_space_shape(f, "labels", labels_shape, self.ltype)
+            end = self.chunks_writer(f, "/data/data", dsb.train_data[:], 
+                self.dtype,
+                dsb.train_data.shape, chunks=self.chunks)
+            end = self.chunks_writer(f, "/data/data", dsb.test_data[:], 
+                self.dtype,
+                dsb.test_data.shape, chunks=self.chunks, init=end)
+            self.chunks_writer(f, "/data/data", dsb.validation_data[:], 
+                self.dtype,
+                dsb.validation_data.shape, chunks=self.chunks, init=end)
 
             end = self.chunks_writer(f, "/data/labels", dsb.train_labels[:], 
-                chunks=self.chunks, type_t=self.ltype_t)
-            end = self.chunks_writer(f, "/data/labels", dsb.test_labels[:], chunks=self.chunks, 
-                                    init=end, type_t=self.ltype_t)
-            self.chunks_writer(f, "/data/labels", dsb.validation_labels[:], chunks=self.chunks, 
-                                init=end, type_t=self.ltype_t)
+                self.ltype,
+                dsb.train_labels.shape, chunks=self.chunks)
+            end = self.chunks_writer(f, "/data/labels", dsb.test_labels[:], 
+                self.ltype,
+                dsb.test_labels.shape, chunks=self.chunks, init=end)
+            self.chunks_writer(f, "/data/labels", dsb.validation_labels[:],
+                self.ltype, 
+                dsb.validation_labels.shape, chunks=self.chunks, init=end)
        
         self.md5 = self.calc_md5()
 
@@ -931,10 +918,13 @@ class DataLabel(Data):
         """
         with h5py.File(self.url(), 'a') as f:
             f.require_group("data")
-            if self.apply_transforms:
-                data = self.transforms.apply(data, fmtypes=self.fmtypes)
-            self._set_space_data(f, 'data', self.dtype_t(data))
-            self._set_space_data(f, 'labels', self.ltype_t(labels), label=True)
+            data = self.processing(data, apply_transforms=self.apply_transforms)
+            self._set_space_shape(f, 'data', data.shape, self.dtype)
+            self._set_space_shape(f, 'labels', labels.shape, self.ltype)
+            end = self.chunks_writer(f, "/data/data", data, self.dtype, 
+                self.data.shape, chunks=self.chunks)
+            end = self.chunks_writer(f, "/data/labels", labels, self.ltype, 
+                self.labels.shape, chunks=self.chunks)
 
         self.md5 = self.calc_md5()
 
@@ -1500,19 +1490,19 @@ class DataSetBuilder(DataLabel):
 
             train_data = self.processing(data_labels[0], 
                                         apply_transforms=self.apply_transforms)
-            self._set_space_data(f, 'train_data', self.dtype_t(train_data))
+            self._set_space_data(f, 'train_data', train_data, self.dtype)
 
             test_data = self.processing(data_labels[2], 
                                         apply_transforms=self.apply_transforms)
-            self._set_space_data(f, 'test_data', self.dtype_t(test_data))
+            self._set_space_data(f, 'test_data', test_data, self.dtype)
             
             validation_data = self.processing(data_labels[1],
                                              apply_transforms=self.apply_transforms)
-            self._set_space_data(f, 'validation_data', self.dtype_t(validation_data))
+            self._set_space_data(f, 'validation_data', validation_data, self.dtype)
 
-            self._set_space_data(f, 'train_labels', self.ltype_t(data_labels[3]), label=True)
-            self._set_space_data(f, 'test_labels', self.ltype_t(data_labels[5]), label=True)
-            self._set_space_data(f, 'validation_labels', self.ltype_t(data_labels[4]), label=True)
+            self._set_space_data(f, 'train_labels', data_labels[3], self.ltype)
+            self._set_space_data(f, 'test_labels', data_labels[5], self.ltype)
+            self._set_space_data(f, 'validation_labels', data_labels[4], self.ltype)
         
         self.md5 = self.calc_md5()
 

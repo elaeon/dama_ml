@@ -109,7 +109,7 @@ class TransformsRow(object):
             transforms.add(locate(fn), **params)
         return transforms
 
-    def apply(self, data):
+    def apply(self, data, fmtypes=None):
         """
         :type data: array
         :param data: apply the transforms added to the data
@@ -117,19 +117,19 @@ class TransformsRow(object):
         if not isinstance(data, list) and len(data.shape) == 1:
             for fn, params in self.transforms:
                 fn = locate(fn)
-                data = fn(data, **params)
+                data = fn(data, fmtypes=fmtypes, **params)
         else:
             data_n = []
             for row in data:
                 for fn, params in self.transforms:
                     fn = locate(fn)
-                    row = fn(row, **params)
+                    row = fn(row, fmtypes=fmtypes, **params)
                 data_n.append(row)
-            data = np.asarray(data_n)
+            data = np.asarray(data_n) #fixme: add dtype
         if data is None:
             raise Exception
         else:
-            return data
+            return data, fmtypes
 
 
 class TransformsCol(TransformsRow):
@@ -305,10 +305,7 @@ class Transforms(object):
             for t_obj in transforms:
                 log.debug("APPLY TRANSFORMS:" + str(t_obj.transforms))
                 log.debug("Transform type:" + t_obj.type())
-                if t_obj.type() == "column":
-                    data, fmtypes = t_obj.apply(data, fmtypes=fmtypes)
-                else:
-                    data = t_obj.apply(data)
+                data, fmtypes = t_obj.apply(data, fmtypes=fmtypes)
 
             if data is None:
                 raise Exception
@@ -466,15 +463,7 @@ class FitReplaceNan(Fit):
         
 
 
-def poly_features(data, degree=2, interaction_only=False, include_bias=True):
-    if len(data.shape) == 1:
-        data = data.reshape(1, -1)
-    selector = preprocessing.PolynomialFeatures(
-        degree=degree, interaction_only=interaction_only, include_bias=include_bias)
-    return selector.fit_transform(data)
-
-
-def resize(data, image_size_h=90, image_size_w=90):
+def resize(data, fmtypes=None, image_size_h=90, image_size_w=90):
     """
     :type data: array
     :param data: data to be resized
@@ -494,7 +483,7 @@ def resize(data, image_size_h=90, image_size_w=90):
     return data
 
 
-def contrast(data):
+def contrast(data, fmtypes=None):
     """
     :type data: array
     :param data: data to transform
@@ -506,7 +495,7 @@ def contrast(data):
     return exposure.rescale_intensity(data, in_range=(p2, p98))
 
 
-def upsample(data):
+def upsample(data, fmtypes=None):
     """
     :type data: array
     :param data: data to transform
@@ -516,7 +505,7 @@ def upsample(data):
     return transform.pyramid_expand(data, upscale=2, sigma=None, order=1, 
                                     mode='reflect', cval=0)
 
-def rgb2gray(data):
+def rgb2gray(data, fmtypes=None):
     """
     :type data: array
     :param data: data to transform
@@ -526,7 +515,7 @@ def rgb2gray(data):
     return color.rgb2gray(data)
 
 
-def blur(data, level=.2):
+def blur(data, fmtypes=None, level=.2):
     """
     :type data: array
     :param data: data to transform
@@ -550,7 +539,7 @@ def blur(data, level=.2):
 #    return align.process_img(data)
 
 
-def cut(data, rectangle=None):
+def cut(data, fmtypes=None, rectangle=None):
     """
     :type data: array
     :param data: data to cut    
@@ -564,11 +553,11 @@ def cut(data, rectangle=None):
     return data[top:bottom, left:right]
 
 
-def as_ubyte(data):
+def as_ubyte(data, fmtypes=None):
     return img_as_ubyte(data)
 
 
-def merge_offset(data, image_size=90, bg_color=1):
+def merge_offset(data, fmtypes=None, image_size=90, bg_color=1):
     """
     :type data: array
     :param data: data transform
@@ -588,7 +577,7 @@ def merge_offset(data, image_size=90, bg_color=1):
         return merge_offset3(data, image_size=image_size, bg_color=bg_color)
 
 
-def merge_offset2(data, image_size=90, bg_color=1):
+def merge_offset2(data, fmtypes=None, image_size=90, bg_color=1):
     bg = np.ones((image_size, image_size))
     offset = (int(round(abs(bg.shape[0] - data.shape[0]) / 2)), 
             int(round(abs(bg.shape[1] - data.shape[1]) / 2)))
@@ -608,7 +597,7 @@ def merge_offset2(data, image_size=90, bg_color=1):
     bg2[v_range1, h_range1] = bg2[v_range1, h_range1] + data[v_range2, h_range2]
     return bg2
 
-def merge_offset3(data, image_size=90, bg_color=1):
+def merge_offset3(data, fmtypes=None, image_size=90, bg_color=1):
     bg = np.ones((image_size, image_size, 3))
     offset = (int(round(abs(bg.shape[0] - data.shape[0]) / 2)), 
             int(round(abs(bg.shape[1] - data.shape[1]) / 2)),
@@ -632,11 +621,11 @@ def merge_offset3(data, image_size=90, bg_color=1):
     return bg2
 
 
-def threshold(data, block_size=41):
+def threshold(data, fmtypes=None, block_size=41):
     return filters.threshold_adaptive(data, block_size, offset=0)
 
 
-def pixelate(data, pixel_width=None, pixel_height=None, mode='mean'):
+def pixelate(data, fmtypes=None, pixel_width=None, pixel_height=None, mode='mean'):
     """
     :type data: array
     :param data: data to pixelate
@@ -675,12 +664,11 @@ def pixelate(data, pixel_width=None, pixel_height=None, mode='mean'):
     return data
 
 
-def drop_columns(row, exclude_cols=None, include_cols=None):
+def drop_columns(row, fmtypes=None, exclude_cols=None, include_cols=None):
     if include_cols is not None:
         row = row[include_cols]
     elif exclude_cols is not None:
         features = set(x for x in xrange(len(row)))
         to_keep = list(features.difference(set(exclude_cols)))
         row = row[to_keep]
-
     return row

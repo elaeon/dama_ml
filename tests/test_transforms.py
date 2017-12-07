@@ -4,15 +4,15 @@ import numpy as np
 from ml.processing import Transforms, Fit
 
 
-def linear(x):
+def linear(x, fmtypes=None):
     return x + 1
 
 
-def linear_p(x, b):
+def linear_p(x, b, fmtypes=None):
     return x + b
 
 
-def parabole(x):
+def parabole(x, fmtypes=None):
     return x*x
 
 
@@ -189,7 +189,7 @@ class TestTransforms(unittest.TestCase):
         X = np.asarray([1, 0]*10)
         Y = X*1
         dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
-            ltype='int', transforms=transforms, rewrite=True)
+            dtype='int', ltype='int', transforms=transforms, rewrite=True)
         dataset.build_dataset(X, Y)
         classif = RandomForest(dataset=dataset, 
             model_name="test", 

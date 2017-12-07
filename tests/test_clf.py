@@ -143,7 +143,7 @@ class TestGrid(unittest.TestCase):
         Y = (X[:,0] > .5).astype(int)
         self.others_models_args = {"RandomForest": [{"batch_size": 50, "num_steps": 100, "n_splits": 2}],
             "AdaBoost": [{"batch_size": 50, "num_steps": 100}]}
-        dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
+        dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False, ltype='int')
         dataset.build_dataset(X, Y)
         self.dataset = dataset
 
@@ -389,7 +389,7 @@ class TestXgboost(unittest.TestCase):
         X = np.asarray([1, 0]*10)
         Y = X*1
         self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
-            ltype='int', rewrite=True)
+            dtype='int', ltype='int', rewrite=True)
         self.dataset.build_dataset(X, Y)
         try:
             from ml.clf.extended.w_xgboost import Xgboost
@@ -428,7 +428,7 @@ class TestKFold(unittest.TestCase):
         X = np.asarray([1, 0]*10)
         Y = X*1
         self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
-            ltype='int', rewrite=True)
+            dtype='int', ltype='int', rewrite=True)
         self.dataset.build_dataset(X, Y)
         classif = FCNet(dataset=self.dataset, 
             model_name="test", 

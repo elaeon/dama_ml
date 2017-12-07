@@ -17,8 +17,15 @@ def build_csv_file(path, vector, sep=","):
             f.write(sep.join(map(str, row)))
             f.write("\n")
 
-def linear(x, b=0):
+
+def linear(x, fmtypes=None, b=0):
     return x + b
+
+
+def to_int(x, col=None, fmtypes=None):
+    x[col] = int(x[col])
+    return x
+
 
 class TestDataset(unittest.TestCase):
     def setUp(self):
@@ -157,13 +164,12 @@ class TestDataset(unittest.TestCase):
             validator="cross",
             rewrite=True)
         dataset.build_dataset(self.X, self.Y)
-        dsb = dataset.convert("convert_test", dtype='float32', ltype='|S1', 
-                            dataset_path="/tmp/")
-        self.assertEqual(dsb.train_data.dtype, np.dtype('float32'))
-        self.assertEqual(dsb.train_labels.dtype, np.dtype('|S1'))
+        dsb = dataset.convert("convert_test", dataset_path="/tmp/", ltype='int')
+        self.assertEqual(dsb.train_data.dtype, np.dtype('float64'))
+        self.assertEqual(dsb.train_labels.dtype, np.dtype('int'))
         dsb.destroy()
 
-        dsb = dataset.convert("convert_test", dtype='auto', ltype='auto',
+        dsb = dataset.convert("convert_test_2", dtype='auto', ltype='int',
                             dataset_path="/tmp/")
         self.assertEqual(dsb.train_data.dtype, dataset.train_data.dtype)
         self.assertEqual(dsb.train_labels.dtype, dataset.train_labels.dtype)
@@ -244,7 +250,7 @@ class TestDataset(unittest.TestCase):
         for init, end in zip(range_list, range_list[1:]):
             iter_ = ((i, i) for i in xrange(init, end))
             step = dsb.build_dataset_from_iter(iter_, shape, "train_data", 
-                init=step, type_t=dsb.dtype_t)
+                init=step)
         self.assertEqual(dsb.train_data.shape, shape)
         self.assertItemsEqual(dsb.train_data[9999], [9999, 9999])
         dsb.destroy()
@@ -273,7 +279,7 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(dsb.apply_transforms, False)
         self.assertEqual(dsb.hash_header is not None, True)
 
-        dsb.build_dataset(self.X, self.Y)
+        dsb.build_dataset(self.X.astype('float32'), self.Y)
         self.assertEqual(dsb.md5 is not None, True)
         dsb.destroy()
 
@@ -417,7 +423,7 @@ class TestDataset(unittest.TestCase):
         build_csv_file('/tmp/test_X.csv', self.X, sep=",")
         build_csv_file('/tmp/test_Y.csv', self.Y.reshape(-1, 1), sep="|")
 
-        dbf = DataLabelSetFile(name="test", 
+        dbf = DataLabelSetFile(name="test", ltype='int',
             training_data_path=['/tmp/test_X.csv', '/tmp/test_Y.csv'], 
                 sep=[",", "|"], merge_field="id", dataset_path="/tmp/")
         dbf.build_dataset(labels_column="0_y")
@@ -455,7 +461,7 @@ class TestDataset(unittest.TestCase):
 
     def test_features_fmtype(self):
         from ml import fmtypes
-        data = Data(name="test", dataset_path="/tmp/")
+        data = Data(name="test", dataset_path="/tmp/", dtype='int')
         array = [
             [0, 1, -1, 3, 4, 0],
             [1, -1, 0, 2 ,5, 1],
@@ -470,9 +476,39 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(data.features_fmtype(fmtypes.ORDINAL), [4])
         data.destroy()
 
+    def test_features_fmtype_set(self):
+        from ml import fmtypes
+        from ml.processing import Transforms
+
+        data = Data(name="test", dataset_path="/tmp/", dtype='int')
+        array = [
+            [0, 1, -1, 3, '4', 0],
+            [1, -1, 0, 2, '5', 1],
+            [0, 0, 1, 2, '2', 1],
+            [0, 1, 1, 3, '6', 0],
+            [1, 1, 0, 7, '7', 1]
+        ]
+        t = Transforms()
+        t.add(to_int, col=4)
+        fmtypes_t = fmtypes.FmtypesT()
+        fmtypes_t.add(0, fmtypes.BOOLEAN)
+        fmtypes_t.add(2, fmtypes.NANBOOLEAN)
+        fmtypes_t.add(1, fmtypes.NANBOOLEAN)
+        fmtypes_t.add(5, fmtypes.BOOLEAN)
+        fmtypes_t.add(4, fmtypes.ORDINAL)
+        fmtypes_t.fmtypes_fill(6)
+        narray = t.apply(array)
+        data.build_dataset(narray)
+        data.build_fmtypes(fmtypes=fmtypes_t.fmtypes)
+        self.assertEqual(data.features_fmtype(fmtypes.BOOLEAN), [0, 5])
+        self.assertEqual(data.features_fmtype(fmtypes.NANBOOLEAN), [1, 2])
+        self.assertEqual(data.features_fmtype(fmtypes.ORDINAL), [4])
+        self.assertEqual(data.features_fmtype(fmtypes.DENSE), [3])
+        data.destroy()
+
     def test_features_fmtype_edit(self):
         from ml import fmtypes
-        data = Data(name="test", dataset_path="/tmp/")
+        data = Data(name="test", dataset_path="/tmp/", dtype='int')
         array = [
             [0, 1, -1, 3, 4, 0],
             [1, -1, 0, 2 ,5, 1],
