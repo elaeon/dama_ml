@@ -21,7 +21,8 @@ log.setLevel(int(settings["loglevel"]))
 class BaseClassif(DataDrive):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
                 model_version=None, dataset_train_limit=None, 
-                autoload=True, group_name=None, rewrite=False, metrics=None):
+                autoload=True, group_name=None, rewrite=False, metrics=None,
+                dtype='float64', ltype='int'):
         self.model = None
         self.le = LabelEncoder()
         self.dataset_train_limit = dataset_train_limit
@@ -32,6 +33,8 @@ class BaseClassif(DataDrive):
         self.ext = "ckpt.pkl"
         self.rewrite = rewrite
         self.metrics = metrics
+        self.ltype = ltype
+        self.dtype = dtype
 
         super(BaseClassif, self).__init__(
             check_point_path=check_point_path,
@@ -124,8 +127,6 @@ class BaseClassif(DataDrive):
         else:
             return self.le.inverse_transform(labels.astype('int'))
 
-    def ltype(self):
-        return 'int'
 
     def reformat_all(self, dataset):
         log.info("Reformating {}...".format(self.cls_name()))
@@ -134,9 +135,9 @@ class BaseClassif(DataDrive):
             dataset_path=settings["dataset_model_path"],
             apply_transforms=not dataset._applied_transforms,
             compression_level=9,
-            dtype=dataset.dtype,
+            dtype=self.dtype,
             transforms=dataset.transforms,
-            ltype=self.ltype(),
+            ltype=self.ltype,
             validator='',
             chunks=1000,
             rewrite=self.rewrite)

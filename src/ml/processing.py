@@ -401,10 +401,10 @@ class FitTsne(Fit):
 
         tsne = PTsne(model_name=self.name, model_version="1", autoload=False)
         if not tsne.exist():
-            dataset = Data()
+            dataset = Data(dataset_path="/tmp", dtype="float64")
             dataset.build_dataset(data)
             tsne = PTsne(model_name=self.name, model_version="1", 
-                        dataset=dataset, latent_dim=2)
+                        dataset=dataset, latent_dim=2, dtype='float64')
             tsne.train(batch_size=50, num_steps=4)
         else:
             tsne.load_dataset(None)

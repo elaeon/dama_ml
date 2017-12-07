@@ -1711,11 +1711,10 @@ class DataLabelSetFile(DataLabel):
     kwargs are the same that DataSetBuilder's options
     """
 
-    def __init__(self, name=None, training_data_path=None, test_data_path=None,
+    def __init__(self, name=None, training_data_path=None,
                 sep=None, merge_field="id", na_values=None, **kwargs):
         super(DataLabelSetFile, self).__init__(name, **kwargs)
         self.training_data_path = training_data_path
-        self.test_data_path = test_data_path
         self.sep = sep
         self.merge_field = merge_field
         self.na_values = na_values
@@ -1774,7 +1773,8 @@ class DataLabelSetFile(DataLabel):
             data, labels = self.from_csv(self.training_data_path, labels_column, 
                                         nrows=nrows, 
                                         exclude_columns=exclude_columns)
-        super(DataLabelSetFile, self).build_dataset(data, labels)
+        print(data.shape)
+        #super(DataLabelSetFile, self).build_dataset(data, labels)
 
 
 class DataSetBuilderFold(object):

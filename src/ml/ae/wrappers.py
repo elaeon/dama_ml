@@ -24,7 +24,8 @@ if backend._BACKEND == "theano":
 class BaseAe(DataDrive):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
                 model_version=None, dataset_train_limit=None, info=True, 
-                autoload=True, group_name=None, latent_dim=2):
+                autoload=True, group_name=None, latent_dim=2,
+                dtype='float64'):
         self.model = None
         self.model_encoder = None
         self.model_decoder = None
@@ -33,6 +34,7 @@ class BaseAe(DataDrive):
         self.dataset = None
         self.latent_dim = latent_dim
         self.ext = "ckpt"
+        self.dtype = dtype
         super(BaseAe, self).__init__(
             check_point_path=check_point_path,
             model_version=model_version,
@@ -65,7 +67,7 @@ class BaseAe(DataDrive):
             dataset_path=settings["dataset_model_path"],
             apply_transforms=True,#not dataset.apply_transforms,
             compression_level=9,
-            dtype=dataset.dtype,
+            dtype=self.dtype,
             transforms=dataset.transforms,
             chunks=1000,
             rewrite=False)
