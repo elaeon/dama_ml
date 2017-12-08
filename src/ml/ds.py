@@ -1775,6 +1775,33 @@ class DataLabelSetFile(DataLabel):
                                         exclude_columns=exclude_columns)
         #print(data.shape)
         super(DataLabelSetFile, self).build_dataset(data, labels)
+    
+    def get_sep_path(self):
+        if isinstance(self.training_data_path, list):
+            if not isinstance(self.sep, list):
+                delimiters = [self.sep for _ in self.training_data_path]
+            else:
+                delimiters = [self.sep]
+            return self.training_data_path, delimiters
+        else:
+            return [self.training_data_path], [self.sep]
+
+    def to_db(self):
+        from ml.db.utils import build_schema, insert_rows
+        import csv
+        from ml import fmtypes
+        training_data_path, delimiters = self.get_sep_path()
+        for data_path, delimiter in zip(training_data_path, delimiters):
+            with open(data_path, "r") as csv_file:
+                csv_reader = csv.reader(csv_file, delimiter=delimiter)
+                for row in csv_reader:
+                    header = row
+                    break
+                build_schema("test", header, 
+                    [fmtypes.TEXT]*len(header),
+                    self.merge_field)
+                insert_rows(csv_reader, "test", header)
+            return
 
 
 class DataSetBuilderFold(object):
