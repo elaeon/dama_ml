@@ -1790,18 +1790,20 @@ class DataLabelSetFile(DataLabel):
         from ml.db.utils import build_schema, insert_rows
         import csv
         from ml import fmtypes
+        from ml.utils.files import filename_n_ext_from_path
+
         training_data_path, delimiters = self.get_sep_path()
         for data_path, delimiter in zip(training_data_path, delimiters):
+            table_name = filename_n_ext_from_path(data_path)
             with open(data_path, "r") as csv_file:
                 csv_reader = csv.reader(csv_file, delimiter=delimiter)
                 for row in csv_reader:
                     header = row
                     break
-                build_schema("test", header, 
+                build_schema(table_name, header, 
                     [fmtypes.TEXT]*len(header),
                     self.merge_field)
-                insert_rows(csv_reader, "test", header)
-            return
+                insert_rows(csv_reader, table_name, header)
 
 
 class DataSetBuilderFold(object):

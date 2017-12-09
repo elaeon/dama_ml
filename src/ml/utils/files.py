@@ -10,6 +10,13 @@ def filename_from_path(path):
     return tail or ntpath.basename(head)
 
 
+def filename_n_ext_from_path(path):
+    filename = filename_from_path(path)
+    filename_l = filename.split(".")
+    filename_l.pop()
+    return "".join(filename_l)
+
+
 def check_or_create_path_dir(path, dirname):
     check_point = os.path.join(path, dirname)
     if not os.path.exists(check_point):
