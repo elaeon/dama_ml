@@ -480,7 +480,6 @@ class TestDataset(unittest.TestCase):
         from ml import fmtypes
         from ml.processing import Transforms
 
-        data = Data(name="test", dataset_path="/tmp/", dtype='int')
         array = [
             [0, 1, -1, 3, '4', 0],
             [1, -1, 0, 2, '5', 1],
@@ -497,8 +496,9 @@ class TestDataset(unittest.TestCase):
         fmtypes_t.add(5, fmtypes.BOOLEAN)
         fmtypes_t.add(4, fmtypes.ORDINAL)
         fmtypes_t.fmtypes_fill(6)
-        narray = t.apply(array)
-        data.build_dataset(narray)
+        data = Data(name="test", dataset_path="/tmp/", dtype='int', 
+                    transforms=t, apply_transforms=True)
+        data.build_dataset(array)
         data.build_fmtypes(fmtypes=fmtypes_t.fmtypes)
         self.assertEqual(data.features_fmtype(fmtypes.BOOLEAN), [0, 5])
         self.assertEqual(data.features_fmtype(fmtypes.NANBOOLEAN), [1, 2])

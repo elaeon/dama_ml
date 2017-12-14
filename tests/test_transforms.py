@@ -144,6 +144,15 @@ class TestTransforms(unittest.TestCase):
         result = transforms.apply(numbers)
         self.assertItemsEqual(result, np.ones((10,)) + 11) # result [12, ..., 12]
 
+    def test_apply_row_iterlayer(self):
+        from ml.layers import IterLayer
+        transforms = Transforms()
+        transforms.add(linear)
+        transforms.add(linear_p, b=10)
+        numbers = IterLayer((e for e in np.ones((10,))))
+        result = transforms.apply(numbers)
+        self.assertItemsEqual(result, np.ones((10,)) + 11) # result [12, ..., 12]
+
     def test_apply_col(self):
         from ml.processing import FitStandardScaler, FitTruncatedSVD
         transforms = Transforms()
