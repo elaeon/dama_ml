@@ -19,7 +19,8 @@ def choice(operator):
 
 
 class IterLayer(object):
-    def __init__(self, fn_iter):
+    def __init__(self, fn_iter, shape=None):
+        self.shape = shape
         if isinstance(fn_iter, types.GeneratorType):
             self.fn_iter = fn_iter
         elif isinstance(fn_iter, IterLayer):
@@ -34,10 +35,6 @@ class IterLayer(object):
     def stream_operation(self, operator, stream):
         iter_ = imap(lambda x: operator(x[0], x[1]), izip(self, stream))
         return IterLayer(iter_)
-
-    def to_dsb(self):
-        from ml.ds import DataSetBuilder
-        pass
 
     @choice(operator.add)
     def __add__(self, x):
@@ -120,10 +117,6 @@ class IterLayer(object):
     def concat(self, iterlayer):
         return IterLayer(itertools.chain(self, iterlayer))
 
-    @property
-    def shape(self):
-        return (None, None)
-
     def to_datamodelset(self, labels, features, size, ltype):
         from ml.ds import DataSetBuilder
         from ml.utils.config import get_settings
@@ -143,5 +136,21 @@ class IterLayer(object):
         dataset.build_dataset(data, label_m)
         return dataset
 
+    def to_narray(self, dtype=None):
+        import numpy as np
+        return np.asarray(list(self))
+
+    def tee(self):
+        it0, it1 = itertools.tee(self)
+        return IterLayer(it0), IterLayer(it1)
+
     def __iter__(self):
-        return self.fn_iter
+        return self
+
+    def next(self):
+        try:
+            return self.fn_iter.next()
+        except StopIteration:
+            if hasattr(self.fn_iter, 'close'):
+                self.fn_iter.close()
+            raise StopIteration

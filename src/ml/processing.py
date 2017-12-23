@@ -48,8 +48,9 @@ class TransformsRow(object):
 
     transforms.add(function2, {'x': 10}) -> function2(x=10)
     """
-    def __init__(self):
+    def __init__(self, o_features=None):
         self.transforms = []
+        self.o_features = o_features
 
     def __add__(self, o):
         all_transforms = TransformsRow.from_json(self.to_json())
@@ -95,17 +96,23 @@ class TransformsRow(object):
         """
         convert this class to json format
         """
-        import json
-        return json.dumps(self.transforms)
+        return json.dumps(self.info())
+
+    def info(self):
+        return {"o_features": self.o_features, "transforms": self.transforms}
 
     @classmethod
     def from_json(self, json_transforms):
         """
         from json format to Transform class.
         """
+        return self._from_json(json_transforms, TransformsRow)
+        
+    @classmethod
+    def _from_json(self, json_transforms, transform_base_class):
         transforms_loaded = json.loads(json_transforms)#, object_pairs_hook=OrderedDict)
-        transforms = TransformsRow()
-        for fn, params in transforms_loaded:
+        transforms = transform_base_class(o_features=transforms_loaded.get("o_features", None))
+        for fn, params in transforms_loaded["transforms"]:
             transforms.add(locate(fn), **params)
         return transforms
 
@@ -114,31 +121,31 @@ class TransformsRow(object):
         :type data: array
         :param data: apply the transforms added to the data
         """
-        if not isinstance(data, list) and len(data.shape) == 1:
-            for fn, params in self.transforms:
-                fn = locate(fn)
-                data = fn(data, fmtypes=fmtypes, **params)
-        else:
-            data_n = []
+        #if not isinstance(data, list) and len(data.shape) == 1:
+        #    for fn, params in self.transforms:
+        #        fn = locate(fn)
+        #        data = fn(data, fmtypes=fmtypes, **params)
+        #else:
+        def iter_():
+            #data_n = []
+            locate_fn = {}
             for row in data:
-                for fn, params in self.transforms:
-                    fn = locate(fn)
+                for fn_, params in self.transforms:
+                    fn = locate_fn.setdefault(fn_, locate(fn_))
                     row = fn(row, fmtypes=fmtypes, **params)
-                data_n.append(row)
-            data = np.asarray(data_n) #fixme: add dtype
-        if data is None:
-            raise Exception
-        else:
-            return data, fmtypes
+                yield row
+            #data_n.append(row)
+        #data = np.asarray(data_n) #fixme: add dtype
+        return IterLayer(iter_(), shape=(data.shape[0], self.o_features)), fmtypes
 
 
 class TransformsCol(TransformsRow):
     
-    def __add__(self, o):
-        all_transforms = TransformsCol.from_json(self.to_json())
-        for fn, params in o.transforms:
-            all_transforms.add(locate(fn), **params)
-        return all_transforms
+    #def __add__(self, o):
+    #    all_transforms = TransformsCol.from_json(self.to_json())
+    #    for fn, params in o.transforms:
+    #        all_transforms.add(locate(fn), **params)
+    #    return all_transforms
 
     def type(self):
         return "column"
@@ -148,11 +155,7 @@ class TransformsCol(TransformsRow):
         """
         from json format to Transform class.
         """
-        transforms_loaded = json.loads(json_transforms)#, object_pairs_hook=OrderedDict)
-        transforms = TransformsCol()
-        for fn, params in transforms_loaded:
-            transforms.add(locate(fn), **params)
-        return transforms
+        return self._from_json(json_transforms, TransformsCol)
 
     def initial_fn(self, data, fmtypes=None):
         for fn, params in self.transforms:
@@ -173,13 +176,13 @@ class TransformsCol(TransformsRow):
         :type data: array
         :param data: apply the transforms added to the data
         """
+        #data_base, data_t = data.tee()
+        if isinstance(data, IterLayer):
+            data = data.to_narray()
         for fn_fit in self.initial_fn(data, fmtypes=fmtypes):
-            data = np.asarray(list(fn_fit.transform(data)))
+            data = fn_fit.transform(data).to_narray()
 
-        if data is None:
-            raise Exception
-        else:
-            return data, fn_fit.fmtypes
+        return data, fn_fit.fmtypes
 
     def destroy(self):
         for transform in self.initial_fn(None):
@@ -197,7 +200,7 @@ class Transforms(object):
 
     transforms.add(function2, {'x': 10}) -> function2(x=10)
     """
-    def __init__(self):
+    def __init__(self, o_features=None):
         self.transforms = []
         self.types = {"row": TransformsRow, "column": TransformsCol}
 
@@ -205,7 +208,7 @@ class Transforms(object):
     def cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
-    def add(self, fn, name=None, type="row", **params):
+    def add(self, fn, name=None, o_features=None, type="row", **params):
         """
         :type fn: function
         :param fn: function to add
@@ -216,7 +219,8 @@ class Transforms(object):
         This function add to the class the functions to use with the data.
         """
         t_class = self.types[type]
-        t_obj = t_class()
+        t_obj = t_class(o_features=o_features)
+        print("OF", o_features, t_obj.o_features)
         if name is not None and type == "column":
             params["name_00_ml"] = name
         t_obj.add(fn, **params)
@@ -256,7 +260,7 @@ class Transforms(object):
             types = {}
             compact_list = []
             for t0, t1 in zip(self.transforms, self.transforms[1:]):
-                if t0.type() == t1.type():
+                if t0.type() == t1.type() and t0.o_features == t1.o_features:
                     types[t0.type()] = types.get(t0.type(), t0) + t1
                 else:
                     compact_list.append(types.get(t0.type(), t0))
@@ -268,27 +272,29 @@ class Transforms(object):
         convert this class to json format
         """
         import json
-        return json.dumps([{t.type(): t.transforms} for t in self.compact()])
+        return json.dumps([{t.type(): t.info()} for t in self.compact()])
 
-    @classmethod
-    def list2transforms(self, transforms_list, transforms):
-        for transforms_type in transforms_list:
-            for type, transforms_dict in transforms_type.items():
-                for fn, params in transforms_dict.items():
-                    transforms.add(locate(fn), type=type, **params)
+    #@classmethod
+    #def list2transforms(self, transforms_list, transforms):
+    #    for transforms_type in transforms_list:
+    #        for type, transforms_dict in transforms_type.items():
+    #            for fn, params in transforms_dict.items():
+    #                transforms.add(locate(fn), type=type, **params)
 
     @classmethod
     def from_json(self, json_transforms):
         """
         from json format to Transform class.
         """
+        print("FROM JSON")
         transforms_list = json.loads(json_transforms, object_pairs_hook=OrderedDict)
         transforms = Transforms()
         for transforms_type in transforms_list:
             for type_, transforms_dict in transforms_type.items():
-                for fn, params in transforms_dict:
+                for fn, params in transforms_dict["transforms"]:
                     try:
-                        transforms.add(locate(fn), type=type_, **params)
+                        transforms.add(locate(fn), o_features=transforms_dict["o_features"], 
+                                        type=type_, **params)
                     except Exception, e:
                         print(e.message)
         return transforms
@@ -316,7 +322,11 @@ class Transforms(object):
         for transform in self.compact():
             if hasattr(transform, 'destroy'):
                 transform.destroy()
-            
+
+    @property
+    def o_features(self):
+        return self.transforms[-1].o_features
+
 
 class Fit(object):
     def __init__(self, data, name=None, fmtypes=None, path="", **kwargs):
@@ -332,12 +342,11 @@ class Fit(object):
     def fit(self, data, **params):
         pass
 
-    def dim_rule(self, data):
-        return data
+    #def dim_rule(self, data):
+    #    return data
 
     def transform(self, data):
-        from ml.layers import IterLayer
-        return IterLayer(self.t(self.dim_rule(data)))
+        return IterLayer(self.t(data))
 
     def read_meta(self):
         from ml.ds import load_metadata
@@ -349,15 +358,11 @@ class Fit(object):
 
 
 class FitStandardScaler(Fit):
-    def dim_rule(self, data):
-        if len(data.shape) > 2:
-            data = data.reshape(data.shape[0], -1)
-        return data
 
     def fit(self, data, **params):
         from sklearn.preprocessing import StandardScaler
         scaler = StandardScaler(**params)
-        scaler.fit(self.dim_rule(data))
+        scaler.fit(data)
         return scaler.transform
 
 
@@ -370,7 +375,7 @@ class FitRobustScaler(Fit):
     def fit(self, data, **params):
         from sklearn.preprocessing import RobustScaler
         scaler = RobustScaler(**params)
-        scaler.fit(self.dim_rule(data))
+        scaler.fit(data)
         return scaler.transform
 
 
@@ -413,7 +418,6 @@ class FitTsne(Fit):
 
     def transform(self, data):
         from itertools import izip
-        from ml.layers import IterLayer
 
         def iter_():
             for row, predict in izip(data, self.t(self.dim_rule(data), chunk_size=5000)):

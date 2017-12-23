@@ -108,7 +108,7 @@ class TestTransforms(unittest.TestCase):
         transforms.add(linear_p, b=1)
         transforms.add(FitTsne, name="tsne", type="column")
         result = transforms.to_json()
-        txt = '[{"row": [["tests.test_transforms.linear", {}]]}, {"column": [["tests.test_transforms.linear_p", {"b": 1}]]}, {"row": [["tests.test_transforms.linear_p", {"b": 1}]]}, {"column": [["ml.processing.FitTsne", {"name_00_ml": "tsne"}]]}]'
+        txt = '[{"row": {"o_features": null, "transforms": [["tests.test_transforms.linear", {}]]}}, {"column": {"o_features": null, "transforms": [["tests.test_transforms.linear_p", {"b": 1}]]}}, {"row": {"o_features": null, "transforms": [["tests.test_transforms.linear_p", {"b": 1}]]}}, {"column": {"o_features": null, "transforms": [["ml.processing.FitTsne", {"name_00_ml": "tsne"}]]}}]'
         self.assertEqual(result, txt)
 
         transforms.clean()
@@ -116,7 +116,7 @@ class TestTransforms(unittest.TestCase):
         transforms.add(linear_p, b=1)        
         transforms.add(linear, type="column")
         result = transforms.to_json()
-        txt = '[{"row": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}]]}, {"column": [["tests.test_transforms.linear", {}]]}]'
+        txt = '[{"row": {"o_features": null, "transforms": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}]]}}, {"column": {"o_features": null, "transforms": [["tests.test_transforms.linear", {}]]}}]'
         self.assertEqual(result, txt)
 
     def test_from_json(self):
@@ -133,7 +133,7 @@ class TestTransforms(unittest.TestCase):
         t1 = Transforms()
         t1.add(linear_p, b=1)
         nt = t0 + t1
-        txt = '[{"row": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}]]}]'
+        txt = '[{"row": {"o_features": null, "transforms": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}]]}}]'
         self.assertEqual(nt.to_json(), txt)
 
     def test_apply_row(self):
@@ -149,7 +149,7 @@ class TestTransforms(unittest.TestCase):
         transforms = Transforms()
         transforms.add(linear)
         transforms.add(linear_p, b=10)
-        numbers = IterLayer((e for e in np.ones((10,))))
+        numbers = IterLayer((e for e in np.ones((10,))), shape=(10,))
         result = transforms.apply(numbers)
         self.assertItemsEqual(result, np.ones((10,)) + 11) # result [12, ..., 12]
 
@@ -340,12 +340,12 @@ class TestTransforms(unittest.TestCase):
         transforms = Transforms()
         transforms.add(drop_columns, include_cols=[1,2])
         X = np.random.rand(1000, 4)
-        result = transforms.apply(X)
+        result = transforms.apply(X).to_narray()
         self.assertEqual(result.shape, (1000, 2))
 
         transforms = Transforms()
         transforms.add(drop_columns, exclude_cols=[3])
-        result = transforms.apply(X)
+        result = transforms.apply(X).to_narray()
         self.assertEqual(result.shape, (1000, 3))
         
     def test_transforms_row_col(self):
@@ -356,6 +356,18 @@ class TestTransforms(unittest.TestCase):
         transforms.add(drop_columns, include_cols=[1,2])
         transforms.add(FitStandardScaler, name="scaler", type="column")
         transforms.add(linear_p, b=10)
+        X = np.random.rand(10, 4)
+        result = transforms.apply(X).to_narray()
+        self.assertEqual(result.shape, (10, 2))
+
+    def test_transforms_shape(self):
+        from ml.processing import drop_columns
+        from ml.processing import FitStandardScaler
+
+        transforms = Transforms()
+        transforms.add(drop_columns, include_cols=[1,2], o_features=2)
+        transforms.add(FitStandardScaler, o_features=2, name="scaler", type="column")
+        transforms.add(linear_p, b=10, o_features=2)
         X = np.random.rand(10, 4)
         result = transforms.apply(X)
         self.assertEqual(result.shape, (10, 2))

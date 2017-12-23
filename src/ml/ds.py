@@ -49,6 +49,15 @@ def calc_nshape(data, value):
     return data[:limit]
 
 
+def cache(func):
+    def fn_wrapper(self):
+        attr = "{}_cache".format(func.__name__)
+        if not hasattr(self, attr) or getattr(self, attr) is None:
+            setattr(self, attr, func(self))
+        return getattr(self, attr)
+    return fn_wrapper
+
+
 class ReadWriteData(object):
 
     def auto_dtype(self, ttype):
@@ -115,16 +124,19 @@ class ReadWriteData(object):
         from tqdm import tqdm
         log.info("chunk size {}".format(chunks))
         end = init
-        shape = list(shape)
-        shape = [chunks] + shape[1:]
+        chunks_shape = list(shape)
+        chunks_shape = [chunks] + chunks_shape[1:]
         def map_dtype(seq):
             if dtype == np.dtype("object"):
-                return map(str, seq)
+                seq = map(str, seq)
+            
+            if len(seq) == 1:
+                return seq[0]
             else:
                 return seq
 
         for row in tqdm(grouper_chunk(chunks, data)):
-            seq = np.empty(shape, dtype=dtype)
+            seq = np.empty(chunks_shape, dtype=dtype)
             for i, e in enumerate(row):
                 seq[i] = map_dtype(e)
             end += i+1
@@ -136,9 +148,8 @@ class ReadWriteData(object):
         """
         create directories if the dataset_path does not exist
         """
-        if self.dataset_path is not None:
-            if not os.path.exists(self.dataset_path):
-                os.makedirs(self.dataset_path)
+        if not self.exist() and self.dataset_path is not None:
+            os.makedirs(self.dataset_path)
 
     def destroy(self):
         """
@@ -265,6 +276,7 @@ class Data(ReadWriteData):
         self._set_attr('dtype', value)
 
     @property
+    @cache
     def transforms(self):
         return Transforms.from_json(self._get_attr('transforms'))
 
@@ -419,7 +431,7 @@ class Data(ReadWriteData):
         return self.copy(dataset_path=dataset_path)
 
     def exist(self):
-        return self.md5 != None
+        return os.path.exists(self.dataset_path)
 
     def info(self, classes=False):
         """
@@ -606,9 +618,10 @@ class Data(ReadWriteData):
 
         """
         if apply_transforms:
+            data.shape = [data.shape[0], self.transforms.o_features]
             return self.transforms.apply(data, fmtypes=self.fmtypes)
         else:
-            return data if isinstance(data, np.ndarray) else np.asarray(data)
+            return IterLayer(data)#data if isinstance(data, np.ndarray) else np.asarray(data)
 
     @property
     def train_data(self):
