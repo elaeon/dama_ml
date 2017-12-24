@@ -218,12 +218,23 @@ class Transforms(object):
 
         This function add to the class the functions to use with the data.
         """
-        t_class = self.types[type]
-        t_obj = t_class(o_features=o_features)
         if name is not None and type == "column":
             params["name_00_ml"] = name
-        t_obj.add(fn, **params)
-        self.transforms.append(t_obj)
+
+        if not self.is_empty():
+            last_t_obj = self.transforms[-1]
+            if type == last_t_obj.type() and o_features == last_t_obj.o_features:
+                last_t_obj.add(fn, **params)
+            else:
+                t_class = self.types[type]
+                t_obj = t_class(o_features=o_features)
+                t_obj.add(fn, **params)
+                self.transforms.append(t_obj)
+        else:
+            t_class = self.types[type]
+            t_obj = t_class(o_features=o_features)
+            t_obj.add(fn, **params)
+            self.transforms.append(t_obj)
 
     def is_empty(self):
         """
@@ -244,34 +255,12 @@ class Transforms(object):
                 all_transforms.add(locate(fn), type=transform.type(), **params)
         return all_transforms
 
-    def compact(self):
-        """
-        transforms a list of transformations to a more compact format
-
-        original = [row, row, row, col, col, row]
-        compact = [row, col, row]
-        """
-        if len(self.transforms) == 1:
-            compact_list = [self.transforms[0]]
-        elif len(self.transforms) == 0:
-            compact_list = []
-        else:
-            types = {}
-            compact_list = []
-            for t0, t1 in zip(self.transforms, self.transforms[1:]):
-                if t0.type() == t1.type() and t0.o_features == t1.o_features:
-                    types[t0.type()] = types.get(t0.type(), t0) + t1
-                else:
-                    compact_list.append(types.get(t0.type(), t0))
-            compact_list.append(types.get(t1.type(), t1))
-        return compact_list
-
     def to_json(self):
         """
         convert this class to json format
         """
         import json
-        return json.dumps([{t.type(): t.info()} for t in self.compact()])
+        return json.dumps([{t.type(): t.info()} for t in self.transforms])
 
     #@classmethod
     #def list2transforms(self, transforms_list, transforms):
@@ -305,8 +294,7 @@ class Transforms(object):
         if self.is_empty():
             return data
         else:
-            transforms = self.compact()
-            for t_obj in transforms:
+            for t_obj in self.transforms:
                 log.debug("APPLY TRANSFORMS:" + str(t_obj.transforms))
                 log.debug("Transform type:" + t_obj.type())
                 data, fmtypes = t_obj.apply(data, fmtypes=fmtypes)
@@ -317,7 +305,7 @@ class Transforms(object):
                 return data
 
     def destroy(self):
-        for transform in self.compact():
+        for transform in self.transforms:
             if hasattr(transform, 'destroy'):
                 transform.destroy()
 
