@@ -200,7 +200,7 @@ class Transforms(object):
 
     transforms.add(function2, {'x': 10}) -> function2(x=10)
     """
-    def __init__(self, o_features=None):
+    def __init__(self):
         self.transforms = []
         self.types = {"row": TransformsRow, "column": TransformsCol}
 
@@ -220,7 +220,6 @@ class Transforms(object):
         """
         t_class = self.types[type]
         t_obj = t_class(o_features=o_features)
-        print("OF", o_features, t_obj.o_features)
         if name is not None and type == "column":
             params["name_00_ml"] = name
         t_obj.add(fn, **params)
@@ -286,7 +285,6 @@ class Transforms(object):
         """
         from json format to Transform class.
         """
-        print("FROM JSON")
         transforms_list = json.loads(json_transforms, object_pairs_hook=OrderedDict)
         transforms = Transforms()
         for transforms_type in transforms_list:

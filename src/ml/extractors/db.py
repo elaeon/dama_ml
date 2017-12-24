@@ -26,6 +26,7 @@ class SQL(object):
         self.table_name = table_name
         self.columns = columns
         self.limit = None
+        self.order_by = None
         self.flat = flat
 
     @property
@@ -55,18 +56,25 @@ class SQL(object):
         else:
             return ",".join(columns)
 
-    def stream(self, limit=None):
+    def stream(self, limit=None, order_by=None):
         self.limit = limit
         if self.limit is None:
             limit = ""
         else:
             limit = "LIMIT {}".format(self.limit)
 
+        self.order_by =  order_by
+        if self.order_by is None:
+            order_by = ""
+        else:
+            order_by = "ORDER BY " + ",".join(self.order_by)
+
         conn = self.db_conn.__enter__()
         #with self.db_conn as conn:
         cur = conn.cursor()
-        query = "SELECT {columns} FROM {table_name} {limit}".format(
-            columns=self.format_columns(self.columns), table_name=self.table_name, 
+        query = "SELECT {columns} FROM {table_name} {order_by} {limit}".format(
+            columns=self.format_columns(self.columns), table_name=self.table_name,
+            order_by=order_by,
             limit=limit)
         cur.execute(query)
         return IterLayer(cur, shape=self.shape)

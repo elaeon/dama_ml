@@ -58,6 +58,15 @@ def cache(func):
     return fn_wrapper
 
 
+def clean_cache(func):
+    def fn_wrapper(self, value):
+        attr = "{}_cache".format(func.__name__)
+        if hasattr(self, attr) and getattr(self, attr) is not None:
+            setattr(self, attr, None)
+        return func(self, value)
+    return fn_wrapper
+
+
 class ReadWriteData(object):
 
     def auto_dtype(self, ttype):
@@ -281,6 +290,7 @@ class Data(ReadWriteData):
         return Transforms.from_json(self._get_attr('transforms'))
 
     @transforms.setter
+    @clean_cache
     def transforms(self, value):
         self._set_attr('transforms', value.to_json())
 
@@ -288,11 +298,11 @@ class Data(ReadWriteData):
     def transforms_str(self):
         return self._get_attr('transforms')
 
-    def reset_transforms(self, transforms):
-        if self._applied_transforms is False:
-            self.model = 'r'
-            self._set_attr('transforms', transforms.to_json())
-            self.mode = 'w'
+    #def reset_transforms(self, transforms):
+    #    if self._applied_transforms is False:
+    #        self.model = 'r'
+    #        self.transforms = transforms
+    #        self.mode = 'w'
 
     @property
     def description(self):
