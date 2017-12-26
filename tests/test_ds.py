@@ -130,8 +130,8 @@ class TestDataset(unittest.TestCase):
             validator="cross",
             rewrite=True)
         dataset.build_dataset(self.X, self.Y)
-        ds = dataset.copy(percentaje=.5)
-        self.assertEqual(dataset.copy(percentaje=.5).train_data.shape[0], 3)
+        ds = dataset.copy(percentaje=.5, dataset_path="/tmp")
+        self.assertEqual(ds.train_data.shape[0], 3)
         dl = dataset.desfragment()
         self.assertEqual(dl.copy(percentaje=.5).data.shape[0], 5)
         ds.destroy()
@@ -178,7 +178,7 @@ class TestDataset(unittest.TestCase):
 
     def test_add_transform(self):
         transforms = Transforms()
-        transforms.add(linear, b=1)
+        transforms.add(linear, b=1, o_features=self.X.shape[1])
         dataset = DataSetBuilder(
             name="test_ds",
             dataset_path="/tmp/",
@@ -192,7 +192,7 @@ class TestDataset(unittest.TestCase):
         dataset.build_dataset(self.X, self.Y)
         self.assertItemsEqual(self.X[0]+1, dataset.train_data[0])
         transforms = Transforms()
-        transforms.add(linear, b=2)
+        transforms.add(linear, b=2, o_features=self.X.shape[1])
         dsb = dataset.add_transforms(transforms, name="add_transform")
         self.assertItemsEqual(self.X[0]+3, dsb.train_data[0])
         self.assertEqual(dsb.name == "add_transform", True)
@@ -204,10 +204,11 @@ class TestDataset(unittest.TestCase):
             dataset_path="/tmp/",
             ltype='int',
             apply_transforms=False,
-            validator=None)
+            validator=None,
+            rewrite=True)
         dataset.build_dataset(self.X, self.Y)
         transforms = Transforms()
-        transforms.add(linear, b=1)
+        transforms.add(linear, b=1, o_features=self.X.shape[1])
         dsb = dataset.add_transforms(transforms)
         self.assertItemsEqual(self.X[0], dsb.train_data[0])
         self.assertEqual(dsb.name != "add_transform", True)
@@ -404,6 +405,7 @@ class TestDataset(unittest.TestCase):
             rewrite=True)
         dataset.build_dataset(self.X, self.Y)
         self.assertEqual(dataset.validation_labels.shape[0], 1)
+        dataset.destroy()
 
     def test_text_ds(self):
         import h5py
@@ -479,6 +481,7 @@ class TestDataset(unittest.TestCase):
     def test_features_fmtype_set(self):
         from ml import fmtypes
         from ml.processing import Transforms
+        from ml.layers import IterLayer
 
         array = [
             [0, 1, -1, 3, '4', 0],
@@ -488,7 +491,7 @@ class TestDataset(unittest.TestCase):
             [1, 1, 0, 7, '7', 1]
         ]
         t = Transforms()
-        t.add(to_int, col=4)
+        t.add(to_int, col=4, o_features=6)
         fmtypes_t = fmtypes.FmtypesT()
         fmtypes_t.add(0, fmtypes.BOOLEAN)
         fmtypes_t.add(2, fmtypes.NANBOOLEAN)
@@ -498,7 +501,7 @@ class TestDataset(unittest.TestCase):
         fmtypes_t.fmtypes_fill(6)
         data = Data(name="test", dataset_path="/tmp/", dtype='int', 
                     transforms=t, apply_transforms=True)
-        data.build_dataset(array)
+        data.build_dataset(IterLayer(array, shape=(5,6)))
         data.build_fmtypes(fmtypes=fmtypes_t.fmtypes)
         self.assertEqual(data.features_fmtype(fmtypes.BOOLEAN), [0, 5])
         self.assertEqual(data.features_fmtype(fmtypes.NANBOOLEAN), [1, 2])
@@ -542,6 +545,7 @@ class TestDataSetFile(unittest.TestCase):
             dataset_path="/tmp/")
         data, labels = dataset.from_csv('/tmp/test.csv', 'target')
         self.assertItemsEqual(self.Y, labels.astype(int))
+        dataset.destroy()
 
 
 class TestDataSetFold(unittest.TestCase):

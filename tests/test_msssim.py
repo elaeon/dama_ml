@@ -14,7 +14,6 @@ settings.update(get_settings("tickets"))
 class TestMsssiM(unittest.TestCase):
     def setUp(self):
         base_file = os.path.dirname(os.path.abspath(__file__))
-        print(base_file)
         self.img1 = os.path.join(base_file, "../examples/Pictures/testPattern.png")
         self.img2 = os.path.join(base_file, "../examples/Pictures/testPattern.png") 
         self.img3 = os.path.join(base_file, "../examples/Pictures/testPattern2.png")
@@ -28,7 +27,7 @@ class TestMsssiM(unittest.TestCase):
         transforms.add(rgb2gray)
         transforms.add(merge_offset)
         image = transforms.apply(image)
-        img = img_as_float(image[0])
+        img = img_as_float(image.to_narray()[0])
         rows, cols = img.shape
 
         noise = np.ones_like(img) * 0.2 * (img.max() - img.min())
@@ -64,8 +63,8 @@ class TestMsssiM(unittest.TestCase):
         ###TF CALC END
         #print('tf_ssim_none', tf_ssim_none)
         #print('tf_ssim_noise', tf_ssim_noise)
-        print('tf_msssim_none', tf_msssim_none)
-        print('tf_msssim_noise', tf_msssim_noise)
+        #print('tf_msssim_none', tf_msssim_none)
+        #print('tf_msssim_noise', tf_msssim_noise)
         self.assertEqual(tf_msssim_none, 1)
 
     def test_two_img(self):
@@ -79,12 +78,12 @@ class TestMsssiM(unittest.TestCase):
         transforms.add(rgb2gray)
         transforms.add(merge_offset)
         image1 = transforms.apply(image1)
-        img1 = img_as_float(image1[0])
+        img1 = img_as_float(image1.to_narray()[0])
         rows1, cols1 = img1.shape
 
         image2 = np.expand_dims(io.imread(image_path2), axis=0)
         image2 = transforms.apply(image2)
-        img2 = img_as_float(image2[0])
+        img2 = img_as_float(image2.to_narray()[0])
         rows2, cols2 = img2.shape
 
         image1 = tf.placeholder(tf.float32, shape=[rows1, cols1])
@@ -107,7 +106,7 @@ class TestMsssiM(unittest.TestCase):
             tf_msssim_2 = sess.run(msssim_index,
                                      feed_dict={image1: img1, image2: img2})
         ###TF CALC END
-        print('tf_msssim_none', tf_msssim_1)
-        print('tf_msssim_noise', tf_msssim_2)
+        #print('tf_msssim_none', tf_msssim_1)
+        #print('tf_msssim_noise', tf_msssim_2)
         self.assertEqual(tf_msssim_1, 1)
 

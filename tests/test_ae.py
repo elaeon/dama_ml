@@ -20,7 +20,7 @@ class TestAE(unittest.TestCase):
         Y = np.sin(6*X)
         dataset.build_dataset(Y)
         classif = PTsne(model_name="tsne", model_version="1", 
-            check_point_path="/tmp/", dataset=dataset, latent_dim=2)
+            check_point_path="/tmp/", dataset=dataset, latent_dim=2, rewrite=True)
         classif.train(batch_size=8, num_steps=2)
 
         classif = PTsne(model_name="tsne", model_version="1", 
@@ -43,7 +43,8 @@ class TestAE(unittest.TestCase):
             model_version="1",
             check_point_path="/tmp/",
             intermediate_dim=5,
-            dtype="int")
+            dtype="int",
+            rewrite=True)
         vae.train(batch_size=1, num_steps=10)
 
         vae = VAE( 
@@ -64,13 +65,13 @@ class TestAE(unittest.TestCase):
         X = X.astype(int)
         dataset = Data(name="test", dataset_path="/tmp/", rewrite=True, dtype="int")
         dataset.build_dataset(X)
-
         dae = DAE(dataset=dataset, 
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/",
             intermediate_dim=5,
-            dtype="int")
+            dtype="int",
+            rewrite=True)
         dae.train(batch_size=1, num_steps=10)
 
         dae = DAE( 

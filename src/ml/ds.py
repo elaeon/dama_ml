@@ -15,6 +15,7 @@ import uuid
 
 from ml.processing import Transforms
 from ml.utils.config import get_settings
+from ml.layers import IterLayer
 
 settings = get_settings("ml")
 
@@ -84,8 +85,8 @@ class ReadWriteData(object):
 
     def _set_space_data(self, f, name, data, dtype):
         dtype = self.auto_dtype(dtype)
-        if dtype != 'object' and dtype != data.dtype:
-            raise Exception, "Dataset is set with type '{}' and data type is '{}'".format(dtype, data.dtype)
+        if isinstance(data, IterLayer):
+            data = data.to_narray()
         f['data'].require_dataset(name, data.shape, dtype=dtype, data=data, 
             exact=True, chunks=True, **self.zip_params)
 
@@ -133,23 +134,24 @@ class ReadWriteData(object):
         from tqdm import tqdm
         log.info("chunk size {}".format(chunks))
         end = init
-        chunks_shape = list(shape)
-        chunks_shape = [chunks] + chunks_shape[1:]
-        def map_dtype(seq):
-            if dtype == np.dtype("object"):
-                seq = map(str, seq)
+        #chunks_shape = list(shape)
+        #chunks_shape = [chunks] + chunks_shape[1:]
+        #def map_dtype(seq):
+        #    if dtype == np.dtype("object"):
+        #        seq = map(str, seq)
             
-            if len(seq) == 1:
-                return seq[0]
-            else:
-                return seq
+        #    if len(seq) == 1:
+        #        return seq[0]
+        #    else:
+        #        return seq
 
         for row in tqdm(grouper_chunk(chunks, data)):
-            seq = np.empty(chunks_shape, dtype=dtype)
-            for i, e in enumerate(row):
-                seq[i] = map_dtype(e)
-            end += i+1
-            f[name][init:end] = seq[:i+1]
+            #seq = np.empty(chunks_shape, dtype=dtype)
+            seq = np.asarray(list(row), dtype=dtype)
+            #for i, e in enumerate(row):
+            #    seq[i] = map_dtype(e)
+            end += seq.shape[0]#i+1
+            f[name][init:end] = seq#seq[:i+1]
             init = end
         return end
 
@@ -157,7 +159,7 @@ class ReadWriteData(object):
         """
         create directories if the dataset_path does not exist
         """
-        if not self.exist() and self.dataset_path is not None:
+        if os.path.exists(self.dataset_path) is False:
             os.makedirs(self.dataset_path)
 
     def destroy(self):
@@ -441,7 +443,7 @@ class Data(ReadWriteData):
         return self.copy(dataset_path=dataset_path)
 
     def exist(self):
-        return os.path.exists(self.dataset_path)
+        return os.path.exists(self.url())
 
     def info(self, classes=False):
         """
@@ -627,30 +629,30 @@ class Data(ReadWriteData):
         execute the transformations to the data.
 
         """
-        if apply_transforms:
-            data.shape = [data.shape[0], self.transforms.o_features]
+        if apply_transforms and not self.transforms.is_empty():
+            #data.shape = [data.shape[0], self.transforms.o_features]
             return self.transforms.apply(data, fmtypes=self.fmtypes)
         else:
-            return IterLayer(data)#data if isinstance(data, np.ndarray) else np.asarray(data)
+            return data if isinstance(data, np.ndarray) else np.asarray(data) #IterLayer(data, shape=data.shape)#
 
     @property
     def train_data(self):
         return self.data
 
-    @property
-    def oldtransforms2new(self):
-        import json
-        from collections import OrderedDict
-        from pydoc import locate
+    #@property
+    #def oldtransforms2new(self):
+    #    import json
+    #    from collections import OrderedDict
+    #    from pydoc import locate
 
-        t = self._get_attr('transforms')
-        transforms_list = json.loads(t, object_pairs_hook=OrderedDict)
-        transforms = Transforms()
-        for transforms_type in transforms_list:
-            for type_, transforms_dict in transforms_type.items():              
-                for fn, params in transforms_dict.items():
-                    transforms.add(locate(fn), type=type_, **params)
-        self._set_attr('transforms', transforms.to_json())
+    #    t = self._get_attr('transforms')
+    #    transforms_list = json.loads(t, object_pairs_hook=OrderedDict)
+    #    transforms = Transforms()
+    #    for transforms_type in transforms_list:
+    #        for type_, transforms_dict in transforms_type.items():              
+    #            for fn, params in transforms_dict.items():
+    #                transforms.add(locate(fn), type=type_, **params)
+    #    self._set_attr('transforms', transforms.to_json())
 
     @classmethod
     def to_DF(self, dataset):
