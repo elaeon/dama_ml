@@ -48,11 +48,12 @@ class BaseClassif(DataDrive):
         from tqdm import tqdm
         if measures is None or isinstance(measures, str):
             measures = metrics.Measure.make_metrics(measures, name=self.model_name)
-        predictions = np.asarray(list(tqdm(
-            self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), 
-                        transform=False, chunk_size=0), 
-            total=self.dataset.test_labels.shape[0])))
-        measures.set_data(predictions, self.dataset.test_labels[:], self.numerical_labels2classes)
+        with self.dataset:
+            predictions = np.asarray(list(tqdm(
+                self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), 
+                            transform=False, chunk_size=0), 
+                total=self.dataset.test_labels.shape[0])))
+            measures.set_data(predictions, self.dataset.test_labels[:], self.numerical_labels2classes)
         log.info("Getting scores")
         return measures.to_list()
 
@@ -140,11 +141,11 @@ class BaseClassif(DataDrive):
             ltype=self.ltype,
             validator='',
             chunks=1000,
-            rewrite=self.rewrite)
+            rewrite=True)
 
         self.labels_encode(dataset.labels)
         log.info("Labels encode finished")
-        if dsb.mode == "w":
+        if self.rewrite is True:
             train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv()
             train_data, train_labels = self.reformat(train_data, 
                                         self.le.transform(train_labels))
@@ -152,12 +153,12 @@ class BaseClassif(DataDrive):
                                         self.le.transform(test_labels))
             validation_data, validation_labels = self.reformat(validation_data, 
                                         self.le.transform(validation_labels))
-            dsb.build_dataset(train_data, train_labels, test_data=test_data, 
-                            test_labels=test_labels, validation_data=validation_data, 
-                            validation_labels=validation_labels)
-            dsb.apply_transforms = True
-            dsb._applied_transforms = dataset._applied_transforms
-        dsb.close_reader()
+            with dsb:
+                dsb.build_dataset(train_data, train_labels, test_data=test_data, 
+                                test_labels=test_labels, validation_data=validation_data, 
+                                validation_labels=validation_labels)
+                dsb.apply_transforms = True
+                dsb._applied_transforms = dataset._applied_transforms
         return dsb
 
     def load_dataset(self, dataset):
@@ -165,16 +166,19 @@ class BaseClassif(DataDrive):
             self.dataset = self.get_dataset()
         else:
             self.set_dataset(dataset)
-        self.num_features = self.dataset.num_features()
+
+        with self.dataset:
+            self.num_features = self.dataset.num_features()
 
     def set_dataset(self, dataset, auto=True):
-        self._original_dataset_md5 = dataset.md5
-        if auto is True:
-            self.dataset = self.reformat_all(dataset)
-        else:
-            self.dataset.destroy()
-            self.dataset = dataset
-            self.labels_encode(dataset.labels)
+        with dataset:
+            self._original_dataset_md5 = dataset.md5
+            if auto is True:
+                self.dataset = self.reformat_all(dataset)
+            else:
+                self.dataset.destroy()
+                self.dataset = dataset
+                self.labels_encode(dataset.labels)
 
     def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False):
         from ml.utils.seq import grouper_chunk
@@ -239,17 +243,18 @@ class BaseClassif(DataDrive):
 
     def _metadata(self):
         list_measure = self.scores(measures=self.metrics)
-        return {"dataset_path": self.dataset.dataset_path,
-                "dataset_name": self.dataset.name,
-                "md5": self.dataset.md5,
-                "original_ds_md5": self._original_dataset_md5, #not reformated dataset
-                "group_name": self.group_name,
-                "model_module": self.module_cls_name(),
-                "model_name": self.model_name,
-                "model_version": self.model_version,
-                "score": list_measure.measures_to_dict(),
-                "base_labels": list(self.base_labels),
-                "dl": self.dl.name if self.dl is not None else None}
+        with self.dataset:
+            return {"dataset_path": self.dataset.dataset_path,
+                    "dataset_name": self.dataset.name,
+                    "md5": self.dataset.md5,
+                    "original_ds_md5": self._original_dataset_md5, #not reformated dataset
+                    "group_name": self.group_name,
+                    "model_module": self.module_cls_name(),
+                    "model_name": self.model_name,
+                    "model_version": self.model_version,
+                    "score": list_measure.measures_to_dict(),
+                    "base_labels": list(self.base_labels),
+                    "dl": None}
         
     def get_dataset(self):
         from ml.ds import DataSetBuilder, Data
@@ -257,10 +262,10 @@ class BaseClassif(DataDrive):
             self.model_version, self.check_point_path))
         meta = self.load_meta()
         dataset = DataSetBuilder(name=meta["dataset_name"], dataset_path=meta["dataset_path"],
-            apply_transforms=False)
+            apply_transforms=False, rewrite=False)
         self._original_dataset_md5 = meta["original_ds_md5"]
         self.labels_encode(meta["base_labels"])
-        self.dl = Data.original_ds(name=meta["dl"], dataset_path=settings["dataset_model_path"])
+        self.dl = None
     
         self.group_name = meta.get('group_name', None)
         if meta.get('md5', None) != dataset.md5:

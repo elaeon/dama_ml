@@ -33,9 +33,10 @@ class RandomForest(SKLP):
         else:
             model = CalibratedClassifierCV(
                 RandomForestClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
-        model_clf = model.fit(self.dataset.train_data[:], self.dataset.train_labels[:])
-        reg_model = CalibratedClassifierCV(model_clf, method="sigmoid", cv="prefit")
-        reg_model.fit(self.dataset.validation_data, self.dataset.validation_labels)
+        with self.dataset:
+            model_clf = model.fit(self.dataset.train_data[:], self.dataset.train_labels[:])
+            reg_model = CalibratedClassifierCV(model_clf, method="sigmoid", cv="prefit")
+            reg_model.fit(self.dataset.validation_data, self.dataset.validation_labels)
         return self.ml_model(reg_model)
 
     def prepare_model_k(self, obj_fn=None):

@@ -12,7 +12,8 @@ class TestSKL(unittest.TestCase):
         self.Y = self.X[:,0] > .5
         self.dataset = DataLabel(name="test", dataset_path="/tmp/", 
             ltype='int', rewrite=True)
-        self.dataset.build_dataset(self.X, self.Y)
+        with self.dataset:
+            self.dataset.build_dataset(self.X, self.Y)
 
     def tearDown(self):
         self.dataset.destroy()
@@ -38,7 +39,8 @@ class TestSKL(unittest.TestCase):
         classif = RandomForest(
             model_name="test", 
             model_version="1",
-            check_point_path="/tmp/")
+            check_point_path="/tmp/",
+            rewrite=False)
         classif.destroy()
 
     def test_scores(self):        

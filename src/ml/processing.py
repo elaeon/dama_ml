@@ -121,32 +121,18 @@ class TransformsRow(object):
         :type data: array
         :param data: apply the transforms added to the data
         """
-        #if not isinstance(data, list) and len(data.shape) == 1:
-        #    for fn, params in self.transforms:
-        #        fn = locate(fn)
-        #        data = fn(data, fmtypes=fmtypes, **params)
-        #else:
         def iter_():
-            #data_n = []
             locate_fn = {}
             for row in data:
                 for fn_, params in self.transforms:
                     fn = locate_fn.setdefault(fn_, locate(fn_))
                     row = fn(row, fmtypes=fmtypes, **params)
                 yield row
-            #data_n.append(row)
-        #data = np.asarray(data_n) #fixme: add dtype
         return IterLayer(iter_(), shape=(data.shape[0], self.o_features)), fmtypes
 
 
 class TransformsCol(TransformsRow):
     
-    #def __add__(self, o):
-    #    all_transforms = TransformsCol.from_json(self.to_json())
-    #    for fn, params in o.transforms:
-    #        all_transforms.add(locate(fn), **params)
-    #    return all_transforms
-
     def type(self):
         return "column"
 
@@ -262,13 +248,6 @@ class Transforms(object):
         import json
         return json.dumps([{t.type(): t.info()} for t in self.transforms])
 
-    #@classmethod
-    #def list2transforms(self, transforms_list, transforms):
-    #    for transforms_type in transforms_list:
-    #        for type, transforms_dict in transforms_type.items():
-    #            for fn, params in transforms_dict.items():
-    #                transforms.add(locate(fn), type=type, **params)
-
     @classmethod
     def from_json(self, json_transforms):
         """
@@ -327,9 +306,6 @@ class Fit(object):
 
     def fit(self, data, **params):
         pass
-
-    #def dim_rule(self, data):
-    #    return data
 
     def transform(self, data):
         return IterLayer(self.t(data))
