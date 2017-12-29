@@ -73,12 +73,11 @@ class BaseAe(DataDrive):
             chunks=1000,
             rewrite=self.rewrite)
 
-        if ds.mode == "w":
+        with dataset, ds:
             data = self.reformat(dataset.data)
             ds.build_dataset(data)
             ds.apply_transforms = True
             ds._applied_transforms = dataset._applied_transforms
-        ds.close_reader()
         return ds
 
     def load_dataset(self, dataset):
@@ -86,64 +85,58 @@ class BaseAe(DataDrive):
             self.dataset = self.get_dataset()
         else:
             self.set_dataset(dataset)
-        self.num_features = self.dataset.num_features()
+
+        with self.dataset:
+            self.num_features = self.dataset.num_features()
 
     def set_dataset(self, dataset):
         self.original_dataset = dataset
-        self.dataset = self.reformat_all(dataset)
+        with dataset:
+            self.dataset = self.reformat_all(dataset)
         
-    def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False, decoder=True):
+    def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False, decoder=True, transform=True):
         from ml.utils.seq import grouper_chunk
         for chunk in grouper_chunk(chunk_size, data):
             data = np.asarray(list(chunk))
             size = data.shape[0]
-            for prediction in self._predict(transform_fn(data, size), raw=uncertain, decoder=decoder):
+            for prediction in self._predict(transform_fn(data, size, transform), raw=uncertain, decoder=decoder):
                 yield prediction
 
     def predict(self, data, raw=False, transform=True, chunk_size=258, model_type="decoder"):
-        from ml.layers import IterLayer
+        def fn(x, s=None, t=True):
+            with self.dataset:
+                return self.transform_shape(self.dataset.processing(x, apply_transforms=t), size=s)
+
         if self.model is None:
             self.load_model()
 
         decoder = model_type == "decoder"
         if not isinstance(chunk_size, int):
-            log.warning("The parameter chunk_size must be an integer.")            
-            log.warning("Chunk size is set to 1")
+            log.info("The parameter chunk_size must be an integer.")            
+            log.info("Chunk size is set to 1")
             chunk_size = 258
 
         if isinstance(data, IterLayer):
-            def iter_(fn):
-                for x in data:
-                    yield IterLayer(self._predict(fn(x), raw=raw))
-
-            if transform is True:
-                fn = lambda x: self.transform_shape(
-                    self.dataset.processing(np.asarray(list(x))))
-            else:
-                fn = list
-            return IterLayer(iter_(fn))
+            return IterLayer(self._predict(fn(x, t=transform), raw=raw))
         else:
             if chunk_size > 0:
-                fn = lambda x, s: self.transform_shape(
-                    self.dataset.processing(x, apply_transforms=transform), size=s)
                 return IterLayer(self.chunk_iter(data, chunk_size, transform_fn=fn, 
-                    uncertain=raw, decoder=decoder))
+                                                uncertain=raw, transform=transform, decoder=decoder))
             else:
-                data = self.transform_shape(self.dataset.processing(data, 
-                    apply_transforms=transform))
-                return IterLayer(self._predict(data, raw=raw, decoder=decoder))
+                return IterLayer(self._predict(fn(data, t=transform), raw=raw, decoder=decoder))
 
     def _metadata(self):
         log.info("Generating metadata...")
-        return {"dataset_path": self.dataset.dataset_path,
-                "dataset_name": self.dataset.name,
-                "o_dataset_path": self.original_dataset.dataset_path,
-                "o_dataset_name": self.original_dataset.name,
-                "md5": self.original_dataset.md5, #not reformated dataset
-                "group_name": self.group_name,
-                "model_module": self.module_cls_name(),
-                "model_name": self.model_name,
-                "model_version": self.model_version}
+        with self.dataset, self.original_dataset:
+            return {"dataset_path": self.dataset.dataset_path,
+                    "dataset_name": self.dataset.name,
+                    "o_dataset_path": self.original_dataset.dataset_path,
+                    "o_dataset_name": self.original_dataset.name,
+                    "md5": self.original_dataset.md5, #not reformated dataset
+                    "group_name": self.group_name,
+                    "model_module": self.module_cls_name(),
+                    "model_name": self.model_name,
+                    "model_version": self.model_version}
 
     def get_dataset(self):
         from ml.ds import Data

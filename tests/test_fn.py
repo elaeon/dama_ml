@@ -23,9 +23,10 @@ class TestLinearOutLayer(unittest.TestCase):
         transforms.add(FitStandardScaler, type="column")
         ds = DataLabel(name="test", dataset_path="/tmp", transforms=transforms, 
             apply_transforms=True, rewrite=True)
-        ds.build_dataset(df.as_matrix(), np.asarray(self.outlayers))
-        outlayers = ds.outlayers(type_detector='isolation', n_estimators=25, max_samples=10, 
-            contamination=self.contamination)
+        with ds:
+            ds.build_dataset(df.as_matrix(), np.asarray(self.outlayers))
+            outlayers = ds.outlayers(type_detector='isolation', n_estimators=25, max_samples=10, 
+                contamination=self.contamination)
         ds.destroy()
         self.assertItemsEqual(list(outlayers), [0, 1, 13, 15])
 
@@ -35,8 +36,9 @@ class TestLinearOutLayer(unittest.TestCase):
         transforms.add(FitStandardScaler, type="column")
         ds = DataLabel(name="test", dataset_path="/tmp", transforms=transforms, 
             apply_transforms=True, rewrite=True)
-        ds.build_dataset(df.as_matrix(), np.asarray(self.outlayers))
-        outlayers = ds.outlayers(type_detector='robust', contamination=self.contamination)
+        with ds:
+            ds.build_dataset(df.as_matrix(), np.asarray(self.outlayers))
+            outlayers = ds.outlayers(type_detector='robust', contamination=self.contamination)
         ds.destroy()
         self.assertItemsEqual(list(outlayers), [0, 8, 13, 15])
 

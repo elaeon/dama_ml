@@ -18,7 +18,8 @@ class TestAE(unittest.TestCase):
             dataset_path="/tmp/")
         X = np.random.rand(100, 10)
         Y = np.sin(6*X)
-        dataset.build_dataset(Y)
+        with dataset:
+            dataset.build_dataset(Y)
         classif = PTsne(model_name="tsne", model_version="1", 
             check_point_path="/tmp/", dataset=dataset, latent_dim=2, rewrite=True)
         classif.train(batch_size=8, num_steps=2)
@@ -36,7 +37,8 @@ class TestAE(unittest.TestCase):
         X = (X * 10) % 2
         X = X.astype(int)
         dataset = Data(name="test", dataset_path="/tmp/", rewrite=True, dtype="int")
-        dataset.build_dataset(X)
+        with dataset:
+            dataset.build_dataset(X)
 
         vae = VAE(dataset=dataset, 
             model_name="test", 
@@ -64,7 +66,9 @@ class TestAE(unittest.TestCase):
         X = (X * 10) % 2
         X = X.astype(int)
         dataset = Data(name="test", dataset_path="/tmp/", rewrite=True, dtype="int")
-        dataset.build_dataset(X)
+        with dataset:
+            dataset.build_dataset(X)
+
         dae = DAE(dataset=dataset, 
             model_name="test", 
             model_version="1",

@@ -37,7 +37,8 @@ def load_metadata(path):
         with open(path, 'rb') as f:
             data = pickle.load(f)
         return data
-    except IOError:
+    except IOError as e:
+        log.info(e)
         return {}
     except Exception, e:
         print(e.message, path)

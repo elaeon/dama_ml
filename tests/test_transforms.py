@@ -164,7 +164,8 @@ class TestTransforms(unittest.TestCase):
         Y = X*1
         dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
             dtype='int', ltype='int', transforms=transforms, rewrite=True)
-        dataset.build_dataset(X, Y)
+        with dataset:
+            dataset.build_dataset(X, Y)
         classif = RandomForest(dataset=dataset, 
             model_name="test", 
             model_version="1",
@@ -172,7 +173,8 @@ class TestTransforms(unittest.TestCase):
             dtype='float64',
             ltype='int')
         classif.train(num_steps=1)
-        self.assertEqual(classif.dataset.apply_transforms, True)
+        with classif.dataset:
+            self.assertEqual(classif.dataset.apply_transforms, True)
         dataset.destroy()
         classif.dataset.destroy()
 
@@ -186,9 +188,10 @@ class TestTransforms(unittest.TestCase):
         Y = X*1
         dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
             ltype='float64', transforms=transforms, rewrite=True, apply_transforms=True)
-        dataset.build_dataset(X, Y)
-        shape = dataset.shape
-        dataset.info()
+        with dataset:
+            dataset.build_dataset(X, Y)
+            shape = dataset.shape
+            dataset.info()
         dataset.destroy()
         transforms.destroy()
         self.assertEqual(shape, (100, 6))
@@ -204,8 +207,9 @@ class TestTransforms(unittest.TestCase):
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
         dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
             ltype='float64', transforms=transforms, rewrite=True, apply_transforms=True)
-        dataset.build_dataset(X, Y)
-        dataset.info()
+        with dataset:
+            dataset.build_dataset(X, Y)
+            dataset.info()
         
         classif = RandomForest(
             dataset=dataset,
@@ -214,6 +218,7 @@ class TestTransforms(unittest.TestCase):
             check_point_path="/tmp/")
         classif.train()
         classif.scores().print_scores()
+        transforms.destroy()
         classif.destroy()
         dataset.destroy()
 
@@ -227,9 +232,12 @@ class TestTransforms(unittest.TestCase):
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
         dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
             ltype='float64', transforms=transforms, rewrite=True, apply_transforms=False)
-        dataset.build_dataset(X, Y)
-        dsb = dataset.convert(name="test2", apply_transforms=True, ltype="float64")
-        shape = dsb.shape
+        with dataset:
+            dataset.build_dataset(X, Y)
+            dsb = dataset.convert(name="test2", apply_transforms=True, ltype="float64")
+        with dsb:
+            shape = dsb.shape
+        transforms.destroy()
         dataset.destroy()
         dsb.destroy()
         self.assertEqual(shape, (1000, 6))
@@ -262,41 +270,51 @@ class TestTransforms(unittest.TestCase):
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
         dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
             ltype='float64', transforms=transforms, rewrite=True, apply_transforms=True)
-        dataset.build_dataset(X, Y)
-        self.assertEqual(dataset._applied_transforms, True)
+        with dataset:
+            dataset.build_dataset(X, Y)
+            self.assertEqual(dataset._applied_transforms, True)
         transforms = Transforms()
         transforms.add(FitRobustScaler, name="scaler", type="column")
-        dsb = dataset.convert(name="test2", apply_transforms=True, 
-            transforms=transforms, ltype="float64", dataset_path="/tmp")
-        self.assertEqual(dsb._applied_transforms, True)
+        with dataset:
+            dsb = dataset.convert(name="test2", apply_transforms=True, 
+                transforms=transforms, ltype="float64", dataset_path="/tmp")
+        with dsb:
+            self.assertEqual(dsb._applied_transforms, True)
         dataset.destroy()
         dsb.destroy()
 
         dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
             ltype='float64', transforms=transforms, rewrite=True, apply_transforms=False)
-        dataset.build_dataset(X, Y)
-        self.assertEqual(dataset._applied_transforms, False)
+        with dataset:
+            dataset.build_dataset(X, Y)
+            self.assertEqual(dataset._applied_transforms, False)
         transforms = Transforms()
         transforms.add(FitRobustScaler, name="scaler", type="column")
-        dsb = dataset.convert(name="test2", apply_transforms=True, 
-            transforms=transforms, ltype="float64", dataset_path="/tmp")
-        self.assertEqual(dsb._applied_transforms, True)
+        with dataset:
+            dsb = dataset.convert(name="test2", apply_transforms=True, 
+                transforms=transforms, ltype="float64", dataset_path="/tmp")
+        with dsb:
+            self.assertEqual(dsb._applied_transforms, True)
         dataset.destroy()
         dsb.destroy()
 
         dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
             ltype='float64', transforms=transforms, rewrite=True, apply_transforms=True)
-        dataset.build_dataset(X, Y)
-        dsb = dataset.copy(dataset_path="/tmp")
-        self.assertEqual(dsb._applied_transforms, True)
+        with dataset:
+            dataset.build_dataset(X, Y)
+            dsb = dataset.copy(dataset_path="/tmp")
+        with dsb:
+            self.assertEqual(dsb._applied_transforms, True)
         dataset.destroy()
         dsb.destroy()
 
         dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
             ltype='float64', transforms=transforms, rewrite=True, apply_transforms=False)
-        dataset.build_dataset(X, Y)
-        dsb = dataset.copy(dataset_path="/tmp")
-        self.assertEqual(dsb._applied_transforms, False)
+        with dataset:
+            dataset.build_dataset(X, Y)
+            dsb = dataset.copy(dataset_path="/tmp")
+        with dsb:
+            self.assertEqual(dsb._applied_transforms, False)
         dataset.destroy()
         dsb.destroy()
 

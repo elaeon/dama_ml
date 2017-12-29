@@ -36,19 +36,13 @@ class Grid(DataDrive):
             self.reload()
         else:
             self.classifs = self.transform_clfs(clfs, fn=lambda x: x)
-            #self.dataset = dataset
 
     def reset_dataset(self, dataset):
-        clf_layers = {}
-        classifs = self.classifs
-        self.classifs = self.transform_clfs(
-            [(classif[0], dataset) for classif in classifs], 
-            fn=lambda x: x)
-        #self.dataset = dataset
+        for classif in self.classifs:
+            classif.load_dataset(dataset)
 
     def reload(self):
         meta = self.load_meta()
-        #self.dataset = Data.original_ds(meta["dataset_name"], meta["dataset_path"])
         self.classifs = self.transform_clfs(meta.get('models', {}), fn=locate)
         self.output(meta["output"])
 
@@ -71,10 +65,6 @@ class Grid(DataDrive):
                 layer.append(classif_obj)
         return layer
 
-    #def load_models(self, autoload=True):
-    #    for clf_params in self.classifs:
-    #        yield self.load_model(**clf_params)
-
     def load_model(self, classif=None, model_name=None, model_version=None,
         check_point_path=None, dataset=None):
         if inspect.isclass(classif):
@@ -88,6 +78,9 @@ class Grid(DataDrive):
         return model
 
     def train(self):
+        model_params = {}
+        for classif in self.classifs:
+            classif.train(model_params=model_params)
         self.save_model()
     
     def all_clf_scores(self, measures=None):
@@ -183,17 +176,16 @@ class Grid(DataDrive):
         def iter_():
             for classif in self.classifs:
                 yield classif.predict(data, raw=raw, transform=transform, 
-                                        chunk_size=chunk_size)
-        return self.output_layer(iter_, data=data)
+                                    chunk_size=chunk_size)
+        return self.output_layer(iter_)
 
-    def output_layer(self, iter_, data=None):
+    def output_layer(self, iter_):
         if self.fn_output == "stack":
             return IterLayer.concat_n(iter_())
         elif self.fn_output is None or self.fn_output == "avg":
             return IterLayer.avg(iter_(), len(self.classifs))
         elif self.fn_output == "bagging":
-            predictions = IterLayer.avg(iter_(), len(self.classifs), method="geometric")
-            return predictions.concat_elems(data)
+            return IterLayer.avg(iter_(), len(self.classifs), method="geometric")
         else:
             return self.fn_output(*iter_())
 
@@ -209,16 +201,7 @@ class Grid(DataDrive):
         else:
             list_measure = ListMeasure()
 
-        #if self.dataset is not None:
-        #    dataset_path = self.dataset.dataset_path
-        #    dataset_name = self.dataset.name
-        #else:
-        #    dataset_path = None
-        #    dataset_name = None
-        return {
-                #"dataset_path": dataset_path,
-                #"dataset_name": dataset_name,
-                "models": self.classifs_to_string(self.classifs),
+        return {"models": self.classifs_to_string(self.classifs),
                 "model_name": self.model_name,
                 "output": self.fn_output,
                 "score": list_measure.measures_to_dict()}
@@ -249,25 +232,19 @@ class EnsembleLayers(DataDrive):
         self.layers.append(ensemble)
 
     def train(self, n_splits=None):
-        from ml.clf.utils import add_params_to_params
+        self.layers[0].save_model()
+        with self.dataset:
+            y_submission = self.layers[0].predict(self.dataset.data_validation, 
+                transform=not self.dataset._applied_transforms, raw=True, chunk_size=258)
+            test_labels = self.dataset.data_validation_labels[:]
+            nrows = test_labels.shape[0]
 
-        initial_layer = self.layers[0]
-        #initial_layer.train(others_models_args=others_models_args[0], 
-        #                    calc_scores=calc_scores)
-        #with self.dataset:
-        #y_submission = initial_layer.predict(
-        #    self.dataset.data_validation, raw=True, 
-        #    transform=not self.dataset._applied_transforms, chunk_size=258)
-        y_submission = initial_layer.predict_test(raw=True, chunk_size=258)
-        for classif in initial_layer.classifs:
+        for classif in self.layers[0].classifs:
             num_labels = classif.num_labels
-            with classif.dataset as ds:
-                nrows = ds.shape[0]
-                test_labels = ds.test_labels[:]
             break
 
-        if initial_layer.fn_output == "stack":
-            deep = len(initial_layer.classifs)
+        if self.layers[0].fn_output == "stack":
+            deep = len(self.layers[0].classifs)
         else:
             deep = 1
 
@@ -279,12 +256,13 @@ class EnsembleLayers(DataDrive):
             second_layer.reset_dataset(dataset)
             second_layer.train()
 
-        #self.save_model()
-        #self.reload()
+        self.save_model()
+        self.reload()
+        dataset.destroy()
 
     def numerical_labels2classes(self, labels):
         if not hasattr(self, 'le'):
-            for classif in self.layers[-1].load_models():
+            for classif in self.layers[-1].classifs:
                 self.le = classif.le
                 break
 
@@ -302,12 +280,17 @@ class EnsembleLayers(DataDrive):
         from tqdm import tqdm
         if measures is None or isinstance(measures, str):
             measures = Measure.make_metrics(measures, name=self.model_name)
+
         with self.dataset:
-            predictions = np.asarray(list(tqdm(
-                self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), 
-                            transform=not self.dataset._applied_transforms, chunk_size=258), 
-                total=self.dataset.test_labels.shape[0])))
-            measures.set_data(predictions, self.dataset.test_labels[:], self.numerical_labels2classes)
+            test_data = self.dataset.test_data[:]
+            test_labels = self.dataset.test_labels[:]
+            applied_transforms = self.dataset._applied_transforms
+
+        predictions = np.asarray(list(tqdm(
+            self.predict(test_data, raw=measures.has_uncertain(), 
+                    transform=not applied_transforms, chunk_size=258), 
+            total=test_labels.shape[0])))
+        measures.set_data(predictions, test_labels, self.numerical_labels2classes)
         return measures.to_list()
 
     def _metadata(self):
@@ -329,16 +312,15 @@ class EnsembleLayers(DataDrive):
             "group_name": self.group_name}
 
     def predict(self, data, raw=False, transform=True, chunk_size=1):
-        stack = False
         for (raw_l, transform_l), layer in zip([(True, transform), (raw, False)], self.layers):
             if layer.fn_output is None:
-                layer.output("stack")
+                layer.output("avg")
 
-            data = np.asarray(list(layer.predict(data, raw=raw_l, transform=transform_l, 
-                chunk_size=chunk_size)))
+            data = np.asarray(list(layer.predict(data, raw=raw_l, 
+                transform=transform_l, chunk_size=chunk_size)))
 
         if self.layers[0].fn_output == "stack":
-            size = len(self.layers[0].classifs["0"])
+            size = len(self.layers[0].classifs)
             batch = data.shape[0] / size
             def sub_matrix(size, batch):                
                 i = 0
