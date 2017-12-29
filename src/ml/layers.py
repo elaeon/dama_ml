@@ -118,7 +118,7 @@ class IterLayer(object):
         return IterLayer(itertools.chain(self, iterlayer))
 
     def to_datamodelset(self, labels, features, size, ltype):
-        from ml.ds import DataSetBuilder
+        from ml.ds import DataLabel
         from ml.utils.config import get_settings
         import numpy as np
 
@@ -132,8 +132,9 @@ class IterLayer(object):
             label_m[i] = labels[row_c]
         
         #fixme: add a dataset chunk writer
-        dataset = DataSetBuilder(dataset_path=settings["dataset_model_path"], ltype=ltype)
-        dataset.build_dataset(data, label_m)
+        dataset = DataLabel(dataset_path=settings["dataset_model_path"], ltype=ltype)
+        with dataset:
+            dataset.build_dataset(data, label_m)
         return dataset
 
     def to_narray(self, dtype=None):

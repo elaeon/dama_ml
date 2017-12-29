@@ -6,6 +6,10 @@ from ml.clf.extended.w_sklearn import RandomForest
 np.random.seed(0)
 
 
+def mulp(row, fmtypes=None):
+    return row * 2
+
+
 class TestSKL(unittest.TestCase):
     def setUp(self):
         self.X = np.random.rand(100, 10)
@@ -113,42 +117,53 @@ class TestGrid(unittest.TestCase):
 
         X = np.random.rand(100, 10)
         Y = (X[:,0] > .5).astype(int)
-        self.others_models_args = {"RandomForest": [{"batch_size": 50, "num_steps": 100, "n_splits": 2}],
-            "AdaBoost": [{"batch_size": 50, "num_steps": 100}]}
-        dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False, ltype='int')
-        dataset.build_dataset(X, Y)
-        self.dataset = dataset
+        original_dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=True, ltype='int')
+        with original_dataset:
+            original_dataset.build_dataset(X, Y)
+        self.original_dataset = original_dataset
 
     def tearDown(self):
-        self.dataset.destroy()
+        self.original_dataset.destroy()
 
     def test_load_meta(self):
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
         from ml.clf.ensemble import Grid
 
-        classif = Grid([(RandomForest, self.dataset), (AdaBoost, self.dataset)],
-            dataset=self.dataset, 
+        dataset = DataLabel(name="testdl", dataset_path="/tmp/", rewrite=True, ltype='int')
+        with self.original_dataset, dataset:
+            dataset.build_dataset(self.original_dataset.data_validation[:], 
+                                self.original_dataset.data_validation_labels[:])
+
+        rf = RandomForest(model_name="test_rf", model_version="1", dataset=dataset, rewrite=True)
+        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=dataset, rewrite=True)
+        rf.train()
+        ab.train()
+
+        classif = Grid([rf, ab],
+            dataset=self.original_dataset, 
             model_name="test_grid", 
             model_version="1",
             check_point_path="/tmp/")
         classif.calc_scores = False
         classif.output("avg")
-        classif.train(others_models_args=self.others_models_args)
-        #classif.scores().print_scores()
+        classif.train()
         meta = classif.load_meta()
-        self.assertItemsEqual(meta.keys(), classif._metadata().keys())
+        self.assertItemsEqual(meta.keys(), classif._metadata(calc_scores=False).keys())
 
         classif = Grid( 
             model_name="test_grid", 
             model_version="1",
             check_point_path="/tmp/")
         
-        for p in classif.predict(self.dataset.data[:1], raw=True):
+        with self.original_dataset:
+            data = self.original_dataset.data[:1]
+
+        for p in classif.predict(data, raw=True, transform=False):
             self.assertEqual(len(list(p)), 2)
 
         classif.destroy()
 
-    def test_grid_fn_pretrained(self):
+    def test_grid_gini_measure(self):
         from ml.clf.ensemble import Grid
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
         from ml.utils.numeric_functions import gini_normalized
@@ -157,70 +172,91 @@ class TestGrid(unittest.TestCase):
         metrics = Measure.make_metrics(None)
         metrics.add(gini_normalized, greater_is_better=True, uncertain=True)
 
-        rf = RandomForest(model_name="test_rf", model_version="1", dataset=self.dataset, rewrite=True)
-        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.dataset, rewrite=True)
+        rf = RandomForest(model_name="test_rf", model_version="1", dataset=self.original_dataset, rewrite=True)
+        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.original_dataset, rewrite=True)
         rf.train()
         ab.train()
         classif = Grid([rf, ab],
-            dataset=self.dataset,
+            #dataset=self.dataset,
             model_name="test_grid0", 
             model_version="1",
             check_point_path="/tmp/",
             metrics=metrics)
 
-        classif.calc_scores = False
         classif.output(lambda x, y: (x + y) / 2)
         classif.train()
         self.assertEqual(len(classif.scores2table().measures[0]), 8)
         classif.destroy()
 
-    def test_grid_fn(self):
+    def test_grid_transform(self):
         from ml.clf.ensemble import Grid
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
+        from ml.processing import Transforms
 
-        classif = Grid([(RandomForest, self.dataset), (AdaBoost, self.dataset)],
-            dataset=self.dataset, 
+        with self.original_dataset:
+            features = self.original_dataset.num_features()
+            transforms = Transforms()
+            transforms.add(mulp, o_features=features)
+            dataset = self.original_dataset.convert(name="test_dataset", ltype='int',
+                transforms=transforms, apply_transforms=True, dataset_path="/tmp/")
+        
+        rf = RandomForest(model_name="test_rf", model_version="1", dataset=dataset, rewrite=True)
+        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.original_dataset, rewrite=True)
+        rf.train()
+        ab.train()
+
+        classif = Grid([rf, ab],
             model_name="test_grid0", 
             model_version="1",
             check_point_path="/tmp/")
 
         classif.output(lambda x, y: (x + y) / 2)
-        classif.train(others_models_args=self.others_models_args)
-        self.assertEqual(len(classif.scores2table().measures[0]), 7)
+        classif.train()        
+        with self.original_dataset:
+            data = self.original_dataset.data[:1]
+
+        for p in classif.predict(data, raw=True, transform=False):
+            self.assertEqual(len(list(p)), 2)
+        dataset.destroy()
         classif.destroy()
 
     def test_compose_grid(self):
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost, KNN
         from ml.clf.ensemble import Grid, EnsembleLayers
 
-        classif_1 = Grid([(RandomForest, self.dataset), (AdaBoost, self.dataset)],
-            dataset=self.dataset, 
+        rf = RandomForest(model_name="test_rf", model_version="1", dataset=self.original_dataset, rewrite=True)
+        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.original_dataset, rewrite=True)
+        rf.train()
+        ab.train()
+
+        layer_1 = Grid([rf, ab], 
             model_name="test_grid0", 
             model_version="1",
             check_point_path="/tmp/")
 
-        classif_2 = Grid([AdaBoost, KNN],
-            dataset=None, 
+        knn = KNN(model_name="test_rf", model_version="1", autoload=False, rewrite=True)
+        ab2 = AdaBoost(model_name="test_ab", model_version="1", autoload=False, rewrite=True)
+        layer_2 = Grid([ab2, knn],
             model_name="test_grid1", 
             model_version="1",
             check_point_path="/tmp/")
-        classif_2.output(lambda x, y: (x**.25) * .85 * y**.35)
+        layer_2.output(lambda x, y: (x**.25) * .85 * y**.35)
 
         ensemble = EnsembleLayers( 
             model_name="test_ensemble_grid", 
             model_version="1",
             check_point_path="/tmp/",
-            raw_dataset=self.dataset)
-        ensemble.add(classif_1)
-        ensemble.add(classif_2)
+            raw_dataset=self.original_dataset)
+        ensemble.add(layer_1)
+        ensemble.add(layer_2)
 
-        ensemble.train([self.others_models_args])
-        t0 = classif_1.scores()
-        t1 = ensemble.scores()
-        all_ = (t0 + t1)
-        all_.print_scores()
-        self.assertEqual(len(all_.measures), 2)
-        ensemble.destroy()
+        ensemble.train()
+        #t0 = layer_1.scores()
+        #t1 = ensemble.scores()
+        #all_ = (t0 + t1)
+        #all_.print_scores()
+        #self.assertEqual(len(all_.measures), 2)
+        #ensemble.destroy()
 
     def test_compose_grid_predict(self):
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
@@ -362,7 +398,8 @@ class TestXgboost(unittest.TestCase):
         Y = X*1
         self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
             dtype='int', ltype='int', rewrite=True)
-        self.dataset.build_dataset(X, Y)
+        with self.dataset:
+            self.dataset.build_dataset(X, Y)
         try:
             from ml.clf.extended.w_xgboost import Xgboost
         
@@ -392,7 +429,8 @@ class TestXgboost(unittest.TestCase):
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
-        classif.predict(self.dataset.test_data[0:1])
+        with self.dataset:
+            classif.predict(self.dataset.test_data[0:1], transform=False)
         classif.destroy()
 
 
@@ -404,7 +442,8 @@ class TestKFold(unittest.TestCase):
         Y = (X[:,0] > .5).astype(float)
         self.dataset = DataSetBuilder(dataset_path="/tmp/", 
             dtype='float', ltype='float', rewrite=True)
-        self.dataset.build_dataset(X, Y)
+        with self.dataset:
+            self.dataset.build_dataset(X, Y)
         classif = FCNet(dataset=self.dataset, 
             model_name="test", 
             model_version="1",
@@ -423,7 +462,8 @@ class TestKFold(unittest.TestCase):
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
-        classif.predict(self.dataset.test_data[0:1])
+        with self.dataset:
+            classif.predict(self.dataset.test_data[0:1])
         classif.destroy()
 
 

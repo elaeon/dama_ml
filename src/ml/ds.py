@@ -119,6 +119,7 @@ class ReadWriteData(object):
             
     def _get_attr(self, name):
         try:
+            #print("##########", self.f)
             if self.f is None:
                 with h5py.File(self.url(), 'r') as f:
                     return f.attrs[name]
@@ -190,7 +191,7 @@ class ReadWriteData(object):
         from pydoc import locate
         meta_dataset = Data(name=name, dataset_path=dataset_path, rewrite=False)
         DS = locate(meta_dataset.dataset_class)
-        return DS(name=name, dataset_path=dataset_path)
+        return DS(name=name, dataset_path=dataset_path, rewrite=False)
     
 
 class Data(ReadWriteData):
@@ -792,13 +793,10 @@ class DataLabel(Data):
         :type labels: list
         :param labels: list of labels
 
-        return a tuple of arrays with data and labels, the returned data only have the labels selected.
+        return a tuple of arrays with data and only the selected labels.
         """
         try:
-            dl = self.desfragment()
-            with dl:
-                dataset, n_labels = self.only_labels_from_data(dl, labels)
-            dl.destroy()
+            dataset, n_labels = self.only_labels_from_data(self, labels)
         except ValueError:
             label = labels[0] if len(labels) > 0 else None
             log.warning("label {} is not found in the labels set".format(label))
@@ -903,7 +901,7 @@ class DataLabel(Data):
             self.labels.shape, chunks=self.chunks)
         self.md5 = self.calc_md5()
 
-    def empty(self, name, dtype='float64', ltype='|S1', 
+    def empty(self, name, dtype='float64', ltype='int', 
                 apply_transforms=False, dataset_path=None,
                 transforms=None):
         """
@@ -923,7 +921,7 @@ class DataLabel(Data):
         dl._applied_transforms = apply_transforms
         return dl
 
-    def convert(self, name, dtype='float64', ltype='|S1', apply_transforms=False, 
+    def convert(self, name, dtype='float64', ltype='int', apply_transforms=False, 
                 percentaje=1, dataset_path=None, transforms=None):
         """
         :type dtype: string
@@ -1503,7 +1501,7 @@ class DataSetBuilder(DataLabel):
         measure = "auc"
         return classif.load_meta().get("score", {measure, None}).get(measure, None) 
 
-    def convert(self, name, dtype='float64', ltype='|S1', apply_transforms=False, 
+    def convert(self, name, dtype='float64', ltype='int', apply_transforms=False, 
                 percentaje=1, dataset_path=None, transforms=None):
         """
         :type name: string
@@ -1526,6 +1524,9 @@ class DataSetBuilder(DataLabel):
             apply_transforms=apply_transforms, dataset_path=dataset_path,
             transforms=transforms)
         with dsb:
+            dsb.build_empty_fmtypes(self.num_features())
+            if self.fmtypes is not None:
+                dsb.fmtypes = self.fmtypes[:]
             dsb.build_dataset(
                 calc_nshape(self.train_data, percentaje), 
                 calc_nshape(self.train_labels, percentaje),
@@ -1535,7 +1536,7 @@ class DataSetBuilder(DataLabel):
                 validation_labels=calc_nshape(self.validation_labels, percentaje))
         return dsb
 
-    def empty(self, name, dtype='float64', ltype='|S1', apply_transforms=False,
+    def empty(self, name, dtype='float64', ltype='int', apply_transforms=False,
                 dataset_path=None, transforms=None):
         """
         build an empty DataLabel with the default parameters

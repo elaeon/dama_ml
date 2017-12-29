@@ -67,13 +67,10 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
 
     def test_only_labels(self):
-        dataset = DataSetBuilder(
+        dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            train_size=.5,
-            valid_size=.2,
             ltype='int',
-            validator="cross",
             rewrite=True)
         with dataset:
             dataset.build_dataset(self.X, self.Y)
@@ -192,6 +189,24 @@ class TestDataset(unittest.TestCase):
         with dataset, dsb:
             self.assertEqual(dsb.train_data.dtype, dataset.train_data.dtype)
             self.assertEqual(dsb.train_labels.dtype, dataset.train_labels.dtype)
+        dsb.destroy()
+        dataset.destroy()
+
+    def test_convert_transforms(self):
+        dataset = DataSetBuilder(name="test_ds", dataset_path="/tmp/",
+            train_size=.5, valid_size=.2, ltype='int', validator="cross",
+            rewrite=True)
+        
+        with dataset:
+            dataset.build_dataset(self.X, self.Y)
+            transforms = Transforms()
+            transforms.add(linear, b=1, o_features=dataset.num_features())
+            dsb = dataset.convert("convert_test", dataset_path="/tmp/", ltype='int', 
+                                transforms=transforms, apply_transforms=True)
+
+        with dsb, dataset:
+            self.assertItemsEqual(dsb.train_data[0], dataset.train_data[0]+1)
+
         dsb.destroy()
         dataset.destroy()
 

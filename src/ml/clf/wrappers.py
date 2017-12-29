@@ -29,7 +29,6 @@ class BaseClassif(DataDrive):
         self.base_labels = None
         self._original_dataset_md5 = None
         self.dataset = None
-        self.dl = None
         self.ext = "ckpt.pkl"
         self.rewrite = rewrite
         self.metrics = metrics
@@ -49,11 +48,13 @@ class BaseClassif(DataDrive):
         if measures is None or isinstance(measures, str):
             measures = metrics.Measure.make_metrics(measures, name=self.model_name)
         with self.dataset:
-            predictions = np.asarray(list(tqdm(
-                self.predict(self.dataset.test_data[:], raw=measures.has_uncertain(), 
-                            transform=False, chunk_size=0), 
-                total=self.dataset.test_labels.shape[0])))
-            measures.set_data(predictions, self.dataset.test_labels[:], self.numerical_labels2classes)
+            test_data = self.dataset.test_data[:]
+            test_labels = self.dataset.test_labels[:]
+
+        predictions = np.asarray(list(tqdm(
+            self.predict(test_data, raw=measures.has_uncertain(), transform=False, chunk_size=0), 
+            total=test_labels.shape[0])))
+        measures.set_data(predictions, test_labels, self.numerical_labels2classes)
         log.info("Getting scores")
         return measures.to_list()
 
@@ -145,20 +146,20 @@ class BaseClassif(DataDrive):
 
         self.labels_encode(dataset.labels)
         log.info("Labels encode finished")
-        if self.rewrite is True:
-            train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv()
-            train_data, train_labels = self.reformat(train_data, 
-                                        self.le.transform(train_labels))
-            test_data, test_labels = self.reformat(test_data, 
-                                        self.le.transform(test_labels))
-            validation_data, validation_labels = self.reformat(validation_data, 
-                                        self.le.transform(validation_labels))
-            with dsb:
-                dsb.build_dataset(train_data, train_labels, test_data=test_data, 
-                                test_labels=test_labels, validation_data=validation_data, 
-                                validation_labels=validation_labels)
-                dsb.apply_transforms = True
-                dsb._applied_transforms = dataset._applied_transforms
+        #if self.rewrite is True:
+        train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv()
+        train_data, train_labels = self.reformat(train_data, 
+                                    self.le.transform(train_labels))
+        test_data, test_labels = self.reformat(test_data, 
+                                    self.le.transform(test_labels))
+        validation_data, validation_labels = self.reformat(validation_data, 
+                                    self.le.transform(validation_labels))
+        with dsb:
+            dsb.build_dataset(train_data, train_labels, test_data=test_data, 
+                            test_labels=test_labels, validation_data=validation_data, 
+                            validation_labels=validation_labels)
+            dsb.apply_transforms = True
+            dsb._applied_transforms = dataset._applied_transforms
         return dsb
 
     def load_dataset(self, dataset):
@@ -170,15 +171,15 @@ class BaseClassif(DataDrive):
         with self.dataset:
             self.num_features = self.dataset.num_features()
 
-    def set_dataset(self, dataset, auto=True):
+    def set_dataset(self, dataset):
         with dataset:
             self._original_dataset_md5 = dataset.md5
-            if auto is True:
-                self.dataset = self.reformat_all(dataset)
-            else:
-                self.dataset.destroy()
-                self.dataset = dataset
-                self.labels_encode(dataset.labels)
+            #if auto is True:
+            self.dataset = self.reformat_all(dataset)
+            #else:
+            #    self.dataset.destroy()
+            #    self.dataset = dataset
+            #    self.labels_encode(dataset.labels)
 
     def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False):
         from ml.utils.seq import grouper_chunk
@@ -253,19 +254,17 @@ class BaseClassif(DataDrive):
                     "model_name": self.model_name,
                     "model_version": self.model_version,
                     "score": list_measure.measures_to_dict(),
-                    "base_labels": list(self.base_labels),
-                    "dl": None}
+                    "base_labels": list(self.base_labels)}
         
     def get_dataset(self):
         from ml.ds import DataSetBuilder, Data
-        log.debug("GET DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name, 
+        log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name, 
             self.model_version, self.check_point_path))
         meta = self.load_meta()
         dataset = DataSetBuilder(name=meta["dataset_name"], dataset_path=meta["dataset_path"],
             apply_transforms=False, rewrite=False)
         self._original_dataset_md5 = meta["original_ds_md5"]
         self.labels_encode(meta["base_labels"])
-        self.dl = None
     
         self.group_name = meta.get('group_name', None)
         if meta.get('md5', None) != dataset.md5:
@@ -299,7 +298,7 @@ class BaseClassif(DataDrive):
     def _predict(self, data, raw=False):
         prediction = self.model.predict(data)
         if not isinstance(prediction, np.ndarray):
-            prediction = np.asarray(prediction)
+            prediction = np.asarray(prediction, dtype=np.float)
         return self.convert_label(prediction, raw=raw)
 
     def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2, obj_fn=None, 
@@ -307,8 +306,9 @@ class BaseClassif(DataDrive):
         from sklearn.model_selection import StratifiedKFold
         model = self.prepare_model_k(obj_fn=obj_fn)
         cv = StratifiedKFold(n_splits=n_splits)
-        data = self.dataset.data_validation
-        labels = self.dataset.data_validation_labels
+        with self.dataset:
+            data = self.dataset.data_validation
+            labels = self.dataset.data_validation_labels
         for k, (train, test) in enumerate(cv.split(data, labels), 1):
             model.fit(data[train], labels[train])
             print("fold ", k)
@@ -461,21 +461,20 @@ class Keras(BaseClassif):
         self.model = self.prepare_model_k()
         cv = StratifiedKFold(n_splits=n_splits)
         
-        if self.dl is None:
-            log.info("The dataset dl is not set in the path, rebuilding...".format(
-                self.__class__.__name__))
+        log.info("The dataset dl is not set in the path, rebuilding...".format(
+            self.__class__.__name__))
+        with self.dataset:
             dl = self.dataset.desfragment(dataset_path=settings["dataset_model_path"])
-        else:
-            dl = self.dl
 
-        for k, (train, test) in enumerate(cv.split(dl.data, self.numerical_labels2classes(dl.labels)), 1):
-            self.model.fit(dl.data.value[train], 
-                dl.labels.value[train],
-                nb_epoch=num_steps,
-                batch_size=batch_size,
-                shuffle="batch",
-                validation_data=(dl.data.value[test], dl.labels.value[test]))
-            print("fold ", k)
+        with dl:
+            for k, (train, test) in enumerate(cv.split(dl.data, self.numerical_labels2classes(dl.labels)), 1):
+                self.model.fit(dl.data.value[train], 
+                    dl.labels.value[train],
+                    nb_epoch=num_steps,
+                    batch_size=batch_size,
+                    shuffle="batch",
+                    validation_data=(dl.data.value[test], dl.labels.value[test]))
+                print("fold ", k)
 
     def train(self, batch_size=0, num_steps=0, n_splits=None):
         if n_splits is not None:
