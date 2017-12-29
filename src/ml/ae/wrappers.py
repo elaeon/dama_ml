@@ -63,15 +63,16 @@ class BaseAe(DataDrive):
 
     def reformat_all(self, dataset):
         log.info("Reformating {}...".format(self.cls_name()))
-        ds = Data(
-            name=dataset.name+"_"+self.model_name+"_"+self.model_version+"_"+self.cls_name(),
-            dataset_path=settings["dataset_model_path"],
-            apply_transforms=not dataset._applied_transforms,
-            compression_level=9,
-            dtype=self.dtype,
-            transforms=dataset.transforms,
-            chunks=1000,
-            rewrite=self.rewrite)
+        with dataset:
+            ds = Data(
+                name=dataset.name+"_"+self.model_name+"_"+self.model_version+"_"+self.cls_name(),
+                dataset_path=settings["dataset_model_path"],
+                apply_transforms=not dataset._applied_transforms,
+                compression_level=9,
+                dtype=self.dtype,
+                transforms=dataset.transforms,
+                chunks=1000,
+                rewrite=True)
 
         with dataset, ds:
             data = self.reformat(dataset.data)
@@ -91,8 +92,7 @@ class BaseAe(DataDrive):
 
     def set_dataset(self, dataset):
         self.original_dataset = dataset
-        with dataset:
-            self.dataset = self.reformat_all(dataset)
+        self.dataset = self.reformat_all(dataset)
         
     def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False, decoder=True, transform=True):
         from ml.utils.seq import grouper_chunk

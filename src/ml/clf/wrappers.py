@@ -146,7 +146,6 @@ class BaseClassif(DataDrive):
 
         self.labels_encode(dataset.labels)
         log.info("Labels encode finished")
-        #if self.rewrite is True:
         train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv()
         train_data, train_labels = self.reformat(train_data, 
                                     self.le.transform(train_labels))
@@ -174,12 +173,7 @@ class BaseClassif(DataDrive):
     def set_dataset(self, dataset):
         with dataset:
             self._original_dataset_md5 = dataset.md5
-            #if auto is True:
             self.dataset = self.reformat_all(dataset)
-            #else:
-            #    self.dataset.destroy()
-            #    self.dataset = dataset
-            #    self.labels_encode(dataset.labels)
 
     def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False, transform=True):
         from ml.utils.seq import grouper_chunk

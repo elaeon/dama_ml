@@ -49,9 +49,9 @@ def run(args):
         for path, files in datasets.items():
             for filename in files:
                 size = os.stat(path+filename).st_size
-                dl = DataLabel(name=filename)
-                date = dl._get_attr("timestamp")
-                dl.close_reader()
+                dl = Data.original_ds(filename)
+                with dl:
+                    date = dl._get_attr("timestamp")
                 table.append([filename, humanize_bytesize(size), date])
                 total_size += size
         print("Total size: {}".format(humanize_bytesize(total_size)))
