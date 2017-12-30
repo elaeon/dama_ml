@@ -167,7 +167,8 @@ class Grid(DataDrive):
         def iter_():
             for classif in self.classifs:
                 with classif.dataset as ds:
-                    yield classif.predict(ds.test_data[:], raw=raw, transform=False, 
+                    test_data = ds.test_data[:]
+                yield classif.predict(test_data, raw=raw, transform=False, 
                                         chunk_size=chunk_size)
 
         return self.output_layer(iter_)
