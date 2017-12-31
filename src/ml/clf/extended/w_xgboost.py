@@ -21,9 +21,9 @@ class Xgboost(XGB):
             return self.le.inverse_transform(self.position_index(label))
 
     def prepare_model(self, obj_fn=None, **params):
-        with self.dataset:
-            d_train = xgb.DMatrix(self.dataset.train_data, self.dataset.train_labels) 
-            d_valid = xgb.DMatrix(self.dataset.validation_data, self.dataset.validation_labels) 
+        with self.train_ds, self.validation_ds:
+            d_train = xgb.DMatrix(self.train_ds.data, self.train_ds.labels) 
+            d_valid = xgb.DMatrix(self.validation_ds.data, self.validation_ds.labels) 
         watchlist = [(d_train, 'train'), (d_valid, 'valid')]
         nrounds = 200
         xgb_model = xgb.train(params, d_train, nrounds, watchlist, early_stopping_rounds=100, 
@@ -34,9 +34,11 @@ class Xgboost(XGB):
         from sklearn.model_selection import StratifiedKFold
         nrounds = num_steps
         cv = StratifiedKFold(n_splits=n_splits)
-        with self.dataset:
-            data = self.dataset.data_validation
-            labels = self.dataset.data_validation_labels
+        with self.train_ds, self.validation_ds:
+            data = np.concatenate((self.train_ds.data[:], self.validation_ds.data[:]), 
+                            axis=0)
+            labels = np.concatenate((self.train_ds.labels[:], self.validation_ds.labels[:]), 
+                            axis=0)
         for k, (train, test) in enumerate(cv.split(data, labels), 1):
             d_train = xgb.DMatrix(data[train], labels[train]) 
             d_valid = xgb.DMatrix(data[test], labels[test]) 
@@ -50,10 +52,10 @@ class Xgboost(XGB):
 class XgboostSKL(SKLP):
     def prepare_model(self, obj_fn=None, **params):
         model = CalibratedClassifierCV(xgb.XGBClassifier(seed=3, n_estimators=25), method="sigmoid")
-        with self.dataset:
-            model_clf = model.fit(self.dataset.train_data, self.dataset.train_labels)
+        with self.train_ds, self.validation_ds:
+            model_clf = model.fit(self.train_ds.data, self.train_ds.labels)
             reg_model = CalibratedClassifierCV(model_clf, method="sigmoid", cv="prefit")
-            reg_model.fit(self.dataset.validation_data, self.dataset.validation_labels)
+            reg_model.fit(self.validation_ds.data, self.validation_ds.labels)
         return self.ml_model(reg_model)
 
     def prepare_model_k(self, obj_fn=None, **params):

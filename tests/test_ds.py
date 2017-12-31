@@ -444,12 +444,11 @@ class TestDataset(unittest.TestCase):
             dataset.destroy()
 
     def test_text_ds(self):
-        import h5py
-        X = np.asarray([str(line)*10 for line in range(100)])
-        with Data(name="test", dtype='object', dataset_path="/tmp/") as ds:
-            ds.build_dataset(X)
-            self.assertEqual(ds.shape[0], 100)
-            ds.destroy()
+        #X = np.asarray([str(line)*10 for line in range(100)])
+        #with Data(name="test", dtype='object', dataset_path="/tmp/") as ds:
+        #    ds.build_dataset(X)
+        #    self.assertEqual(ds.shape[0], 100)
+        #    ds.destroy()
 
         X = np.asarray([(str(line)*10, "1") for line in range(100)])
         with Data(name="test", dtype='object', dataset_path="/tmp/") as ds:
@@ -472,7 +471,6 @@ class TestDataset(unittest.TestCase):
     def test_fmtypes(self):
         with Data(name="test", dataset_path="/tmp/") as data:
             data.build_dataset(self.X)
-            data.build_fmtypes()
             self.assertEqual(data.fmtypes.shape[0], self.X.shape[1])
             data.destroy()
 
@@ -487,7 +485,6 @@ class TestDataset(unittest.TestCase):
                 [1, 1, 0, 7, 7, 1]
             ]
             data.build_dataset(array)
-            data.build_fmtypes()
             self.assertEqual(data.features_fmtype(fmtypes.BOOLEAN), [0, 5])
             self.assertEqual(data.features_fmtype(fmtypes.NANBOOLEAN), [1, 2, 3])
             self.assertEqual(data.features_fmtype(fmtypes.ORDINAL), [4])
@@ -499,9 +496,9 @@ class TestDataset(unittest.TestCase):
         from ml.layers import IterLayer
 
         array = [
-            [0, 1, -1, 3, '4', 0],
+            [0, 1, -1, 1, '4', 0],
             [1, -1, 0, 2, '5', 1],
-            [0, 0, 1, 2, '2', 1],
+            [0, 0, 1, 4, '2', 1],
             [0, 1, 1, 3, '6', 0],
             [1, 1, 0, 7, '7', 1]
         ]
@@ -517,11 +514,9 @@ class TestDataset(unittest.TestCase):
         with Data(name="test", dataset_path="/tmp/", dtype='int', 
                     transforms=t, apply_transforms=True) as data:
             data.build_dataset(IterLayer(array, shape=(5,6)))
-            data.build_fmtypes(fmtypes=fmtypes_t.fmtypes)
             self.assertEqual(data.features_fmtype(fmtypes.BOOLEAN), [0, 5])
             self.assertEqual(data.features_fmtype(fmtypes.NANBOOLEAN), [1, 2])
-            self.assertEqual(data.features_fmtype(fmtypes.ORDINAL), [4])
-            self.assertEqual(data.features_fmtype(fmtypes.DENSE), [3])
+            self.assertEqual(data.features_fmtype(fmtypes.ORDINAL), [3, 4])
             data.destroy()
 
     def test_features_fmtype_edit(self):
@@ -535,7 +530,6 @@ class TestDataset(unittest.TestCase):
                 [1, 1, 0, 7, 7, 1]
             ]
             data.build_dataset(array)
-            data.build_fmtypes()
             data.set_fmtypes(3, fmtypes.DENSE)
             data.set_fmtypes(4, fmtypes.DENSE)
             self.assertItemsEqual(data.fmtypes[:], [0, 1, 1, 4, 4, 0])

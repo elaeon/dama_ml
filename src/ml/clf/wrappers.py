@@ -4,8 +4,8 @@ import logging
 
 from sklearn.preprocessing import LabelEncoder
 from ml.utils.config import get_settings
-from ml.models import MLModel, DataDrive
-from ml.ds import DataSetBuilder, Data
+from ml.models import MLModel, DataDrive, BaseModel
+from ml.ds import DataLabel, Data
 from ml.clf import measures as metrics
 from ml.layers import IterLayer
 
@@ -18,38 +18,31 @@ log.addHandler(handler)
 log.setLevel(int(settings["loglevel"]))
 
 
-class BaseClassif(DataDrive):
+class ClassifModel(BaseModel):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
-                model_version=None, dataset_train_limit=None, 
-                autoload=True, group_name=None, rewrite=False, metrics=None,
+                model_version=None, autoload=True, group_name=None, metrics=None,
                 dtype='float64', ltype='int'):
-        self.model = None
-        self.le = LabelEncoder()
-        self.dataset_train_limit = dataset_train_limit
-        self.base_labels = None
-        self._original_dataset_md5 = None
-        self.dataset = None
-        self.ext = "ckpt.pkl"
-        self.rewrite = rewrite
-        self.metrics = metrics
-        self.ltype = ltype
-        self.dtype = dtype
 
-        super(BaseClassif, self).__init__(
+        self.le = LabelEncoder()
+        self.base_labels = None
+        super(ClassifModel, self).__init__(
+            dataset=dataset,
+            autoload=autoload,
+            metrics=metrics,
+            dtype=dtype,
+            ltype=ltype,
             check_point_path=check_point_path,
             model_version=model_version,
             model_name=model_name,
             group_name=group_name)
-        if autoload is True:
-            self.load_dataset(dataset)
 
     def scores(self, measures=None):
         from tqdm import tqdm
         if measures is None or isinstance(measures, str):
             measures = metrics.Measure.make_metrics(measures, name=self.model_name)
-        with self.dataset:
-            test_data = self.dataset.test_data[:]
-            test_labels = self.dataset.test_labels[:]
+        with self.test_ds:
+            test_data = self.test_ds.data[:]
+            test_labels = self.test_ds.labels[:]
 
         predictions = np.asarray(list(tqdm(
             self.predict(test_data, raw=measures.has_uncertain(), transform=False, chunk_size=0), 
@@ -60,23 +53,29 @@ class BaseClassif(DataDrive):
 
     def confusion_matrix(self):
         from tqdm import tqdm
-        predictions = self.predict(self.dataset.test_data[:], raw=False, 
+        with self.test_ds:
+            test_data = self.test_ds.data[:]
+            test_labels = self.test_ds.labels[:]
+        predictions = self.predict(test_data, raw=False, 
             transform=False, chunk_size=0)
         measure = metrics.Measure(np.asarray(list(tqdm(predictions, 
-                        total=self.dataset.test_labels.shape[0]))),
-                        self.dataset.test_labels[:], 
+                        total=test_labels.shape[0]))),
+                        test_labels, 
                         labels2classes=self.numerical_labels2classes,
                         name=self.__class__.__name__)
         measure.add(metrics.confusion_matrix, greater_is_better=None, uncertain=False)
         return measure.to_list()
 
     def only_is(self, op):
-        predictions = np.asarray(list(self.predict(self.dataset.test_data, raw=False, transform=False)))
+        with self.test_ds:
+            test_data = self.test_ds.data[:]
+            test_labels = self.test_ds.labels[:]
+        predictions = np.asarray(list(self.predict(test_data, raw=False, transform=False)))
         data = zip(*filter(
                         lambda x: op(x[1], x[2]), 
-                        zip(self.dataset.test_data, 
+                        zip(test_data, 
                             self.numerical_labels2classes(predictions), 
-                            self.numerical_labels2classes(self.dataset.test_labels[:]))))
+                            self.numerical_labels2classes(test_labels))))
         if len(data) > 0:
             return np.array(data[0]), data[1], data[2]
 
@@ -129,171 +128,86 @@ class BaseClassif(DataDrive):
         else:
             return self.le.inverse_transform(labels.astype('int'))
 
-
     def reformat_all(self, dataset):
         log.info("Reformating {}...".format(self.cls_name()))
-        dsb = DataSetBuilder(
-            name=dataset.name+"_"+self.model_name+"_"+self.model_version+"_"+self.cls_name(),
+        dl_train = DataLabel(
             dataset_path=settings["dataset_model_path"],
             apply_transforms=not dataset._applied_transforms,
             compression_level=9,
             dtype=self.dtype,
             transforms=dataset.transforms,
             ltype=self.ltype,
-            validator='',
+            chunks=1000,
+            rewrite=True)
+        dl_test = DataLabel(
+            dataset_path=settings["dataset_model_path"],
+            apply_transforms=not dataset._applied_transforms,
+            compression_level=9,
+            dtype=self.dtype,
+            transforms=dataset.transforms,
+            ltype=self.ltype,
+            chunks=1000,
+            rewrite=True)
+        dl_validation = DataLabel(
+            dataset_path=settings["dataset_model_path"],
+            apply_transforms=not dataset._applied_transforms,
+            compression_level=9,
+            dtype=self.dtype,
+            transforms=dataset.transforms,
+            ltype=self.ltype,
             chunks=1000,
             rewrite=True)
 
         self.labels_encode(dataset.labels)
         log.info("Labels encode finished")
         train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv()
-        train_data, train_labels = self.reformat(train_data, 
-                                    self.le.transform(train_labels))
-        test_data, test_labels = self.reformat(test_data, 
-                                    self.le.transform(test_labels))
-        validation_data, validation_labels = self.reformat(validation_data, 
-                                    self.le.transform(validation_labels))
-        with dsb:
-            dsb.build_dataset(train_data, train_labels, test_data=test_data, 
-                            test_labels=test_labels, validation_data=validation_data, 
-                            validation_labels=validation_labels)
-            dsb.apply_transforms = True
-            dsb._applied_transforms = dataset._applied_transforms
-        return dsb
+        train_labels = self.le.transform(train_labels)
+        validation_labels = self.le.transform(validation_labels)
+        test_labels = self.le.transform(test_labels)
+        with dl_train:
+            dl_train.build_dataset(train_data, train_labels)
+            dl_train.apply_transforms = True
+            dl_train._applied_transforms = dataset._applied_transforms
+        with dl_test:
+            dl_test.build_dataset(test_data, test_labels)
+            dl_test.apply_transforms = True
+            dl_test._applied_transforms = dataset._applied_transforms
+        with dl_validation:
+            dl_validation.build_dataset(validation_data, validation_labels)
+            dl_validation.apply_transforms = True
+            dl_validation._applied_transforms = dataset._applied_transforms
 
-    def load_dataset(self, dataset):
-        if dataset is None:
-            self.dataset = self.get_dataset()
-        else:
-            self.set_dataset(dataset)
+        return dl_train, dl_test, dl_validation
 
-        with self.dataset:
-            self.num_features = self.dataset.num_features()
-
-    def set_dataset(self, dataset):
-        with dataset:
-            self._original_dataset_md5 = dataset.md5
-            self.dataset = self.reformat_all(dataset)
-
-    def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False, transform=True):
-        from ml.utils.seq import grouper_chunk
-        for chunk in grouper_chunk(chunk_size, data):
-            data = np.asarray(list(chunk))
-            size = data.shape[0]
-            for prediction in self._predict(transform_fn(data, size, transform), raw=uncertain):
-                yield prediction
-
-    def predict(self, data, raw=False, transform=True, chunk_size=258):
-        def fn(x, s=None, t=True):
-            with self.dataset:
-                return self.transform_shape(self.dataset.processing(x, apply_transforms=t), size=s)
-
-        if self.model is None:
-            self.load_model()
-
-        if not isinstance(chunk_size, int):
-            log.info("The parameter chunk_size must be an integer.")            
-            log.info("Chunk size is set to 1")
-            chunk_size = 258
-
-        if isinstance(data, IterLayer):
-            #def iter_(fn):
-            #    for x in data:
-            #        yield IterLayer(self._predict(fn(x), raw=raw))
-
-            #if transform is True:
-            return IterLayer(self._predict(fn(x, t=transform), raw=raw))
-                #fn = lambda x: self.transform_shape(
-                 #   self.dataset.processing(np.asarray(list(x))))
-            #else:
-                #fn = list
-            #return IterLayer(iter_(fn))
-            #return IterLayer(self._predict(x, raw=raw))
-        else:
-            if chunk_size > 0:
-                #fn = lambda x, s: self.transform_shape(
-                #    self.dataset.processing(x, apply_transforms=transform), size=s)
-                return IterLayer(self.chunk_iter(data, chunk_size, transform_fn=fn, 
-                                                uncertain=raw, transform=transform))
-            else:
-                #data = self.transform_shape(self.dataset.processing(data, 
-                #    apply_transforms=transform))
-                return IterLayer(self._predict(fn(data, t=transform), raw=raw))
-
-    def _pred_erros(self, predictions, test_data, test_labels, valid_size=.1):
-        validation_labels_d = {}
-        pred_index = []
-        for index, (pred, label) in enumerate(zip(predictions, test_labels)):
-            if pred[1] >= .5 and (label < .5 or label == 0):
-                pred_index.append((index, label - pred[1]))
-                validation_labels_d[index] = 1
-            elif pred[1] < .5 and (label >= .5 or label == 1):
-                pred_index.append((index, pred[1] - label))
-                validation_labels_d[index] = 0
-
-        pred_index = sorted(filter(lambda x: x[1] < 0, pred_index), 
-            key=lambda x: x[1], reverse=False)
-        pred_index = pred_index[:int(len(pred_index) * valid_size)]
-        validation_data = np.ndarray(
-            shape=(len(pred_index), test_data.shape[1]), dtype=np.float32)
-        validation_labels = np.ndarray(shape=len(pred_index), dtype=np.float32)
-        for i, (j, _) in enumerate(pred_index):
-            validation_data[i] = test_data[j]
-            validation_labels[i] = validation_labels_d[j]
-        return validation_data, validation_labels, pred_index
-
-    def _metadata(self):
-        list_measure = self.scores(measures=self.metrics)
-        with self.dataset:
-            return {"dataset_path": self.dataset.dataset_path,
-                    "dataset_name": self.dataset.name,
-                    "md5": self.dataset.md5,
-                    "original_ds_md5": self._original_dataset_md5, #not reformated dataset
-                    "group_name": self.group_name,
-                    "model_module": self.module_cls_name(),
-                    "model_name": self.model_name,
-                    "model_version": self.model_version,
-                    "score": list_measure.measures_to_dict(),
-                    "base_labels": list(self.base_labels)}
+    #def _metadata(self):
+    #    list_measure = self.scores(measures=self.metrics)
+    #    with self.dataset:
+    #        return {"dataset_path": self.dataset.dataset_path,
+    #                "dataset_name": self.dataset.name,
+    #                "md5": self.dataset.md5,
+    #                "original_ds_md5": self._original_dataset_md5, #not reformated dataset
+    #                "group_name": self.group_name,
+    #                "model_module": self.module_cls_name(),
+    #                "model_name": self.model_name,
+    #                "model_version": self.model_version,
+    #                "score": list_measure.measures_to_dict(),
+    #                "base_labels": list(self.base_labels)}
         
-    def get_dataset(self):
-        from ml.ds import DataSetBuilder, Data
-        log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name, 
-            self.model_version, self.check_point_path))
-        meta = self.load_meta()
-        dataset = DataSetBuilder(name=meta["dataset_name"], dataset_path=meta["dataset_path"],
-            apply_transforms=False, rewrite=False)
-        self._original_dataset_md5 = meta["original_ds_md5"]
-        self.labels_encode(meta["base_labels"])
+    #def get_dataset(self):
+    #    from ml.ds import DataSetBuilder, Data
+    #    log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name, 
+    #        self.model_version, self.check_point_path))
+    #    meta = self.load_meta()
+    #    dataset = DataSetBuilder(name=meta["dataset_name"], dataset_path=meta["dataset_path"],
+    #        apply_transforms=False, rewrite=False)
+    #    self._original_dataset_md5 = meta["original_ds_md5"]
+    #    self.labels_encode(meta["base_labels"])
     
-        self.group_name = meta.get('group_name', None)
-        if meta.get('md5', None) != dataset.md5:
-            log.info("The dataset md5 is not equal to the model '{}'".format(
-                self.__class__.__name__))
-        return dataset
-
-    def preload_model(self):
-        self.model = MLModel(fit_fn=None, 
-                            predictors=None,
-                            load_fn=self.load_fn,
-                            save_fn=None)
-
-    def save_model(self):
-        if self.check_point_path is not None:
-            path = self.make_model_file()
-            self.model.save('{}.{}'.format(path, self.ext))
-            self.save_meta()
-
-    def has_model_file(self):
-        import os
-        path = self.get_model_path()
-        return os.path.exists('{}.{}'.format(path, self.ext))
-
-    def load_model(self):        
-        self.preload_model()
-        if self.check_point_path is not None:
-            path = self.get_model_path()
-            self.model.load('{}.{}'.format(path, self.ext))
+    #    self.group_name = meta.get('group_name', None)
+    #    if meta.get('md5', None) != dataset.md5:
+    #        log.info("The dataset md5 is not equal to the model '{}'".format(
+    #            self.__class__.__name__))
+    #    return dataset
 
     def _predict(self, data, raw=False):
         prediction = self.model.predict(data)
@@ -301,35 +215,9 @@ class BaseClassif(DataDrive):
             prediction = np.asarray(prediction, dtype=np.float)
         return self.convert_label(prediction, raw=raw)
 
-    def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2, obj_fn=None, 
-                    model_params={}):
-        from sklearn.model_selection import StratifiedKFold
-        model = self.prepare_model_k(obj_fn=obj_fn)
-        cv = StratifiedKFold(n_splits=n_splits)
-        with self.dataset:
-            data = self.dataset.data_validation
-            labels = self.dataset.data_validation_labels
-        for k, (train, test) in enumerate(cv.split(data, labels), 1):
-            model.fit(data[train], labels[train])
-            print("fold ", k)
-        return model
-
-    def train(self, batch_size=0, num_steps=0, n_splits=None, obj_fn=None, model_params={}):
-        log.info("Training")
-        if n_splits is not None:
-            self.model = self.train_kfolds(batch_size=batch_size, num_steps=num_steps, 
-                            n_splits=n_splits, obj_fn=obj_fn, model_params=model_params)
-        else:
-            self.model = self.prepare_model(obj_fn=obj_fn, **model_params)
-        log.info("Saving model")
-        self.save_model()
-
-    def scores2table(self):
-        from ml.clf.measures import ListMeasure
-        return ListMeasure.dict_to_measures(self.load_meta().get("score", None))
 
 
-class SKL(BaseClassif):
+class SKL(ClassifModel):
     def convert_label(self, label, raw=False):
         if raw is True:
             return (np.arange(self.num_labels) == label).astype(np.float32)
@@ -350,7 +238,7 @@ class SKL(BaseClassif):
         self.model = self.ml_model(model)
 
 
-class SKLP(BaseClassif):
+class SKLP(ClassifModel):
     def __init__(self, *args, **kwargs):
         super(SKLP, self).__init__(*args, **kwargs)
 
@@ -367,7 +255,7 @@ class SKLP(BaseClassif):
         self.model = self.ml_model(model)
 
 
-class XGB(BaseClassif):
+class XGB(ClassifModel):
     def ml_model(self, model, model_2=None):
         return MLModel(fit_fn=model.train, 
                             predictors=[model_2.predict],
@@ -386,7 +274,7 @@ class XGB(BaseClassif):
         return xgb.DMatrix(data)
 
 
-class LGB(BaseClassif):
+class LGB(ClassifModel):
     def ml_model(self, model, model_2=None):
         return MLModel(fit_fn=model.train, 
                             predictors=[model_2.predict],
@@ -403,7 +291,7 @@ class LGB(BaseClassif):
         return lgb.Dataset(data)
 
 
-class TFL(BaseClassif):
+class TFL(ClassifModel):
 
     def reformat(self, data, labels):
         data = self.transform_shape(data)
@@ -435,7 +323,7 @@ class TFL(BaseClassif):
             self.save_model()
 
 
-class Keras(BaseClassif):
+class Keras(ClassifModel):
     def __init__(self, **kwargs):
         super(Keras, self).__init__(**kwargs)
         self.ext = "ckpt"
@@ -463,17 +351,20 @@ class Keras(BaseClassif):
         
         log.info("The dataset dl is not set in the path, rebuilding...".format(
             self.__class__.__name__))
-        with self.dataset:
-            dl = self.dataset.desfragment(dataset_path=settings["dataset_model_path"])
-
+        dl = Data.original_ds(name=self.original_dataset_name, dataset_path=self.original_dataset_path)
         with dl:
-            for k, (train, test) in enumerate(cv.split(dl.data, self.numerical_labels2classes(dl.labels)), 1):
-                self.model.fit(dl.data.value[train], 
-                    dl.labels.value[train],
+            if dl._applied_transforms is False and not dl.transforms.empty():
+                ndl = dl.convert(apply_transforms=True, dtype='float', ltype='int')
+            else:
+                ndl = dl
+        with ndl:
+            for k, (train, test) in enumerate(cv.split(ndl.data, self.numerical_labels2classes(ndl.labels)), 1):
+                self.model.fit(ndl.data.value[train], 
+                    ndl.labels.value[train],
                     nb_epoch=num_steps,
                     batch_size=batch_size,
                     shuffle="batch",
-                    validation_data=(dl.data.value[test], dl.labels.value[test]))
+                    validation_data=(ndl.data.value[test], ndl.labels.value[test]))
                 print("fold ", k)
 
     def train(self, batch_size=0, num_steps=0, n_splits=None):
@@ -481,11 +372,12 @@ class Keras(BaseClassif):
             self.train_kfolds(batch_size=batch_size, num_steps=num_steps, n_splits=n_splits)
         else:
             self.model = self.prepare_model()
-            self.model.fit(self.dataset.train_data, 
-                self.dataset.train_labels,
-                nb_epoch=num_steps,
-                batch_size=batch_size,
-                shuffle="batch",
-                validation_data=(self.dataset.validation_data, self.dataset.validation_labels))
+            with self.train_ds, validation_ds:
+                self.model.fit(self.train_ds.data, 
+                    self.train_ds.labels,
+                    nb_epoch=num_steps,
+                    batch_size=batch_size,
+                    shuffle="batch",
+                    validation_data=(self.validation_ds.data, self.validation_ds.labels))
         self.save_model()
 

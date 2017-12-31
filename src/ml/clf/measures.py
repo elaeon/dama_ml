@@ -161,6 +161,11 @@ def logloss(labels, predictions):
     return log_loss(labels, predictions)
 
 
+def msle(labels, predictions):
+    from sklearn.metrics import mean_squared_error
+    return mean_squared_error(labels, predictions)
+
+
 class ListMeasure(object):
     """
     Class for save distincts measures

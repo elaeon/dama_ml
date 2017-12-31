@@ -6,3 +6,4 @@ from test_transforms import *
 from test_ae import *
 from test_clf import *
 from test_layers import *
+from test_reg import *

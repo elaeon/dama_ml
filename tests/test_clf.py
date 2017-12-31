@@ -26,8 +26,7 @@ class TestSKL(unittest.TestCase):
         classif = RandomForest(dataset=self.dataset, 
             model_name="test", 
             model_version="1",
-            check_point_path="/tmp/",
-            rewrite=True)
+            check_point_path="/tmp/")
         classif.train(num_steps=1)
         self.assertEqual(type(classif.load_meta()), type({}))
         classif.destroy()
@@ -36,23 +35,20 @@ class TestSKL(unittest.TestCase):
         classif = RandomForest(dataset=self.dataset, 
             model_name="test", 
             model_version="1",
-            check_point_path="/tmp/",
-            rewrite=True)
+            check_point_path="/tmp/")
         classif.train(num_steps=1)
 
         classif = RandomForest(
             model_name="test", 
             model_version="1",
-            check_point_path="/tmp/",
-            rewrite=False)
+            check_point_path="/tmp/")
         classif.destroy()
 
     def test_scores(self):        
         classif = RandomForest(dataset=self.dataset, 
             model_name="test", 
             model_version="1",
-            check_point_path="/tmp/",
-            rewrite=True)
+            check_point_path="/tmp/")
         classif.train(num_steps=1)
         scores_table = classif.scores2table()
         classif.destroy()
@@ -68,8 +64,7 @@ class TestSKL(unittest.TestCase):
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/",
-            metrics=metrics,
-            rewrite=True)
+            metrics=metrics)
         classif.train(num_steps=1)
         scores_table = classif.scores2table()
         self.assertEqual(scores_table.headers, ['', 'f1', 'auc', 'recall', 'precision', 
@@ -134,8 +129,8 @@ class TestGrid(unittest.TestCase):
             dataset.build_dataset(self.original_dataset.data_validation[:], 
                                 self.original_dataset.data_validation_labels[:])
 
-        rf = RandomForest(model_name="test_rf", model_version="1", dataset=dataset, rewrite=True)
-        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=dataset, rewrite=True)
+        rf = RandomForest(model_name="test_rf", model_version="1", dataset=dataset)
+        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=dataset)
         rf.train()
         ab.train()
 
@@ -172,8 +167,8 @@ class TestGrid(unittest.TestCase):
         metrics = Measure.make_metrics(None)
         metrics.add(gini_normalized, greater_is_better=True, uncertain=True)
 
-        rf = RandomForest(model_name="test_rf", model_version="1", dataset=self.original_dataset, rewrite=True)
-        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.original_dataset, rewrite=True)
+        rf = RandomForest(model_name="test_rf", model_version="1", dataset=self.original_dataset)
+        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.original_dataset)
         rf.train()
         ab.train()
         classif = Grid([rf, ab],
@@ -199,8 +194,8 @@ class TestGrid(unittest.TestCase):
             dataset = self.original_dataset.convert(name="test_dataset", ltype='int',
                 transforms=transforms, apply_transforms=True, dataset_path="/tmp/")
         
-        rf = RandomForest(model_name="test_rf", model_version="1", dataset=dataset, rewrite=True)
-        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.original_dataset, rewrite=True)
+        rf = RandomForest(model_name="test_rf", model_version="1", dataset=datase)
+        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.original_dataset)
         rf.train()
         ab.train()
 
@@ -223,8 +218,8 @@ class TestGrid(unittest.TestCase):
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost, KNN
         from ml.clf.ensemble import Grid, EnsembleLayers
 
-        rf = RandomForest(model_name="test_rf", model_version="1", dataset=self.original_dataset, rewrite=True)
-        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.original_dataset, rewrite=True)
+        rf = RandomForest(model_name="test_rf", model_version="1", dataset=self.original_dataset)
+        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.original_dataset)
         rf.train()
         ab.train()
 
@@ -233,8 +228,8 @@ class TestGrid(unittest.TestCase):
             model_version="1",
             check_point_path="/tmp/")
 
-        knn = KNN(model_name="test_knn", model_version="1", autoload=False, rewrite=True)
-        ab2 = AdaBoost(model_name="test_ab_2", model_version="1", autoload=False, rewrite=True)
+        knn = KNN(model_name="test_knn", model_version="1", autoload=False)
+        ab2 = AdaBoost(model_name="test_ab_2", model_version="1", autoload=False)
         layer_2 = Grid([ab2, knn],
             model_name="test_grid1", 
             model_version="1",
@@ -268,8 +263,8 @@ class TestGrid(unittest.TestCase):
         with self.original_dataset:
             ds0 = self.original_dataset.add_transforms(transforms, name="ds_test_0")
 
-        rf = RandomForest(model_name="test_rf", model_version="1", dataset=ds0, rewrite=True)
-        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=ds0, rewrite=True)
+        rf = RandomForest(model_name="test_rf", model_version="1", dataset=ds0)
+        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=ds0)
         rf.train()
         ab.train()
 
@@ -278,8 +273,8 @@ class TestGrid(unittest.TestCase):
             check_point_path="/tmp/",
             model_version="1")
 
-        knn = KNN(model_name="test_knn", model_version="1", autoload=False, rewrite=True)
-        ab2 = AdaBoost(model_name="test_ab_2", model_version="1", autoload=False, rewrite=True)
+        knn = KNN(model_name="test_knn", model_version="1", autoload=False)
+        ab2 = AdaBoost(model_name="test_ab_2", model_version="1", autoload=False)
         classif_2 = Grid([knn, ab2],
             model_name="test_grid1",            
             check_point_path="/tmp/", 
@@ -317,9 +312,9 @@ class TestGrid(unittest.TestCase):
         from ml.clf.extended.w_sklearn import LogisticRegression
         from ml.clf.ensemble import Grid, EnsembleLayers
 
-        rf = RandomForest(model_name="test_rf", model_version="1", dataset=self.original_dataset, rewrite=True)
-        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.original_dataset, rewrite=True)
-        knn = KNN(model_name="test_knn", model_version="1", dataset=self.original_dataset, rewrite=True)
+        rf = RandomForest(model_name="test_rf", model_version="1", dataset=self.original_dataset)
+        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.original_dataset)
+        knn = KNN(model_name="test_knn", model_version="1", dataset=self.original_dataset)
         rf.train()
         ab.train()
         knn.train()
@@ -330,7 +325,7 @@ class TestGrid(unittest.TestCase):
             model_version="1")
         classif_1.output("bagging")
 
-        lr = LogisticRegression(model_name="test_lr", model_version="1", autoload=False, rewrite=True)
+        lr = LogisticRegression(model_name="test_lr", model_version="1", autoload=False)
         classif_2 = Grid([lr],
             model_name="test_grid1",
             check_point_path="/tmp/", 
@@ -422,8 +417,7 @@ class TestXgboost(unittest.TestCase):
                 model_version="1",
                 check_point_path="/tmp/",
                 dtype="int",
-                ltype="int",
-                rewrite=True)
+                ltype="int")
             params={'max_depth':2, 'eta':1, 'silent':1, 'objective':'binary:logistic'}
             classif.train(num_steps=1, model_params=params)
         except ImportError:
@@ -463,8 +457,7 @@ class TestKFold(unittest.TestCase):
             model_version="1",
             check_point_path="/tmp/",
             dtype="float",
-            ltype="float32",
-            rewrite=True)
+            ltype="float32")
         classif.train(num_steps=1, batch_size=128, n_splits=4)
 
     def tearDown(self):

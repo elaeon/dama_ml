@@ -7,11 +7,11 @@ class SVC(SKL):
     def prepare_model(self, obj_fn=None):
         from sklearn import svm
 
-        with self.dataset:
+        with self.train_ds, self.validation_ds:
             model = CalibratedClassifierCV(svm.LinearSVC(C=1, max_iter=1000), method="sigmoid")
-            model_clf = model.fit(self.dataset.train_data, self.dataset.train_labels)
+            model_clf = model.fit(self.train_ds.data, self.train_ds.labels)
             reg_model = CalibratedClassifierCV(model_clf, method="sigmoid", cv="prefit")
-            reg_model.fit(self.dataset.validation_data, self.dataset.validation_labels)
+            reg_model.fit(self.validation_ds.data, self.validation_ds.labels)
         return self.ml_model(reg_model)
 
     def prepare_model_k(self, obj_fn=None):
@@ -34,10 +34,10 @@ class RandomForest(SKLP):
         else:
             model = CalibratedClassifierCV(
                 RandomForestClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
-        with self.dataset:
-            model_clf = model.fit(self.dataset.train_data[:], self.dataset.train_labels[:])
+        with self.train_ds, self.validation_ds:
+            model_clf = model.fit(self.train_ds.data[:], self.train_ds.labels[:])
             reg_model = CalibratedClassifierCV(model_clf, method="sigmoid", cv="prefit")
-            reg_model.fit(self.dataset.validation_data, self.dataset.validation_labels)
+            reg_model.fit(self.validation_ds.data, self.validation_ds.labels)
         return self.ml_model(reg_model)
 
     def prepare_model_k(self, obj_fn=None):
@@ -52,12 +52,12 @@ class ExtraTrees(SKLP):
     def prepare_model(self, obj_fn=None):
         from sklearn.ensemble import ExtraTreesClassifier
 
-        with self.dataset:
+        with self.train_ds, self.validation_ds:
             model = CalibratedClassifierCV(
                 ExtraTreesClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
-            model_clf = model.fit(self.dataset.train_data, self.dataset.train_labels)
+            model_clf = model.fit(self.train_ds.data, self.train_ds.labels)
             reg_model = CalibratedClassifierCV(model_clf, method="sigmoid", cv="prefit")
-            reg_model.fit(self.dataset.validation_data, self.dataset.validation_labels)
+            reg_model.fit(self.validation_ds.data, self.validation_ds.labels)
         return self.ml_model(reg_model)
 
     def prepare_model_k(self, obj_fn=None):
@@ -72,12 +72,12 @@ class LogisticRegression(SKLP):
     def prepare_model(self, obj_fn=None):
         from sklearn.linear_model import LogisticRegression
 
-        with self.dataset:
+        with self.train_ds, self.validation_ds:
             model = CalibratedClassifierCV(
                 LogisticRegression(solver="lbfgs", multi_class="multinomial", n_jobs=-1), method="sigmoid")
-            model_clf = model.fit(self.dataset.train_data, self.dataset.train_labels)
+            model_clf = model.fit(self.train_ds.data, self.train_ds.labels)
             reg_model = CalibratedClassifierCV(model_clf, method="sigmoid", cv="prefit")
-            reg_model.fit(self.dataset.validation_data, self.dataset.validation_labels)
+            reg_model.fit(self.validation_ds.data, self.validation_ds.labels)
         return self.ml_model(reg_model)
 
     def prepare_model_k(self, obj_fn=None):
@@ -93,12 +93,12 @@ class SGDClassifier(SKLP):
     def prepare_model(self, obj_fn=None):
         from sklearn.linear_model import SGDClassifier
 
-        with self.dataset:
+        with self.train_ds, self.validation_ds:
             model = CalibratedClassifierCV(SGDClassifier(loss='log', penalty='elasticnet', 
                 alpha=.0001, n_iter=100, n_jobs=-1), method="sigmoid")
-            model_clf = model.fit(self.dataset.train_data, self.dataset.train_labels)
+            model_clf = model.fit(self.train_ds.data, self.train_ds.labels)
             reg_model = CalibratedClassifierCV(model_clf, method="sigmoid", cv="prefit")
-            reg_model.fit(self.dataset.validation_data, self.dataset.validation_labels)
+            reg_model.fit(self.validation_ds.data, self.validation_ds.labels)
         return self.ml_model(reg_model)
 
     def prepare_model_k(self, obj_fn=None):
@@ -114,12 +114,12 @@ class AdaBoost(SKLP):
     def prepare_model(self, obj_fn=None):
         from sklearn.ensemble import AdaBoostClassifier
 
-        with self.dataset:
+        with self.train_ds, self.validation_ds:
             model = CalibratedClassifierCV(
                 AdaBoostClassifier(n_estimators=25, learning_rate=1.0), method="sigmoid")
-            model_clf = model.fit(self.dataset.train_data, self.dataset.train_labels)
+            model_clf = model.fit(self.train_ds.data, self.train_ds.labels)
             reg_model = CalibratedClassifierCV(model_clf, method="sigmoid", cv="prefit")
-            reg_model.fit(self.dataset.validation_data, self.dataset.validation_labels)
+            reg_model.fit(self.validation_ds.data, self.validation_ds.labels)
         return self.ml_model(reg_model)
 
     def prepare_model_k(self, obj_fn=None):
@@ -134,12 +134,12 @@ class GradientBoost(SKLP):
     def prepare_model(self, obj_fn=None):
         from sklearn.ensemble import GradientBoostingClassifier
 
-        with self.dataset:
+        with self.train_ds, self.validation_ds:
             model = CalibratedClassifierCV(
                 GradientBoostingClassifier(n_estimators=25, learning_rate=1.0), method="sigmoid")
-            model_clf = model.fit(self.dataset.train_data, self.dataset.train_labels)
+            model_clf = model.fit(self.train_ds.data, self.train_ds.labels)
             reg_model = CalibratedClassifierCV(model_clf, method="sigmoid", cv="prefit")
-            reg_model.fit(self.dataset.validation_data, self.dataset.validation_labels)
+            reg_model.fit(self.validation_ds.data, self.validation_ds.labels)
         return self.ml_model(reg_model)
     
     def prepare_model_k(self, obj_fn=None):
@@ -154,12 +154,12 @@ class KNN(SKLP):
     def prepare_model(self, obj_fn=None):
         from sklearn.neighbors import KNeighborsClassifier
 
-        with self.dataset:
+        with self.train_ds, self.validation_ds:
             model = CalibratedClassifierCV(KNeighborsClassifier(n_neighbors=2, weights='distance', 
                 algorithm='auto'), method="sigmoid")
-            model_clf = model.fit(self.dataset.train_data, self.dataset.train_labels)
+            model_clf = model.fit(self.train_ds.data, self.train_ds.labels)
             reg_model = CalibratedClassifierCV(model_clf, method="sigmoid", cv="prefit")
-            reg_model.fit(self.dataset.validation_data, self.dataset.validation_labels)
+            reg_model.fit(self.validation_ds.data, self.validation_ds.labels)
         return self.ml_model(reg_model)
     
     def prepare_model_k(self, obj_fn=None):
