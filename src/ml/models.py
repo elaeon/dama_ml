@@ -2,6 +2,7 @@ from ml.utils.config import get_settings
 import os
 import uuid
 import logging
+import numpy as np
 
 from ml.ds import DataLabel, Data
 from ml.layers import IterLayer
@@ -29,6 +30,8 @@ class MLModel:
         return self.fit_fn(*args, **kwargs)
 
     def predict(self, data):
+        if isinstance(data, IterLayer):
+            data = data.to_narray()
         if self.transform_data is not None:
             prediction = self.predictors[0](self.transform_data(data))
         else:

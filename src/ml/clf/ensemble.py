@@ -96,8 +96,8 @@ class Grid(DataDrive):
         if measures is None or isinstance(measures, str):
             measures = Measure.make_metrics(measures, name=self.model_name)
 
-        with self.classifs[0].dataset as ds_test:
-            test_labels = ds_test.test_labels[:]
+        with self.classifs[0].test_ds as test_ds:
+            test_labels = test_ds.labels[:]
         predictions = np.asarray(list(tqdm(self.predict_test(raw=measures.has_uncertain(), chunk_size=0),
             total=test_labels.shape[0])))
         measures.set_data(predictions, test_labels, self.numerical_labels2classes)
@@ -166,8 +166,8 @@ class Grid(DataDrive):
     def predict_test(self, raw=False, chunk_size=258):
         def iter_():
             for classif in self.classifs:
-                with classif.dataset as ds:
-                    test_data = ds.test_data[:]
+                with classif.test_ds as test_ds:
+                    test_data = test_ds.data[:]
                 yield classif.predict(test_data, raw=raw, transform=False, 
                                         chunk_size=chunk_size)
 

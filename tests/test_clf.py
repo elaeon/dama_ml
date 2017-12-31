@@ -124,7 +124,7 @@ class TestGrid(unittest.TestCase):
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
         from ml.clf.ensemble import Grid
 
-        dataset = DataLabel(name="testdl", dataset_path="/tmp/", rewrite=True, ltype='int')
+        dataset = DataLabel(name="testdl", dataset_path="/tmp/", ltype='int')
         with self.original_dataset, dataset:
             dataset.build_dataset(self.original_dataset.data_validation[:], 
                                 self.original_dataset.data_validation_labels[:])
@@ -194,7 +194,7 @@ class TestGrid(unittest.TestCase):
             dataset = self.original_dataset.convert(name="test_dataset", ltype='int',
                 transforms=transforms, apply_transforms=True, dataset_path="/tmp/")
         
-        rf = RandomForest(model_name="test_rf", model_version="1", dataset=datase)
+        rf = RandomForest(model_name="test_rf", model_version="1", dataset=dataset)
         ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.original_dataset)
         rf.train()
         ab.train()
@@ -289,7 +289,6 @@ class TestGrid(unittest.TestCase):
 
         ensemble.add(classif_1)
         ensemble.add(classif_2)
-        #others_models_args = {"RandomForest": [{"n_splits": 2}]}
         ensemble.train()
         ensemble.scores().print_scores()
 
@@ -406,7 +405,7 @@ class TestXgboost(unittest.TestCase):
         X = np.asarray([1, 0]*10)
         Y = X*1
         self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
-            dtype='int', ltype='int', rewrite=True)
+            dtype='int', ltype='int')
         with self.dataset:
             self.dataset.build_dataset(X, Y)
         try:
@@ -449,7 +448,7 @@ class TestKFold(unittest.TestCase):
         X = np.random.rand(10, 2)
         Y = (X[:,0] > .5).astype(float)
         self.dataset = DataSetBuilder(dataset_path="/tmp/", 
-            dtype='float', ltype='float', rewrite=True)
+            dtype='float', ltype='float')
         with self.dataset:
             self.dataset.build_dataset(X, Y)
         classif = FCNet(dataset=self.dataset, 
