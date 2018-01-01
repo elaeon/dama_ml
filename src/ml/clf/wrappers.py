@@ -116,7 +116,8 @@ class ClassifModel(BaseModel):
         if dataset is None:
             self.test_ds = self.get_dataset()
             with self.load_original_ds() as ds:
-                self.labels_encode(ds.labels)
+                if isinstance(ds, DataLabel):
+                    self.labels_encode(ds.labels)
         else:
             self.set_dataset(dataset)
 
@@ -330,12 +331,6 @@ class Keras(ClassifModel):
         self.model = self.prepare_model_k()
         cv = StratifiedKFold(n_splits=n_splits)
         
-        #dl = Data.original_ds(name=self.original_dataset_name, dataset_path=self.original_dataset_path)
-        #with dl:
-        #    if dl._applied_transforms is False and not dl.transforms.empty():
-        #        ndl = dl.convert(apply_transforms=True, dtype=self.dtype, ltype=self.ltype)
-        #    else:
-        #        ndl = dl
         with self.train_ds:
             labels = self.position_index(self.train_ds.labels[:])
             for k, (train, test) in enumerate(cv.split(self.train_ds.data, labels), 1):
