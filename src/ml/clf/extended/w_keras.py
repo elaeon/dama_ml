@@ -18,6 +18,7 @@ class FCNet(Keras):
             model.add(Dropout(0.5))
 
         model.add(Dense(self.num_labels, activation='softmax'))
+        #model.add(Dense(1, activation='softmax'))
         model.compile(optimizer='sgd', loss='categorical_crossentropy')
         return self.ml_model(model)
 

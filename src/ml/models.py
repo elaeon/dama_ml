@@ -161,50 +161,10 @@ class BaseModel(DataDrive):
     def only_is(self, op):
         pass
 
-    #def reformat(self, dataset, labels):
-    #    dataset = self.transform_shape(dataset)
-    #    return dataset, labels
-
-    #def transform_shape(self, data, size=None):
-    #    return data
-    #    if isinstance(data, IterLayer):
-    #        return np.asarray(list(data))
-    #    elif len(data.shape) > 2:
-    #        if size is None:
-    #            size = data.shape[0]
-    #        return data[:].reshape(size, -1)
-    #    else:
-    #        return data
-
-    #def is_binary():
-    #    return self.num_labels == 2
-
-    #def labels_encode(self, labels):
-    #    self.le.fit(labels)
-    #    self.num_labels = self.le.classes_.shape[0]
-        #self.base_labels = self.le.classes_
-
-    #def position_index(self, label):
-    #    if isinstance(label, np.ndarray) or isinstance(label, list):
-    #        return np.argmax(label, axis=1)
-    #    return label
-
-    #def convert_label(self, label, raw=False):
-    #    if raw is True:
-    #        return label
-    #    elif raw is None:
-    #        return self.position_index(label)
-    #    else:
-    #        return self.le.inverse_transform(self.position_index(label))
-
-    #def numerical_labels2classes(self, labels):
-    #    if len(labels.shape) > 1 and labels.shape[1] > 1:
-    #        return self.le.inverse_transform(np.argmax(labels, axis=1))
-    #    else:
-    #        return self.le.inverse_transform(labels.astype('int'))
-
-
     def reformat_all(self, dataset):
+        pass
+
+    def reformat_labels(self, labels):
         pass
 
     def load_dataset(self, dataset):

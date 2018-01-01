@@ -87,9 +87,9 @@ class ClassifModel(BaseModel):
         import operator
         return self.only_is(operator.eq)
 
-    def reformat(self, dataset, labels):
-        dataset = self.transform_shape(dataset)
-        return dataset, labels
+    def reformat_labels(self, labels):
+        #dataset = self.transform_shape(dataset)
+        return labels
 
     def transform_shape(self, data, size=None):
         if isinstance(data, IterLayer):
@@ -108,6 +108,20 @@ class ClassifModel(BaseModel):
         self.le.fit(labels)
         self.num_labels = self.le.classes_.shape[0]
         self.base_labels = self.le.classes_
+
+    def load_original_ds(self):
+        return Data.original_ds(self.original_dataset_name, self.original_dataset_path)
+
+    def load_dataset(self, dataset):
+        if dataset is None:
+            self.test_ds = self.get_dataset()
+            with self.load_original_ds() as ds:
+                self.labels_encode(ds.labels)
+        else:
+            self.set_dataset(dataset)
+
+        with self.test_ds:
+            self.num_features = self.test_ds.num_features()
 
     def position_index(self, label):
         if isinstance(label, np.ndarray) or isinstance(label, list):
@@ -161,9 +175,9 @@ class ClassifModel(BaseModel):
         self.labels_encode(dataset.labels)
         log.info("Labels encode finished")
         train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv()
-        train_labels = self.le.transform(train_labels)
-        validation_labels = self.le.transform(validation_labels)
-        test_labels = self.le.transform(test_labels)
+        train_labels = self.reformat_labels(self.le.transform(train_labels))
+        validation_labels = self.reformat_labels(self.le.transform(validation_labels))
+        test_labels = self.reformat_labels(self.le.transform(test_labels))
         with dl_train:
             dl_train.build_dataset(train_data, train_labels)
             dl_train.apply_transforms = True
@@ -178,36 +192,6 @@ class ClassifModel(BaseModel):
             dl_validation._applied_transforms = dataset._applied_transforms
 
         return dl_train, dl_test, dl_validation
-
-    #def _metadata(self):
-    #    list_measure = self.scores(measures=self.metrics)
-    #    with self.dataset:
-    #        return {"dataset_path": self.dataset.dataset_path,
-    #                "dataset_name": self.dataset.name,
-    #                "md5": self.dataset.md5,
-    #                "original_ds_md5": self._original_dataset_md5, #not reformated dataset
-    #                "group_name": self.group_name,
-    #                "model_module": self.module_cls_name(),
-    #                "model_name": self.model_name,
-    #                "model_version": self.model_version,
-    #                "score": list_measure.measures_to_dict(),
-    #                "base_labels": list(self.base_labels)}
-        
-    #def get_dataset(self):
-    #    from ml.ds import DataSetBuilder, Data
-    #    log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name, 
-    #        self.model_version, self.check_point_path))
-    #    meta = self.load_meta()
-    #    dataset = DataSetBuilder(name=meta["dataset_name"], dataset_path=meta["dataset_path"],
-    #        apply_transforms=False, rewrite=False)
-    #    self._original_dataset_md5 = meta["original_ds_md5"]
-    #    self.labels_encode(meta["base_labels"])
-    
-    #    self.group_name = meta.get('group_name', None)
-    #    if meta.get('md5', None) != dataset.md5:
-    #        log.info("The dataset md5 is not equal to the model '{}'".format(
-    #            self.__class__.__name__))
-    #    return dataset
 
     def _predict(self, data, raw=False):
         prediction = self.model.predict(data)
@@ -293,11 +277,10 @@ class LGB(ClassifModel):
 
 class TFL(ClassifModel):
 
-    def reformat(self, data, labels):
-        data = self.transform_shape(data)
+    def reformat_labels(self, labels):
+        #data = self.transform_shape(data)
         # Map 0 to [1.0, 0.0, 0.0 ...], 1 to [0.0, 1.0, 0.0 ...]
-        labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
-        return data, labels_m
+        return (np.arange(self.num_labels) == labels[:,None]).astype(np.float)
 
     def load_fn(self, path):
         model = self.prepare_model()
@@ -339,32 +322,31 @@ class Keras(ClassifModel):
                         load_fn=self.load_fn,
                         save_fn=model.save)
 
-    def reformat(self, data, labels):
-        data = self.transform_shape(data)
-        labels_m = (np.arange(self.num_labels) == labels[:,None]).astype(np.float32)
-        return data, labels_m
+    def reformat_labels(self, labels):
+        return (np.arange(self.num_labels) == labels[:,None]).astype(np.float)
 
     def train_kfolds(self, batch_size=10, num_steps=100, n_splits=None):
         from sklearn.model_selection import StratifiedKFold
         self.model = self.prepare_model_k()
         cv = StratifiedKFold(n_splits=n_splits)
         
-        log.info("The dataset dl is not set in the path, rebuilding...".format(
-            self.__class__.__name__))
-        dl = Data.original_ds(name=self.original_dataset_name, dataset_path=self.original_dataset_path)
-        with dl:
-            if dl._applied_transforms is False and not dl.transforms.empty():
-                ndl = dl.convert(apply_transforms=True, dtype='float', ltype='int')
-            else:
-                ndl = dl
-        with ndl:
-            for k, (train, test) in enumerate(cv.split(ndl.data, self.numerical_labels2classes(ndl.labels)), 1):
-                self.model.fit(ndl.data.value[train], 
-                    ndl.labels.value[train],
-                    nb_epoch=num_steps,
+        #dl = Data.original_ds(name=self.original_dataset_name, dataset_path=self.original_dataset_path)
+        #with dl:
+        #    if dl._applied_transforms is False and not dl.transforms.empty():
+        #        ndl = dl.convert(apply_transforms=True, dtype=self.dtype, ltype=self.ltype)
+        #    else:
+        #        ndl = dl
+        with self.train_ds:
+            labels = self.position_index(self.train_ds.labels[:])
+            for k, (train, test) in enumerate(cv.split(self.train_ds.data, labels), 1):
+                train = list(train)
+                test = list(test)
+                self.model.fit(self.train_ds.data[train], 
+                    self.train_ds.labels[train],
+                    epochs=num_steps,
                     batch_size=batch_size,
                     shuffle="batch",
-                    validation_data=(ndl.data.value[test], ndl.labels.value[test]))
+                    validation_data=(self.train_ds.data[test], self.train_ds.labels[test]))
                 print("fold ", k)
 
     def train(self, batch_size=0, num_steps=0, n_splits=None):
@@ -372,10 +354,10 @@ class Keras(ClassifModel):
             self.train_kfolds(batch_size=batch_size, num_steps=num_steps, n_splits=n_splits)
         else:
             self.model = self.prepare_model()
-            with self.train_ds, validation_ds:
+            with self.train_ds, self.validation_ds:
                 self.model.fit(self.train_ds.data, 
                     self.train_ds.labels,
-                    nb_epoch=num_steps,
+                    epochs=num_steps,
                     batch_size=batch_size,
                     shuffle="batch",
                     validation_data=(self.validation_ds.data, self.validation_ds.labels))

@@ -445,32 +445,34 @@ class TestKFold(unittest.TestCase):
     def setUp(self):
         from ml.ds import DataSetBuilder
         from ml.clf.extended.w_keras import FCNet
-        X = np.random.rand(10, 2)
-        Y = (X[:,0] > .5).astype(float)
-        self.dataset = DataSetBuilder(dataset_path="/tmp/", 
-            dtype='float', ltype='float')
-        with self.dataset:
-            self.dataset.build_dataset(X, Y)
-        classif = FCNet(dataset=self.dataset, 
+        self.X = np.random.rand(10, 2)
+        self.Y = (self.X[:,0] > .5).astype(float)
+
+    def tearDown(self):
+        pass
+
+    def test_predict(self):
+        from ml.clf.extended.w_keras import FCNet
+        dataset = DataLabel(dataset_path="/tmp/", 
+            dtype='float', ltype='float', rewrite=True)
+        with dataset:
+            dataset.build_dataset(self.X, self.Y)
+        classif = FCNet(dataset=dataset, 
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/",
             dtype="float",
-            ltype="float32")
+            ltype="float")
         classif.train(num_steps=1, batch_size=128, n_splits=4)
 
-    def tearDown(self):
-        self.dataset.destroy()
-
-    def test_predict(self):
-        from ml.clf.extended.w_keras import FCNet
         classif = FCNet(
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
-        with self.dataset:
-            classif.predict(self.dataset.test_data[0:1])
+        with dataset:
+            predict = classif.predict(dataset.data[0:1]).to_narray()
         classif.destroy()
+        dataset.destroy()
 
 
 if __name__ == '__main__':
