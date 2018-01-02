@@ -1,7 +1,7 @@
 import numpy as np
 from ml.clf.wrappers import DataDrive
 from ml.clf.measures import ListMeasure, Measure
-from ml.ds import DataSetBuilder, Data
+from ml.ds import Data
 from ml.utils.config import get_settings
 from ml.layers import IterLayer
 
@@ -235,9 +235,9 @@ class EnsembleLayers(DataDrive):
     def train(self, n_splits=None):
         self.layers[0].save_model()
         with self.dataset:
-            y_submission = self.layers[0].predict(self.dataset.data_validation, 
+            y_submission = self.layers[0].predict(self.dataset.data[:], #fix add train and validation 
                 transform=not self.dataset._applied_transforms, raw=True, chunk_size=258)
-            test_labels = self.dataset.data_validation_labels[:]
+            test_labels = self.dataset.labels[:] #fix add train and validation
             nrows = test_labels.shape[0]
 
         for classif in self.layers[0].classifs:
@@ -282,10 +282,10 @@ class EnsembleLayers(DataDrive):
         if measures is None or isinstance(measures, str):
             measures = Measure.make_metrics(measures, name=self.model_name)
 
-        with self.dataset:
-            test_data = self.dataset.test_data[:]
-            test_labels = self.dataset.test_labels[:]
-            applied_transforms = self.dataset._applied_transforms
+        with self.layers[0].classifs[0].test_ds as test_ds:
+            test_data = test_ds.data[:]
+            test_labels = test_ds.labels[:]
+            applied_transforms = test_ds._applied_transforms
 
         predictions = np.asarray(list(tqdm(
             self.predict(test_data, raw=measures.has_uncertain(), 

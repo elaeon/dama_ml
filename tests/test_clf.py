@@ -107,12 +107,12 @@ class TestSKL(unittest.TestCase):
 
 class TestGrid(unittest.TestCase):
     def setUp(self):
-        from ml.ds import DataSetBuilder
+        from ml.ds import DataLabel
         from ml.clf.ensemble import Grid
 
         X = np.random.rand(100, 10)
         Y = (X[:,0] > .5).astype(int)
-        original_dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=True, ltype='int')
+        original_dataset = DataLabel("test", dataset_path="/tmp/", rewrite=True, ltype='int')
         with original_dataset:
             original_dataset.build_dataset(X, Y)
         self.original_dataset = original_dataset
@@ -124,10 +124,10 @@ class TestGrid(unittest.TestCase):
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
         from ml.clf.ensemble import Grid
 
-        dataset = DataLabel(name="testdl", dataset_path="/tmp/", ltype='int')
+        dataset = DataLabel(name="testdl", dataset_path="/tmp/", ltype='int', rewrite=True)
         with self.original_dataset, dataset:
-            dataset.build_dataset(self.original_dataset.data_validation[:], 
-                                self.original_dataset.data_validation_labels[:])
+            dataset.build_dataset(self.original_dataset.data[:], 
+                                self.original_dataset.labels[:])
 
         rf = RandomForest(model_name="test_rf", model_version="1", dataset=dataset)
         ab = AdaBoost(model_name="test_ab", model_version="1", dataset=dataset)
@@ -401,11 +401,11 @@ class TestGrid(unittest.TestCase):
 
 class TestXgboost(unittest.TestCase):
     def setUp(self):
-        from ml.ds import DataSetBuilder
-        X = np.asarray([1, 0]*10)
-        Y = X*1
-        self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
-            dtype='int', ltype='int')
+        from ml.ds import DataLabel
+        X = np.random.rand(100, 10)
+        Y = (X[:,0] > .5).astype(int)
+        self.dataset = DataLabel(name="test", dataset_path="/tmp/", 
+            dtype='int', ltype='int', rewrite=True)
         with self.dataset:
             self.dataset.build_dataset(X, Y)
         try:
@@ -443,8 +443,6 @@ class TestXgboost(unittest.TestCase):
 
 class TestKFold(unittest.TestCase):
     def setUp(self):
-        from ml.ds import DataSetBuilder
-        from ml.clf.extended.w_keras import FCNet
         self.X = np.random.rand(10, 2)
         self.Y = (self.X[:,0] > .5).astype(float)
 

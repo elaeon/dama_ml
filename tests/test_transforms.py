@@ -178,33 +178,21 @@ class TestTransforms(unittest.TestCase):
         dataset.destroy()
         classif.destroy()
 
-    #def test_bad_input_array(self):
-    #    from ml.ds import DataLabel
-    #    from ml.clf.extended.w_sklearn import RandomForest
-    #    from ml.processing import FitStandardScaler
-
-    #    transforms = Transforms()
-    #    transforms.add(linear)
-    #    transforms.add(linear_p, b=10)
-    #    transforms.add(FitStandardScaler, type="column")
-    #    X = np.asarray([1, 0]*10)
-    #    Y = X*1
-    #    dataset = DataLabel(name="test", dataset_path="/tmp/", 
-    #        dtype='int', ltype='int', transforms=transforms, rewrite=True)
-    #    with dataset:
-    #        dataset.build_dataset(X, Y)
-    #    classif = RandomForest(dataset=dataset, 
-    #        model_name="test", 
-    #        model_version="1",
-    #        check_point_path="/tmp/",
-    #        dtype='float64',
-    #        ltype='int')
-    #    classif.train(num_steps=1)
-    #    with classif.test_ds:
-    #        self.assertEqual(classif.test_ds.apply_transforms, True)
-    #    dataset.destroy()
-    #    classif.dataset.destroy()
-
+    def test_bad_input_array(self):
+        from ml.ds import DataLabel
+        from ml.clf.extended.w_sklearn import RandomForest
+    
+        X = np.asarray([1, 0]*10)
+        Y = X*1
+        dataset = DataLabel(name="test", dataset_path="/tmp/", 
+            dtype='int', ltype='int', rewrite=True)
+        with dataset:
+            try:
+                dataset.build_dataset(X, Y)
+                self.assertEqual(False, True)
+            except Exception:
+                print("OK")
+            dataset.destroy()
 
     def test_transform_col_model(self):
         from ml.ds import DataSetBuilder

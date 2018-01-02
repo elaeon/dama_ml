@@ -219,7 +219,7 @@ class Data(ReadWriteData):
     """
     def __init__(self, name=None, dataset_path=None, transforms=None,
                 apply_transforms=False, dtype='float64', description='',
-                author='', compression_level=0, chunks=258, rewrite=True):
+                author='', compression_level=0, chunks=258, rewrite=False):
 
         self.name = uuid.uuid4().hex if name is None else name
         self.chunks = chunks
@@ -240,7 +240,6 @@ class Data(ReadWriteData):
             if ds_exist:
                 self.destroy()
             self.create_route()
-            self.mode = "w"
             self.author = author
             self.dtype = dtype
             self.transforms = transforms
@@ -250,8 +249,7 @@ class Data(ReadWriteData):
             self.dataset_class = self.module_cls_name()
             self._applied_transforms = apply_transforms
             self.hash_header = self.calc_hash_H()
-        else:
-            self.mode = "r"
+
         self.zip_params = {"compression": "gzip", "compression_opts": self.compression_level}
 
     @property
@@ -390,7 +388,7 @@ class Data(ReadWriteData):
         return the number of features of the dataset
         """
         if len(self.data.shape) != 2:
-            raise Exception
+            raise Exception("Bad input shape. The input array must have a shape (X, Y) and not {}".format(self.data.shape))
         else:
             return self.data.shape[1]
 
@@ -487,7 +485,6 @@ class Data(ReadWriteData):
         """
         Transform a dataset with train, test and validation dataset into a datalabel dataset
         """
-        #self.f.require_group("data")
         self._set_space_shape("data", dsb.shape, self.dtype)
         end = self.chunks_writer("/data/data", dsb.train_data[:],
             self.dtype, dsb.train_data.shape, 
@@ -505,7 +502,6 @@ class Data(ReadWriteData):
         """
         Build a dataset from an iterator
         """
-        #self.f.require_group("data")
         self._set_space_shape(name, shape, self.dtype)
         end = self.chunks_writer("/data/{}".format(name), iter_, 
             self.dtype, shape,
@@ -516,7 +512,6 @@ class Data(ReadWriteData):
         """
         build a datalabel dataset from data and labels
         """
-        #self.f.require_group("data")
         data = self.processing(data, apply_transforms=self.apply_transforms)
         self._set_space_data('data', data, self.dtype)
         self._set_space_fmtypes(self.num_features())
@@ -552,9 +547,6 @@ class Data(ReadWriteData):
         data = self.empty(name, dataset_path=dataset_path, dtype=dtype, 
             ltype=ltype, apply_transforms=apply_transforms, transforms=transforms)
         with data:
-            #data.build_empty_fmtypes(self.num_features())
-            #if self.fmtypes is not None:
-            #    data.fmtypes = self.fmtypes[:]
             data.build_dataset(calc_nshape(self.data, percentaje))
         return data
 
@@ -734,17 +726,10 @@ class DataLabel(Data):
     :type rewrite: bool
     :param rewrite: if true, you can clean the saved data and add a new dataset.
     """
-    def __init__(self, name=None, 
-                dataset_path=None,
-                transforms=None,
-                apply_transforms=False,
-                dtype='float64',
-                ltype='|S1',
-                description='',
-                author='',
-                compression_level=0,
-                chunks=258,
-                rewrite=True):
+    def __init__(self, name=None, dataset_path=None,transforms=None,
+                apply_transforms=False, dtype='float64', ltype='|S1',
+                description='', author='', compression_level=0, chunks=258,
+                rewrite=False):
 
         super(DataLabel, self).__init__(name=name, dataset_path=dataset_path,
             apply_transforms=apply_transforms,transforms=transforms, dtype=dtype,
@@ -844,35 +829,34 @@ class DataLabel(Data):
             items_p = [0, 0]
             order_table_print(headers, items, "# items")
 
-    def build_dataset_from_dsb(self, dsb):
-        """
-        Transform a dataset with train, test and validation dataset into a datalabel dataset
-        """
-        labels_shape = tuple(dsb.shape[0:1] + dsb.train_labels.shape[1:])
-        #self.f.require_group("data")
-        self._set_space_shape("data", dsb.shape, self.dtype)
-        self._set_space_shape("labels", labels_shape, self.ltype)
-        end = self.chunks_writer("/data/data", dsb.train_data[:], 
-            self.dtype,
-            dsb.train_data.shape, chunks=self.chunks)
-        end = self.chunks_writer("/data/data", dsb.test_data[:], 
-            self.dtype,
-            dsb.test_data.shape, chunks=self.chunks, init=end)
-        self.chunks_writer("/data/data", dsb.validation_data[:], 
-            self.dtype,
-            dsb.validation_data.shape, chunks=self.chunks, init=end)
+    #def build_dataset_from_dsb(self, dsb):
+    #    """
+    #    Transform a dataset with train, test and validation dataset into a datalabel dataset
+    #    """
+    #    labels_shape = tuple(dsb.shape[0:1] + dsb.train_labels.shape[1:])
+    #    self._set_space_shape("data", dsb.shape, self.dtype)
+    #    self._set_space_shape("labels", labels_shape, self.ltype)
+    #    end = self.chunks_writer("/data/data", dsb.train_data[:], 
+    #        self.dtype,
+    #        dsb.train_data.shape, chunks=self.chunks)
+    #    end = self.chunks_writer("/data/data", dsb.test_data[:], 
+    #        self.dtype,
+    #        dsb.test_data.shape, chunks=self.chunks, init=end)
+    #    self.chunks_writer("/data/data", dsb.validation_data[:], 
+    #        self.dtype,
+    #        dsb.validation_data.shape, chunks=self.chunks, init=end)
 
-        end = self.chunks_writer("/data/labels", dsb.train_labels[:], 
-            self.ltype,
-            dsb.train_labels.shape, chunks=self.chunks)
-        end = self.chunks_writer("/data/labels", dsb.test_labels[:], 
-            self.ltype,
-            dsb.test_labels.shape, chunks=self.chunks, init=end)
-        self.chunks_writer("/data/labels", dsb.validation_labels[:],
-            self.ltype, 
-            dsb.validation_labels.shape, chunks=self.chunks, init=end)
+    #    end = self.chunks_writer("/data/labels", dsb.train_labels[:], 
+    #        self.ltype,
+    #        dsb.train_labels.shape, chunks=self.chunks)
+    #    end = self.chunks_writer("/data/labels", dsb.test_labels[:], 
+    #        self.ltype,
+    #        dsb.test_labels.shape, chunks=self.chunks, init=end)
+    #    self.chunks_writer("/data/labels", dsb.validation_labels[:],
+    #        self.ltype, 
+    #        dsb.validation_labels.shape, chunks=self.chunks, init=end)
        
-        self.md5 = self.calc_md5()
+    #    self.md5 = self.calc_md5()
 
     def build_dataset(self, data, labels):
         """
@@ -921,9 +905,6 @@ class DataLabel(Data):
                         apply_transforms=apply_transforms, 
                         dataset_path=dataset_path, transforms=transforms)
         with dl:
-            #dl.build_empty_fmtypes(self.num_features())
-            #if self.fmtypes is not None:
-            #    dl.fmtypes = self.fmtypes[:]
             dl.build_dataset(calc_nshape(self.data, percentaje), calc_nshape(self.labels, percentaje))
         return dl
 
@@ -1169,7 +1150,6 @@ class DataLabel(Data):
                 usize = "-"
 
         return tabulate(table, headers)
-
     
     def cv(self, train_size=.7, valid_size=.1):
         from sklearn.model_selection import train_test_split
@@ -1185,391 +1165,7 @@ class DataLabel(Data):
         return X_train, X_validation, X_test, y_train, y_validation, y_test
 
 
-class DataSetBuilder(DataLabel):
-    """
-    Base class for dataset build. Get data from memory.
-    create the initial values for the dataset.
-
-    :type name: string
-    :param name: dataset's name
-
-    :type dataset_path: string
-    :param dataset_path: path where the datased is saved. This param is automaticly set by the settings.cfg file.
-
-    :type apply_transforms: bool
-    :param apply_transforms: apply transformations to the data
-
-    :type processing_class: class
-    :param processing_class: class where are defined the functions for preprocessing data.
-
-    :type train_size: float
-    :param train_size: value between [0, 1] who determine the size of the train data
-
-    :type valid_size: float
-    :param valid_size: value between [0, 1] who determine the size of the validation data
-
-    :type validator: string
-    :param validator: name of the method for extract from the data, the train data, test data and valid data
-
-    :type dtype: string
-    :param dtype: the type of the data to save
-
-    :type description: string
-    :param description: an bref description of the dataset
-
-    :type author: string
-    :param author: Dataset Author's name
-
-    :type compression_level: int
-    :param compression_level: number in 0-9 range. If 0 is passed no compression is executed
-
-    :type rewrite: bool
-    :param rewrite: if true, you can clean the saved data and add a new dataset.
-
-    :type chunks: int
-    :param chunks: number of chunks to use when the dataset is copy or desfragmented.
-    """
-    def __init__(self, name=None, 
-                dataset_path=None,
-                apply_transforms=False,
-                transforms=None,
-                train_size=.7,
-                valid_size=.1,
-                validator='cross',
-                dtype='float64',
-                ltype='|S1',
-                description='',
-                author='',
-                compression_level=0,
-                chunks=258,
-                rewrite=True):
-
-        super(DataSetBuilder, self).__init__(name=name, dataset_path=dataset_path,
-            apply_transforms=apply_transforms,transforms=transforms, dtype=dtype,
-            ltype=ltype, description=description, author=author, 
-            compression_level=compression_level, chunks=chunks, rewrite=rewrite)
-
-        if rewrite:
-            self.validator = validator if validator is not None else ''
-            self.valid_size = valid_size
-            self.train_size = train_size
-
-        if self.train_size is not None or self.valid_size is not None:
-            self.test_size = round(1 - (self.train_size + self.valid_size), 2)
-        else:
-            self.test_size = 0
-
-    @property
-    def valid_size(self):
-        return self._get_attr('valid_size')
-
-    @valid_size.setter
-    def valid_size(self, value):
-        self._set_attr('valid_size', value)
-
-    @property
-    def train_size(self):
-        return self._get_attr('train_size')
-
-    @train_size.setter
-    def train_size(self, value):
-        self._set_attr('train_size', value)
-
-    @property
-    def validator(self):
-        return self._get_attr('validator')
-
-    @validator.setter
-    def validator(self, value):
-        self._set_attr('validator', value)
-
-    @property
-    def train_data(self):
-        return self._get_data('train_data')
-
-    @property
-    def train_labels(self):
-        return self._get_data('train_labels')
-
-    @property
-    def test_data(self):
-        return self._get_data('test_data')
-
-    @property
-    def test_labels(self):
-        return self._get_data('test_labels')
-
-    @property
-    def validation_data(self):
-        return self._get_data('validation_data')
-
-    @property
-    def validation_labels(self):
-        return self._get_data('validation_labels')
-
-    @property
-    def data(self):
-        return np.concatenate((self.train_data[:], 
-            self.test_data[:],
-            self.validation_data[:]), axis=0)
-
-    @property
-    def labels(self):
-        return np.concatenate((self.train_labels[:], 
-            self.test_labels[:],
-            self.validation_labels[:]), axis=0)
-
-    @property
-    def data_validation(self):
-        return np.concatenate((self.train_data[:], self.validation_data[:]), 
-                            axis=0)
-
-    @property
-    def data_validation_labels(self):
-        return np.concatenate((self.train_labels[:], self.validation_labels[:]), 
-                            axis=0)
-
-    @property
-    def shape(self):
-        "return the shape of the dataset"
-        rows = self.train_data.shape[0] + self.test_data.shape[0] +\
-            self.validation_data.shape[0]
-        if self.train_data.dtype != np.object or len(self.train_data.shape) > 1:
-            return tuple([rows] + list(self.train_data.shape[1:]))
-        else:
-            return (rows,)
-
-    def desfragment(self, name=None, dataset_path=None):
-        """
-        Concatenate the train, valid and test data in a data array.
-        Concatenate the train, valid, and test labels in another array.
-        return data, labels
-        """
-        log.debug("Desfragment...DSB")
-        with DataLabel(
-            name=uuid.uuid4().hex if name is None else name,
-            dataset_path=dataset_path,
-            transforms=self.transforms,
-            apply_transforms=self.apply_transforms,
-            dtype=self.dtype,
-            ltype=self.ltype,
-            description=self.description,
-            author=self.author,
-            chunks=1000,
-            compression_level=self.compression_level) as dl:
-            dl.build_dataset_from_dsb(self)
-        return dl
-
-    def to_datalabel(self, name=None):
-        return self.desfragment(name=name)
-
-    def info(self, classes=False):
-        """
-        :type classes: bool
-        :param classes: if true, print the detail of the labels
-
-        This function print the details of the dataset.
-        """
-        from ml.utils.order import order_table_print
-        print('       ')
-        print('DATASET NAME: {}'.format(self.name))
-        print('Author: {}'.format(self.author))
-        print('Transforms: {}'.format(self.transforms.to_json()))
-        print('Applied transforms: {}'.format(self._applied_transforms))
-        print('Header Hash: {}'.format(self.hash_header))
-        print('Body Hash: {}'.format(self.md5))
-        print('Description: {}'.format(self.description))
-        print('       ')
-        try:
-            headers = ["Dataset", "Shape", "dType", "Labels"]
-            table = []
-            table.append(["train set", self.train_data.shape, 
-                        self.train_data.dtype, self.train_labels.size])
-
-            if self.validation_data is not None:
-                table.append(["valid set", self.validation_data.shape, 
-                            self.validation_data.dtype, self.validation_labels.size])
-
-            table.append(["test set", self.test_data.shape, 
-                            self.test_data.dtype, self.test_labels.size])
-            order_table_print(headers, table, "shape")
-            if classes == True:
-                headers = ["class", "# items", "%"]
-                items = [(cls, total, (total/float(self.shape[0]))*100) 
-                        for cls, total in self.labels_info().items()]
-                items_p = [0, 0]
-                order_table_print(headers, items, "# items")
-        except KeyError:
-            print("No data found")
-
-    def cross_validators(self, data, labels):
-        from sklearn.model_selection import train_test_split
-        X_train, X_test, y_train, y_test = train_test_split(
-            data, labels, train_size=round(self.train_size+self.valid_size, 2), random_state=0)
-
-        if isinstance(data, list):
-            size = len(data)
-        else:
-            size = data.shape[0]
-
-        valid_size_index = int(round(size * self.valid_size))
-        X_validation = X_train[:valid_size_index]
-        y_validation = y_train[:valid_size_index]
-        X_train = X_train[valid_size_index:]
-        y_train = y_train[valid_size_index:]
-        return X_train, X_validation, X_test, y_train, y_validation, y_test
-
-    def build_dataset(self, data, labels, test_data=None, test_labels=None, 
-                    validation_data=None, validation_labels=None):
-        """
-        :type data: ndarray
-        :param data: array of values to save in the dataset
-
-        :type labels: ndarray
-        :param labels: array of labels to save in the dataset
-        """
-        if self.mode == "r":
-            return
-
-        #fixme 
-        if len(data.shape) == 1:
-            data = data.reshape(-1, 1)
-
-        #self.f.require_group("data")
-        if test_data is not None and test_labels is not None\
-            and validation_data is not None\
-            and validation_labels is not None:
-                data_labels = [
-                    data, validation_data, test_data,
-                    labels, validation_labels, test_labels]
-        else:
-            if self.validator == 'cross':
-                data_labels = self.cross_validators(data, labels)
-            elif self.validator == '':
-                index = data.shape[0] / 3
-                data_labels = [data[0:index], data[index:2*index], data[index*2:index*3],
-                labels[0:index], labels[index:index*2], labels[index*2:index*3]]
-            else:
-                data_labels = self.cross_validators(data, labels)
-
-        train_data = self.processing(data_labels[0], 
-                                    apply_transforms=self.apply_transforms)
-        self._set_space_data('train_data', train_data, self.dtype)
-
-        test_data = self.processing(data_labels[2], 
-                                    apply_transforms=self.apply_transforms)
-        self._set_space_data('test_data', test_data, self.dtype)
-        
-        validation_data = self.processing(data_labels[1],
-                                         apply_transforms=self.apply_transforms)
-        self._set_space_data('validation_data', validation_data, self.dtype)
-
-        self._set_space_data('train_labels', data_labels[3], self.ltype)
-        self._set_space_data('test_labels', data_labels[5], self.ltype)
-        self._set_space_data('validation_labels', data_labels[4], self.ltype)
-        self._set_space_fmtypes(self.num_features())
-        self.build_fmtypes()
-        self.md5 = self.calc_md5()
-
-    def _clf(self):
-        from ml.clf.extended.w_sklearn import RandomForest
-        train_labels = np.ones(self.train_labels.shape[0], dtype=int)
-        test_labels = np.zeros(self.test_labels.shape[0], dtype=int)
-        data = np.concatenate((self.train_data, self.test_data), axis=0)
-        labels = np.concatenate((train_labels, test_labels), axis=0)
-        dataset = DataSetBuilder("test_train_separability", apply_transforms=False)
-        dataset.build_dataset(data, labels)
-        return RandomForest(dataset=dataset)
-
-    def score_train_test(self):
-        """
-        return the score of separability between the train data and the test data.
-        """
-        classif = self._clf()
-        classif.train()
-        measure = "auc"
-        return classif.load_meta().get("score", {measure, None}).get(measure, None) 
-
-    def convert(self, name, dtype='float64', ltype='int', apply_transforms=False, 
-                percentaje=1, dataset_path=None, transforms=None):
-        """
-        :type name: string
-        :param name: converted dataset's name
- 
-        :type dtype: string
-        :param dtype: cast the data to the defined type
-
-        :type ltype: string
-        :param ltype: cast the labels to the defined type
-
-        :type apply_transforms: bool
-        :param apply_transforms: apply the transforms to the data
-
-        :type percentaje: float
-        :param percentaje: values between 0 and 1, this value specify the percentaje of the data to apply transforms and cast function, then return a subset
-
-        """
-        dsb = self.empty(name, dtype=dtype, ltype=ltype, 
-            apply_transforms=apply_transforms, dataset_path=dataset_path,
-            transforms=transforms)
-        with dsb:
-            #dsb.build_empty_fmtypes(self.num_features())
-            #if self.fmtypes is not None:
-            #    dsb.fmtypes = self.fmtypes[:]
-            dsb.build_dataset(
-                calc_nshape(self.train_data, percentaje), 
-                calc_nshape(self.train_labels, percentaje),
-                test_data=calc_nshape(self.test_data, percentaje),
-                test_labels=calc_nshape(self.test_labels, percentaje),
-                validation_data=calc_nshape(self.validation_data, percentaje),
-                validation_labels=calc_nshape(self.validation_labels, percentaje))
-        return dsb
-
-    def empty(self, name, dtype='float64', ltype='int', apply_transforms=False,
-                dataset_path=None, transforms=None):
-        """
-        build an empty DataLabel with the default parameters
-        """
-        with DataSetBuilder(name=name, 
-            dataset_path=dataset_path,
-            transforms=self.transforms if transforms is None else transforms,
-            apply_transforms=apply_transforms,
-            train_size=self.train_size,
-            valid_size=self.valid_size,
-            validator=self.validator,
-            dtype=dtype,
-            ltype=ltype,
-            description=self.description,
-            author=self.author,
-            compression_level=self.compression_level,
-            chunks=self.chunks,
-            rewrite=True) as dsb:
-            dsb._applied_transforms = apply_transforms
-        return dsb
-
-    def to_libsvm(self, name=None, save_to=None, validation=True):
-        """
-        tranforms the dataset to libsvm format
-        """
-        from ml.utils.seq import libsvm_row
-        le = self.labels2num()
-        f_names = ["train", "test"]
-        if validation == True:
-            f_names.append("validation")
-        
-        for f_name in f_names:
-            n_name = self.name if name is None else name
-            n_name = "{}.{}.txt".format(n_name, f_name)
-            file_path = os.path.join(save_to, n_name)
-            with open(file_path, 'w') as f:
-                labels = getattr(self, f_name+"_labels")
-                data = getattr(self, f_name+"_data")
-                for row in libsvm_row(labels, data, le):
-                    f.write(" ".join(row))
-                    f.write("\n")
-
-
-class DataSetBuilderImage(DataSetBuilder):
+class DataSetBuilderImage(DataLabel):
     """
     Class for images dataset build. Get the data from a directory where each directory's name is the label.
     
@@ -1772,7 +1368,7 @@ class DataLabelSetFile(DataLabel):
                 insert_rows(csv_reader, table_name, header)
 
 
-class DataSetBuilderFold(object):
+class DataLabelFold(object):
     """
     Class for create datasets folds from datasets.
     
@@ -1793,28 +1389,27 @@ class DataSetBuilderFold(object):
         return an iterator of splited datalabel in n_splits DataSetBuilder datasets
         """
         from sklearn.model_selection import StratifiedKFold
-        skf = StratifiedKFold(n_splits=self.n_splits)
-        for i, (train, test) in enumerate(skf.split(dl.data, dl.labels)):
-            validation_index = int(round(train.shape[0] * .1, 0))
-            validation = train[:validation_index]
-            train = train[validation_index:]
-            dsb = DataSetBuilder(name=self.name+"_"+str(i), 
-                dataset_path=self.dataset_path,
-                transforms=None,
-                apply_transforms=False,
-                dtype=dl.dtype,
-                ltype=dl.ltype,
-                description="",
-                author="",
-                compression_level=9,
-                rewrite=True)
-            with dsb:
-                data = dl.data[:]
-                labels = dl.labels[:]
-                dsb.build_dataset(data[train], labels[train], test_data=data[test], 
-                    test_labels=labels[test], validation_data=data[validation], 
-                    validation_labels=labels[validation])
-                yield dsb
+        skf = StratifiedKFold(n_splits=self.n_splits)        
+        with dl:
+            for i, (train, test) in enumerate(skf.split(dl.data, dl.labels)):
+                dsb = DataLabel(name=self.name+"_"+str(i), 
+                    dataset_path=self.dataset_path,
+                    transforms=None,
+                    apply_transforms=False,
+                    dtype=dl.dtype,
+                    ltype=dl.ltype,
+                    description="",
+                    author="",
+                    compression_level=9,
+                    rewrite=True)
+                with dsb:
+                    data = dl.data[:]
+                    labels = dl.labels[:]
+                    dsb.build_dataset(data[train], labels[train]) 
+                    #test_data=data[test], 
+                    #    test_labels=labels[test], validation_data=data[validation], 
+                    #    validation_labels=labels[validation])
+                    yield dsb
 
     def build_dataset(self, dataset=None):
         """
@@ -1823,18 +1418,15 @@ class DataSetBuilderFold(object):
 
         construct the dataset fold from an DataSet class
         """
-        dl = dataset.desfragment()
-        with dl:
-            for dsb in self.create_folds(dl):
-                self.splits.append(dsb.name)
-        dl.destroy()
+        for dsb in self.create_folds(dataset):
+            self.splits.append(dsb.name)
 
     def get_splits(self):
         """
         return an iterator of datasets with the splits of original data
         """
         for split in self.splits:
-            yield DataSetBuilder(name=split, dataset_path=self.dataset_path, rewrite=False)
+            yield DataLabel(name=split, dataset_path=self.dataset_path, rewrite=False)
 
     def destroy(self):
         for split in self.get_splits():

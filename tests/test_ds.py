@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import csv
 
-from ml.ds import DataSetBuilder, DataLabelSetFile, DataSetBuilderFold, DataLabel
+from ml.ds import DataLabelSetFile, DataLabelFold, DataLabel
 from ml.ds import Data
 from ml.processing import Transforms
 
@@ -37,33 +37,31 @@ class TestDataset(unittest.TestCase):
         pass
 
     def test_build_dataset_dim_7_1_2(self):
-        dataset = DataSetBuilder(
+        dataset = DataLabel(
             name="test_ds_0",
             dataset_path="/tmp/",
             ltype='int',
-            validator="cross",
             rewrite=True)
         with dataset:
             dataset.build_dataset(self.X, self.Y)
-            self.assertEqual(dataset.train_labels.shape, (7,))
-            self.assertEqual(dataset.validation_labels.shape, (1,))
-            self.assertEqual(dataset.test_labels.shape, (2,))
+            X_train, X_validation, X_test, y_train, y_validation, y_test = dataset.cv()
+            self.assertEqual(y_train.shape, (7,))
+            self.assertEqual(y_validation.shape, (1,))
+            self.assertEqual(y_test.shape, (2,))
         dataset.destroy()
 
     def test_build_dataset_dim_5_2_3(self):
-        dataset = DataSetBuilder(
+        dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            train_size=.5,
-            valid_size=.2,
             ltype='int',
-            validator="cross",
             rewrite=True)
         with dataset:
             dataset.build_dataset(self.X, self.Y)
-            self.assertEqual(dataset.train_labels.shape, (5,))
-            self.assertEqual(dataset.validation_labels.shape, (2,))
-            self.assertEqual(dataset.test_labels.shape, (3,))
+            X_train, X_validation, X_test, y_train, y_validation, y_test = dataset.cv(train_size=.5, valid_size=.2)
+            self.assertEqual(y_train.shape, (5,))
+            self.assertEqual(y_validation.shape, (2,))
+            self.assertEqual(y_test.shape, (3,))
         dataset.destroy()
 
     def test_only_labels(self):
@@ -81,13 +79,10 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
 
     def test_labels_info(self):
-        dataset = DataSetBuilder(
+        dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            train_size=.5,
-            valid_size=.2,
             ltype='int',
-            validator="cross",
             rewrite=True)
         with dataset:
             dataset.build_dataset(self.X, self.Y)
@@ -96,13 +91,10 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
 
     def test_distinct_data(self):
-        dataset = DataSetBuilder(
+        dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            train_size=.5,
-            valid_size=.2,
             ltype='int',
-            validator="cross",
             rewrite=True)
         with dataset:
             dataset.build_dataset(self.X, self.Y)
@@ -110,13 +102,10 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
 
     def test_sparcity(self):
-        dataset = DataSetBuilder(
+        dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            train_size=.5,
-            valid_size=.2,
             ltype='int',
-            validator="cross",
             rewrite=True)
         with dataset:
             dataset.build_dataset(self.X, self.Y)
@@ -124,13 +113,10 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
 
     def test_copy(self):
-        dataset = DataSetBuilder(
+        dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            train_size=.5,
-            valid_size=.2,
             ltype='int',
-            validator="cross",
             rewrite=True)
         with dataset:
             dataset.build_dataset(self.X, self.Y)
@@ -138,7 +124,7 @@ class TestDataset(unittest.TestCase):
             dl = dataset.desfragment()
 
         with ds, dl:
-            self.assertEqual(ds.train_data.shape[0], 3)
+            self.assertEqual(ds.data.shape[0], 5)
             dl_copy = dl.copy(percentaje=.5)
 
         with dl_copy:
@@ -150,13 +136,10 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
 
     def test_apply_transforms_flag(self):
-        dataset = DataSetBuilder(
+        dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            train_size=.5,
-            valid_size=.2,
             ltype='int',
-            validator="cross",
             rewrite=True)
         with dataset:
             dataset.build_dataset(self.X, self.Y)
@@ -168,33 +151,29 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
 
     def test_convert(self):
-        with DataSetBuilder(
+        with DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            train_size=.5,
-            valid_size=.2,
             ltype='int',
-            validator="cross",
             rewrite=True) as dataset:
             dataset.build_dataset(self.X, self.Y)
             dsb = dataset.convert("convert_test", dataset_path="/tmp/", ltype='int')
         with dsb:
-            self.assertEqual(dsb.train_data.dtype, np.dtype('float64'))
-            self.assertEqual(dsb.train_labels.dtype, np.dtype('int'))
+            self.assertEqual(dsb.data.dtype, np.dtype('float64'))
+            self.assertEqual(dsb.labels.dtype, np.dtype('int'))
         dsb.destroy()
 
         with dataset:
-            dsb = dataset.convert("convert_test_2", dtype='auto', ltype='int',
+            dsb = dataset.convert("convert_test_2", dtype='float', ltype='int',
                             dataset_path="/tmp/")
         with dataset, dsb:
-            self.assertEqual(dsb.train_data.dtype, dataset.train_data.dtype)
-            self.assertEqual(dsb.train_labels.dtype, dataset.train_labels.dtype)
+            self.assertEqual(dsb.data.dtype, dataset.data.dtype)
+            self.assertEqual(dsb.labels.dtype, dataset.labels.dtype)
         dsb.destroy()
         dataset.destroy()
 
     def test_convert_transforms(self):
-        dataset = DataSetBuilder(name="test_ds", dataset_path="/tmp/",
-            train_size=.5, valid_size=.2, ltype='int', validator="cross",
+        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", ltype='int',
             rewrite=True)
         
         with dataset:
@@ -213,52 +192,45 @@ class TestDataset(unittest.TestCase):
     def test_add_transform(self):
         transforms = Transforms()
         transforms.add(linear, b=1, o_features=self.X.shape[1])
-        with DataSetBuilder(
+        with DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            train_size=.5,
-            valid_size=.2,
             ltype='int',
-            validator=None,
             rewrite=True,
             apply_transforms=True,
             transforms=transforms) as dataset:
             dataset.build_dataset(self.X, self.Y)
-            self.assertItemsEqual(self.X[0]+1, dataset.train_data[0])
+            self.assertItemsEqual(self.X[0]+1, dataset.data[0])
             transforms = Transforms()
             transforms.add(linear, b=2, o_features=self.X.shape[1])
             dsb = dataset.add_transforms(transforms, name="add_transform")
         with dsb:
-            self.assertItemsEqual(self.X[0]+3, dsb.train_data[0])
+            self.assertItemsEqual(self.X[0]+3, dsb.data[0])
             self.assertEqual(dsb.name == "add_transform", True)
         dsb.destroy()
         dataset.destroy()
         
-        with DataSetBuilder(
+        with DataLabel(
             name="test_ds_0",
             dataset_path="/tmp/",
             ltype='int',
             apply_transforms=False,
-            validator=None,
             rewrite=True) as dataset:
             dataset.build_dataset(self.X, self.Y)
             transforms = Transforms()
             transforms.add(linear, b=1, o_features=self.X.shape[1])
             dsb = dataset.add_transforms(transforms)
         with dsb:
-            self.assertItemsEqual(self.X[0], dsb.train_data[0])
+            self.assertItemsEqual(self.X[0], dsb.data[0])
             self.assertEqual(dsb.name != "add_transform", True)
         dsb.destroy()
         dataset.destroy()
 
     def test_to_df(self):
-        with DataSetBuilder(
+        with DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            train_size=.5,
-            valid_size=.2,
             ltype='int',
-            validator="cross",
             rewrite=True) as dataset:
             dataset.build_dataset(self.X, self.Y)
             df = dataset.to_df()
@@ -266,13 +238,10 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
 
     def test_outlayer(self):
-        with DataSetBuilder(
+        with DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            train_size=.5,
-            valid_size=.2,
             ltype='int',
-            validator="cross",
             rewrite=True) as dataset:
             dataset.build_dataset(self.X, self.Y)
             outlayers = dataset.outlayers()
@@ -280,38 +249,33 @@ class TestDataset(unittest.TestCase):
             dataset.destroy()
 
     def test_dsb_build_iter(self):
-        with DataSetBuilder(name="test", dataset_path="/tmp", chunks=100, dtype="int64") as dsb:
+        with DataLabel(name="test", dataset_path="/tmp", chunks=100, dtype="int64", rewrite=True) as dsb:
             shape = (10000, 2)
             step = 0
             range_list = range(0, 15000, 50)
             for init, end in zip(range_list, range_list[1:]):
                 iter_ = ((i, i) for i in xrange(init, end))
-                step = dsb.build_dataset_from_iter(iter_, shape, "train_data", 
+                step = dsb.build_dataset_from_iter(iter_, shape, "data", 
                     init=step)
-            self.assertEqual(dsb.train_data.shape, shape)
-            self.assertItemsEqual(dsb.train_data[9999], [9999, 9999])
+            self.assertEqual(dsb.data.shape, shape)
+            self.assertItemsEqual(dsb.data[9999], [9999, 9999])
             dsb.destroy()
 
     def test_get_set(self):
         from ml.processing import rgb2gray
         transforms = Transforms()
         transforms.add(rgb2gray)
-        with DataSetBuilder(name="test", dataset_path="/tmp", chunks=100, 
+        with DataLabel(name="test", dataset_path="/tmp", chunks=100, 
             author="AGMR", rewrite=True, dtype='float32', transforms=transforms,
-            description="description text", train_size=.7, valid_size=.1, 
-            validator="cross", compression_level=5, ltype='int',
-            apply_transforms = False) as dsb:
+            description="description text", compression_level=5, ltype='int',
+            apply_transforms=False) as dsb:
             self.assertEqual(dsb.author, "AGMR")
             self.assertEqual(dsb.dtype, 'float32')
             self.assertEqual(dsb.transforms.to_json(), transforms.to_json())
             self.assertEqual(dsb.description, "description text")
-            self.assertEqual(dsb.valid_size, .1)
-            self.assertEqual(dsb.train_size, .7)
-            self.assertEqual(dsb.test_size, .2)
-            self.assertEqual(dsb.validator, 'cross')
             self.assertEqual(dsb.compression_level, 5)
             self.assertEqual(dsb.ltype, 'int')
-            self.assertEqual(dsb.dataset_class, 'ml.ds.DataSetBuilder')
+            self.assertEqual(dsb.dataset_class, 'ml.ds.DataLabel')
             self.assertEqual(type(dsb.timestamp), type(''))
             self.assertEqual(dsb.apply_transforms, False)
             self.assertEqual(dsb.hash_header is not None, True)
@@ -321,6 +285,7 @@ class TestDataset(unittest.TestCase):
             dsb.destroy()
 
     def test_to_libsvm(self):
+        from ml.utils.files import rm
         def check(path):
             with open(path, "r") as f:
                 row = f.readline()
@@ -344,33 +309,32 @@ class TestDataset(unittest.TestCase):
             dataset.to_libsvm(name="test.txt", save_to="/tmp")
             check("/tmp/test.txt")
             dataset.destroy()
+        rm("/tmp/test.txt")
 
-        with DataSetBuilder(
-            name="test_ds_1",
-            dataset_path="/tmp/",
-            ltype='int',
-            validator="cross",
-            rewrite=True) as dataset:
-            dataset.build_dataset(X, Y)
-            dataset.to_libsvm(name="test", save_to="/tmp")
-            check("/tmp/test.train.txt")
-            check("/tmp/test.test.txt")
-            check("/tmp/test.validation.txt")
-            dataset.destroy()
+        #with DataLabel(
+        #    name="test_ds_1",
+        #    dataset_path="/tmp/",
+        #    ltype='int',
+        #    rewrite=True) as dataset:
+        #    dataset.build_dataset(X, Y)
+        #    dataset.to_libsvm(name="test", save_to="/tmp")
+        #    check("/tmp/test.train.txt")
+        #    check("/tmp/test.test.txt")
+        #    check("/tmp/test.validation.txt")
+        #    dataset.destroy()
 
     def test_no_data(self):
         from ml.processing import rgb2gray
         transforms = Transforms()
         transforms.add(rgb2gray)
-        dsb = DataSetBuilder(name="test", dataset_path="/tmp", chunks=100, 
+        dsb = DataLabel(name="test", dataset_path="/tmp", chunks=100, 
             author="AGMR", rewrite=True, dtype='float32', transforms=transforms,
-            description="description text", train_size=.7, valid_size=.1, 
-            validator="cross", compression_level=5, ltype='int',
+            description="description text", compression_level=5, ltype='int',
             apply_transforms=False)
         dsb.md5 = ""
         timestamp = dsb.timestamp
 
-        dsb2 = DataSetBuilder(name="test", dataset_path="/tmp", rewrite=False)
+        dsb2 = DataLabel(name="test", dataset_path="/tmp", rewrite=False)
         self.assertEqual(dsb2.author, "AGMR")
         self.assertEqual(dsb2.hash_header is not None, True)
         self.assertEqual(dsb2.description, "description text")
@@ -378,32 +342,17 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(dsb2.dtype, "float32")
         self.assertEqual(dsb2.ltype, "int")
         self.assertEqual(dsb2.compression_level, 5)
-        self.assertEqual(dsb2.dataset_class, "ml.ds.DataSetBuilder")
+        self.assertEqual(dsb2.dataset_class, "ml.ds.DataLabel")
         dsb.destroy()
 
     def test_to_data(self):
-        with DataSetBuilder(
+        with DataLabel(
             name="test_ds_1",
             dataset_path="/tmp/",
             ltype='int',
-            validator="cross",
             rewrite=True) as dataset:
             dataset.build_dataset(self.X, self.Y)
             data = dataset.to_data()
-        with data:
-            self.assertEqual(data.shape, (10, 10))
-        dataset.destroy()
-        data.destroy()
-
-    def test_to_datalabel(self):
-        with DataSetBuilder(
-            name="test_ds_1",
-            dataset_path="/tmp/",
-            ltype='int',
-            validator="cross",
-            rewrite=True) as dataset:
-            dataset.build_dataset(self.X, self.Y)
-            data = dataset.to_datalabel()
         with data:
             self.assertEqual(data.shape, (10, 10))
         dataset.destroy()
@@ -418,30 +367,6 @@ class TestDataset(unittest.TestCase):
             self.assertEqual(data.shape, (10, 10))
         dataset.destroy()
         data.destroy()
-
-    def test_rewrite(self):
-        with DataSetBuilder(
-            name="test_ds",
-            dataset_path="/tmp/",
-            train_size=.5,
-            valid_size=.2,
-            ltype='int',
-            validator="cross",
-            rewrite=True) as dataset:
-            dataset.build_dataset(self.X, self.Y)
-            self.assertEqual(dataset.validation_labels.shape[0], 2)
-
-        with DataSetBuilder(
-            name="test_ds",
-            dataset_path="/tmp/",
-            train_size=.4,
-            valid_size=.1,
-            ltype='int',
-            validator="cross",
-            rewrite=True) as dataset:
-            dataset.build_dataset(self.X, self.Y)
-            self.assertEqual(dataset.validation_labels.shape[0], 1)
-            dataset.destroy()
 
     def test_text_ds(self):
         #X = np.asarray([str(line)*10 for line in range(100)])
@@ -575,13 +500,10 @@ class TestDataSetFold(unittest.TestCase):
         NUM_FEATURES = 10
         self.X = np.append(np.zeros((5, NUM_FEATURES)), np.ones((5, NUM_FEATURES)), axis=0)
         self.Y = (np.sum(self.X, axis=1) / 10).astype(int)
-        self.dataset = DataSetBuilder(
+        self.dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            train_size=.5,
-            valid_size=.2,
             ltype='int',
-            validator="cross",
             chunks=2,
             rewrite=True)
         with self.dataset:
@@ -592,12 +514,12 @@ class TestDataSetFold(unittest.TestCase):
 
     def test_fold(self):
         n_splits = 5
-        dsbf = DataSetBuilderFold(n_splits=n_splits, dataset_path="/tmp")
+        dsbf = DataLabelFold(n_splits=n_splits, dataset_path="/tmp")
         with self.dataset:
             dsbf.build_dataset(self.dataset)
             for dsb in dsbf.get_splits():
                 with dsb:
-                    self.assertEqual(dsb.shape[0], 10)
+                    self.assertEqual(dsb.shape[0], 7)
                     self.assertEqual(dsb.shape[1], 10)
             self.assertEqual(len(dsbf.splits), n_splits)
         dsbf.destroy()
