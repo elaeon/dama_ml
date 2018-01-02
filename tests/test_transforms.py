@@ -13,6 +13,8 @@ def linear_p(x, b, fmtypes=None):
 
 
 def parabole(x, fmtypes=None):
+    if x.shape[0] != 10:
+        raise Exception("Array size must be 10, but {} founded".format(x.shape[0]))
     return x*x
 
 
@@ -103,20 +105,20 @@ class TestTransforms(unittest.TestCase):
 
     def test_apply_row(self):
         transforms = Transforms()
-        transforms.add(linear)
-        transforms.add(linear_p, b=10)
-        numbers = np.ones((10,))
+        transforms.add(linear, o_features=1)
+        transforms.add(linear_p, b=10, o_features=1)
+        numbers = np.ones((10, 1))
         result = transforms.apply(numbers)
-        self.assertItemsEqual(result, np.ones((10,)) + 11) # result [12, ..., 12]
+        self.assertItemsEqual(result.to_narray().reshape(-1), np.ones((10, 1)) + 11) # result [12, ..., 12]
 
     def test_apply_row_iterlayer(self):
         from ml.layers import IterLayer
         transforms = Transforms()
-        transforms.add(linear)
-        transforms.add(linear_p, b=10)
-        numbers = IterLayer((e for e in np.ones((10,))), shape=(10,))
+        transforms.add(linear, o_features=1)
+        transforms.add(linear_p, b=10, o_features=1)
+        numbers = IterLayer((e for e in np.ones((10,))), shape=(10, 1))
         result = transforms.apply(numbers)
-        self.assertItemsEqual(result, np.ones((10,)) + 11) # result [12, ..., 12]
+        self.assertItemsEqual(result.to_narray().reshape(-1), np.ones((10, 1)) + 11) # result [12, ..., 12]
 
     def test_apply_col(self):
         from ml.processing import FitStandardScaler, FitTruncatedSVD
@@ -132,8 +134,8 @@ class TestTransforms(unittest.TestCase):
     def test_apply(self):
         from ml.processing import FitStandardScaler
         transforms = Transforms()
-        transforms.add(linear)
-        transforms.add(linear_p, b=10)
+        transforms.add(linear, o_features=2)
+        transforms.add(linear_p, b=10, o_features=2)
         transforms.add(FitStandardScaler, type="column")
         numbers = np.random.rand(1000, 2)        
         result =  np.asarray(list(transforms.apply(numbers)))
@@ -143,8 +145,8 @@ class TestTransforms(unittest.TestCase):
     def test_apply_fmtypes(self):
         from ml import fmtypes
         transforms = Transforms()
-        transforms.add(linear)
-        transforms.add(linear_p, b=10)
+        transforms.add(linear, o_features=2)
+        transforms.add(linear_p, b=10, o_features=2)
         transforms.add(FitIdent, type="column")
         numbers = np.empty((1000, 2))
         fmtypes = [fmtypes.BOOLEAN.id, fmtypes.NANBOOLEAN.id]
@@ -157,8 +159,8 @@ class TestTransforms(unittest.TestCase):
         from ml.processing import FitStandardScaler
 
         transforms = Transforms()
-        transforms.add(linear)
-        transforms.add(linear_p, b=10)
+        transforms.add(linear, o_features=2)
+        transforms.add(linear_p, b=10, o_features=2)
         transforms.add(FitStandardScaler, type="column")
         X = np.random.rand(100, 2)
         Y = (X[:,0] > .5).astype(float)
@@ -195,14 +197,14 @@ class TestTransforms(unittest.TestCase):
             dataset.destroy()
 
     def test_transform_col_model(self):
-        from ml.ds import DataSetBuilder
+        from ml.ds import DataLabel
         from ml.processing import FitTsne
 
         transforms = Transforms()
         transforms.add(FitTsne, name="tsne", type="column")
         X = np.random.rand(100, 4)
-        Y = X*1
-        dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+        Y = X[:,0] > .5
+        dataset = DataLabel(name="test", dataset_path="/tmp/", 
             ltype='float64', transforms=transforms, rewrite=True, apply_transforms=True)
         with dataset:
             dataset.build_dataset(X, Y)
@@ -213,7 +215,7 @@ class TestTransforms(unittest.TestCase):
         self.assertEqual(shape, (100, 6))
 
     def test_transforms_clf(self):
-        from ml.ds import DataSetBuilder
+        from ml.ds import DataLabel
         from ml.processing import FitTsne
         from ml.clf.extended.w_sklearn import RandomForest
 
@@ -221,7 +223,7 @@ class TestTransforms(unittest.TestCase):
         transforms.add(FitTsne, name="tsne", type="column")
         X = np.random.rand(1000, 4)
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
-        dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+        dataset = DataLabel(name="test", dataset_path="/tmp/", 
             ltype='float64', transforms=transforms, rewrite=True, apply_transforms=True)
         with dataset:
             dataset.build_dataset(X, Y)
@@ -239,14 +241,14 @@ class TestTransforms(unittest.TestCase):
         dataset.destroy()
 
     def test_transforms_convert(self):
-        from ml.ds import DataSetBuilder
+        from ml.ds import DataLabel
         from ml.processing import FitTsne
 
         transforms = Transforms()
         transforms.add(FitTsne, name="tsne", type="column")
         X = np.random.rand(1000, 4)
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
-        dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+        dataset = DataLabel(name="test", dataset_path="/tmp/", 
             ltype='float64', transforms=transforms, rewrite=True, apply_transforms=False)
         with dataset:
             dataset.build_dataset(X, Y)
@@ -277,14 +279,14 @@ class TestTransforms(unittest.TestCase):
         ft.destroy()
 
     def test_transforms_convert_apply(self):
-        from ml.ds import DataSetBuilder
+        from ml.ds import DataLabel
         from ml.processing import FitStandardScaler, FitRobustScaler
 
         transforms = Transforms()
         transforms.add(FitStandardScaler, name="scaler", type="column")
         X = np.random.rand(1000, 4)
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
-        dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+        dataset = DataLabel(name="test", dataset_path="/tmp/", 
             ltype='float64', transforms=transforms, rewrite=True, apply_transforms=True)
         with dataset:
             dataset.build_dataset(X, Y)
@@ -299,7 +301,7 @@ class TestTransforms(unittest.TestCase):
         dataset.destroy()
         dsb.destroy()
 
-        dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+        dataset = DataLabel(name="test", dataset_path="/tmp/", 
             ltype='float64', transforms=transforms, rewrite=True, apply_transforms=False)
         with dataset:
             dataset.build_dataset(X, Y)
@@ -314,7 +316,7 @@ class TestTransforms(unittest.TestCase):
         dataset.destroy()
         dsb.destroy()
 
-        dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+        dataset = DataLabel(name="test", dataset_path="/tmp/", 
             ltype='float64', transforms=transforms, rewrite=True, apply_transforms=True)
         with dataset:
             dataset.build_dataset(X, Y)
@@ -324,7 +326,7 @@ class TestTransforms(unittest.TestCase):
         dataset.destroy()
         dsb.destroy()
 
-        dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
+        dataset = DataLabel(name="test", dataset_path="/tmp/", 
             ltype='float64', transforms=transforms, rewrite=True, apply_transforms=False)
         with dataset:
             dataset.build_dataset(X, Y)
@@ -337,13 +339,13 @@ class TestTransforms(unittest.TestCase):
     def test_transforms_drop_cols(self):
         from ml.processing import drop_columns
         transforms = Transforms()
-        transforms.add(drop_columns, include_cols=[1,2])
+        transforms.add(drop_columns, include_cols=[1,2], o_features=2)
         X = np.random.rand(1000, 4)
         result = transforms.apply(X).to_narray()
         self.assertEqual(result.shape, (1000, 2))
 
         transforms = Transforms()
-        transforms.add(drop_columns, exclude_cols=[3])
+        transforms.add(drop_columns, exclude_cols=[3], o_features=3)
         result = transforms.apply(X).to_narray()
         self.assertEqual(result.shape, (1000, 3))
         
@@ -352,9 +354,9 @@ class TestTransforms(unittest.TestCase):
         from ml.processing import FitStandardScaler
 
         transforms = Transforms()
-        transforms.add(drop_columns, include_cols=[1,2])
+        transforms.add(drop_columns, include_cols=[1,2], o_features=2)
         transforms.add(FitStandardScaler, name="scaler", type="column")
-        transforms.add(linear_p, b=10)
+        transforms.add(linear_p, b=10, o_features=2)
         X = np.random.rand(10, 4)
         result = transforms.apply(X).to_narray()
         self.assertEqual(result.shape, (10, 2))
@@ -370,6 +372,12 @@ class TestTransforms(unittest.TestCase):
         X = np.random.rand(10, 4)
         result = transforms.apply(X)
         self.assertEqual(result.shape, (10, 2))
+
+    def test_batch_transforms_row(self):
+        X = np.random.rand(100, 4)
+        transforms = Transforms()
+        transforms.add(parabole, o_features=4)
+        result = transforms.apply(X, chunk_size=10)
 
 
 if __name__ == '__main__':

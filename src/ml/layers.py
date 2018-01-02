@@ -137,9 +137,21 @@ class IterLayer(object):
             dataset.build_dataset(data, label_m)
         return dataset
 
-    def to_narray(self, dtype=None):
+    def to_narray(self, dtype=float):
         import numpy as np
-        return np.asarray(list(self))
+        if self.shape is None:
+            raise Exception("Data shape is None, IterLayer can't be converted to array")     
+        smx_a = np.empty(self.shape, dtype=dtype)
+        init = 0
+        end = 0
+        for i, row in enumerate(self):
+            if len(row.shape) == 1:
+                smx_a[i] = row
+            else:
+                end += row.shape[0]
+                smx_a[init:end] = row
+                init = end
+        return smx_a
 
     def tee(self):
         it0, it1 = itertools.tee(self)

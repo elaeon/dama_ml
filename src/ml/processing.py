@@ -116,18 +116,23 @@ class TransformsRow(object):
             transforms.add(locate(fn), **params)
         return transforms
 
-    def apply(self, data, fmtypes=None):
+    def apply(self, data, fmtypes=None, chunk_size=258):
         """
         :type data: array
-        :param data: apply the transforms added to the data
+        :param data: apply the transforms to the data
         """
+        from ml.utils.seq import grouper_chunk
         def iter_():
             locate_fn = {}
-            for row in data:
+            i_features = data.shape[1]
+            for smx in grouper_chunk(chunk_size, data):
+                smx_a = np.empty((chunk_size, i_features), dtype=np.float)
+                for i, row in enumerate(smx):
+                    smx_a[i] = row
                 for fn_, params in self.transforms:
                     fn = locate_fn.setdefault(fn_, locate(fn_))
-                    row = fn(row, fmtypes=fmtypes, **params)
-                yield row
+                    smx_a = fn(smx_a[:i+1], fmtypes=fmtypes, **params)
+                yield smx_a
         return IterLayer(iter_(), shape=(data.shape[0], self.o_features)), fmtypes
 
 
@@ -157,7 +162,7 @@ class TransformsCol(TransformsRow):
 
             yield fn(data, name=name, fmtypes=fmtypes, **n_params)
 
-    def apply(self, data, fmtypes=None):
+    def apply(self, data, fmtypes=None, chunk_size=None):
         """
         :type data: array
         :param data: apply the transforms added to the data
@@ -265,7 +270,7 @@ class Transforms(object):
                         print(e.message)
         return transforms
 
-    def apply(self, data, fmtypes=None):
+    def apply(self, data, fmtypes=None, chunk_size=258):
         """
         :type data: array
         :param data: apply the transforms added to the data
@@ -276,7 +281,7 @@ class Transforms(object):
             for t_obj in self.transforms:
                 log.debug("APPLY TRANSFORMS:" + str(t_obj.transforms))
                 log.debug("Transform type:" + t_obj.type())
-                data, fmtypes = t_obj.apply(data, fmtypes=fmtypes)
+                data, fmtypes = t_obj.apply(data, fmtypes=fmtypes, chunk_size=chunk_size)
 
             if data is None:
                 raise Exception
@@ -308,7 +313,8 @@ class Fit(object):
         pass
 
     def transform(self, data):
-        return IterLayer(self.t(data))
+        ndata = self.t(data)
+        return IterLayer(ndata, shape=ndata.shape)
 
     def read_meta(self):
         from ml.ds import load_metadata
@@ -386,7 +392,7 @@ class FitTsne(Fit):
             for row, predict in izip(data, self.t(self.dim_rule(data), chunk_size=5000)):
                 yield np.append(row, list(predict), axis=0)
 
-        return IterLayer(iter_())
+        return IterLayer(iter_(), shape=(data.shape[0], data.shape[1]+2))
 
     def destroy(self):
         if hasattr(self, 'model'):
@@ -416,11 +422,13 @@ class FitReplaceNan(Fit):
 
         def transform(n_data):
             columns = self.read_meta()
-            for row in n_data:
-                indx = np.where(np.isnan(row))
-                for i in indx[0]:
-                    row[i] = columns[i]
-                yield row
+            def iter_():
+                for row in n_data:
+                    indx = np.where(np.isnan(row))
+                    for i in indx[0]:
+                        row[i] = columns[i]
+                    yield row
+            return IterLayer(iter_(), shape=n_data.shape)
         
         return transform
 
@@ -633,9 +641,8 @@ def pixelate(data, fmtypes=None, pixel_width=None, pixel_height=None, mode='mean
 
 def drop_columns(row, fmtypes=None, exclude_cols=None, include_cols=None):
     if include_cols is not None:
-        row = row[include_cols]
+        return row[:, include_cols]
     elif exclude_cols is not None:
-        features = set(x for x in xrange(len(row)))
+        features = set(x for x in xrange(row.shape[1]))
         to_keep = list(features.difference(set(exclude_cols)))
-        row = row[to_keep]
-    return row
+        return row[:, to_keep]

@@ -136,7 +136,7 @@ class ReadWriteData(object):
             log.debug("Error opening {} in file {}".format(name, self.url()))
             return None
 
-    def chunks_writer(self, name, data, dtype, shape, chunks=258, init=0):
+    def chunks_writer(self, name, data, dtype, chunks=258, init=0):
         from ml.utils.seq import grouper_chunk
         from tqdm import tqdm
         log.info("chunk size {}".format(chunks))
@@ -487,14 +487,11 @@ class Data(ReadWriteData):
         """
         self._set_space_shape("data", dsb.shape, self.dtype)
         end = self.chunks_writer("/data/data", dsb.train_data[:],
-            self.dtype, dsb.train_data.shape, 
-            chunks=self.chunks)
+            self.dtype, chunks=self.chunks)
         end = self.chunks_writer("/data/data", dsb.test_data[:], 
-            self.dtype, dsb.test_data.shape, 
-            chunks=self.chunks, init=end)
+            self.dtype, chunks=self.chunks, init=end)
         self.chunks_writer("/data/data", dsb.validation_data[:], 
-            self.dtype, dsb.validation_data.shape, 
-            chunks=self.chunks, init=end)
+            self.dtype, chunks=self.chunks, init=end)
         
         self.md5 = self.calc_md5()
 
@@ -504,8 +501,7 @@ class Data(ReadWriteData):
         """
         self._set_space_shape(name, shape, self.dtype)
         end = self.chunks_writer("/data/{}".format(name), iter_, 
-            self.dtype, shape,
-            chunks=self.chunks, init=init)
+            self.dtype, chunks=self.chunks, init=init)
         return end
 
     def build_dataset(self, data):
@@ -865,10 +861,8 @@ class DataLabel(Data):
         data = self.processing(data, apply_transforms=self.apply_transforms)
         self._set_space_shape('data', data.shape, self.dtype)
         self._set_space_shape('labels', labels.shape, self.ltype)
-        end = self.chunks_writer("/data/data", data, self.dtype, 
-            self.data.shape, chunks=self.chunks)
-        end = self.chunks_writer("/data/labels", labels, self.ltype, 
-            self.labels.shape, chunks=self.chunks)
+        end = self.chunks_writer("/data/data", data, self.dtype, chunks=self.chunks)
+        end = self.chunks_writer("/data/labels", labels, self.ltype, chunks=self.chunks)
         self._set_space_fmtypes(self.num_features())
         self.build_fmtypes()
         self.md5 = self.calc_md5()
