@@ -311,18 +311,6 @@ class TestDataset(unittest.TestCase):
             dataset.destroy()
         rm("/tmp/test.txt")
 
-        #with DataLabel(
-        #    name="test_ds_1",
-        #    dataset_path="/tmp/",
-        #    ltype='int',
-        #    rewrite=True) as dataset:
-        #    dataset.build_dataset(X, Y)
-        #    dataset.to_libsvm(name="test", save_to="/tmp")
-        #    check("/tmp/test.train.txt")
-        #    check("/tmp/test.test.txt")
-        #    check("/tmp/test.validation.txt")
-        #    dataset.destroy()
-
     def test_no_data(self):
         from ml.processing import rgb2gray
         transforms = Transforms()
@@ -369,14 +357,8 @@ class TestDataset(unittest.TestCase):
         data.destroy()
 
     def test_text_ds(self):
-        #X = np.asarray([str(line)*10 for line in range(100)])
-        #with Data(name="test", dtype='object', dataset_path="/tmp/") as ds:
-        #    ds.build_dataset(X)
-        #    self.assertEqual(ds.shape[0], 100)
-        #    ds.destroy()
-
-        X = np.asarray([(str(line)*10, "1") for line in range(100)])
-        with Data(name="test", dtype='object', dataset_path="/tmp/") as ds:
+        X = np.asarray([(str(line)*10, "1") for line in range(100)], dtype=np.dtype("O"))
+        with Data(name="test", dataset_path="/tmp/", rewrite=True) as ds:
             ds.build_dataset(X)
             self.assertEqual(ds.shape, (100, 2))
             ds.destroy()
@@ -521,7 +503,7 @@ class TestDataSetFold(unittest.TestCase):
             dsbf.build_dataset(self.dataset)
             for dsb in dsbf.get_splits():
                 with dsb:
-                    self.assertEqual(dsb.shape[0], 7)
+                    self.assertEqual(dsb.shape[0], 8)
                     self.assertEqual(dsb.shape[1], 10)
             self.assertEqual(len(dsbf.splits), n_splits)
         dsbf.destroy()

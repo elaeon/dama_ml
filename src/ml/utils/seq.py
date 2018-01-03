@@ -1,7 +1,7 @@
 def grouper_chunk_filler(n, iterable, fillvalue=None):
     from itertools import izip_longest
     "grouper_chunk_filler(3, '[1,2,3,4,5,6,7]', '-') --> [1,2,3] [4,5,6] [7,-,-]"
-    if not hasattr(object, '__iter__'):
+    if not hasattr(iterable, '__iter__'):
         args = [iter(iterable)] * n
     else:
         args = [iterable] * n
@@ -11,10 +11,10 @@ def grouper_chunk_filler(n, iterable, fillvalue=None):
 def grouper_chunk(n, iterable):
     from itertools import islice, chain
     "grouper_chunk(3, '[1,2,3,4,5,6,7]') --> [1,2,3] [4,5,6] [7]"
-    if not hasattr(object, '__iter__'):
-        it = iter(iterable)
-    else:
-        it = iterable
+    #if not hasattr(object, '__iter__'):
+    it = iter(iterable)
+    #else:
+    #    it = iterable
     while True:
         chunk = islice(it, n)
         try:

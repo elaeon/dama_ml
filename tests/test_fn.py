@@ -21,13 +21,13 @@ class TestLinearOutLayer(unittest.TestCase):
         df = pd.DataFrame(data=self.data)
         transforms = Transforms()
         transforms.add(FitStandardScaler, type="column")
-        ds = DataLabel(name="test", dataset_path="/tmp", transforms=transforms, 
+        dl = DataLabel(name="test", dataset_path="/tmp", transforms=transforms, 
             apply_transforms=True, rewrite=True)
-        with ds:
-            ds.build_dataset(df.as_matrix(), np.asarray(self.outlayers))
-            outlayers = ds.outlayers(type_detector='isolation', n_estimators=25, max_samples=10, 
+        with dl:
+            dl.build_dataset(df.as_matrix(), np.asarray(self.outlayers))
+            outlayers = dl.outlayers(type_detector='isolation', n_estimators=25, max_samples=10, 
                 contamination=self.contamination)
-        ds.destroy()
+        dl.destroy()
         self.assertItemsEqual(list(outlayers), [0, 1, 13, 15])
 
     def test_linear_outlayer2(self):

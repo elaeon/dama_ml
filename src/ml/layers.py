@@ -19,14 +19,26 @@ def choice(operator):
 
 
 class IterLayer(object):
-    def __init__(self, fn_iter, shape=None):
+    def __init__(self, fn_iter, shape=None, dtype='float'):
         self.shape = shape
+        self.dtype = dtype
         if isinstance(fn_iter, types.GeneratorType):
             self.fn_iter = fn_iter
         elif isinstance(fn_iter, IterLayer):
             self.fn_iter = fn_iter.fn_iter
         else:
             self.fn_iter = (e for e in fn_iter)
+
+    @property
+    def shape(self):
+        return self._shape
+
+    @shape.setter
+    def shape(self, v):
+        if isinstance(v, list):
+            self._shape = tuple(v)
+        else:
+            self._shape = v
 
     def scalar_operation(self, operator, scalar):
         iter_ = imap(lambda x: operator(x, scalar), self)

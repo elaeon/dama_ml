@@ -80,12 +80,10 @@ class ReadWriteData(object):
         self.f.close()
 
     def auto_dtype(self, ttype):
-        if ttype == "auto":
-            return "float64"
-        elif ttype == "object":
+        if ttype == np.dtype("O"):
             return h5py.special_dtype(vlen=unicode)
         else:
-            return np.dtype(ttype)
+            return ttype
 
     def _set_space_shape(self, name, shape, dtype):
         self.f.require_group("data")
@@ -93,13 +91,13 @@ class ReadWriteData(object):
         self.f['data'].require_dataset(name, shape, dtype=dtype, chunks=True, 
             exact=True, **self.zip_params)
 
-    def _set_space_data(self, name, data, dtype):
-        self.f.require_group("data")
-        dtype = self.auto_dtype(dtype)
-        if isinstance(data, IterLayer):
-            data = data.to_narray()
-        self.f['data'].require_dataset(name, data.shape, dtype=dtype, data=data, 
-            exact=True, chunks=True, **self.zip_params)
+    #def _set_space_data(self, name, data, dtype):
+    #    self.f.require_group("data")
+    #    dtype = self.auto_dtype(dtype)
+    #    if isinstance(data, IterLayer):
+    #        data = data.to_narray()
+    #    self.f['data'].require_dataset(name, data.shape, dtype=dtype, data=data, 
+    #        exact=True, chunks=True, **self.zip_params)
 
     def _get_data(self, name):
         key = '/data/' + name
@@ -136,14 +134,14 @@ class ReadWriteData(object):
             log.debug("Error opening {} in file {}".format(name, self.url()))
             return None
 
-    def chunks_writer(self, name, data, dtype, chunks=258, init=0):
+    def chunks_writer(self, name, data, chunks=258, init=0):
         from ml.utils.seq import grouper_chunk
         from tqdm import tqdm
         log.info("chunk size {}".format(chunks))
         end = init
         for smx in tqdm(grouper_chunk(chunks, data)):
             for chunk in smx:
-                if len(chunk.shape) == 2:
+                if len(chunk.shape) >= 2:
                     end += chunk.shape[0]
                 else:
                     end += 1
@@ -503,7 +501,7 @@ class Data(ReadWriteData):
         """
         self._set_space_shape(name, shape, self.dtype)
         end = self.chunks_writer("/data/{}".format(name), iter_, 
-            self.dtype, chunks=self.chunks, init=init)
+            chunks=self.chunks, init=init)
         return end
 
     def build_dataset(self, data):
@@ -511,8 +509,8 @@ class Data(ReadWriteData):
         build a datalabel dataset from data and labels
         """
         data = self.processing(data, apply_transforms=self.apply_transforms)
-        self._set_space_shape('data', data.shape, self.dtype)
-        end = self.chunks_writer("/data/data", data, self.dtype, chunks=self.chunks)
+        self._set_space_shape('data', data.shape, data.dtype)
+        end = self.chunks_writer("/data/data", data, chunks=self.chunks)
         self._set_space_fmtypes(self.num_features())
         self.build_fmtypes()
         self.md5 = self.calc_md5()
@@ -862,10 +860,10 @@ class DataLabel(Data):
         build a datalabel dataset from data and labels
         """
         data = self.processing(data, apply_transforms=self.apply_transforms)
-        self._set_space_shape('data', data.shape, self.dtype)
-        self._set_space_shape('labels', labels.shape, self.ltype)
-        end = self.chunks_writer("/data/data", data, self.dtype, chunks=self.chunks)
-        end = self.chunks_writer("/data/labels", labels, self.ltype, chunks=self.chunks)
+        self._set_space_shape('data', data.shape, data.dtype)
+        self._set_space_shape('labels', labels.shape, labels.dtype)
+        end = self.chunks_writer("/data/data", data, chunks=self.chunks)
+        end = self.chunks_writer("/data/labels", labels, chunks=self.chunks)
         self._set_space_fmtypes(self.num_features())
         self.build_fmtypes()
         self.md5 = self.calc_md5()

@@ -124,16 +124,21 @@ class TransformsRow(object):
         from ml.utils.seq import grouper_chunk
         def iter_():
             locate_fn = {}
-            i_features = data.shape[1]
+            i_features = data.shape[1:]
+            chunk_shape = [chunk_size] + list(i_features)
             for smx in grouper_chunk(chunk_size, data):
-                smx_a = np.empty((chunk_size, i_features), dtype=np.float) #add dtype
+                smx_a = np.empty(chunk_shape, dtype=np.float) #add dtype
                 for i, row in enumerate(smx):
                     smx_a[i] = row
                 for fn_, params in self.transforms:
                     fn = locate_fn.setdefault(fn_, locate(fn_))
                     smx_a = fn(smx_a[:i+1], fmtypes=fmtypes, **params)
                 yield smx_a
-        return IterLayer(iter_(), shape=(data.shape[0], self.o_features)), fmtypes
+        if hasattr(self.o_features, '__iter__'):
+            shape = [data.shape[0]] + list(self.o_features)
+        else:
+            shape = [data.shape[0], self.o_features]
+        return IterLayer(iter_(), shape=shape), fmtypes
 
 
 class TransformsCol(TransformsRow):
@@ -546,54 +551,59 @@ def merge_offset(data, fmtypes=None, image_size=90, bg_color=1):
     transform a rectangular image of (with, height) or (widh, height, channel) to 
     a squared image of size (image_size, image_size) 
     """
-    if len(data.shape) == 2:
+    if len(data.shape) == 3:
         return merge_offset2(data, image_size=image_size, bg_color=bg_color)
-    elif len(data.shape) == 3:
+    elif len(data.shape) == 4:
         return merge_offset3(data, image_size=image_size, bg_color=bg_color)
 
 
 def merge_offset2(data, fmtypes=None, image_size=90, bg_color=1):
     bg = np.ones((image_size, image_size))
-    offset = (int(round(abs(bg.shape[0] - data.shape[0]) / 2)), 
-            int(round(abs(bg.shape[1] - data.shape[1]) / 2)))
-    pos_v, pos_h = offset
-    v_range1 = slice(max(0, pos_v), max(min(pos_v + data.shape[0], bg.shape[0]), 0))
-    h_range1 = slice(max(0, pos_h), max(min(pos_h + data.shape[1], bg.shape[1]), 0))
-    v_range2 = slice(max(0, -pos_v), min(-pos_v + bg.shape[0], data.shape[0]))
-    h_range2 = slice(max(0, -pos_h), min(-pos_h + bg.shape[1], data.shape[1]))
-    if bg_color is None:
-        bg2 = bg - 1 + np.average(data) + random.uniform(-np.var(data), np.var(data))
-    elif bg_color == 1:
-        bg2 = bg
-    else:
-        bg2 = bg - 1
-    
-    bg2[v_range1, h_range1] = bg[v_range1, h_range1] - 1
-    bg2[v_range1, h_range1] = bg2[v_range1, h_range1] + data[v_range2, h_range2]
-    return bg2
+    ndata = np.empty((data.shape[0], image_size, image_size), dtype=data.dtype)
+    for i, image in enumerate(data):
+        offset = (int(round(abs(bg.shape[0] - image.shape[0]) / 2)), 
+                int(round(abs(bg.shape[1] - image.shape[1]) / 2)))
+        pos_v, pos_h = offset
+        v_range1 = slice(max(0, pos_v), max(min(pos_v + image.shape[0], bg.shape[0]), 0))
+        h_range1 = slice(max(0, pos_h), max(min(pos_h + image.shape[1], bg.shape[1]), 0))
+        v_range2 = slice(max(0, -pos_v), min(-pos_v + bg.shape[0], image.shape[0]))
+        h_range2 = slice(max(0, -pos_h), min(-pos_h + bg.shape[1], image.shape[1]))
+        if bg_color is None:
+            bg2 = bg - 1 + np.average(image) + random.uniform(-np.var(image), np.var(image))
+        elif bg_color == 1:
+            bg2 = bg
+        else:
+            bg2 = bg - 1
+        
+        bg2[v_range1, h_range1] = bg[v_range1, h_range1] - 1
+        bg2[v_range1, h_range1] = bg2[v_range1, h_range1] + image[v_range2, h_range2]
+    return ndata
 
 def merge_offset3(data, fmtypes=None, image_size=90, bg_color=1):
-    bg = np.ones((image_size, image_size, 3))
-    offset = (int(round(abs(bg.shape[0] - data.shape[0]) / 2)), 
-            int(round(abs(bg.shape[1] - data.shape[1]) / 2)),
-             int(round(abs(bg.shape[2] - data.shape[2]) / 2)))
-    pos_v, pos_h, pos_w = offset
-    v_range1 = slice(max(0, pos_v), max(min(pos_v + data.shape[0], bg.shape[0]), 0))
-    h_range1 = slice(max(0, pos_h), max(min(pos_h + data.shape[1], bg.shape[1]), 0))
-    w_range1 = slice(max(0, pos_w), max(min(pos_w + data.shape[2], bg.shape[2]), 0))
-    v_range2 = slice(max(0, -pos_v), min(-pos_v + bg.shape[0], data.shape[0]))
-    h_range2 = slice(max(0, -pos_h), min(-pos_h + bg.shape[1], data.shape[1]))
-    w_range2 = slice(max(0, -pos_w), min(-pos_w + bg.shape[2], data.shape[2]))
-    if bg_color is None:
-        bg2 = bg - 1 + np.average(data) + random.uniform(-np.var(data), np.var(data))
-    elif bg_color == 1:
-        bg2 = bg
-    else:
-        bg2 = bg - 1
-    
-    bg2[v_range1, h_range1, w_range1] = bg[v_range1, h_range1, w_range1] - 1
-    bg2[v_range1, h_range1, w_range1] = bg2[v_range1, h_range1, w_range1] + data[v_range2, h_range2, w_range2]
-    return bg2
+    ndata = np.empty((data.shape[0], image_size, image_size, 3), dtype=data.dtype)
+    for i, image in enumerate(data):
+        bg = np.ones((image_size, image_size, 3))
+        offset = (int(round(abs(bg.shape[0] - image.shape[0]) / 2)), 
+                int(round(abs(bg.shape[1] - image.shape[1]) / 2)),
+                 int(round(abs(bg.shape[2] - image.shape[2]) / 2)))
+        pos_v, pos_h, pos_w = offset
+        v_range1 = slice(max(0, pos_v), max(min(pos_v + image.shape[0], bg.shape[0]), 0))
+        h_range1 = slice(max(0, pos_h), max(min(pos_h + image.shape[1], bg.shape[1]), 0))
+        w_range1 = slice(max(0, pos_w), max(min(pos_w + image.shape[2], bg.shape[2]), 0))
+        v_range2 = slice(max(0, -pos_v), min(-pos_v + bg.shape[0], image.shape[0]))
+        h_range2 = slice(max(0, -pos_h), min(-pos_h + bg.shape[1], image.shape[1]))
+        w_range2 = slice(max(0, -pos_w), min(-pos_w + bg.shape[2], image.shape[2]))
+        if bg_color is None:
+            bg2 = bg - 1 + np.average(image) + random.uniform(-np.var(image), np.var(image))
+        elif bg_color == 1:
+            bg2 = bg
+        else:
+            bg2 = bg - 1
+        
+        bg2[v_range1, h_range1, w_range1] = bg[v_range1, h_range1, w_range1] - 1
+        bg2[v_range1, h_range1, w_range1] = bg2[v_range1, h_range1, w_range1] + image[v_range2, h_range2, w_range2]
+        ndata[i] = bg2
+    return ndata
 
 
 def threshold(data, fmtypes=None, block_size=41):

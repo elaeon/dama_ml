@@ -24,8 +24,8 @@ class TestMsssiM(unittest.TestCase):
         image_path = self.img1
         image = np.expand_dims(io.imread(image_path), axis=0)
         transforms = Transforms()
-        transforms.add(rgb2gray, o_features=image.shape[1:])
-        transforms.add(merge_offset, o_features=(90, 90, 3))
+        transforms.add(rgb2gray, o_features=image.shape[1:3])
+        transforms.add(merge_offset, o_features=(90, 90))
         image = transforms.apply(image)
         img = img_as_float(image.to_narray()[0])
         rows, cols = img.shape
@@ -75,8 +75,8 @@ class TestMsssiM(unittest.TestCase):
 
         image1 = np.expand_dims(io.imread(image_path1), axis=0)
         transforms = Transforms()
-        transforms.add(rgb2gray)
-        transforms.add(merge_offset)
+        transforms.add(rgb2gray, o_features=image1.shape[1:3])
+        transforms.add(merge_offset, o_features=(90,90))
         image1 = transforms.apply(image1)
         img1 = img_as_float(image1.to_narray()[0])
         rows1, cols1 = img1.shape
@@ -103,10 +103,8 @@ class TestMsssiM(unittest.TestCase):
             sess.run(tf.global_variables_initializer())
             tf_msssim_1 = sess.run(msssim_index,
                                     feed_dict={image1: img1, image2: img1})
-            tf_msssim_2 = sess.run(msssim_index,
-                                     feed_dict={image1: img1, image2: img2})
-        ###TF CALC END
-        #print('tf_msssim_none', tf_msssim_1)
-        #print('tf_msssim_noise', tf_msssim_2)
-        self.assertEqual(tf_msssim_1, 1)
+            #tf_msssim_2 = sess.run(msssim_index,
+            #                         feed_dict={image1: img1, image2: img2})
+
+            self.assertEqual(tf_msssim_1, 1)
 
