@@ -143,7 +143,7 @@ class ReadWriteData(object):
         end = init
         for smx in tqdm(grouper_chunk(chunks, data)):
             for chunk in smx:
-                if chunk.shape:
+                if len(chunk.shape) == 2:
                     end += chunk.shape[0]
                 else:
                     end += 1

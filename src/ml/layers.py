@@ -140,7 +140,7 @@ class IterLayer(object):
     def to_narray(self, dtype=float):
         import numpy as np
         if self.shape is None:
-            raise Exception("Data shape is None, IterLayer can't be converted to array")     
+            raise Exception("Data shape is None, IterLayer can't be converted to array")
         smx_a = np.empty(self.shape, dtype=dtype)
         init = 0
         end = 0

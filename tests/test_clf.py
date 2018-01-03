@@ -348,10 +348,11 @@ class TestGrid(unittest.TestCase):
             check_point_path="/tmp/")
         
         with self.original_dataset:
-            data = self.original_dataset.data[:1]
+            data = self.original_dataset.data[:10]
 
         predict = ensemble.predict(data, raw=True)
         self.assertEqual(predict.shape[1], 2)
+        self.assertEqual(len(list(predict)), 10)
         ensemble.destroy()
 
 
@@ -437,7 +438,8 @@ class TestXgboost(unittest.TestCase):
             model_version="1",
             check_point_path="/tmp/")
         with self.dataset:
-            classif.predict(self.dataset.test_data[0:1], transform=False)
+            predict = classif.predict(self.dataset.data, transform=False, raw=False)
+            self.assertEqual(len(list(predict)), 100)
         classif.destroy()
 
 
@@ -468,7 +470,8 @@ class TestKFold(unittest.TestCase):
             model_version="1",
             check_point_path="/tmp/")
         with dataset:
-            predict = classif.predict(dataset.data[0:1]).to_narray()
+            predict = classif.predict(dataset.data)
+            self.assertEqual(len(list(predict)), 10)
         classif.destroy()
         dataset.destroy()
 

@@ -18,12 +18,12 @@ class Xgboost(XGB):
         elif raw is None:
             return self.position_index(label)
         else:
-            return self.le.inverse_transform(self.position_index(label))
+            return self.le.inverse_transform(self.position_index(label.reshape(-1, 1)))
 
     def prepare_model(self, obj_fn=None, **params):
         with self.train_ds, self.validation_ds:
-            d_train = xgb.DMatrix(self.train_ds.data, self.train_ds.labels) 
-            d_valid = xgb.DMatrix(self.validation_ds.data, self.validation_ds.labels) 
+            d_train = xgb.DMatrix(self.train_ds.data[:], self.train_ds.labels[:]) 
+            d_valid = xgb.DMatrix(self.validation_ds.data[:], self.validation_ds.labels[:]) 
         watchlist = [(d_train, 'train'), (d_valid, 'valid')]
         nrounds = 200
         xgb_model = xgb.train(params, d_train, nrounds, watchlist, early_stopping_rounds=100, 

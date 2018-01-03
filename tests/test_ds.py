@@ -457,8 +457,9 @@ class TestDataset(unittest.TestCase):
             data.build_dataset(array)
             data.set_fmtypes(3, fmtypes.DENSE)
             data.set_fmtypes(4, fmtypes.DENSE)
-            print(data.fmtypes[:])
-            self.assertItemsEqual(data.fmtypes[:], [0, 1, 1, 4, 4, 0])
+            self.assertItemsEqual(data.fmtypes[:], 
+                [fmtypes.BOOLEAN.id, fmtypes.NANBOOLEAN.id, fmtypes.NANBOOLEAN.id, 
+                fmtypes.DENSE.id, fmtypes.DENSE.id, fmtypes.BOOLEAN.id])
             data.destroy()
 
     def test_rewrite_data(self):
