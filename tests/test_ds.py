@@ -23,7 +23,7 @@ def linear(x, fmtypes=None, b=0):
 
 
 def to_int(x, col=None, fmtypes=None):
-    x[col] = int(x[col])
+    x[col] = x[col].astype(np.int)
     return x
 
 
@@ -249,17 +249,17 @@ class TestDataset(unittest.TestCase):
             dataset.destroy()
 
     def test_dsb_build_iter(self):
-        with DataLabel(name="test", dataset_path="/tmp", chunks=100, dtype="int64", rewrite=True) as dsb:
-            shape = (10000, 2)
+        with DataLabel(name="test", dataset_path="/tmp", chunks=100, dtype="int64", rewrite=True) as dl:
+            shape = (1000, 2)
             step = 0
-            range_list = range(0, 15000, 50)
+            range_list = range(0, 1500, 50)
             for init, end in zip(range_list, range_list[1:]):
-                iter_ = ((i, i) for i in xrange(init, end))
-                step = dsb.build_dataset_from_iter(iter_, shape, "data", 
+                iter_ = (np.asarray((i, i)).reshape(1,-1) for i in xrange(init, end))
+                step = dl.build_dataset_from_iter(iter_, shape, "data", 
                     init=step)
-            self.assertEqual(dsb.data.shape, shape)
-            self.assertItemsEqual(dsb.data[9999], [9999, 9999])
-            dsb.destroy()
+            self.assertEqual(dl.data.shape, shape)
+            self.assertItemsEqual(dl.data[999], [999, 999])
+            dl.destroy()
 
     def test_get_set(self):
         from ml.processing import rgb2gray
@@ -457,6 +457,7 @@ class TestDataset(unittest.TestCase):
             data.build_dataset(array)
             data.set_fmtypes(3, fmtypes.DENSE)
             data.set_fmtypes(4, fmtypes.DENSE)
+            print(data.fmtypes[:])
             self.assertItemsEqual(data.fmtypes[:], [0, 1, 1, 4, 4, 0])
             data.destroy()
 

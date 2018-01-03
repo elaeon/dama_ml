@@ -141,12 +141,14 @@ class ReadWriteData(object):
         from tqdm import tqdm
         log.info("chunk size {}".format(chunks))
         end = init
-
-        for row in tqdm(grouper_chunk(chunks, data)):
-            seq = np.asarray(list(row), dtype=dtype)
-            end += seq.shape[0]
-            self.f[name][init:end] = seq
-            init = end
+        for smx in tqdm(grouper_chunk(chunks, data)):
+            for chunk in smx:
+                if chunk.shape:
+                    end += chunk.shape[0]
+                else:
+                    end += 1
+                self.f[name][init:end] = chunk
+                init = end
         return end
 
     def create_route(self):
@@ -481,19 +483,19 @@ class Data(ReadWriteData):
                 total += 1
         return float(zero_counter) / total
 
-    def build_dataset_from_dsb(self, dsb):
-        """
-        Transform a dataset with train, test and validation dataset into a datalabel dataset
-        """
-        self._set_space_shape("data", dsb.shape, self.dtype)
-        end = self.chunks_writer("/data/data", dsb.train_data[:],
-            self.dtype, chunks=self.chunks)
-        end = self.chunks_writer("/data/data", dsb.test_data[:], 
-            self.dtype, chunks=self.chunks, init=end)
-        self.chunks_writer("/data/data", dsb.validation_data[:], 
-            self.dtype, chunks=self.chunks, init=end)
+    #def build_dataset_from_dsb(self, dsb):
+    #    """
+    #    Transform a dataset with train, test and validation dataset into a datalabel dataset
+    #    """
+    #    self._set_space_shape("data", dsb.shape, self.dtype)
+    #    end = self.chunks_writer("/data/data", dsb.train_data[:],
+    #        self.dtype, chunks=self.chunks)
+    #    end = self.chunks_writer("/data/data", dsb.test_data[:], 
+    #        self.dtype, chunks=self.chunks, init=end)
+    #    self.chunks_writer("/data/data", dsb.validation_data[:], 
+    #        self.dtype, chunks=self.chunks, init=end)
         
-        self.md5 = self.calc_md5()
+    #    self.md5 = self.calc_md5()
 
     def build_dataset_from_iter(self, iter_, shape, name, init=0, type_t=None):
         """
@@ -509,7 +511,8 @@ class Data(ReadWriteData):
         build a datalabel dataset from data and labels
         """
         data = self.processing(data, apply_transforms=self.apply_transforms)
-        self._set_space_data('data', data, self.dtype)
+        self._set_space_shape('data', data.shape, self.dtype)
+        end = self.chunks_writer("/data/data", data, self.dtype, chunks=self.chunks)
         self._set_space_fmtypes(self.num_features())
         self.build_fmtypes()
         self.md5 = self.calc_md5()

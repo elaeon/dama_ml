@@ -126,7 +126,7 @@ class TransformsRow(object):
             locate_fn = {}
             i_features = data.shape[1]
             for smx in grouper_chunk(chunk_size, data):
-                smx_a = np.empty((chunk_size, i_features), dtype=np.float)
+                smx_a = np.empty((chunk_size, i_features), dtype=np.float) #add dtype
                 for i, row in enumerate(smx):
                     smx_a[i] = row
                 for fn_, params in self.transforms:
