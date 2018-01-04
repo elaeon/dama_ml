@@ -15,7 +15,7 @@ class TestRegSKL(unittest.TestCase):
         pass
 
     def test_load_meta(self):
-        dl = DataLabel(name="reg0", dataset_path="/tmp/", rewrite=True, ltype='float')
+        dl = DataLabel(name="reg0", dataset_path="/tmp/", rewrite=True)
         with dl:
             dl.build_dataset(self.X, self.Y)
         reg = RandomForestRegressor(dataset=dl, 
@@ -28,7 +28,7 @@ class TestRegSKL(unittest.TestCase):
         dl.destroy()
 
     def test_empty_load(self):
-        dl = DataLabel(name="reg0", dataset_path="/tmp/", rewrite=True, ltype='float')
+        dl = DataLabel(name="reg0", dataset_path="/tmp/", rewrite=True)
         with dl:
             dl.build_dataset(self.X, self.Y)
         reg = RandomForestRegressor(dataset=dl, 
@@ -45,7 +45,7 @@ class TestRegSKL(unittest.TestCase):
         dl.destroy()
 
     def test_scores(self):
-        dl = DataLabel(name="reg0", dataset_path="/tmp/", rewrite=True, ltype='float')
+        dl = DataLabel(name="reg0", dataset_path="/tmp/", rewrite=True)
         with dl:
             dl.build_dataset(self.X, self.Y)
         reg = RandomForestRegressor(dataset=dl, 

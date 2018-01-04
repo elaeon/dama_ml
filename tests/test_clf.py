@@ -405,8 +405,7 @@ class TestXgboost(unittest.TestCase):
         from ml.ds import DataLabel
         X = np.random.rand(100, 10)
         Y = (X[:,0] > .5).astype(int)
-        self.dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            dtype='int', ltype='int', rewrite=True)
+        self.dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
         with self.dataset:
             self.dataset.build_dataset(X, Y)
         try:
@@ -453,8 +452,7 @@ class TestKFold(unittest.TestCase):
 
     def test_predict(self):
         from ml.clf.extended.w_keras import FCNet
-        dataset = DataLabel(dataset_path="/tmp/", 
-            dtype='float', ltype='float', rewrite=True)
+        dataset = DataLabel(dataset_path="/tmp/", rewrite=True)
         with dataset:
             dataset.build_dataset(self.X, self.Y)
         classif = FCNet(dataset=dataset, 

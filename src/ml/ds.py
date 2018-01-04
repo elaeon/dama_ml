@@ -91,14 +91,6 @@ class ReadWriteData(object):
         self.f['data'].require_dataset(name, shape, dtype=dtype, chunks=True, 
             exact=True, **self.zip_params)
 
-    #def _set_space_data(self, name, data, dtype):
-    #    self.f.require_group("data")
-    #    dtype = self.auto_dtype(dtype)
-    #    if isinstance(data, IterLayer):
-    #        data = data.to_narray()
-    #    self.f['data'].require_dataset(name, data.shape, dtype=dtype, data=data, 
-    #        exact=True, chunks=True, **self.zip_params)
-
     def _get_data(self, name):
         key = '/data/' + name
         return self.f[key]
@@ -218,11 +210,10 @@ class Data(ReadWriteData):
     :param rewrite: if true, you can clean the saved data and add a new dataset.
     """
     def __init__(self, name=None, dataset_path=None, transforms=None,
-                apply_transforms=False, dtype='float64', description='',
-                author='', compression_level=0, chunks=258, rewrite=False):
+                apply_transforms=False, description='', author='', 
+                compression_level=0, rewrite=False):
 
         self.name = uuid.uuid4().hex if name is None else name
-        self.chunks = chunks
         self.apply_transforms = apply_transforms
         self.header_map = ["author", "description", "timestamp", "transforms_str"]
         self.f = None
@@ -241,7 +232,6 @@ class Data(ReadWriteData):
                 self.destroy()
             self.create_route()
             self.author = author
-            self.dtype = dtype
             self.transforms = transforms
             self.description = description
             self.compression_level = compression_level
@@ -262,11 +252,7 @@ class Data(ReadWriteData):
 
     @property
     def dtype(self):
-        return self._get_attr('dtype')
-
-    @dtype.setter
-    def dtype(self, value):
-        self._set_attr('dtype', value)
+        return self.data.dtype
 
     @property
     @cache
@@ -388,7 +374,7 @@ class Data(ReadWriteData):
         return the number of features of the dataset
         """
         if len(self.data.shape) != 2:
-            raise Exception("Bad input shape. The input array must have a shape (X, Y) and not {}".format(self.data.shape))
+            raise Exception("Bad input shape. The input array must have a shape of (X, Y) and not {}".format(self.data.shape))
         else:
             return self.data.shape[1]
 
@@ -428,7 +414,7 @@ class Data(ReadWriteData):
         print('       ')
         headers = ["Dataset", "Shape", "dType"]
         table = []
-        table.append(["dataset", self.data.shape, self.data.dtype])
+        table.append(["dataset", self.shape, self.dtype])
         order_table_print(headers, table, "shape")
 
     def calc_md5(self):
@@ -456,7 +442,7 @@ class Data(ReadWriteData):
         [2,2,2,2,2] return 1/5        
         
         """
-        if not isinstance(self.data.dtype, object):
+        if not isinstance(self.dtype, object):
             data = self.data[:].reshape(self.data.shape[0], -1)
         else:
             data = np.asarray([row.reshape(1, -1)[0] for row in self.data])
@@ -467,7 +453,7 @@ class Data(ReadWriteData):
         """
         return a value between [0, 1]. If is 0 no zeros exists, if is 1 all data is zero.
         """
-        if not isinstance(self.data.dtype, object):
+        if not isinstance(self.dtype, object):
             data = self.data[:].reshape(self.data.shape[0], -1)
         else:
             data = np.asarray([row.reshape(1, -1)[0] for row in self.data])
@@ -481,42 +467,18 @@ class Data(ReadWriteData):
                 total += 1
         return float(zero_counter) / total
 
-    #def build_dataset_from_dsb(self, dsb):
-    #    """
-    #    Transform a dataset with train, test and validation dataset into a datalabel dataset
-    #    """
-    #    self._set_space_shape("data", dsb.shape, self.dtype)
-    #    end = self.chunks_writer("/data/data", dsb.train_data[:],
-    #        self.dtype, chunks=self.chunks)
-    #    end = self.chunks_writer("/data/data", dsb.test_data[:], 
-    #        self.dtype, chunks=self.chunks, init=end)
-    #    self.chunks_writer("/data/data", dsb.validation_data[:], 
-    #        self.dtype, chunks=self.chunks, init=end)
-        
-    #    self.md5 = self.calc_md5()
-
-    def build_dataset_from_iter(self, iter_, shape, name, init=0, type_t=None):
-        """
-        Build a dataset from an iterator
-        """
-        self._set_space_shape(name, shape, self.dtype)
-        end = self.chunks_writer("/data/{}".format(name), iter_, 
-            chunks=self.chunks, init=init)
-        return end
-
-    def build_dataset(self, data):
+    def build_dataset(self, data, chunks_size=258):
         """
         build a datalabel dataset from data and labels
         """
         data = self.processing(data, apply_transforms=self.apply_transforms)
         self._set_space_shape('data', data.shape, data.dtype)
-        end = self.chunks_writer("/data/data", data, chunks=self.chunks)
+        end = self.chunks_writer("/data/data", data, chunks=chunks_size)
         self._set_space_fmtypes(self.num_features())
         self.build_fmtypes()
         self.md5 = self.calc_md5()
 
-    def empty(self, name, dataset_path=None, dtype='float64', ltype=None,
-                apply_transforms=False, transforms=None):
+    def empty(self, name, dataset_path=None, apply_transforms=False, transforms=None):
         """
         build an empty DataLabel with the default parameters
         """
@@ -524,16 +486,14 @@ class Data(ReadWriteData):
             dataset_path=dataset_path,
             transforms=self.transforms if transforms is None else transforms,
             apply_transforms=apply_transforms,
-            dtype=dtype,
             description=self.description,
             author=self.author,
             compression_level=self.compression_level,
-            chunks=self.chunks,
             rewrite=True)
         data._applied_transforms = apply_transforms
         return data
 
-    def convert(self, name, dtype='float64', apply_transforms=False, 
+    def convert(self, name, apply_transforms=False, chunks_size=258,
                 percentaje=1, dataset_path=None, transforms=None):
         """
         :type dtype: string
@@ -541,13 +501,13 @@ class Data(ReadWriteData):
 
         dataset_path is not necesary to especify, this info is obtained from settings.cfg
         """
-        data = self.empty(name, dataset_path=dataset_path, dtype=dtype, 
-            ltype=ltype, apply_transforms=apply_transforms, transforms=transforms)
+        data = self.empty(name, dataset_path=dataset_path, 
+            apply_transforms=apply_transforms, transforms=transforms)
         with data:
-            data.build_dataset(calc_nshape(self.data, percentaje))
+            data.build_dataset(calc_nshape(self.data, percentaje), chunks_size=chunks_size)
         return data
 
-    def copy(self, name=None, dataset_path=None, percentaje=1):
+    def copy(self, name=None, dataset_path=None, percentaje=1, chunks_size=258):
         """
         :type percentaje: float
         :param percentaje: value between [0, 1], this value represent the size of the dataset to copy.
@@ -555,9 +515,8 @@ class Data(ReadWriteData):
         copy the dataset, a percentaje is permited for the size of the copy
         """
         name = self.name + "_copy_" + uuid.uuid4().hex if name is None else name
-        data = self.convert(name, dtype=self.dtype,
-                        apply_transforms=False, 
-                        percentaje=percentaje, dataset_path=dataset_path)
+        data = self.convert(name, apply_transforms=False, percentaje=percentaje, 
+                            dataset_path=dataset_path, chunks_size=chunks_size)
         data._applied_transforms = self._applied_transforms
         return data
 
@@ -577,10 +536,6 @@ class Data(ReadWriteData):
             return self.transforms.apply(data, fmtypes=self.fmtypes)
         else:
             return data if isinstance(data, np.ndarray) else np.asarray(data) #IterLayer(data, shape=data.shape)
-
-    @property
-    def train_data(self):
-        return self.data
 
     @classmethod
     def to_DF(self, dataset):
@@ -647,10 +602,10 @@ class Data(ReadWriteData):
         """
         if self.apply_transforms == True:
             if hasattr(self, 'ltype'):
-                dsb = self.convert(name, dtype=self.dtype, ltype=self.ltype, 
-                    apply_transforms=True, percentaje=1, transforms=transforms)
+                dsb = self.convert(name, apply_transforms=True, percentaje=1, 
+                                transforms=transforms)
             else:
-                dsb = dsb_c.convert(name, dtype=self.dtype, apply_transforms=True, 
+                dsb = dsb_c.convert(name, apply_transforms=True, 
                     percentaje=1, transforms=transforms)
             with dsb:
                 dsb.transforms = self.transforms + transforms
@@ -669,7 +624,7 @@ class Data(ReadWriteData):
             shape = tuple([dl.shape[0] - len(outlayers)] + list(dl.shape[1:]))
         outlayers = iter(outlayers)
         outlayer = outlayers.next()
-        data = np.empty(shape, dtype=self.dtype)
+        data = np.empty(shape)
         counter = 0
         for index, row in enumerate(dl.data):
             if index == outlayer:
@@ -680,8 +635,7 @@ class Data(ReadWriteData):
             else:
                 data[counter] = dl.data[index]
                 counter += 1
-        dl_ol = self.empty(self.name+"_n_outlayer", dtype=self.dtype, 
-            apply_transforms=self.apply_transforms)
+        dl_ol = self.empty(self.name+"_n_outlayer", apply_transforms=self.apply_transforms)
         with dl_ol:
             dl_ol.build_dataset(data)
         dl.destroy()
@@ -723,26 +677,9 @@ class DataLabel(Data):
     :type rewrite: bool
     :param rewrite: if true, you can clean the saved data and add a new dataset.
     """
-    def __init__(self, name=None, dataset_path=None,transforms=None,
-                apply_transforms=False, dtype='float64', ltype='|S1',
-                description='', author='', compression_level=0, chunks=258,
-                rewrite=False):
-
-        super(DataLabel, self).__init__(name=name, dataset_path=dataset_path,
-            apply_transforms=apply_transforms,transforms=transforms, dtype=dtype,
-            description=description, author=author, compression_level=compression_level,
-            chunks=chunks, rewrite=rewrite)
-        
-        if rewrite:
-            self.ltype = ltype
-
     @property
     def ltype(self):
-        return self._get_attr('ltype')
-
-    @ltype.setter
-    def ltype(self, value):
-        self._set_attr('ltype', value)
+        return self.labels.dtype
 
     @property
     def labels(self):
@@ -789,14 +726,14 @@ class DataLabel(Data):
         s_labels = set(labels)
         return zip(*filter(lambda x: x[1] in s_labels, zip(ds.data, ds.labels)))
 
-    def ltype_t(self, labels):
-        """
-        :type labels: narray
-        :param labels: narray to cast
+    #def ltype_t(self, labels):
+    #    """
+    #    :type labels: narray
+    #    :param labels: narray to cast
 
-        cast the labels to the predefined dataset ltype
-        """
-        return self.type_t(self.ltype, labels)
+    #    cast the labels to the predefined dataset ltype
+    #    """
+    #    return self.type_t(self.ltype, labels)
 
     def info(self, classes=False):
         """
@@ -817,7 +754,7 @@ class DataLabel(Data):
         print('       ')
         headers = ["Dataset", "Shape", "dType", "Labels", "ltype"]
         table = []
-        table.append(["dataset", self.data.shape, self.data.dtype, self.labels.size, self.labels.dtype])
+        table.append(["dataset", self.shape, self.dtype, self.labels.size, self.ltype])
         order_table_print(headers, table, "shape")
         if classes == True:
             headers = ["class", "# items", "%"]
@@ -826,50 +763,20 @@ class DataLabel(Data):
             items_p = [0, 0]
             order_table_print(headers, items, "# items")
 
-    #def build_dataset_from_dsb(self, dsb):
-    #    """
-    #    Transform a dataset with train, test and validation dataset into a datalabel dataset
-    #    """
-    #    labels_shape = tuple(dsb.shape[0:1] + dsb.train_labels.shape[1:])
-    #    self._set_space_shape("data", dsb.shape, self.dtype)
-    #    self._set_space_shape("labels", labels_shape, self.ltype)
-    #    end = self.chunks_writer("/data/data", dsb.train_data[:], 
-    #        self.dtype,
-    #        dsb.train_data.shape, chunks=self.chunks)
-    #    end = self.chunks_writer("/data/data", dsb.test_data[:], 
-    #        self.dtype,
-    #        dsb.test_data.shape, chunks=self.chunks, init=end)
-    #    self.chunks_writer("/data/data", dsb.validation_data[:], 
-    #        self.dtype,
-    #        dsb.validation_data.shape, chunks=self.chunks, init=end)
-
-    #    end = self.chunks_writer("/data/labels", dsb.train_labels[:], 
-    #        self.ltype,
-    #        dsb.train_labels.shape, chunks=self.chunks)
-    #    end = self.chunks_writer("/data/labels", dsb.test_labels[:], 
-    #        self.ltype,
-    #        dsb.test_labels.shape, chunks=self.chunks, init=end)
-    #    self.chunks_writer("/data/labels", dsb.validation_labels[:],
-    #        self.ltype, 
-    #        dsb.validation_labels.shape, chunks=self.chunks, init=end)
-       
-    #    self.md5 = self.calc_md5()
-
-    def build_dataset(self, data, labels):
+    def build_dataset(self, data, labels, chunks_size=258):
         """
         build a datalabel dataset from data and labels
         """
         data = self.processing(data, apply_transforms=self.apply_transforms)
         self._set_space_shape('data', data.shape, data.dtype)
         self._set_space_shape('labels', labels.shape, labels.dtype)
-        end = self.chunks_writer("/data/data", data, chunks=self.chunks)
-        end = self.chunks_writer("/data/labels", labels, chunks=self.chunks)
+        end = self.chunks_writer("/data/data", data, chunks=chunks_size)
+        end = self.chunks_writer("/data/labels", labels, chunks=chunks_size)
         self._set_space_fmtypes(self.num_features())
         self.build_fmtypes()
         self.md5 = self.calc_md5()
 
-    def empty(self, name, dtype='float64', ltype='int', 
-                apply_transforms=False, dataset_path=None,
+    def empty(self, name, apply_transforms=False, dataset_path=None,
                 transforms=None):
         """
         build an empty DataLabel with the default parameters
@@ -878,26 +785,22 @@ class DataLabel(Data):
             dataset_path=dataset_path,
             transforms=self.transforms if transforms is None else transforms,
             apply_transforms=apply_transforms,
-            dtype=dtype,
-            ltype=ltype,
             description=self.description,
             author=self.author,
             compression_level=self.compression_level,
-            chunks=self.chunks,
             rewrite=True)
         dl._applied_transforms = apply_transforms
         return dl
 
-    def convert(self, name, dtype='float64', ltype='int', apply_transforms=False, 
-                percentaje=1, dataset_path=None, transforms=None):
+    def convert(self, name, apply_transforms=False, percentaje=1, 
+                dataset_path=None, transforms=None):
         """
         :type dtype: string
         :param dtype: cast the data to the defined type
 
         dataset_path is not necesary to especify, this info is obtained from settings.cfg
         """
-        dl = self.empty(name, dtype=dtype, ltype=ltype, 
-                        apply_transforms=apply_transforms, 
+        dl = self.empty(name, apply_transforms=apply_transforms, 
                         dataset_path=dataset_path, transforms=transforms)
         with dl:
             dl.build_dataset(calc_nshape(self.data, percentaje), calc_nshape(self.labels, percentaje))
@@ -911,9 +814,8 @@ class DataLabel(Data):
         copy the dataset, a percentaje is permited for the size of the copy
         """
         name = self.name + "_copy_" + uuid.uuid4().hex if name is None else name
-        dl = self.convert(name, dtype=self.dtype, ltype=self.ltype, 
-                        apply_transforms=False, 
-                        percentaje=percentaje, dataset_path=dataset_path)
+        dl = self.convert(name, apply_transforms=False, percentaje=percentaje, 
+                        dataset_path=dataset_path)
         with dl:
             dl._applied_transforms = self._applied_transforms
         return dl
@@ -955,8 +857,8 @@ class DataLabel(Data):
             shape = tuple([dl.shape[0] - len(outlayers)] + list(dl.shape[1:]))
             outlayers = iter(outlayers)
             outlayer = outlayers.next()
-            data = np.empty(shape, dtype=self.dtype)
-            labels = np.empty((shape[0],), dtype=self.ltype)
+            data = np.empty(shape)
+            labels = np.empty((shape[0],))
             counter = 0
             for index, row in enumerate(dl.data):
                 if index == outlayer:
@@ -968,8 +870,7 @@ class DataLabel(Data):
                     data[counter] = dl.data[index]
                     labels[counter] = dl.labels[index]
                     counter += 1
-        dl_ol = self.empty(self.name+"_n_outlayer", dtype=self.dtype, ltype=self.ltype, 
-            apply_transforms=self.apply_transforms)
+        dl_ol = self.empty(self.name+"_n_outlayer", apply_transforms=self.apply_transforms)
         with dl_ol:
             dl_ol.build_dataset(data, labels)
         dl.destroy()
@@ -978,7 +879,7 @@ class DataLabel(Data):
     def to_data(self):
         dl = self.desfragment()
         name = self.name + "_data_" + uuid.uuid4().hex
-        data = super(DataLabel, self).empty(name, dtype=self.dtype, apply_transforms=self.apply_transforms)
+        data = super(DataLabel, self).empty(name, apply_transforms=self.apply_transforms)
         with dl, data:
             data.build_dataset(dl.data)
         dl.destroy()
@@ -1045,8 +946,6 @@ class DataLabel(Data):
                         dataset_path=self.dataset_path,
                         transforms=None,
                         apply_transforms=False,
-                        dtype=self.dtype,
-                        ltype=self.ltype,
                         compression_level=9,
                         rewrite=False)
 
@@ -1391,8 +1290,6 @@ class DataLabelFold(object):
                     dataset_path=self.dataset_path,
                     transforms=None,
                     apply_transforms=False,
-                    dtype=dl.dtype,
-                    ltype=dl.ltype,
                     description="",
                     author="",
                     compression_level=9,

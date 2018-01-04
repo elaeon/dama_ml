@@ -56,27 +56,21 @@ class RegModel(BaseModel):
             dataset_path=settings["dataset_model_path"],
             apply_transforms=not dataset._applied_transforms,
             compression_level=9,
-            dtype=self.dtype,
             transforms=dataset.transforms,
-            ltype=self.ltype,
             chunks=1000,
             rewrite=True)
         dl_test = DataLabel(
             dataset_path=settings["dataset_model_path"],
             apply_transforms=not dataset._applied_transforms,
             compression_level=9,
-            dtype=self.dtype,
             transforms=dataset.transforms,
-            ltype=self.ltype,
             chunks=1000,
             rewrite=True)
         dl_validation = DataLabel(
             dataset_path=settings["dataset_model_path"],
             apply_transforms=not dataset._applied_transforms,
             compression_level=9,
-            dtype=self.dtype,
             transforms=dataset.transforms,
-            ltype=self.ltype,
             chunks=1000,
             rewrite=True)
 

@@ -183,15 +183,15 @@ class BaseModel(DataDrive):
             self.original_dataset_name = dataset.name
             self.train_ds, self.test_ds, self.validation_ds = self.reformat_all(dataset)
 
-    def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False, transform=True):
+    def chunk_iter(self, data, chunks_size=1, transform_fn=None, uncertain=False, transform=True):
         from ml.utils.seq import grouper_chunk
-        for chunk in grouper_chunk(chunk_size, data):
+        for chunk in grouper_chunk(chunks_size, data):
             data = np.asarray(list(chunk))
             size = data.shape[0]
             for prediction in self._predict(transform_fn(data, size, transform), raw=uncertain):
                 yield prediction
 
-    def predict(self, data, raw=False, transform=True, chunk_size=258):
+    def predict(self, data, raw=False, transform=True, chunks_size=258):
         def fn(x, s=None, t=True):
             with self.test_ds:
                 return self.test_ds.processing(x, apply_transforms=t)
@@ -199,16 +199,16 @@ class BaseModel(DataDrive):
         if self.model is None:
             self.load_model()
 
-        if not isinstance(chunk_size, int):
-            log.info("The parameter chunk_size must be an integer.")            
+        if not isinstance(chunks_size, int):
+            log.info("The parameter chunks_size must be an integer.")            
             log.info("Chunk size is set to 1")
-            chunk_size = 258
+            chunks_size = 258
 
         if isinstance(data, IterLayer):
             return IterLayer(self._predict(fn(x, t=transform), raw=raw))
         else:
-            if chunk_size > 0:
-                return IterLayer(self.chunk_iter(data, chunk_size, transform_fn=fn, 
+            if chunks_size > 0:
+                return IterLayer(self.chunk_iter(data, chunks_size, transform_fn=fn, 
                                                 uncertain=raw, transform=transform))
             else:
                 return IterLayer(self._predict(fn(data, t=transform), raw=raw))
