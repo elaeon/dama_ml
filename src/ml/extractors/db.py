@@ -1,8 +1,8 @@
 import csv
 from ml import fmtypes
-#from tqdm import tqdm
 import psycopg2
 from ml.layers import IterLayer
+import numpy as np
 
 
 class DBConection(object):
@@ -77,4 +77,4 @@ class SQL(object):
             order_by=order_by,
             limit=limit)
         cur.execute(query)
-        return IterLayer(cur, shape=self.shape)
+        return IterLayer(cur, shape=self.shape, dtype=np.dtype("O"))

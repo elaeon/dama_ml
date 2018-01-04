@@ -12,10 +12,26 @@ def linear_p(x, b, fmtypes=None):
     return x + b
 
 
-def parabole(x, fmtypes=None):
-    if x.shape[0] != 10:
-        raise Exception("Array size must be 10, but {} founded".format(x.shape[0]))
+def parabole(x, fmtypes=None, chunks_size=10):
+    if x.shape[0] > chunks_size:
+        raise Exception("Array size must be {}, but {} founded".format(chunks_size, x.shape[0]))
     return x*x
+
+
+def categorical(x, fmtypes=None):
+    for i, e in enumerate(x[:, 0]):
+        x[i, 0] = int(e.replace("x", ""))
+    return x
+
+
+def categorical2(x, fmtypes=None):
+    xo = np.empty(x.shape, dtype=np.dtype("float"))
+    xo[:,0] = x[:,0]
+    for i, e in enumerate(x[:, 1]):
+        xo[i, 1] = int(e.replace("x", ""))
+    for i, row in enumerate(x[:, 2:]):
+        xo[i, 2:] = row.astype(int)
+    return xo
 
 
 class FitIdent(Fit):
@@ -375,8 +391,21 @@ class TestTransforms(unittest.TestCase):
     def test_batch_transforms_row(self):
         X = np.random.rand(100, 4)
         transforms = Transforms()
-        transforms.add(parabole, o_features=4)
+        transforms.add(parabole, o_features=4, chunks_size=10)
         result = transforms.apply(X, chunks_size=10)
+
+    def test_transform_dtype(self):
+        X = np.asarray([
+            ["1x", "2", "3", "4"], 
+            ["5x", "6x", "7", "8"]], dtype=np.dtype("O"))
+        transforms = Transforms()
+        transforms.add(categorical, o_features=4, input_dtype=np.dtype("O"))
+        transforms.add(categorical2, o_features=4, input_dtype=np.dtype("O"))
+        transforms.add(linear_p, b=10, o_features=4, input_dtype=np.dtype("O"))
+        transforms.add(parabole, o_features=4, input_dtype=np.dtype("float"))
+        result = transforms.apply(X, chunks_size=10)
+        data = result.to_narray(dtype=np.dtype("int"))
+        self.assertItemsEqual(data[0], [121, 144, 169, 196])
 
 
 if __name__ == '__main__':

@@ -19,9 +19,10 @@ def choice(operator):
 
 
 class IterLayer(object):
-    def __init__(self, fn_iter, shape=None, dtype='float'):
+    def __init__(self, fn_iter, shape=None, dtype='float', chunks=False):
         self.shape = shape
         self.dtype = dtype
+        self.chunks = chunks
         if isinstance(fn_iter, types.GeneratorType):
             self.fn_iter = fn_iter
         elif isinstance(fn_iter, IterLayer):

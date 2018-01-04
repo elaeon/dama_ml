@@ -48,9 +48,10 @@ class TransformsRow(object):
 
     transforms.add(function2, {'x': 10}) -> function2(x=10)
     """
-    def __init__(self, o_features=None):
+    def __init__(self, o_features=None, input_dtype='float'):
         self.transforms = []
         self.o_features = o_features
+        self.input_dtype = input_dtype
 
     def __add__(self, o):
         all_transforms = TransformsRow.from_json(self.to_json())
@@ -126,8 +127,12 @@ class TransformsRow(object):
             locate_fn = {}
             i_features = data.shape[1:]
             chunk_shape = [chunks_size] + list(i_features)
-            for smx in grouper_chunk(chunks_size, data):
-                smx_a = np.empty(chunk_shape, dtype=np.float) #add dtype
+            if hasattr(data, 'chunks') and data.chunks is True:
+                chunks = data
+            else:
+                chunks = grouper_chunk(chunks_size, data)
+            for smx in chunks:
+                smx_a = np.empty(chunk_shape, dtype=self.input_dtype)
                 for i, row in enumerate(smx):
                     smx_a[i] = row
                 for fn_, params in self.transforms:
@@ -138,7 +143,7 @@ class TransformsRow(object):
             shape = [data.shape[0]] + list(self.o_features)
         else:
             shape = [data.shape[0], self.o_features]
-        return IterLayer(iter_(), shape=shape), fmtypes
+        return IterLayer(iter_(), shape=shape, chunks=True), fmtypes
 
 
 class TransformsCol(TransformsRow):
@@ -204,7 +209,7 @@ class Transforms(object):
     def cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
-    def add(self, fn, name=None, o_features=None, type="row", **params):
+    def add(self, fn, name=None, o_features=None, input_dtype="float", type="row", **params):
         """
         :type fn: function
         :param fn: function to add
@@ -219,16 +224,17 @@ class Transforms(object):
 
         if not self.is_empty():
             last_t_obj = self.transforms[-1]
-            if type == last_t_obj.type() and o_features == last_t_obj.o_features:
+            if type == last_t_obj.type() and o_features == last_t_obj.o_features\
+                and input_dtype == last_t_obj.input_dtype:
                 last_t_obj.add(fn, **params)
             else:
                 t_class = self.types[type]
-                t_obj = t_class(o_features=o_features)
+                t_obj = t_class(o_features=o_features, input_dtype=input_dtype)
                 t_obj.add(fn, **params)
                 self.transforms.append(t_obj)
         else:
             t_class = self.types[type]
-            t_obj = t_class(o_features=o_features)
+            t_obj = t_class(o_features=o_features, input_dtype=input_dtype)
             t_obj.add(fn, **params)
             self.transforms.append(t_obj)
 
@@ -280,18 +286,12 @@ class Transforms(object):
         :type data: array
         :param data: apply the transforms added to the data
         """
-        if self.is_empty():
-            return data
-        else:
+        if not self.is_empty():
             for t_obj in self.transforms:
                 log.debug("APPLY TRANSFORMS:" + str(t_obj.transforms))
                 log.debug("Transform type:" + t_obj.type())
                 data, fmtypes = t_obj.apply(data, fmtypes=fmtypes, chunks_size=chunks_size)
-
-            if data is None:
-                raise Exception
-            else:
-                return data
+        return data
 
     def destroy(self):
         for transform in self.transforms:
