@@ -1397,9 +1397,9 @@ class DataLabelFold(object):
                     author="",
                     compression_level=9,
                     rewrite=True)
-                with dsb:
-                    data = dl.data[:]
-                    labels = dl.labels[:]
+                data = dl.data[:]
+                labels = dl.labels[:]
+                with dsb:                    
                     dsb.build_dataset(data[train], labels[train]) 
                     #test_data=data[test], 
                     #    test_labels=labels[test], validation_data=data[validation], 

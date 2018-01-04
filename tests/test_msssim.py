@@ -60,12 +60,12 @@ class TestMsssiM(unittest.TestCase):
                                     feed_dict={image1: img, image2: img})
             tf_msssim_noise = sess.run(msssim_index,
                                      feed_dict={image1: img, image2: img_noise})
-        ###TF CALC END
-        #print('tf_ssim_none', tf_ssim_none)
-        #print('tf_ssim_noise', tf_ssim_noise)
-        #print('tf_msssim_none', tf_msssim_none)
-        #print('tf_msssim_noise', tf_msssim_noise)
-        self.assertEqual(tf_msssim_none, 1)
+            ###TF CALC END
+            #print('tf_ssim_none', tf_ssim_none)
+            #print('tf_ssim_noise', tf_ssim_noise)
+            #print('tf_msssim_none', tf_msssim_none)
+            #print('tf_msssim_noise', tf_msssim_noise)
+            self.assertEqual(tf_msssim_none, 1)
 
     def test_two_img(self):
         from skimage import io, img_as_float

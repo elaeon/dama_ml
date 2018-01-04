@@ -499,13 +499,12 @@ class TestDataSetFold(unittest.TestCase):
     def test_fold(self):
         n_splits = 5
         dsbf = DataLabelFold(n_splits=n_splits, dataset_path="/tmp")
-        with self.dataset:
-            dsbf.build_dataset(self.dataset)
-            for dsb in dsbf.get_splits():
-                with dsb:
-                    self.assertEqual(dsb.shape[0], 8)
-                    self.assertEqual(dsb.shape[1], 10)
-            self.assertEqual(len(dsbf.splits), n_splits)
+        dsbf.build_dataset(self.dataset)
+        for dsb in dsbf.get_splits():
+            with dsb:
+                self.assertEqual(dsb.shape[0], 8)
+                self.assertEqual(dsb.shape[1], 10)
+        self.assertEqual(len(dsbf.splits), n_splits)
         dsbf.destroy()
 
 
