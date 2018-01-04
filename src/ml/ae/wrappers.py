@@ -3,8 +3,8 @@ import tensorflow as tf
 import logging
 
 from ml.utils.config import get_settings
-from ml.models import MLModel, DataDrive
-from ml.ds import Data
+from ml.models import MLModel, BaseModel
+from ml.ds import Data, DataLabel
 from ml.layers import IterLayer
 
 settings = get_settings("ml")
@@ -21,138 +21,73 @@ if backend._BACKEND == "theano":
     raise Exception, "Theano does not support the autoencoders wrappers, change it with export KERAS_BACKEND=tensorflow"
 
 
-class BaseAe(DataDrive):
+class BaseAe(BaseModel):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
-                model_version=None, dataset_train_limit=None, info=True, 
-                autoload=True, group_name=None, latent_dim=2,
-                dtype='float64'):
-        self.model = None
+                model_version=None, autoload=True, group_name=None, latent_dim=2):
         self.model_encoder = None
         self.model_decoder = None
-        self.print_info = info
-        self.original_dataset = None
-        self.dataset = None
         self.latent_dim = latent_dim
-        self.ext = "ckpt"
-        self.dtype = dtype
-        #self.rewrite = rewrite
         super(BaseAe, self).__init__(
+            dataset=dataset,
+            autoload=autoload,
             check_point_path=check_point_path,
             model_version=model_version,
             model_name=model_name,
             group_name=group_name)
-        if autoload is True:
-            self.load_dataset(dataset)
-
-    @classmethod
-    def cls_name(cls):
-        return cls.__name__
-
-    @classmethod
-    def module_cls_name(cls):
-        return "{}.{}".format(cls.__module__, cls.__name__)
-
-    def reformat(self, dataset):
-        dataset = self.transform_shape(dataset)
-        return dataset
-
-    def transform_shape(self, data, size=None):
-        if size is None:
-            size = data.shape[0]
-        return data[:].reshape(size, -1)
 
     def reformat_all(self, dataset):
-        log.info("Reformating {}...".format(self.cls_name()))
-        with dataset:
-            ds = Data(
-                name=dataset.name+"_"+self.model_name+"_"+self.model_version+"_"+self.cls_name(),
+        if dataset.module_cls_name() == DataLabel.module_cls_name() or\
+            dataset._applied_transforms is False and not dataset.transforms.is_empty():
+            log.info("Reformating {}...".format(self.cls_name()))
+            train_ds = Data(
                 dataset_path=settings["dataset_model_path"],
                 apply_transforms=not dataset._applied_transforms,
                 compression_level=9,
-                dtype=self.dtype,
                 transforms=dataset.transforms,
-                chunks=1000,
                 rewrite=True)
 
-        with dataset, ds:
-            data = self.reformat(dataset.data)
-            ds.build_dataset(data)
-            ds.apply_transforms = True
-            ds._applied_transforms = dataset._applied_transforms
-        return ds
-
-    def load_dataset(self, dataset):
-        if dataset is None:
-            self.dataset = self.get_dataset()
+            with train_ds:
+                train_ds.build_dataset(dataset.data, chunks_size=1000)
+                train_ds.apply_transforms = True
+                train_ds._applied_transforms = dataset._applied_transforms
         else:
-            self.set_dataset(dataset)
+            train_ds = dataset
 
-        with self.dataset:
-            self.num_features = self.dataset.num_features()
-
-    def set_dataset(self, dataset):
-        self.original_dataset = dataset
-        self.dataset = self.reformat_all(dataset)
+        return train_ds, train_ds, train_ds
         
+    def scores(self, measures=None):
+        from ml.clf.measures import ListMeasure
+        return ListMeasure()
+
     def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False, decoder=True, transform=True):
         from ml.utils.seq import grouper_chunk
         for chunk in grouper_chunk(chunk_size, data):
             data = np.asarray(list(chunk))
-            size = data.shape[0]
-            for prediction in self._predict(transform_fn(data, size, transform), raw=uncertain, decoder=decoder):
+            for prediction in self._predict(transform_fn(data, transform), raw=uncertain, decoder=decoder):
                 yield prediction
 
-    def predict(self, data, raw=False, transform=True, chunk_size=258, model_type="decoder"):
-        def fn(x, s=None, t=True):
-            with self.dataset:
-                return self.transform_shape(self.dataset.processing(x, apply_transforms=t), size=s)
+    def predict(self, data, raw=False, transform=True, chunks_size=258, model_type="decoder"):
+        def fn(x, t=True):
+            with self.test_ds:
+                return self.test_ds.processing(x, apply_transforms=t, chunks_size=chunks_size)
 
         if self.model is None:
             self.load_model()
 
         decoder = model_type == "decoder"
-        if not isinstance(chunk_size, int):
+        if not isinstance(chunks_size, int):
             log.info("The parameter chunk_size must be an integer.")            
             log.info("Chunk size is set to 1")
-            chunk_size = 258
+            chunks_size = 258
 
         if isinstance(data, IterLayer):
             return IterLayer(self._predict(fn(x, t=transform), raw=raw))
         else:
-            if chunk_size > 0:
-                return IterLayer(self.chunk_iter(data, chunk_size, transform_fn=fn, 
+            if chunks_size > 0:
+                return IterLayer(self.chunk_iter(data, chunks_size, transform_fn=fn, 
                                                 uncertain=raw, transform=transform, decoder=decoder))
             else:
                 return IterLayer(self._predict(fn(data, t=transform), raw=raw, decoder=decoder))
-
-    def _metadata(self):
-        log.info("Generating metadata...")
-        with self.dataset, self.original_dataset:
-            return {"dataset_path": self.dataset.dataset_path,
-                    "dataset_name": self.dataset.name,
-                    "o_dataset_path": self.original_dataset.dataset_path,
-                    "o_dataset_name": self.original_dataset.name,
-                    "md5": self.original_dataset.md5, #not reformated dataset
-                    "group_name": self.group_name,
-                    "model_module": self.module_cls_name(),
-                    "model_name": self.model_name,
-                    "model_version": self.model_version}
-
-    def get_dataset(self):
-        from ml.ds import Data
-        meta = self.load_meta()
-        self.original_dataset = Data.original_ds(meta["o_dataset_name"], 
-            dataset_path=meta["o_dataset_path"])
-        dataset = Data.original_ds(meta["dataset_name"], dataset_path=meta["dataset_path"])
-        self.group_name = meta.get('group_name', None)
-        if meta.get('md5', None) != self.original_dataset.md5:
-            log.warning("The dataset md5 is not equal to the model '{}'".format(
-                self.__class__.__name__))
-        return dataset
-
-    def exist(self):
-        meta = self.load_meta()
-        return meta.get('dataset_name', "") != ""
 
 
 class Keras(BaseAe):

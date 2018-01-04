@@ -14,8 +14,7 @@ class TestSKL(unittest.TestCase):
     def setUp(self):
         self.X = np.random.rand(100, 10)
         self.Y = self.X[:,0] > .5
-        self.dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            ltype='int', rewrite=True)
+        self.dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
         with self.dataset:
             self.dataset.build_dataset(self.X, self.Y)
 
@@ -112,7 +111,7 @@ class TestGrid(unittest.TestCase):
 
         X = np.random.rand(100, 10)
         Y = (X[:,0] > .5).astype(int)
-        original_dataset = DataLabel("test", dataset_path="/tmp/", rewrite=True, ltype='int')
+        original_dataset = DataLabel("test", dataset_path="/tmp/", rewrite=True)
         with original_dataset:
             original_dataset.build_dataset(X, Y)
         self.original_dataset = original_dataset
@@ -124,7 +123,7 @@ class TestGrid(unittest.TestCase):
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
         from ml.clf.ensemble import Grid
 
-        dataset = DataLabel(name="testdl", dataset_path="/tmp/", ltype='int', rewrite=True)
+        dataset = DataLabel(name="testdl", dataset_path="/tmp/", rewrite=True)
         with self.original_dataset, dataset:
             dataset.build_dataset(self.original_dataset.data[:], 
                                 self.original_dataset.labels[:])
@@ -191,7 +190,7 @@ class TestGrid(unittest.TestCase):
             features = self.original_dataset.num_features()
             transforms = Transforms()
             transforms.add(mulp, o_features=features)
-            dataset = self.original_dataset.convert(name="test_dataset", ltype='int',
+            dataset = self.original_dataset.convert(name="test_dataset",
                 transforms=transforms, apply_transforms=True, dataset_path="/tmp/")
         
         rf = RandomForest(model_name="test_rf", model_version="1", dataset=dataset)

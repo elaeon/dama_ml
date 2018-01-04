@@ -33,10 +33,10 @@ class PTsne(Keras):
         from ml.utils.tf_functions import TSNe
         import numpy as np
         self.tsne = TSNe(batch_size=batch_size, perplexity=self.perplexity, dim=self.latent_dim)
-        with self.dataset:
-            limit = int(round(self.dataset.data.shape[0] * .9))
-            X = self.dataset.data[:limit]
-            Z = self.dataset.data[limit:]
+        with self.train_ds:
+            limit = int(round(self.train_ds.data.shape[0] * .9))
+            X = self.train_ds.data[:limit]
+            Z = self.train_ds.data[limit:]
         x = self.tsne.calculate_P(X)
         z = self.tsne.calculate_P(Z)
         self.prepare_model()
@@ -139,10 +139,10 @@ class VAE(Keras):
                 yield (X[i:i + batch_size], X[i:i + batch_size])
 
     def train(self, batch_size=100, num_steps=50):
-        with self.dataset:
-            limit = int(round(self.dataset.data.shape[0] * .9))
-            X = self.dataset.data[:limit]
-            Z = self.dataset.data[limit:]
+        with self.train_ds:
+            limit = int(round(self.train_ds.data.shape[0] * .9))
+            X = self.train_ds.data[:limit]
+            Z = self.train_ds.data[limit:]
         batch_size_x = min(X.shape[0], batch_size)
         batch_size_z = min(Z.shape[0], batch_size)
         self.batch_size = min(batch_size_x, batch_size_z)
@@ -222,10 +222,10 @@ class DAE(Keras):
                 yield (X[i:i + batch_size], X[i:i + batch_size])
 
     def train(self, batch_size=100, num_steps=50):
-        with self.dataset:
-            limit = int(round(self.dataset.data.shape[0] * .9))
-            X = self.dataset.data[:limit]
-            Z = self.dataset.data[limit:]
+        with self.train_ds:
+            limit = int(round(self.train_ds.data.shape[0] * .9))
+            X = self.train_ds.data[:limit]
+            Z = self.train_ds.data[limit:]
         batch_size_x = min(X.shape[0], batch_size)
         batch_size_z = min(Z.shape[0], batch_size)
         self.batch_size = min(batch_size_x, batch_size_z)

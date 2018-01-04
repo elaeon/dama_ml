@@ -36,7 +36,7 @@ class TestAE(unittest.TestCase):
         X = np.random.rand(1000, 10)
         X = (X * 10) % 2
         X = X.astype(int)
-        dataset = Data(name="test", dataset_path="/tmp/", rewrite=True, dtype="int")
+        dataset = Data(name="test", dataset_path="/tmp/", rewrite=True)
         with dataset:
             dataset.build_dataset(X)
 
@@ -44,16 +44,15 @@ class TestAE(unittest.TestCase):
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/",
-            intermediate_dim=5,
-            dtype="int")
+            intermediate_dim=5)
         vae.train(batch_size=1, num_steps=10)
 
         vae = VAE( 
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
-        encoder = np.asarray(list(vae.predict(X[0:1], chunk_size=10, model_type="encoder")))
-        decoder = np.asarray(list(vae.predict(X[0:1], chunk_size=10, model_type="decoder")))
+        encoder = np.asarray(list(vae.predict(X[0:1], chunks_size=10, model_type="encoder")))
+        decoder = np.asarray(list(vae.predict(X[0:1], chunks_size=10, model_type="decoder")))
         self.assertEqual(encoder.shape, (1, 2))
         self.assertEqual(decoder.shape, (1, 10))
         dataset.destroy()
@@ -64,7 +63,7 @@ class TestAE(unittest.TestCase):
         X = np.random.rand(1000, 10)
         X = (X * 10) % 2
         X = X.astype(int)
-        dataset = Data(name="test", dataset_path="/tmp/", rewrite=True, dtype="int")
+        dataset = Data(name="test", dataset_path="/tmp/", rewrite=True)
         with dataset:
             dataset.build_dataset(X)
 
@@ -72,18 +71,16 @@ class TestAE(unittest.TestCase):
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/",
-            intermediate_dim=5,
-            dtype="int")
+            intermediate_dim=5)
         dae.train(batch_size=1, num_steps=10)
 
         dae = DAE( 
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
-        encoder = np.asarray(list(dae.predict(X[0:1], chunk_size=10, model_type="encoder")))
+        encoder = np.asarray(list(dae.predict(X[0:1], chunks_size=10, model_type="encoder")))
         #decoder = np.asarray(list(dae.predict(X[0:1], chunk_size=10, model_type="decoder")))
         #print(encoder)
-
         dataset.destroy()
         dae.destroy()
 

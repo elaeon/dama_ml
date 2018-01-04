@@ -45,7 +45,7 @@ class ClassifModel(BaseModel):
             test_labels = self.test_ds.labels[:]
 
         predictions = np.asarray(list(tqdm(
-            self.predict(test_data, raw=measures.has_uncertain(), transform=False, chunk_size=0), 
+            self.predict(test_data, raw=measures.has_uncertain(), transform=False, chunks_size=0), 
             total=test_labels.shape[0])))
         measures.set_data(predictions, test_labels, self.numerical_labels2classes)
         log.info("Getting scores")
@@ -57,7 +57,7 @@ class ClassifModel(BaseModel):
             test_data = self.test_ds.data[:]
             test_labels = self.test_ds.labels[:]
         predictions = self.predict(test_data, raw=False, 
-            transform=False, chunk_size=0)
+            transform=False, chunks_size=0)
         measure = metrics.Measure(np.asarray(list(tqdm(predictions, 
                         total=test_labels.shape[0]))),
                         test_labels, 
@@ -281,9 +281,9 @@ class TFL(ClassifModel):
                             load_fn=self.load_fn,
                             save_fn=model.save)
 
-    def predict(self, data, raw=False, transform=True, chunk_size=1):
+    def predict(self, data, raw=False, transform=True, chunks_size=1):
         with tf.Graph().as_default():
-            return super(TFL, self).predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
+            return super(TFL, self).predict(data, raw=raw, transform=transform, chunks_size=chunks_size)
 
     def train(self, batch_size=10, num_steps=1000, n_splits=None):
         with tf.Graph().as_default():

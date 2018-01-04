@@ -126,12 +126,12 @@ class ReadWriteData(object):
             log.debug("Error opening {} in file {}".format(name, self.url()))
             return None
 
-    def chunks_writer(self, name, data, chunks=258, init=0):
+    def chunks_writer(self, name, data, chunks_size=258, init=0):
         from ml.utils.seq import grouper_chunk
         from tqdm import tqdm
-        log.info("chunk size {}".format(chunks))
+        log.info("chunks size {}".format(chunks_size))
         end = init
-        for smx in tqdm(grouper_chunk(chunks, data)):
+        for smx in tqdm(grouper_chunk(chunks_size, data)):
             for chunk in smx:
                 if len(chunk.shape) >= 2:
                     end += chunk.shape[0]
@@ -471,9 +471,10 @@ class Data(ReadWriteData):
         """
         build a datalabel dataset from data and labels
         """
-        data = self.processing(data, apply_transforms=self.apply_transforms)
+        data = self.processing(data, apply_transforms=self.apply_transforms,
+                            chunks_size=chunks_size)
         self._set_space_shape('data', data.shape, data.dtype)
-        end = self.chunks_writer("/data/data", data, chunks=chunks_size)
+        end = self.chunks_writer("/data/data", data, chunks_size=chunks_size)
         self._set_space_fmtypes(self.num_features())
         self.build_fmtypes()
         self.md5 = self.calc_md5()
@@ -520,7 +521,7 @@ class Data(ReadWriteData):
         data._applied_transforms = self._applied_transforms
         return data
 
-    def processing(self, data, apply_transforms=True):
+    def processing(self, data, apply_transforms=True, chunks_size=258):
         """
         :type data: array
         :param data: data to transform
@@ -533,7 +534,7 @@ class Data(ReadWriteData):
 
         """
         if apply_transforms and not self.transforms.is_empty():
-            return self.transforms.apply(data, fmtypes=self.fmtypes)
+            return self.transforms.apply(data, fmtypes=self.fmtypes, chunks_size=chunks_size)
         else:
             return data if isinstance(data, np.ndarray) else np.asarray(data) #IterLayer(data, shape=data.shape)
 
@@ -726,15 +727,6 @@ class DataLabel(Data):
         s_labels = set(labels)
         return zip(*filter(lambda x: x[1] in s_labels, zip(ds.data, ds.labels)))
 
-    #def ltype_t(self, labels):
-    #    """
-    #    :type labels: narray
-    #    :param labels: narray to cast
-
-    #    cast the labels to the predefined dataset ltype
-    #    """
-    #    return self.type_t(self.ltype, labels)
-
     def info(self, classes=False):
         """
         :type classes: bool
@@ -767,11 +759,12 @@ class DataLabel(Data):
         """
         build a datalabel dataset from data and labels
         """
-        data = self.processing(data, apply_transforms=self.apply_transforms)
+        data = self.processing(data, apply_transforms=self.apply_transforms, 
+                            chunks_size=chunks_size)
         self._set_space_shape('data', data.shape, data.dtype)
         self._set_space_shape('labels', labels.shape, labels.dtype)
-        end = self.chunks_writer("/data/data", data, chunks=chunks_size)
-        end = self.chunks_writer("/data/labels", labels, chunks=chunks_size)
+        end = self.chunks_writer("/data/data", data, chunks_size=chunks_size)
+        end = self.chunks_writer("/data/labels", labels, chunks_size=chunks_size)
         self._set_space_fmtypes(self.num_features())
         self.build_fmtypes()
         self.md5 = self.calc_md5()
@@ -852,28 +845,25 @@ class DataLabel(Data):
         """
         removel the outlayers of the data
         """
-        dl = self.desfragment()
-        with dl:
-            shape = tuple([dl.shape[0] - len(outlayers)] + list(dl.shape[1:]))
-            outlayers = iter(outlayers)
-            outlayer = outlayers.next()
-            data = np.empty(shape)
-            labels = np.empty((shape[0],))
-            counter = 0
-            for index, row in enumerate(dl.data):
-                if index == outlayer:
-                    try:
-                        outlayer = outlayers.next()
-                    except StopIteration:
-                        outlayer = None
-                else:
-                    data[counter] = dl.data[index]
-                    labels[counter] = dl.labels[index]
-                    counter += 1
+        shape = tuple([self.shape[0] - len(outlayers)] + list(self.shape[1:]))
+        outlayers = iter(outlayers)
+        outlayer = outlayers.next()
+        data = np.empty(shape)
+        labels = np.empty((shape[0],))
+        counter = 0
+        for index, row in enumerate(self.data):
+            if index == outlayer:
+                try:
+                    outlayer = outlayers.next()
+                except StopIteration:
+                    outlayer = None
+            else:
+                data[counter] = dl.data[index]
+                labels[counter] = dl.labels[index]
+                counter += 1
         dl_ol = self.empty(self.name+"_n_outlayer", apply_transforms=self.apply_transforms)
         with dl_ol:
             dl_ol.build_dataset(data, labels)
-        dl.destroy()
         return dl_ol
 
     def to_data(self):

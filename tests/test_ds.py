@@ -225,14 +225,13 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
 
     def test_outlayer(self):
-        with DataLabel(
-            name="test_ds",
-            dataset_path="/tmp/",
-            rewrite=True) as dataset:
+        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", rewrite=True)
+        with dataset:
             dataset.build_dataset(self.X, self.Y)
             outlayers = dataset.outlayers()
-            dataset.remove_outlayers(list(outlayers))
+            ds_no_outlayer = dataset.remove_outlayers(list(outlayers))
             dataset.destroy()
+            ds_no_outlayer.destroy()
 
     def test_ds_build(self):
         X = np.asarray([
@@ -479,7 +478,6 @@ class TestDataSetFold(unittest.TestCase):
         self.dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            ltype='int',
             rewrite=True)
         with self.dataset:
             self.dataset.build_dataset(self.X, self.Y)

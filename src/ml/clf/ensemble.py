@@ -98,7 +98,7 @@ class Grid(DataDrive):
 
         with self.classifs[0].test_ds as test_ds:
             test_labels = test_ds.labels[:]
-        predictions = np.asarray(list(tqdm(self.predict_test(raw=measures.has_uncertain(), chunk_size=0),
+        predictions = np.asarray(list(tqdm(self.predict_test(raw=measures.has_uncertain(), chunks_size=0),
             total=test_labels.shape[0])))
         measures.set_data(predictions, test_labels, self.numerical_labels2classes)
         list_measure = measures.to_list()
@@ -163,21 +163,21 @@ class Grid(DataDrive):
         best = self.ordered_best_predictors(measure=measure)[0].counter
         return best
 
-    def predict_test(self, raw=False, chunk_size=258):
+    def predict_test(self, raw=False, chunks_size=258):
         def iter_():
             for classif in self.classifs:
                 with classif.test_ds as test_ds:
                     test_data = test_ds.data[:]
                 yield classif.predict(test_data, raw=raw, transform=False, 
-                                        chunk_size=chunk_size)
+                                        chunks_size=chunks_size)
 
         return self.output_layer(iter_)
 
-    def predict(self, data, raw=False, transform=True, chunk_size=258):
+    def predict(self, data, raw=False, transform=True, chunks_size=258):
         def iter_():
             for classif in self.classifs:
                 yield classif.predict(data, raw=raw, transform=transform, 
-                                    chunk_size=chunk_size)
+                                    chunks_size=chunks_size)
         return self.output_layer(iter_)
 
     def output_layer(self, iter_):
@@ -236,7 +236,7 @@ class EnsembleLayers(DataDrive):
         self.layers[0].save_model()
         with self.dataset:
             y_submission = self.layers[0].predict(self.dataset.data[:], #fix add train and validation 
-                transform=not self.dataset._applied_transforms, raw=True, chunk_size=258)
+                transform=not self.dataset._applied_transforms, raw=True, chunks_size=258)
             test_labels = self.dataset.labels[:] #fix add train and validation
             nrows = test_labels.shape[0]
 
@@ -289,7 +289,7 @@ class EnsembleLayers(DataDrive):
 
         predictions = np.asarray(list(tqdm(
             self.predict(test_data, raw=measures.has_uncertain(), 
-                    transform=not applied_transforms, chunk_size=258), 
+                    transform=not applied_transforms, chunks_size=258), 
             total=test_labels.shape[0])))
         measures.set_data(predictions, test_labels, self.numerical_labels2classes)
         return measures.to_list()
@@ -312,13 +312,13 @@ class EnsembleLayers(DataDrive):
             "num_layers": len(self.layers),
             "group_name": self.group_name}
 
-    def predict(self, data, raw=False, transform=True, chunk_size=1):
+    def predict(self, data, raw=False, transform=True, chunks_size=1):
         for (raw_l, transform_l), layer in zip([(True, transform), (raw, False)], self.layers):
             if layer.fn_output is None:
                 layer.output("avg")
 
             data = np.asarray(list(layer.predict(data, raw=raw_l, 
-                transform=transform_l, chunk_size=chunk_size)))
+                transform=transform_l, chunks_size=chunks_size)))
 
         if self.layers[0].fn_output == "stack":
             size = len(self.layers[0].classifs)
@@ -443,12 +443,12 @@ class Boosting(Grid):
                 weights[c_index] = min_value
         return weights
 
-    def predict(self, data, raw=False, transform=True, chunk_size=1):
+    def predict(self, data, raw=False, transform=True, chunks_size=1):
         models = (self.load_model(classif, namespace=self.meta_name+".0") 
                     for classif, _ in self.classifs[self.meta_name+".0"])
         weights = [w for i, w in sorted(self.weights.items(), key=lambda x:x[0])]
         predictions = (
-            classif.predict(data, raw=raw, transform=transform, chunk_size=chunk_size)
+            classif.predict(data, raw=raw, transform=transform, chunks_size=chunks_size)
             for classif in models)
         return self.avg_prediction(predictions, weights, uncertain=raw)
 
@@ -466,7 +466,7 @@ class Boosting(Grid):
                 clf_class, _ = self.classifs[self.meta_name+".0"][index]
                 classif = self.load_model(clf_class, namespace=self.meta_name+".0")
                 predictions[index] = np.asarray(list(classif.predict(
-                    classif.dataset.test_data, raw=None, transform=False, chunk_size=258)))
+                    classif.dataset.test_data, raw=None, transform=False, chunks_size=258)))
                 best_predictors.append(index)
             return predictions
 

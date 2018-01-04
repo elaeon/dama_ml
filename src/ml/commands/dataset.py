@@ -5,7 +5,7 @@ from ml.utils.order import order_table_print
 from ml.utils.numeric_functions import humanize_bytesize
 from ml.clf.wrappers import DataDrive
 from ml.clf.measures import ListMeasure
-from ml.ds import DataSetBuilder, DataLabel, Data
+from ml.ds import DataLabel, Data
 from ml.utils.files import rm, get_models_path
 from ml.utils.files import get_date_from_file, get_models_from_dataset
 
@@ -22,7 +22,7 @@ def run(args):
     elif args.rm:
         try:
             for ds in args.rm:
-                dataset = DataSetBuilder(ds)
+                dataset = Data.original_ds(ds)
                 print("Dataset: {}".format(dataset.url()))
                 rm(dataset.url())
         except IOError:
@@ -67,7 +67,7 @@ def dataset_model_relation():
     dataset_md5 = {}
     for parent, datasets_name in datasets.items():
         for dataset_name in datasets_name:
-            dataset = DataSetBuilder(dataset_name)
+            dataset = Data.original_ds(dataset_name)
             dataset_md5[dataset.md5()] = dataset_name
     return dataset_md5
 

@@ -30,7 +30,7 @@ class RegModel(BaseModel):
             test_labels = self.test_ds.labels[:]
 
         predictions = np.asarray(list(tqdm(
-            self.predict(test_data, raw=measures.has_uncertain(), transform=False, chunk_size=0), 
+            self.predict(test_data, raw=measures.has_uncertain(), transform=False, chunks_size=0), 
             total=test_labels.shape[0])))
         measures.set_data(predictions, test_labels, None)
         log.info("Getting scores")
@@ -41,7 +41,7 @@ class RegModel(BaseModel):
             test_data = self.test_ds.data[:]
             test_labes = self.test_ds.labels[:]
         predictions = self.predict(test_data, raw=False, transform=False, 
-                                chunk_size=0)
+                                chunks_size=0)
         measure = metrics.Measure(np.asarray(list(tqdm(predictions, 
                         total=test_labels.shape[0]))),
                         test_labels, 
@@ -57,21 +57,18 @@ class RegModel(BaseModel):
             apply_transforms=not dataset._applied_transforms,
             compression_level=9,
             transforms=dataset.transforms,
-            chunks=1000,
             rewrite=True)
         dl_test = DataLabel(
             dataset_path=settings["dataset_model_path"],
             apply_transforms=not dataset._applied_transforms,
             compression_level=9,
             transforms=dataset.transforms,
-            chunks=1000,
             rewrite=True)
         dl_validation = DataLabel(
             dataset_path=settings["dataset_model_path"],
             apply_transforms=not dataset._applied_transforms,
             compression_level=9,
             transforms=dataset.transforms,
-            chunks=1000,
             rewrite=True)
 
         train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv()

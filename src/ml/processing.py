@@ -116,7 +116,7 @@ class TransformsRow(object):
             transforms.add(locate(fn), **params)
         return transforms
 
-    def apply(self, data, fmtypes=None, chunk_size=258):
+    def apply(self, data, fmtypes=None, chunks_size=258):
         """
         :type data: array
         :param data: apply the transforms to the data
@@ -125,8 +125,8 @@ class TransformsRow(object):
         def iter_():
             locate_fn = {}
             i_features = data.shape[1:]
-            chunk_shape = [chunk_size] + list(i_features)
-            for smx in grouper_chunk(chunk_size, data):
+            chunk_shape = [chunks_size] + list(i_features)
+            for smx in grouper_chunk(chunks_size, data):
                 smx_a = np.empty(chunk_shape, dtype=np.float) #add dtype
                 for i, row in enumerate(smx):
                     smx_a[i] = row
@@ -167,7 +167,7 @@ class TransformsCol(TransformsRow):
 
             yield fn(data, name=name, fmtypes=fmtypes, **n_params)
 
-    def apply(self, data, fmtypes=None, chunk_size=None):
+    def apply(self, data, fmtypes=None, chunks_size=None):
         """
         :type data: array
         :param data: apply the transforms added to the data
@@ -275,7 +275,7 @@ class Transforms(object):
                         print(e.message)
         return transforms
 
-    def apply(self, data, fmtypes=None, chunk_size=258):
+    def apply(self, data, fmtypes=None, chunks_size=258):
         """
         :type data: array
         :param data: apply the transforms added to the data
@@ -286,7 +286,7 @@ class Transforms(object):
             for t_obj in self.transforms:
                 log.debug("APPLY TRANSFORMS:" + str(t_obj.transforms))
                 log.debug("Transform type:" + t_obj.type())
-                data, fmtypes = t_obj.apply(data, fmtypes=fmtypes, chunk_size=chunk_size)
+                data, fmtypes = t_obj.apply(data, fmtypes=fmtypes, chunks_size=chunks_size)
 
             if data is None:
                 raise Exception
@@ -379,11 +379,11 @@ class FitTsne(Fit):
 
         tsne = PTsne(model_name=self.name, model_version="1", autoload=False)
         if not tsne.exist():
-            dataset = Data(dataset_path="/tmp", dtype="float64", rewrite=True)
+            dataset = Data(dataset_path="/tmp", rewrite=True)
             with dataset:
                 dataset.build_dataset(data)
             tsne = PTsne(model_name=self.name, model_version="1", 
-                        dataset=dataset, latent_dim=2, dtype='float64')
+                        dataset=dataset, latent_dim=2)
             tsne.train(batch_size=50, num_steps=4)
         else:
             tsne.load_dataset(None)
@@ -394,7 +394,7 @@ class FitTsne(Fit):
         from itertools import izip
 
         def iter_():
-            for row, predict in izip(data, self.t(self.dim_rule(data), chunk_size=5000)):
+            for row, predict in izip(data, self.t(self.dim_rule(data), chunks_size=5000)):
                 yield np.append(row, list(predict), axis=0)
 
         return IterLayer(iter_(), shape=(data.shape[0], data.shape[1]+2))

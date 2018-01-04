@@ -165,7 +165,7 @@ class TestTransforms(unittest.TestCase):
         X = np.random.rand(100, 2)
         Y = (X[:,0] > .5).astype(float)
         dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            dtype='int', ltype='int', transforms=transforms, rewrite=True)
+            transforms=transforms, rewrite=True)
         with dataset:
             dataset.build_dataset(X, Y)
         classif = RandomForest(dataset=dataset, 
@@ -186,8 +186,7 @@ class TestTransforms(unittest.TestCase):
     
         X = np.asarray([1, 0]*10)
         Y = X*1
-        dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            dtype='int', ltype='int', rewrite=True)
+        dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
         with dataset:
             try:
                 dataset.build_dataset(X, Y)
@@ -205,7 +204,7 @@ class TestTransforms(unittest.TestCase):
         X = np.random.rand(100, 4)
         Y = X[:,0] > .5
         dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            ltype='float64', transforms=transforms, rewrite=True, apply_transforms=True)
+            transforms=transforms, rewrite=True, apply_transforms=True)
         with dataset:
             dataset.build_dataset(X, Y)
             shape = dataset.shape
@@ -224,7 +223,7 @@ class TestTransforms(unittest.TestCase):
         X = np.random.rand(1000, 4)
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
         dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            ltype='float64', transforms=transforms, rewrite=True, apply_transforms=True)
+            transforms=transforms, rewrite=True, apply_transforms=True)
         with dataset:
             dataset.build_dataset(X, Y)
             dataset.info()
@@ -249,10 +248,10 @@ class TestTransforms(unittest.TestCase):
         X = np.random.rand(1000, 4)
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
         dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            ltype='float64', transforms=transforms, rewrite=True, apply_transforms=False)
+            transforms=transforms, rewrite=True, apply_transforms=False)
         with dataset:
             dataset.build_dataset(X, Y)
-            dsb = dataset.convert(name="test2", apply_transforms=True, ltype="float64")
+            dsb = dataset.convert(name="test2", apply_transforms=True)
         with dsb:
             shape = dsb.shape
         transforms.destroy()
@@ -287,7 +286,7 @@ class TestTransforms(unittest.TestCase):
         X = np.random.rand(1000, 4)
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
         dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            ltype='float64', transforms=transforms, rewrite=True, apply_transforms=True)
+            transforms=transforms, rewrite=True, apply_transforms=True)
         with dataset:
             dataset.build_dataset(X, Y)
             self.assertEqual(dataset._applied_transforms, True)
@@ -295,14 +294,14 @@ class TestTransforms(unittest.TestCase):
         transforms.add(FitRobustScaler, name="scaler", type="column")
         with dataset:
             dsb = dataset.convert(name="test2", apply_transforms=True, 
-                transforms=transforms, ltype="float64", dataset_path="/tmp")
+                transforms=transforms, dataset_path="/tmp")
         with dsb:
             self.assertEqual(dsb._applied_transforms, True)
         dataset.destroy()
         dsb.destroy()
 
         dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            ltype='float64', transforms=transforms, rewrite=True, apply_transforms=False)
+            transforms=transforms, rewrite=True, apply_transforms=False)
         with dataset:
             dataset.build_dataset(X, Y)
             self.assertEqual(dataset._applied_transforms, False)
@@ -310,14 +309,14 @@ class TestTransforms(unittest.TestCase):
         transforms.add(FitRobustScaler, name="scaler", type="column")
         with dataset:
             dsb = dataset.convert(name="test2", apply_transforms=True, 
-                transforms=transforms, ltype="float64", dataset_path="/tmp")
+                transforms=transforms, dataset_path="/tmp")
         with dsb:
             self.assertEqual(dsb._applied_transforms, True)
         dataset.destroy()
         dsb.destroy()
 
         dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            ltype='float64', transforms=transforms, rewrite=True, apply_transforms=True)
+            transforms=transforms, rewrite=True, apply_transforms=True)
         with dataset:
             dataset.build_dataset(X, Y)
             dsb = dataset.copy(dataset_path="/tmp")
@@ -327,7 +326,7 @@ class TestTransforms(unittest.TestCase):
         dsb.destroy()
 
         dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            ltype='float64', transforms=transforms, rewrite=True, apply_transforms=False)
+            transforms=transforms, rewrite=True, apply_transforms=False)
         with dataset:
             dataset.build_dataset(X, Y)
             dsb = dataset.copy(dataset_path="/tmp")
@@ -377,7 +376,7 @@ class TestTransforms(unittest.TestCase):
         X = np.random.rand(100, 4)
         transforms = Transforms()
         transforms.add(parabole, o_features=4)
-        result = transforms.apply(X, chunk_size=10)
+        result = transforms.apply(X, chunks_size=10)
 
 
 if __name__ == '__main__':

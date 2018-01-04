@@ -126,6 +126,10 @@ class DataDrive(object):
     def module_cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
+    def exist(self):
+        meta = self.load_meta()
+        return meta.get('original_dataset_name', "") != ""
+
 
 class BaseModel(DataDrive):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
@@ -194,7 +198,7 @@ class BaseModel(DataDrive):
     def predict(self, data, raw=False, transform=True, chunks_size=258):
         def fn(x, s=None, t=True):
             with self.test_ds:
-                return self.test_ds.processing(x, apply_transforms=t)
+                return self.test_ds.processing(x, apply_transforms=t, chunks_size=chunks_size)
 
         if self.model is None:
             self.load_model()
