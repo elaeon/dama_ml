@@ -258,7 +258,7 @@ class TestGrid(unittest.TestCase):
         from ml.processing import FitRobustScaler, Transforms
 
         transforms = Transforms()
-        transforms.add(FitRobustScaler, type="column")
+        transforms.add(FitRobustScaler)
         with self.original_dataset:
             ds0 = self.original_dataset.add_transforms(transforms, name="ds_test_0")
 

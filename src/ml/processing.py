@@ -12,6 +12,7 @@ import numpy as np
 import json
 import uuid
 import sys
+import inspect
 
 from ml.utils.config import get_settings
 from ml.layers import IterLayer
@@ -38,7 +39,7 @@ def pixelate_mode(mode):
         return max
 
 
-class TransformsRow(object):
+class TransformsFn(object):
     """
     In this class are deposit the functions for apply to the data.
     
@@ -51,10 +52,10 @@ class TransformsRow(object):
     def __init__(self, o_features=None, input_dtype='float'):
         self.transforms = []
         self.o_features = o_features
-        self.input_dtype = input_dtype
+        self.input_dtype = np.dtype(input_dtype)
 
     def __add__(self, o):
-        all_transforms = TransformsRow.from_json(self.to_json())
+        all_transforms = TransformsFn.from_json(self.to_json())
         for fn, params in o.transforms:
             all_transforms.add(locate(fn), **params)
         return all_transforms
@@ -63,8 +64,9 @@ class TransformsRow(object):
     def cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
+    @classmethod
     def type(self):
-        return "row"
+        return "fn"
 
     def add(self, fn, **params):
         """
@@ -100,19 +102,22 @@ class TransformsRow(object):
         return json.dumps(self.info())
 
     def info(self):
-        return {"o_features": self.o_features, "transforms": self.transforms}
+        return {"o_features": self.o_features, "transforms": self.transforms,
+                "input_dtype": self.input_dtype.str}
 
     @classmethod
     def from_json(self, json_transforms):
         """
         from json format to Transform class.
         """
-        return self._from_json(json_transforms, TransformsRow)
+        return self._from_json(json_transforms, TransformsFn)
         
     @classmethod
     def _from_json(self, json_transforms, transform_base_class):
         transforms_loaded = json.loads(json_transforms)#, object_pairs_hook=OrderedDict)
-        transforms = transform_base_class(o_features=transforms_loaded.get("o_features", None))
+        transforms = transform_base_class(
+            o_features=transforms_loaded.get("o_features", None), 
+            input_type=transforms_loaded.get("input_type", 'float'))
         for fn, params in transforms_loaded["transforms"]:
             transforms.add(locate(fn), **params)
         return transforms
@@ -146,17 +151,18 @@ class TransformsRow(object):
         return IterLayer(iter_(), shape=shape, chunks=True), fmtypes
 
 
-class TransformsCol(TransformsRow):
+class TransformsClass(TransformsFn):
     
+    @classmethod
     def type(self):
-        return "column"
+        return "class"
 
     @classmethod
     def from_json(self, json_transforms):
         """
         from json format to Transform class.
         """
-        return self._from_json(json_transforms, TransformsCol)
+        return self._from_json(json_transforms, TransformsClass)
 
     def initial_fn(self, data, fmtypes=None):
         for fn, params in self.transforms:
@@ -203,13 +209,12 @@ class Transforms(object):
     """
     def __init__(self):
         self.transforms = []
-        self.types = {"row": TransformsRow, "column": TransformsCol}
 
     @classmethod
     def cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
-    def add(self, fn, name=None, o_features=None, input_dtype="float", type="row", **params):
+    def add(self, fn, name=None, o_features=None, input_dtype="float", **params):
         """
         :type fn: function
         :param fn: function to add
@@ -219,21 +224,20 @@ class Transforms(object):
 
         This function add to the class the functions to use with the data.
         """
-        if name is not None and type == "column":
+        t_class = TransformsClass if inspect.isclass(fn) else TransformsFn
+        if name is not None and t_class.type() == TransformsClass.type():
             params["name_00_ml"] = name
 
         if not self.is_empty():
             last_t_obj = self.transforms[-1]
-            if type == last_t_obj.type() and o_features == last_t_obj.o_features\
+            if t_class.type() == last_t_obj.type() and o_features == last_t_obj.o_features\
                 and input_dtype == last_t_obj.input_dtype:
                 last_t_obj.add(fn, **params)
             else:
-                t_class = self.types[type]
                 t_obj = t_class(o_features=o_features, input_dtype=input_dtype)
                 t_obj.add(fn, **params)
                 self.transforms.append(t_obj)
         else:
-            t_class = self.types[type]
             t_obj = t_class(o_features=o_features, input_dtype=input_dtype)
             t_obj.add(fn, **params)
             self.transforms.append(t_obj)
@@ -254,7 +258,7 @@ class Transforms(object):
         all_transforms = Transforms.from_json(self.to_json())
         for transform in o.transforms:
             for fn, params in transform.transforms:
-                all_transforms.add(locate(fn), type=transform.type(), **params)
+                all_transforms.add(locate(fn), **params)
         return all_transforms
 
     def to_json(self):
@@ -276,7 +280,7 @@ class Transforms(object):
                 for fn, params in transforms_dict["transforms"]:
                     try:
                         transforms.add(locate(fn), o_features=transforms_dict["o_features"], 
-                                        type=type_, **params)
+                                        **params)
                     except Exception, e:
                         print(e.message)
         return transforms

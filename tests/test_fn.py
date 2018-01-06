@@ -20,7 +20,7 @@ class TestLinearOutLayer(unittest.TestCase):
         from sklearn.ensemble import IsolationForest
         df = pd.DataFrame(data=self.data)
         transforms = Transforms()
-        transforms.add(FitStandardScaler, type="column")
+        transforms.add(FitStandardScaler)
         dl = DataLabel(name="test", dataset_path="/tmp", transforms=transforms, 
             apply_transforms=True, rewrite=True)
         with dl:
@@ -33,7 +33,7 @@ class TestLinearOutLayer(unittest.TestCase):
     def test_linear_outlayer2(self):
         df = pd.DataFrame(data=self.data)
         transforms = Transforms()
-        transforms.add(FitStandardScaler, type="column")
+        transforms.add(FitStandardScaler)
         ds = DataLabel(name="test", dataset_path="/tmp", transforms=transforms, 
             apply_transforms=True, rewrite=True)
         with ds:
