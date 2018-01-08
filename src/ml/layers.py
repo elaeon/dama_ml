@@ -3,6 +3,7 @@ import operator
 import collections
 import itertools
 import types
+import numpy as np
 
 
 def choice(operator):
@@ -19,16 +20,37 @@ def choice(operator):
 
 
 class IterLayer(object):
-    def __init__(self, fn_iter, shape=None, dtype='float', chunks=False):
+    def __init__(self, fn_iter, shape=None, dtype='float', chunks=False, to_chunks=False):
         self.shape = shape
-        self.dtype = dtype
+        self.dtype = np.dtype(dtype)
         self.chunks = chunks
+        self.to_chunks = to_chunks
         if isinstance(fn_iter, types.GeneratorType):
-            self.fn_iter = fn_iter
+            _fn_iter = fn_iter
         elif isinstance(fn_iter, IterLayer):
-            self.fn_iter = fn_iter.fn_iter
+            _fn_iter = fn_iter.fn_iter
         else:
-            self.fn_iter = (e for e in fn_iter)
+            _fn_iter = (e for e in fn_iter)
+
+        if self.to_chunks:
+            self.chunks = True
+            self.fn_iter = self.gen_chunks(_fn_iter)
+        else:
+            self.fn_iter = _fn_iter
+
+    def gen_chunks(self, fn_iter, chunks_size=258):
+        from ml.utils.seq import grouper_chunk
+        if len(self.shape) == 1:
+            chunk_shape = [chunks_size]
+        else:
+            i_features = self.shape[1:]
+            chunk_shape = [chunks_size] + list(i_features)
+
+        for smx in grouper_chunk(chunks_size, fn_iter):
+            smx_a = np.empty(chunk_shape, dtype=self.dtype)
+            for i, row in enumerate(smx):
+                smx_a[i] = row[0]
+            yield smx_a[:i+1]
 
     @property
     def shape(self):

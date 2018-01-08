@@ -131,14 +131,30 @@ class ReadWriteData(object):
         from tqdm import tqdm
         log.info("chunks size {}".format(chunks_size))
         end = init
-        for smx in tqdm(grouper_chunk(chunks_size, data)):
-            for chunk in smx:
-                if len(chunk.shape) >= 2:
-                    end += chunk.shape[0]
-                else:
-                    end += 1
-                self.f[name][init:end] = chunk
-                init = end
+        if len(data.shape) == 1:
+            chunk_shape = (chunks_size,)
+        else:
+            chunk_shape = [chunks_size] + list(data.shape[1:])
+        if hasattr(data, 'chunks') and data.chunks is True:
+            has_chunks = True
+            chunks = data
+        else:
+            chunks = grouper_chunk(chunks_size, data)
+            has_chunks = False
+        for smx in tqdm(chunks, total=data.shape[0]/float(chunks_size)):
+            if has_chunks is False:
+                smx_a = np.empty(chunk_shape, dtype=data.dtype)
+                for i, row in enumerate(smx):
+                    smx_a[i] = row
+                chunk = smx_a[:i+1]
+            else:
+                chunk = smx
+            if len(chunk.shape) >= 1:
+                end += chunk.shape[0]
+            else:
+                end += 1
+            self.f[name][init:end] = chunk
+            init = end
         return end
 
     def create_route(self):
@@ -536,7 +552,7 @@ class Data(ReadWriteData):
         if apply_transforms and not self.transforms.is_empty():
             return self.transforms.apply(data, fmtypes=self.fmtypes, chunks_size=chunks_size)
         else:
-            return data if isinstance(data, np.ndarray) else np.asarray(data) #IterLayer(data, shape=data.shape)
+            return data# if isinstance(data, np.ndarray) else np.asarray(data) #IterLayer(data, shape=data.shape)
 
     @classmethod
     def to_DF(self, dataset):

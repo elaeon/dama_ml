@@ -73,15 +73,15 @@ class RegModel(BaseModel):
 
         train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv()
         with dl_train:
-            dl_train.build_dataset(train_data, train_labels)
+            dl_train.build_dataset(train_data, train_labels, chunks_size=10000)
             dl_train.apply_transforms = True
             dl_train._applied_transforms = dataset._applied_transforms
         with dl_test:
-            dl_test.build_dataset(test_data, test_labels)
+            dl_test.build_dataset(test_data, test_labels, chunks_size=10000)
             dl_test.apply_transforms = True
             dl_test._applied_transforms = dataset._applied_transforms
         with dl_validation:
-            dl_validation.build_dataset(validation_data, validation_labels)
+            dl_validation.build_dataset(validation_data, validation_labels, chunks_size=10000)
             dl_validation.apply_transforms = True
             dl_validation._applied_transforms = dataset._applied_transforms
 
@@ -111,3 +111,18 @@ class SKLP(RegModel):
         self.model = self.ml_model(model)
 
 
+class LGB(RegModel):
+    def ml_model(self, model, model_2=None):
+        return MLModel(fit_fn=model.train, 
+                            predictors=[model_2.predict],
+                            load_fn=self.load_fn,
+                            save_fn=model_2.save_model)
+
+    def load_fn(self, path):
+        import lightgbm as lgb
+        bst = lgb.Booster(model_file=path)
+        self.model = self.ml_model(lgb, model_2=bst)
+
+    def array2dmatrix(self, data):
+        import lightgbm as lgb
+        return lgb.Dataset(data)

@@ -117,7 +117,7 @@ class TransformsFn(object):
         transforms_loaded = json.loads(json_transforms)#, object_pairs_hook=OrderedDict)
         transforms = transform_base_class(
             o_features=transforms_loaded.get("o_features", None), 
-            input_type=transforms_loaded.get("input_type", 'float'))
+            input_dtype=transforms_loaded.get("input_dtype", 'float'))
         for fn, params in transforms_loaded["transforms"]:
             transforms.add(locate(fn), **params)
         return transforms
@@ -257,6 +257,7 @@ class Transforms(object):
     def __add__(self, o):
         all_transforms = Transforms.from_json(self.to_json())
         for transform in o.transforms:
+            print("-----------******")
             for fn, params in transform.transforms:
                 all_transforms.add(locate(fn), **params)
         return all_transforms
@@ -278,11 +279,11 @@ class Transforms(object):
         for transforms_type in transforms_list:
             for type_, transforms_dict in transforms_type.items():
                 for fn, params in transforms_dict["transforms"]:
-                    try:
-                        transforms.add(locate(fn), o_features=transforms_dict["o_features"], 
-                                        **params)
-                    except Exception, e:
-                        print(e.message)
+                    #try:
+                    transforms.add(locate(fn), o_features=transforms_dict["o_features"], 
+                                    input_dtype=transforms_dict["input_dtype"], **params)
+                    #except Exception, e:
+                    #    print(e.message)
         return transforms
 
     def apply(self, data, fmtypes=None, chunks_size=258):
