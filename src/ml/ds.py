@@ -802,7 +802,7 @@ class DataLabel(Data):
         return dl
 
     def convert(self, name, apply_transforms=False, percentaje=1, 
-                dataset_path=None, transforms=None):
+                dataset_path=None, transforms=None, chunks_size=258):
         """
         :type dtype: string
         :param dtype: cast the data to the defined type
@@ -812,7 +812,8 @@ class DataLabel(Data):
         dl = self.empty(name, apply_transforms=apply_transforms, 
                         dataset_path=dataset_path, transforms=transforms)
         with dl:
-            dl.build_dataset(calc_nshape(self.data, percentaje), calc_nshape(self.labels, percentaje))
+            dl.build_dataset(calc_nshape(self.data, percentaje), 
+                calc_nshape(self.labels, percentaje), chunks_size=chunks_size)
         return dl
 
     def copy(self, name=None, dataset_path=None, percentaje=1):
@@ -840,17 +841,14 @@ class DataLabel(Data):
         """
         convert the dataset to a dataframe
         """
-        dl = self.desfragment()
-        with dl:
+        with self:
             if labels2numbers == False:
-                df = self.to_DF(dl.data[:], dl.labels[:])
+                df = self.to_DF(self.data[:], self.labels[:])
             else:
                 from sklearn.preprocessing import LabelEncoder
                 le = LabelEncoder()
                 le.fit(dl.labels[:])
-                df = self.to_DF(dl.data[:], le.transform(dl.labels[:]))
-
-        dl.destroy()
+                df = self.to_DF(self.data[:], le.transform(self.labels[:]))
         return df
 
     @classmethod
@@ -1209,8 +1207,8 @@ class DataLabelSetFile(DataLabel):
             else:
                 drops.extend([exclude_columns])
 
-        dataset = df.drop(drops, axis=1)#.as_matrix()
-        labels = df[labels_column]#.as_matrix()
+        dataset = df.drop(drops, axis=1).as_matrix()
+        labels = df[labels_column].as_matrix()
         return dataset, labels        
 
     def build_dataset(self, labels_column=None, nrows=None, exclude_columns=None):

@@ -375,13 +375,13 @@ class TestDataset(unittest.TestCase):
     def test_features_fmtype(self):
         from ml import fmtypes
         with Data(name="test", dataset_path="/tmp/") as data:
-            array = [
+            array = np.asarray([
                 [0, 1, -1, 3, 4, 0],
                 [1, -1, 0, 2 ,5, 1],
                 [0, 0, 1, 2, 2, 1],
                 [0, 1, 1, 3, 6, 0],
                 [1, 1, 0, 7, 7, 1]
-            ]
+            ], dtype=int)
             data.build_dataset(array)
             self.assertEqual(data.features_fmtype(fmtypes.BOOLEAN), [0, 5])
             self.assertEqual(data.features_fmtype(fmtypes.NANBOOLEAN), [1, 2, 3])
@@ -420,13 +420,13 @@ class TestDataset(unittest.TestCase):
     def test_features_fmtype_edit(self):
         from ml import fmtypes
         with Data(name="test", dataset_path="/tmp/") as data:
-            array = [
+            array = np.asarray([
                 [0, 1, -1, 3, 4, 0],
                 [1, -1, 0, 2 ,5, 1],
                 [0, 0, 1, 2, 2, 1],
                 [0, 1, 1, 3, 6, 0],
                 [1, 1, 0, 7, 7, 1]
-            ]
+            ], dtype=int)
             data.build_dataset(array)
             data.set_fmtypes(3, fmtypes.DENSE)
             data.set_fmtypes(4, fmtypes.DENSE)

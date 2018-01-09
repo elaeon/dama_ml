@@ -15,7 +15,8 @@ settings = get_settings("ml")
 def run(args):
     if args.info:
         dataset = Data.original_ds(args.info)
-        dataset.info(classes=True)
+        with dataset:
+            dataset.info(classes=True)
     elif args.sparcity:
         dataset = Data.original_ds(args.sparcity)
         print(dataset.sparcity())
