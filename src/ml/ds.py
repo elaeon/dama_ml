@@ -318,7 +318,7 @@ class Data(ReadWriteData):
 
     @property
     def _applied_transforms(self):
-        return self._get_attr('applied_transforms')
+        return bool(self._get_attr('applied_transforms'))
 
     @_applied_transforms.setter
     def _applied_transforms(self, value):
@@ -497,18 +497,30 @@ class Data(ReadWriteData):
 
     def empty(self, name, dataset_path=None, apply_transforms=False, transforms=None):
         """
-        build an empty DataLabel with the default parameters
+        build an empty Data with the default parameters
         """
+        if apply_transforms and self._applied_transforms:
+            new_transforms = transforms
+            old_applied_transforms = self.transforms
+        elif apply_transforms is False and self._applied_transforms is True:
+            raise Exception("Error")
+        elif apply_transforms is True and self._applied_transforms is False:
+            new_transforms = self.transforms + transforms
+            old_applied_transforms = None
+        else:
+            new_transforms = self.transforms + transforms
+            old_applied_transforms = None
+
         data = Data(name=name, 
             dataset_path=dataset_path,
-            transforms=self.transforms if transforms is None else transforms,
+            transforms=new_transforms,
             apply_transforms=apply_transforms,
             description=self.description,
             author=self.author,
             compression_level=self.compression_level,
             rewrite=True)
         data._applied_transforms = apply_transforms
-        return data
+        return data, old_applied_transforms
 
     def convert(self, name, apply_transforms=False, chunks_size=258,
                 percentaje=1, dataset_path=None, transforms=None):
@@ -518,10 +530,13 @@ class Data(ReadWriteData):
 
         dataset_path is not necesary to especify, this info is obtained from settings.cfg
         """
-        data = self.empty(name, dataset_path=dataset_path, 
+        data, old_applied_t = self.empty(name, dataset_path=dataset_path, 
             apply_transforms=apply_transforms, transforms=transforms)
         with data:
             data.build_dataset(calc_nshape(self.data, percentaje), chunks_size=chunks_size)
+            if old_applied_t is not None:
+                transforms = old_applied_t + data.transforms
+                data.transforms = transforms
         return data
 
     def copy(self, name=None, dataset_path=None, percentaje=1, chunks_size=258):
@@ -565,10 +580,8 @@ class Data(ReadWriteData):
         """
         convert the dataset to a dataframe
         """
-        data = self.desfragment()
         with data:
             df = self.to_DF(data.data[:])
-            data.destroy()
         return df
 
     def outlayers(self, type_detector="isolation", n_estimators=25, max_samples=10, contamination=.2):
@@ -608,29 +621,6 @@ class Data(ReadWriteData):
             clf.fit(data)
             y_pred = clf.predict(data)
         return (i for i, v in enumerate(y_pred) if v == -1)
-
-    def add_transforms(self, transforms, name=None):
-        """
-        :type name: string
-        :param name: result dataset's name
-
-        :type transforms: Transform
-        :param transforms: transforms to apply in the new dataset
-        """
-        if self.apply_transforms == True:
-            if hasattr(self, 'ltype'):
-                dsb = self.convert(name, apply_transforms=True, percentaje=1, 
-                                transforms=transforms)
-            else:
-                dsb = dsb_c.convert(name, apply_transforms=True, 
-                    percentaje=1, transforms=transforms)
-            with dsb:
-                dsb.transforms = self.transforms + transforms
-        else:
-            dsb = self.copy(name=name)
-            with dsb:
-                dsb.transforms += transforms
-        return dsb
         
     def remove_outlayers(self, outlayers):
         """
@@ -652,7 +642,7 @@ class Data(ReadWriteData):
             else:
                 data[counter] = dl.data[index]
                 counter += 1
-        dl_ol = self.empty(self.name+"_n_outlayer", apply_transforms=self.apply_transforms)
+        dl_ol, _ = self.empty(self.name+"_n_outlayer", apply_transforms=self.apply_transforms)
         with dl_ol:
             dl_ol.build_dataset(data)
         dl.destroy()
@@ -790,16 +780,28 @@ class DataLabel(Data):
         """
         build an empty DataLabel with the default parameters
         """
+        if apply_transforms and self._applied_transforms:
+            new_transforms = transforms
+            old_applied_transforms = self.transforms
+        elif apply_transforms is False and self._applied_transforms is True:
+            raise Exception("Error")
+        elif apply_transforms is True and self._applied_transforms is False:
+            new_transforms = self.transforms + transforms
+            old_applied_transforms = None
+        else:
+            new_transforms = self.transforms + transforms
+            old_applied_transforms = None
+
         dl = DataLabel(name=name, 
             dataset_path=dataset_path,
-            transforms=self.transforms if transforms is None else transforms,
+            transforms=new_transforms,
             apply_transforms=apply_transforms,
             description=self.description,
             author=self.author,
             compression_level=self.compression_level,
             rewrite=True)
         dl._applied_transforms = apply_transforms
-        return dl
+        return dl, old_applied_transforms
 
     def convert(self, name, apply_transforms=False, percentaje=1, 
                 dataset_path=None, transforms=None, chunks_size=258):
@@ -809,11 +811,14 @@ class DataLabel(Data):
 
         dataset_path is not necesary to especify, this info is obtained from settings.cfg
         """
-        dl = self.empty(name, apply_transforms=apply_transforms, 
+        dl, old_applied_t = self.empty(name, apply_transforms=apply_transforms, 
                         dataset_path=dataset_path, transforms=transforms)
         with dl:
             dl.build_dataset(calc_nshape(self.data, percentaje), 
                 calc_nshape(self.labels, percentaje), chunks_size=chunks_size)
+            if old_applied_t is not None:
+                transforms = old_applied_t + dl.transforms
+                dl.transforms = transforms
         return dl
 
     def copy(self, name=None, dataset_path=None, percentaje=1):
@@ -847,7 +852,7 @@ class DataLabel(Data):
             else:
                 from sklearn.preprocessing import LabelEncoder
                 le = LabelEncoder()
-                le.fit(dl.labels[:])
+                le.fit(self.labels[:])
                 df = self.to_DF(self.data[:], le.transform(self.labels[:]))
         return df
 
@@ -875,7 +880,7 @@ class DataLabel(Data):
                 data[counter] = dl.data[index]
                 labels[counter] = dl.labels[index]
                 counter += 1
-        dl_ol = self.empty(self.name+"_n_outlayer", apply_transforms=self.apply_transforms)
+        dl_ol, _ = self.empty(self.name+"_n_outlayer", apply_transforms=self.apply_transforms)
         with dl_ol:
             dl_ol.build_dataset(data, labels)
         return dl_ol
@@ -883,7 +888,7 @@ class DataLabel(Data):
     def to_data(self):
         dl = self.desfragment()
         name = self.name + "_data_" + uuid.uuid4().hex
-        data = super(DataLabel, self).empty(name, apply_transforms=self.apply_transforms)
+        data, _ = super(DataLabel, self).empty(name, apply_transforms=self.apply_transforms)
         with dl, data:
             data.build_dataset(dl.data)
         dl.destroy()

@@ -120,6 +120,14 @@ class TestTransforms(unittest.TestCase):
         txt = '[{"fn": {"o_features": null, "transforms": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}]], "input_dtype": "<f8"}}]'
         self.assertEqual(nt.to_json(), txt)
 
+        t0 = Transforms()
+        t0.add(linear, o_features=1)
+        t1 = Transforms()
+        t1.add(linear_p, b=1, o_features=1, input_dtype='float')
+        nt = t0 + t1
+        txt = '[{"fn": {"o_features": 1, "transforms": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}]], "input_dtype": "<f8"}}]'
+        self.assertEqual(nt.to_json(), txt)
+
     def test_apply_row(self):
         transforms = Transforms()
         transforms.add(linear, o_features=1)

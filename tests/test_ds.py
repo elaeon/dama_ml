@@ -22,6 +22,10 @@ def linear(x, fmtypes=None, b=0):
     return x + b
 
 
+def parabole(x, fmtypes=None, b=0):
+    return x**2 + b
+
+
 def to_int(x, col=None, fmtypes=None):
     x[col] = x[col].astype(np.int)
     return x
@@ -142,42 +146,80 @@ class TestDataset(unittest.TestCase):
         copy.destroy()
         dataset.destroy()
 
-    def test_convert(self):
+    def test_convert_percentaje(self):
         with DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
             rewrite=True) as dataset:
             dataset.build_dataset(self.X, self.Y)
-            dsb = dataset.convert("convert_test", dataset_path="/tmp/")
+            dsb = dataset.convert("convert_test", dataset_path="/tmp/", percentaje=.5)
         with dsb:
-            self.assertEqual(dsb.dtype, np.dtype('float64'))
-            self.assertEqual(dsb.ltype, np.dtype('int'))
+            self.assertEqual(round(self.X.shape[0]/2,0), dsb.data.shape[0])
+            self.assertEqual(round(self.Y.shape[0]/2,0), dsb.labels.shape[0])
         dsb.destroy()
 
-        with dataset:
-            dsb = dataset.convert("convert_test_2", dataset_path="/tmp/")
-        with dataset, dsb:
-            self.assertEqual(dsb.dtype, dataset.dtype)
-            self.assertEqual(dsb.dtype, dataset.dtype)
-        dsb.destroy()
-        dataset.destroy()
-
-    def test_convert_transforms(self):
+    def test_convert_transforms_true(self):
+        o_features = self.X.shape[1]
+        transforms = Transforms()
+        transforms.add(linear, b=1, o_features=o_features)
         dataset = DataLabel(name="test_ds", dataset_path="/tmp/",
-            rewrite=True)
+            rewrite=True, transforms=transforms, apply_transforms=True)
         
         with dataset:
             dataset.build_dataset(self.X, self.Y)
             transforms = Transforms()
-            transforms.add(linear, b=1, o_features=dataset.num_features())
+            transforms.add(parabole, o_features=o_features)
             dsb = dataset.convert("convert_test", dataset_path="/tmp/",
                                 transforms=transforms, apply_transforms=True)
 
-        with dsb, dataset:
-            self.assertItemsEqual(dsb.data[0], dataset.data[0]+1)
+        with dsb:
+            self.assertEqual(len(dsb.transforms.transforms), 1)
+            self.assertEqual(len(dsb.transforms.transforms[0].transforms), 2)
 
         dsb.destroy()
         dataset.destroy()
+
+    def test_convert_data_transforms_true(self):
+        o_features = self.X.shape[1]
+        transforms = Transforms()
+        transforms.add(linear, b=1, o_features=o_features)
+        dataset = Data(name="test_ds", dataset_path="/tmp/",
+            rewrite=True, transforms=transforms, apply_transforms=True)
+        
+        with dataset:
+            dataset.build_dataset(self.X)
+            transforms = Transforms()
+            transforms.add(parabole, o_features=o_features)
+            dsb = dataset.convert("convert_test", dataset_path="/tmp/",
+                                transforms=transforms, apply_transforms=True)
+
+        with dsb:
+            self.assertEqual(len(dsb.transforms.transforms), 1)
+            self.assertEqual(len(dsb.transforms.transforms[0].transforms), 2)
+
+        dsb.destroy()
+        dataset.destroy()
+
+    def test_convert_transforms_false(self):
+        o_features = self.X.shape[1]
+        transforms = Transforms()
+        transforms.add(linear, b=1, o_features=o_features)
+        dataset = DataLabel(name="test_ds", dataset_path="/tmp/",
+            rewrite=True, transforms=transforms, apply_transforms=False)
+        
+        transforms = Transforms()
+        transforms.add(parabole, o_features=o_features)
+        with dataset:
+            dataset.build_dataset(self.X, self.Y)
+            dsb = dataset.convert("convert_test", dataset_path="/tmp/",
+                                transforms=transforms, apply_transforms=False)
+
+        with dsb:
+            self.assertEqual(len(dsb.transforms.transforms), 1)
+            self.assertEqual(len(dsb.transforms.transforms[0].transforms), 2)
+        dsb.destroy()
+        dataset.destroy()
+
 
     def test_add_transform(self):
         transforms = Transforms()
@@ -186,31 +228,16 @@ class TestDataset(unittest.TestCase):
             name="test_ds",
             dataset_path="/tmp/",
             rewrite=True,
-            apply_transforms=True,
+            apply_transforms=False,
             transforms=transforms) as dataset:
             dataset.build_dataset(self.X, self.Y)
-            self.assertItemsEqual(self.X[0]+1, dataset.data[0])
             transforms = Transforms()
             transforms.add(linear, b=2, o_features=self.X.shape[1])
-            dsb = dataset.add_transforms(transforms, name="add_transform")
+            dsb = dataset.convert("add_transform", transforms=transforms, 
+                                apply_transforms=True)
         with dsb:
-            self.assertItemsEqual(self.X[0]+3, dsb.data[0])
+            #self.assertItemsEqual(self.X[0]+3, dsb.data[0])
             self.assertEqual(dsb.name == "add_transform", True)
-        dsb.destroy()
-        dataset.destroy()
-        
-        with DataLabel(
-            name="test_ds_0",
-            dataset_path="/tmp/",
-            apply_transforms=False,
-            rewrite=True) as dataset:
-            dataset.build_dataset(self.X, self.Y)
-            transforms = Transforms()
-            transforms.add(linear, b=1, o_features=self.X.shape[1])
-            dsb = dataset.add_transforms(transforms)
-        with dsb:
-            self.assertItemsEqual(self.X[0], dsb.data[0])
-            self.assertEqual(dsb.name != "add_transform", True)
         dsb.destroy()
         dataset.destroy()
 
