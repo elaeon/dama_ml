@@ -260,7 +260,7 @@ class TestGrid(unittest.TestCase):
         transforms = Transforms()
         transforms.add(FitRobustScaler)
         with self.original_dataset:
-            ds0 = self.original_dataset.add_transforms(transforms, name="ds_test_0")
+            ds0 = self.original_dataset.convert("ds_test_0", transforms=transforms, apply_transforms=True)
 
         rf = RandomForest(model_name="test_rf", model_version="1", dataset=ds0)
         ab = AdaBoost(model_name="test_ab", model_version="1", dataset=ds0)

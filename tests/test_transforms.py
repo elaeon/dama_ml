@@ -340,26 +340,6 @@ class TestTransforms(unittest.TestCase):
         dataset.destroy()
         dsb.destroy()
 
-        dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            transforms=transforms, rewrite=True, apply_transforms=True)
-        with dataset:
-            dataset.build_dataset(X, Y)
-            dsb = dataset.copy(dataset_path="/tmp")
-        with dsb:
-            self.assertEqual(dsb._applied_transforms, True)
-        dataset.destroy()
-        dsb.destroy()
-
-        dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            transforms=transforms, rewrite=True, apply_transforms=False)
-        with dataset:
-            dataset.build_dataset(X, Y)
-            dsb = dataset.copy(dataset_path="/tmp")
-        with dsb:
-            self.assertEqual(dsb._applied_transforms, False)
-        dataset.destroy()
-        dsb.destroy()
-
     def test_transforms_drop_cols(self):
         from ml.processing import drop_columns
         transforms = Transforms()
@@ -413,7 +393,7 @@ class TestTransforms(unittest.TestCase):
         transforms.add(linear_p, b=10, o_features=4, input_dtype=np.dtype("O"))
         transforms.add(parabole, o_features=4, input_dtype=np.dtype("float"))
         result = transforms.apply(X, chunks_size=10)
-        data = result.to_narray(dtype=np.dtype("int"))
+        data = result.to_narray()
         self.assertItemsEqual(data[0], [121, 144, 169, 196])
 
 

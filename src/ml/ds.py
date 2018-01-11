@@ -141,7 +141,8 @@ class ReadWriteData(object):
         else:
             chunks = grouper_chunk(chunks_size, data)
             has_chunks = False
-        for smx in tqdm(chunks, total=data.shape[0]/float(chunks_size)):
+        total_data = int(round(data.shape[0] / float(chunks_size), 0))
+        for smx in tqdm(chunks, total=total_data):
             if has_chunks is False:
                 smx_a = np.empty(chunk_shape, dtype=data.dtype)
                 for i, row in enumerate(smx):
@@ -399,14 +400,14 @@ class Data(ReadWriteData):
         "return the shape of the dataset"
         return self.data.shape
 
-    def desfragment(self, dataset_path=None):
-        """
-        Concatenate the train, valid and test data in a data array.
-        Concatenate the train, valid, and test labels in another array.
-        return DataLabel
-        """
-        log.debug("Desfragment...Data")
-        return self.copy(dataset_path=dataset_path)
+    #def desfragment(self, dataset_path=None):
+    #    """
+    #    Concatenate the train, valid and test data in a data array.
+    #    Concatenate the train, valid, and test labels in another array.
+    #    return DataLabel
+    #    """
+    #    log.debug("Desfragment...Data")
+    #    return self.copy(dataset_path=dataset_path)
 
     def exist(self):
         return os.path.exists(self.url())
@@ -539,18 +540,18 @@ class Data(ReadWriteData):
                 data.transforms = transforms
         return data
 
-    def copy(self, name=None, dataset_path=None, percentaje=1, chunks_size=258):
-        """
-        :type percentaje: float
-        :param percentaje: value between [0, 1], this value represent the size of the dataset to copy.
-        
-        copy the dataset, a percentaje is permited for the size of the copy
-        """
-        name = self.name + "_copy_" + uuid.uuid4().hex if name is None else name
-        data = self.convert(name, apply_transforms=False, percentaje=percentaje, 
-                            dataset_path=dataset_path, chunks_size=chunks_size)
-        data._applied_transforms = self._applied_transforms
-        return data
+    #def copy(self, name=None, dataset_path=None, percentaje=1, chunks_size=258):
+    #    """
+    #    :type percentaje: float
+    #    :param percentaje: value between [0, 1], this value represent the size of the dataset to copy.
+    #    
+    #    copy the dataset, a percentaje is permited for the size of the copy
+    #    """
+    #    name = self.name + "_copy_" + uuid.uuid4().hex if name is None else name
+    #    data = self.convert(name, apply_transforms=False, percentaje=percentaje, 
+    #                        dataset_path=dataset_path, chunks_size=chunks_size)
+    #    data._applied_transforms = self._applied_transforms
+    #    return data
 
     def processing(self, data, apply_transforms=True, chunks_size=258):
         """
@@ -573,16 +574,14 @@ class Data(ReadWriteData):
     def to_DF(self, dataset):
         if len(dataset.shape) > 2:
             dataset = dataset.reshape(dataset.shape[0], -1)
-        columns_name = map(lambda x: "c"+str(x), range(dataset.shape[-1])) + ["target"]
+        columns_name = map(lambda x: "c"+str(x), range(dataset.shape[-1]))
         return pd.DataFrame(data=dataset, columns=columns_name)
 
     def to_df(self):
         """
         convert the dataset to a dataframe
         """
-        with data:
-            df = self.to_DF(data.data[:])
-        return df
+        return self.to_DF(self.data[:])
 
     def outlayers(self, type_detector="isolation", n_estimators=25, max_samples=10, contamination=.2):
         """
@@ -626,14 +625,12 @@ class Data(ReadWriteData):
         """
         removel the outlayers of the data
         """
-        dl = self.desfragment()
-        with dl:
-            shape = tuple([dl.shape[0] - len(outlayers)] + list(dl.shape[1:]))
+        shape = tuple([self.shape[0] - len(outlayers)] + list(self.shape[1:]))
         outlayers = iter(outlayers)
         outlayer = outlayers.next()
         data = np.empty(shape)
         counter = 0
-        for index, row in enumerate(dl.data):
+        for index, row in enumerate(self.data):
             if index == outlayer:
                 try:
                     outlayer = outlayers.next()
@@ -645,7 +642,6 @@ class Data(ReadWriteData):
         dl_ol, _ = self.empty(self.name+"_n_outlayer", apply_transforms=self.apply_transforms)
         with dl_ol:
             dl_ol.build_dataset(data)
-        dl.destroy()
         return dl_ol
 
 
@@ -821,19 +817,19 @@ class DataLabel(Data):
                 dl.transforms = transforms
         return dl
 
-    def copy(self, name=None, dataset_path=None, percentaje=1):
-        """
-        :type percentaje: float
-        :param percentaje: value between [0, 1], this value represent the size of the dataset to copy.
-        
-        copy the dataset, a percentaje is permited for the size of the copy
-        """
-        name = self.name + "_copy_" + uuid.uuid4().hex if name is None else name
-        dl = self.convert(name, apply_transforms=False, percentaje=percentaje, 
-                        dataset_path=dataset_path)
-        with dl:
-            dl._applied_transforms = self._applied_transforms
-        return dl
+    #def copy(self, name=None, dataset_path=None, percentaje=1):
+    #    """
+    #    :type percentaje: float
+    #    :param percentaje: value between [0, 1], this value represent the size of the dataset to copy.
+    #    
+    #    copy the dataset, a percentaje is permited for the size of the copy
+    #    """
+    #    name = self.name + "_copy_" + uuid.uuid4().hex if name is None else name
+    #    dl = self.convert(name, apply_transforms=False, percentaje=percentaje, 
+    #                    dataset_path=dataset_path)
+    #    with dl:
+    #        dl._applied_transforms = self._applied_transforms
+    #    return dl
 
     @classmethod
     def to_DF(self, dataset, labels):
@@ -846,14 +842,13 @@ class DataLabel(Data):
         """
         convert the dataset to a dataframe
         """
-        with self:
-            if labels2numbers == False:
-                df = self.to_DF(self.data[:], self.labels[:])
-            else:
-                from sklearn.preprocessing import LabelEncoder
-                le = LabelEncoder()
-                le.fit(self.labels[:])
-                df = self.to_DF(self.data[:], le.transform(self.labels[:]))
+        if labels2numbers == False:
+            df = self.to_DF(self.data[:], self.labels[:])
+        else:
+            from sklearn.preprocessing import LabelEncoder
+            le = LabelEncoder()
+            le.fit(self.labels[:])
+            df = self.to_DF(self.data[:], le.transform(self.labels[:]))
         return df
 
     @classmethod
@@ -886,12 +881,10 @@ class DataLabel(Data):
         return dl_ol
 
     def to_data(self):
-        dl = self.desfragment()
         name = self.name + "_data_" + uuid.uuid4().hex
         data, _ = super(DataLabel, self).empty(name, apply_transforms=self.apply_transforms)
-        with dl, data:
-            data.build_dataset(dl.data)
-        dl.destroy()
+        with data:
+            data.build_dataset(self.data)
         return data
 
     def plot(self, view=None, type_g=None, columns=None):        
@@ -1157,12 +1150,6 @@ class DataSetBuilderImage(DataLabel):
                 images_data.append(io.imread(path))
                 labels.append(number_id)
         return images_data, labels
-
-    def copy(self, name=None, dataset_path=None, percentaje=1):
-        dataset = super(DataSetBuilderImage, self).copy(
-            name=name, percentaje=percentaje, dataset_path=dataset_path)
-        dataset.image_size = self.image_size
-        return dataset
 
 
 class DataLabelSetFile(DataLabel):

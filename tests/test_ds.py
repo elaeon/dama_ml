@@ -117,19 +117,12 @@ class TestDataset(unittest.TestCase):
             rewrite=True)
         with dataset:
             dataset.build_dataset(self.X, self.Y)
-            ds = dataset.copy(percentaje=.5, dataset_path="/tmp")
-            dl = dataset.desfragment()
+            ds = dataset.convert("test_convert", percentaje=.5, dataset_path="/tmp")
 
-        with ds, dl:
+        with ds:
             self.assertEqual(ds.data.shape[0], 5)
-            dl_copy = dl.copy(percentaje=.5)
-
-        with dl_copy:
-            self.assertEqual(dl_copy.data.shape[0], 5)
 
         ds.destroy()
-        dl.destroy()
-        dl_copy.destroy()
         dataset.destroy()
 
     def test_apply_transforms_flag(self):
@@ -140,7 +133,7 @@ class TestDataset(unittest.TestCase):
         with dataset:
             dataset.build_dataset(self.X, self.Y)
             dataset.apply_transforms = True
-            copy = dataset.copy()
+            copy = dataset.convert("test_2", apply_transforms=False, dataset_path="/tmp/")
         with copy:
             self.assertEqual(copy.apply_transforms, False)
         copy.destroy()
@@ -249,6 +242,15 @@ class TestDataset(unittest.TestCase):
             dataset.build_dataset(self.X, self.Y)
             df = dataset.to_df()
         self.assertEqual(list(df.columns), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'target'])
+        dataset.destroy()
+
+        with Data(
+            name="test_ds",
+            dataset_path="/tmp/",
+            rewrite=True) as dataset:
+            dataset.build_dataset(self.X)
+            df = dataset.to_df()
+        self.assertEqual(list(df.columns), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'])
         dataset.destroy()
 
     def test_outlayer(self):

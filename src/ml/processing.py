@@ -148,7 +148,7 @@ class TransformsFn(object):
             shape = [data.shape[0]] + list(self.o_features)
         else:
             shape = [data.shape[0], self.o_features]
-        return IterLayer(iter_(), shape=shape, chunks=True), fmtypes
+        return IterLayer(iter_(), shape=shape, chunks=True, dtype=self.input_dtype), fmtypes
 
 
 class TransformsClass(TransformsFn):
@@ -183,7 +183,6 @@ class TransformsClass(TransformsFn):
         :type data: array
         :param data: apply the transforms added to the data
         """
-        #data_base, data_t = data.tee()
         if isinstance(data, IterLayer):
             data = data.to_narray()
         for fn_fit in self.initial_fn(data, fmtypes=fmtypes):
@@ -323,7 +322,7 @@ class Fit(object):
 
     def transform(self, data):
         ndata = self.t(data)
-        return IterLayer(ndata, shape=ndata.shape)
+        return IterLayer(ndata, shape=ndata.shape, dtype=ndata.dtype)
 
     def read_meta(self):
         from ml.ds import load_metadata

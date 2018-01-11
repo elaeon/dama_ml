@@ -172,11 +172,11 @@ class IterLayer(object):
             dataset.build_dataset(data, label_m)
         return dataset
 
-    def to_narray(self, dtype=float):
+    def to_narray(self):
         import numpy as np
         if self.shape is None:
             raise Exception("Data shape is None, IterLayer can't be converted to array")
-        smx_a = np.empty(self.shape, dtype=dtype)
+        smx_a = np.empty(self.shape, dtype=self.dtype)
         init = 0
         end = 0
         for i, row in enumerate(self):
