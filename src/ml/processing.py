@@ -131,6 +131,8 @@ class TransformsFn(object):
         def iter_():
             locate_fn = {}
             i_features = data.shape[1:]
+            if len(i_features) == 0:
+                i_features = (1,)
             chunk_shape = [chunks_size] + list(i_features)
             if hasattr(data, 'chunks') and data.chunks is True:
                 chunks = data

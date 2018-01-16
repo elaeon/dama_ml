@@ -150,6 +150,7 @@ class ReadWriteData(object):
                 chunk = smx_a[:i+1]
             else:
                 chunk = smx
+            
             if len(chunk.shape) >= 1:
                 end += chunk.shape[0]
             else:
@@ -400,15 +401,6 @@ class Data(ReadWriteData):
         "return the shape of the dataset"
         return self.data.shape
 
-    #def desfragment(self, dataset_path=None):
-    #    """
-    #    Concatenate the train, valid and test data in a data array.
-    #    Concatenate the train, valid, and test labels in another array.
-    #    return DataLabel
-    #    """
-    #    log.debug("Desfragment...Data")
-    #    return self.copy(dataset_path=dataset_path)
-
     def exist(self):
         return os.path.exists(self.url())
 
@@ -540,19 +532,6 @@ class Data(ReadWriteData):
                 data.transforms = transforms
         return data
 
-    #def copy(self, name=None, dataset_path=None, percentaje=1, chunks_size=258):
-    #    """
-    #    :type percentaje: float
-    #    :param percentaje: value between [0, 1], this value represent the size of the dataset to copy.
-    #    
-    #    copy the dataset, a percentaje is permited for the size of the copy
-    #    """
-    #    name = self.name + "_copy_" + uuid.uuid4().hex if name is None else name
-    #    data = self.convert(name, apply_transforms=False, percentaje=percentaje, 
-    #                        dataset_path=dataset_path, chunks_size=chunks_size)
-    #    data._applied_transforms = self._applied_transforms
-    #    return data
-
     def processing(self, data, apply_transforms=True, chunks_size=258):
         """
         :type data: array
@@ -568,7 +547,7 @@ class Data(ReadWriteData):
         if apply_transforms and not self.transforms.is_empty():
             return self.transforms.apply(data, fmtypes=self.fmtypes, chunks_size=chunks_size)
         else:
-            return data# if isinstance(data, np.ndarray) else np.asarray(data) #IterLayer(data, shape=data.shape)
+            return data#IterLayer(data, shape=data.shape)
 
     @classmethod
     def to_DF(self, dataset):
@@ -1059,6 +1038,23 @@ class DataLabel(Data):
         X_train = X_train[valid_size_index:]
         y_train = y_train[valid_size_index:]
         return X_train, X_validation, X_test, y_train, y_validation, y_test
+
+    def cv_ds(self, train_size=.7, valid_size=.1, dataset_path=None, apply_transforms=True):
+        data = self.cv(train_size=train_size, valid_size=valid_size)
+        train_ds = DataLabel(dataset_path=dataset_path, transforms=self.transforms, 
+                            apply_transforms=apply_transforms)
+        with train_ds:
+            train_ds.build_dataset(data[0], data[3])
+        validation_ds = DataLabel(dataset_path=dataset_path, transforms=self.transforms,
+                                apply_transforms=apply_transforms)
+        with validation_ds:
+            validation_ds.build_dataset(data[1], data[4])
+        test_ds = DataLabel(dataset_path=dataset_path, transforms=self.transforms,
+                        apply_transforms=apply_transforms)
+        with test_ds:
+            test_ds.build_dataset(data[2], data[5])
+        
+        return train_ds, validation_ds, test_ds
 
 
 class DataSetBuilderImage(DataLabel):

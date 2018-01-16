@@ -52,6 +52,18 @@ class IterLayer(object):
                 smx_a[i] = row[0]
             yield smx_a[:i+1]
 
+    def flat(self):
+        from operator import mul
+        def _iter():
+            for chunk in self:
+                if chunk.shape == 1 and chunk.shape[0] == 1:
+                    yield chunk[0]
+                else:
+                    yield chunk.reshape(-1)
+
+        shape = (reduce(mul, self.shape),)
+        return IterLayer(_iter(), shape=shape, dtype=self.dtype, chunks=self.chunks)
+
     @property
     def shape(self):
         return self._shape
@@ -155,7 +167,6 @@ class IterLayer(object):
     def to_datamodelset(self, labels, features, size, ltype):
         from ml.ds import DataLabel
         from ml.utils.config import get_settings
-        import numpy as np
 
         settings = get_settings("ml")
 
@@ -173,14 +184,13 @@ class IterLayer(object):
         return dataset
 
     def to_narray(self):
-        import numpy as np
         if self.shape is None:
             raise Exception("Data shape is None, IterLayer can't be converted to array")
         smx_a = np.empty(self.shape, dtype=self.dtype)
         init = 0
         end = 0
         for i, row in enumerate(self):
-            if len(row.shape) <= 1:
+            if len(row.shape) == 0:
                 smx_a[i] = row
             else:
                 end += row.shape[0]

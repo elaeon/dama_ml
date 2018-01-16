@@ -88,18 +88,17 @@ class ClassifModel(BaseModel):
         return self.only_is(operator.eq)
 
     def reformat_labels(self, labels):
-        #dataset = self.transform_shape(dataset)
         return labels
 
-    def transform_shape(self, data, size=None):
-        if isinstance(data, IterLayer):
-            return np.asarray(list(data))
-        elif len(data.shape) > 2:
-            if size is None:
-                size = data.shape[0]
-            return data[:].reshape(size, -1)
-        else:
-            return data
+    #def transform_shape(self, data, size=None):
+    #    if isinstance(data, IterLayer):
+    #        return np.asarray(list(data))
+    #    elif len(data.shape) > 2:
+    #        if size is None:
+    #            size = data.shape[0]
+    #        return data[:].reshape(size, -1)
+    #    else:
+    #        return data
 
     def is_binary():
         return self.num_labels == 2
@@ -144,46 +143,50 @@ class ClassifModel(BaseModel):
             return self.le.inverse_transform(labels.astype('int'))
 
     def reformat_all(self, dataset):
-        log.info("Reformating {}...".format(self.cls_name()))
-        dl_train = DataLabel(
-            dataset_path=settings["dataset_model_path"],
-            apply_transforms=not dataset._applied_transforms,
-            compression_level=9,
-            transforms=dataset.transforms,
-            rewrite=True)
-        dl_test = DataLabel(
-            dataset_path=settings["dataset_model_path"],
-            apply_transforms=not dataset._applied_transforms,
-            compression_level=9,
-            transforms=dataset.transforms,
-            rewrite=True)
-        dl_validation = DataLabel(
-            dataset_path=settings["dataset_model_path"],
-            apply_transforms=not dataset._applied_transforms,
-            compression_level=9,
-            transforms=dataset.transforms,
-            rewrite=True)
+        if isinstance(dataset, list):
+            dl_train, dl_test, dl_validation = dataset
+            return dl_train, dl_test, dl_validation
+        else:
+            log.info("Reformating {}...".format(self.cls_name()))
+            dl_train = DataLabel(
+                dataset_path=settings["dataset_model_path"],
+                apply_transforms=not dataset._applied_transforms,
+                compression_level=9,
+                transforms=dataset.transforms,
+                rewrite=True)
+            dl_test = DataLabel(
+                dataset_path=settings["dataset_model_path"],
+                apply_transforms=not dataset._applied_transforms,
+                compression_level=9,
+                transforms=dataset.transforms,
+                rewrite=True)
+            dl_validation = DataLabel(
+                dataset_path=settings["dataset_model_path"],
+                apply_transforms=not dataset._applied_transforms,
+                compression_level=9,
+                transforms=dataset.transforms,
+                rewrite=True)
 
-        self.labels_encode(dataset.labels)
-        log.info("Labels encode finished")
-        train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv()
-        train_labels = self.reformat_labels(self.le.transform(train_labels))
-        validation_labels = self.reformat_labels(self.le.transform(validation_labels))
-        test_labels = self.reformat_labels(self.le.transform(test_labels))
-        with dl_train:
-            dl_train.build_dataset(train_data, train_labels)
-            dl_train.apply_transforms = True
-            dl_train._applied_transforms = dataset._applied_transforms
-        with dl_test:
-            dl_test.build_dataset(test_data, test_labels)
-            dl_test.apply_transforms = True
-            dl_test._applied_transforms = dataset._applied_transforms
-        with dl_validation:
-            dl_validation.build_dataset(validation_data, validation_labels)
-            dl_validation.apply_transforms = True
-            dl_validation._applied_transforms = dataset._applied_transforms
+            self.labels_encode(dataset.labels)
+            log.info("Labels encode finished")
+            train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv()
+            train_labels = self.reformat_labels(self.le.transform(train_labels))
+            validation_labels = self.reformat_labels(self.le.transform(validation_labels))
+            test_labels = self.reformat_labels(self.le.transform(test_labels))
+            with dl_train:
+                dl_train.build_dataset(train_data, train_labels)
+                dl_train.apply_transforms = True
+                dl_train._applied_transforms = dataset._applied_transforms
+            with dl_test:
+                dl_test.build_dataset(test_data, test_labels)
+                dl_test.apply_transforms = True
+                dl_test._applied_transforms = dataset._applied_transforms
+            with dl_validation:
+                dl_validation.build_dataset(validation_data, validation_labels)
+                dl_validation.apply_transforms = True
+                dl_validation._applied_transforms = dataset._applied_transforms
 
-        return dl_train, dl_test, dl_validation
+            return dl_train, dl_test, dl_validation
 
     def _predict(self, data, raw=False):
         prediction = self.model.predict(data)

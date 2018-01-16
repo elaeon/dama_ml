@@ -31,6 +31,10 @@ def to_int(x, col=None, fmtypes=None):
     return x
 
 
+def label_t(x, fmtypes=None):
+    return np.log1p(x)
+
+
 class TestDataset(unittest.TestCase):
     def setUp(self):
         NUM_FEATURES = 10
@@ -475,6 +479,35 @@ class TestDataset(unittest.TestCase):
         with Data(name="test", dataset_path="/tmp/", rewrite=False) as data:
             data.info()
             data.destroy()
+
+    def test_cv_ds(self):
+        dl = DataLabel(name="test", dataset_path="/tmp/")
+        with dl:
+            dl.build_dataset(self.X, self.Y)
+            train_ds, validation_ds, test_ds = dl.cv_ds(train_size=.6, valid_size=.2)
+        with train_ds:            
+            self.assertEqual(train_ds.shape, (6, 10))
+        with validation_ds:
+            self.assertEqual(validation_ds.shape, (2, 10))
+        with test_ds:
+            self.assertEqual(test_ds.shape, (2, 10))
+
+        dl.destroy()
+        train_ds.destroy()
+        validation_ds.destroy()
+        test_ds.destroy()
+
+    def test_labels_transforms(self):
+        transforms = Transforms()
+        transforms.add(label_t, o_features=1)
+        dl = DataLabel(name="test", dataset_path="/tmp/")
+        X = np.random.rand(10, 1)
+        Y = np.random.randint(1, 10, size=(10, 1))
+        Y = transforms.apply(Y, chunks_size=0).to_narray()
+        with dl:
+            dl.build_dataset(X, Y)
+            self.assertEqual(dl.labels[0], np.log1p(Y[0]))
+        dl.destroy()
 
 
 class TestDataSetFile(unittest.TestCase):

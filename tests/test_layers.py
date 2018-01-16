@@ -156,6 +156,29 @@ class TestIterLayers(unittest.TestCase):
         for i, e in enumerate(iter_ce):
             self.assertItemsEqual(list(e), data_i1[i] + data_i2[i])
 
+    def test_flat(self):
+        data = np.random.rand(10, 1)
+        it = IterLayer(data, shape=data.shape, dtype=data.dtype)
+        it_flat = it.flat()
+        data_flat = it_flat.to_narray()
+        self.assertEqual(len(data_flat.shape), 1)
+        self.assertEqual(data_flat.shape[0], 10)
+
+        data = np.random.rand(10, 5)
+        it = IterLayer(data, shape=data.shape, dtype=data.dtype)
+        it_flat = it.flat()
+        data_flat = it_flat.to_narray()
+        self.assertEqual(len(data_flat.shape), 1)
+        self.assertEqual(data_flat.shape[0], 50)
+
+        data = np.random.rand(10, 2 ,2)
+        it = IterLayer(data, shape=data.shape, dtype=data.dtype)
+        it_flat = it.flat()
+        data_flat = it_flat.to_narray()
+        self.assertEqual(len(data_flat.shape), 1)
+        self.assertEqual(data_flat.shape[0], 40)
+        
+
 
 def chunk_sizes(seq):
     return [len(list(row)) for row in seq]
