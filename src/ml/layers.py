@@ -65,11 +65,11 @@ class IterLayer(object):
 
     def scalar_operation(self, operator, scalar):
         iter_ = imap(lambda x: operator(x, scalar), self)
-        return IterLayer(iter_)
+        return IterLayer(iter_, shape=self.shape)
 
     def stream_operation(self, operator, stream):
         iter_ = imap(lambda x: operator(x[0], x[1]), izip(self, stream))
-        return IterLayer(iter_)
+        return IterLayer(iter_, shape=self.shape)
 
     @choice(operator.add)
     def __add__(self, x):
@@ -120,7 +120,7 @@ class IterLayer(object):
             iter_ = (sum(x) / float(size) for x in izip(*iters))
         else:
             iter_ = (reduce(operator.mul, x)**(1. / size) for x in izip(*iters)) 
-        return IterLayer(iter_)
+        return IterLayer(iter_, shape=self.shape)
 
     @classmethod
     def max_counter(self, iters, weights=None):
@@ -135,7 +135,7 @@ class IterLayer(object):
                 return values.items()
 
         iter_ = (max(merge(x, weights), key=lambda x: x[1])[0] for x in izip(*iters))
-        return IterLayer(iter_)
+        return IterLayer(iter_, shape=self.shape)
 
     @classmethod
     def concat_n(self, iters):
@@ -147,7 +147,7 @@ class IterLayer(object):
 
     def compose(self, fn, *args, **kwargs):
         iter_ = (fn(x, *args, **kwargs) for x in self)
-        return IterLayer(iter_)
+        return IterLayer(iter_, shape=self.shape)
 
     def concat(self, iterlayer):
         return IterLayer(itertools.chain(self, iterlayer))
@@ -180,7 +180,7 @@ class IterLayer(object):
         init = 0
         end = 0
         for i, row in enumerate(self):
-            if len(row.shape) == 1:
+            if len(row.shape) <= 1:
                 smx_a[i] = row
             else:
                 end += row.shape[0]

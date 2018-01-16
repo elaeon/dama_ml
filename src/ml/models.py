@@ -208,14 +208,15 @@ class BaseModel(DataDrive):
             log.info("Chunk size is set to 1")
             chunks_size = 258
 
+        output_shape = tuple([data.shape[0], 1]) #fixme change 1 to model's target shape
         if isinstance(data, IterLayer):
-            return IterLayer(self._predict(fn(x, t=transform), raw=raw))
+            return IterLayer(self._predict(fn(x, t=transform), raw=raw), shape=output_shape)
         else:
             if chunks_size > 0:
                 return IterLayer(self.chunk_iter(data, chunks_size, transform_fn=fn, 
-                                                uncertain=raw, transform=transform))
+                                                uncertain=raw, transform=transform), shape=output_shape)
             else:
-                return IterLayer(self._predict(fn(data, t=transform), raw=raw))
+                return IterLayer(self._predict(fn(data, t=transform), raw=raw), shape=output_shape)
 
     def _metadata(self):
         list_measure = self.scores(measures=self.metrics)
@@ -294,7 +295,7 @@ class BaseModel(DataDrive):
             self.model = self.train_kfolds(batch_size=batch_size, num_steps=num_steps, 
                             n_splits=n_splits, obj_fn=obj_fn, model_params=model_params)
         else:
-            self.model = self.prepare_model(obj_fn=obj_fn, **model_params)
+            self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, **model_params)
         log.info("Saving model")
         self.train_ds.destroy()
         self.validation_ds.destroy()

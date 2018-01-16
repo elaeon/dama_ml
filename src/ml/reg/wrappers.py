@@ -73,15 +73,15 @@ class RegModel(BaseModel):
 
         train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv()
         with dl_train:
-            dl_train.build_dataset(train_data, train_labels, chunks_size=10000)
+            dl_train.build_dataset(train_data, train_labels, chunks_size=30000)
             dl_train.apply_transforms = True
             dl_train._applied_transforms = dataset._applied_transforms
         with dl_test:
-            dl_test.build_dataset(test_data, test_labels, chunks_size=10000)
+            dl_test.build_dataset(test_data, test_labels, chunks_size=30000)
             dl_test.apply_transforms = True
             dl_test._applied_transforms = dataset._applied_transforms
         with dl_validation:
-            dl_validation.build_dataset(validation_data, validation_labels, chunks_size=10000)
+            dl_validation.build_dataset(validation_data, validation_labels, chunks_size=30000)
             dl_validation.apply_transforms = True
             dl_validation._applied_transforms = dataset._applied_transforms
 
