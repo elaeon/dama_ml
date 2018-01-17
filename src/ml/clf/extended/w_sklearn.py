@@ -4,7 +4,7 @@ from ml.models import MLModel
 
 
 class SVC(SKL):
-    def prepare_model(self, obj_fn=None):
+    def prepare_model(self, obj_fn=None, num_steps=None):
         from sklearn import svm
 
         with self.train_ds, self.validation_ds:
@@ -23,7 +23,7 @@ class SVC(SKL):
 
 
 class RandomForest(SKLP):
-    def prepare_model(self, obj_fn=None):
+    def prepare_model(self, obj_fn=None, num_steps=None):
         from sklearn.ensemble import RandomForestClassifier
         from sklearn.grid_search import GridSearchCV
         if obj_fn is not None:
@@ -49,7 +49,7 @@ class RandomForest(SKLP):
     
 
 class ExtraTrees(SKLP):
-    def prepare_model(self, obj_fn=None):
+    def prepare_model(self, obj_fn=None, num_steps=None):
         from sklearn.ensemble import ExtraTreesClassifier
 
         with self.train_ds, self.validation_ds:
@@ -69,7 +69,7 @@ class ExtraTrees(SKLP):
 
 
 class LogisticRegression(SKLP):
-    def prepare_model(self, obj_fn=None):
+    def prepare_model(self, obj_fn=None, num_steps=None):
         from sklearn.linear_model import LogisticRegression
 
         with self.train_ds, self.validation_ds:
@@ -90,7 +90,7 @@ class LogisticRegression(SKLP):
 
 
 class SGDClassifier(SKLP):
-    def prepare_model(self, obj_fn=None):
+    def prepare_model(self, obj_fn=None, num_steps=None):
         from sklearn.linear_model import SGDClassifier
 
         with self.train_ds, self.validation_ds:
@@ -111,7 +111,7 @@ class SGDClassifier(SKLP):
 
 
 class AdaBoost(SKLP):
-    def prepare_model(self, obj_fn=None):
+    def prepare_model(self, obj_fn=None, num_steps=None):
         from sklearn.ensemble import AdaBoostClassifier
 
         with self.train_ds, self.validation_ds:
@@ -131,7 +131,7 @@ class AdaBoost(SKLP):
 
 
 class GradientBoost(SKLP):
-    def prepare_model(self, obj_fn=None):
+    def prepare_model(self, obj_fn=None, num_steps=None):
         from sklearn.ensemble import GradientBoostingClassifier
 
         with self.train_ds, self.validation_ds:
@@ -151,7 +151,7 @@ class GradientBoost(SKLP):
 
 
 class KNN(SKLP):
-    def prepare_model(self, obj_fn=None):
+    def prepare_model(self, obj_fn=None, num_steps=None):
         from sklearn.neighbors import KNeighborsClassifier
 
         with self.train_ds, self.validation_ds:

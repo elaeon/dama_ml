@@ -20,7 +20,7 @@ class Xgboost(XGB):
         else:
             return self.le.inverse_transform(self.position_index(label.reshape(-1, 1)))
 
-    def prepare_model(self, obj_fn=None, **params):
+    def prepare_model(self, obj_fn=None, num_steps=None, **params):
         with self.train_ds, self.validation_ds:
             d_train = xgb.DMatrix(self.train_ds.data[:], self.train_ds.labels[:]) 
             d_valid = xgb.DMatrix(self.validation_ds.data[:], self.validation_ds.labels[:]) 
@@ -50,7 +50,7 @@ class Xgboost(XGB):
 
 
 class XgboostSKL(SKLP):
-    def prepare_model(self, obj_fn=None, **params):
+    def prepare_model(self, obj_fn=None, num_steps=None, **params):
         model = CalibratedClassifierCV(xgb.XGBClassifier(seed=3, n_estimators=25), method="sigmoid")
         with self.train_ds, self.validation_ds:
             model_clf = model.fit(self.train_ds.data, self.train_ds.labels)
