@@ -38,7 +38,7 @@ class IterLayer(object):
         else:
             self.fn_iter = _fn_iter
 
-    def gen_chunks(self, fn_iter, chunks_size=258):
+    def gen_chunks(self, fn_iter, chunks_size=3000):
         from ml.utils.seq import grouper_chunk
         if len(self.shape) == 1:
             chunk_shape = [chunks_size]
@@ -49,17 +49,18 @@ class IterLayer(object):
         for smx in grouper_chunk(chunks_size, fn_iter):
             smx_a = np.empty(chunk_shape, dtype=self.dtype)
             for i, row in enumerate(smx):
-                smx_a[i] = row[0]
+                try:
+                    smx_a[i] = row
+                except ValueError:
+                    smx_a[i] = row[0]
             yield smx_a[:i+1]
 
     def flat(self):
         from operator import mul
         def _iter():
             for chunk in self:
-                if chunk.shape == 1 and chunk.shape[0] == 1:
-                    yield chunk[0]
-                else:
-                    yield chunk.reshape(-1)
+                for e in chunk.reshape(-1):
+                    yield e
 
         shape = (reduce(mul, self.shape),)
         return IterLayer(_iter(), shape=shape, dtype=self.dtype, chunks=self.chunks)
@@ -190,7 +191,7 @@ class IterLayer(object):
         init = 0
         end = 0
         for i, row in enumerate(self):
-            if len(row.shape) == 0:
+            if len(row.shape) <= 1:
                 smx_a[i] = row
             else:
                 end += row.shape[0]

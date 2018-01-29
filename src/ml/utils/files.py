@@ -97,6 +97,9 @@ def get_date_from_file(file_path):
 
 
 def path2module(class_path):
-    main_path = os.path.abspath(sys.modules['__main__'].__file__)
+    try:
+        main_path = os.path.abspath(sys.modules['__main__'].__file__)
+    except AttributeError:
+        main_path = "__main__"
     filepath = main_path.replace(class_path, "", 1).replace(".py", "")
     return ".".join(filepath.split("/"))
