@@ -127,30 +127,26 @@ class TransformsFn(object):
         :type data: array
         :param data: apply the transforms to the data
         """
-        from ml.utils.seq import grouper_chunk
+        if isinstance(data, np.ndarray):
+            data = IterLayer(data, shape=data.shape, dtype=data.dtype).to_chunks(chunks_size)
         def iter_():
             locate_fn = {}
-            i_features = data.shape[1:]
-            if len(i_features) == 0:
-                i_features = (1,)
-            chunk_shape = [chunks_size] + list(i_features)
-            if hasattr(data, 'chunks') and data.chunks is True:
-                chunks = data
-            else:
-                chunks = grouper_chunk(chunks_size, data)
-            for smx in chunks:
-                smx_a = np.empty(chunk_shape, dtype=self.input_dtype)
-                for i, row in enumerate(smx):
-                    smx_a[i] = row
+            #i_features = data.shape[1:]
+            #if len(i_features) == 0:
+            #    i_features = (1,)
+            #chunk_shape = [chunks_size] + list(i_features)
+            for smx in data:
                 for fn_, params in self.transforms:
                     fn = locate_fn.setdefault(fn_, locate(fn_))
-                    smx_a = fn(smx_a[:i+1], fmtypes=fmtypes, **params)
-                yield smx_a
+                    smx = fn(smx, fmtypes=fmtypes, **params)
+                yield smx
+        
         if hasattr(self.o_features, '__iter__'):
             shape = [data.shape[0]] + list(self.o_features)
         else:
             shape = [data.shape[0], self.o_features]
-        return IterLayer(iter_(), shape=shape, chunks=True, dtype=self.input_dtype), fmtypes
+        return IterLayer(iter_(), shape=shape, dtype=self.input_dtype, 
+            chunks_size=chunks_size, has_chunks=data.has_chunks), fmtypes
 
 
 class TransformsClass(TransformsFn):

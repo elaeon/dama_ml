@@ -5,6 +5,8 @@ import itertools
 import types
 import numpy as np
 
+from ml.utils.seq import grouper_chunk
+
 
 def choice(operator):
     def inner(fn):
@@ -20,11 +22,10 @@ def choice(operator):
 
 
 class IterLayer(object):
-    def __init__(self, fn_iter, shape=None, dtype='float', chunks=False, to_chunks=False):
+    def __init__(self, fn_iter, shape=None, dtype='float', has_chunks=False, chunks_size=0):
         self.shape = shape
         self.dtype = np.dtype(dtype)
-        self.chunks = chunks
-        self.to_chunks = to_chunks
+        self.chunks_size = chunks_size
         if isinstance(fn_iter, types.GeneratorType):
             _fn_iter = fn_iter
         elif isinstance(fn_iter, IterLayer):
@@ -32,14 +33,17 @@ class IterLayer(object):
         else:
             _fn_iter = (e for e in fn_iter)
 
-        if self.to_chunks:
-            self.chunks = True
-            self.fn_iter = self.gen_chunks(_fn_iter)
-        else:
-            self.fn_iter = _fn_iter
+        self.fn_iter = _fn_iter
+        self.has_chunks = has_chunks
 
-    def gen_chunks(self, fn_iter, chunks_size=3000):
-        from ml.utils.seq import grouper_chunk
+    def to_chunks(self, chunks_size):
+        if self.has_chunks is False:
+            return IterLayer(self.gen_chunks(self.fn_iter, chunks_size), shape=self.shape, 
+                dtype=self.dtype, chunks_size=chunks_size, has_chunks=True)
+        else:
+            return self
+        
+    def gen_chunks(self, fn_iter, chunks_size):
         if len(self.shape) == 1:
             chunk_shape = [chunks_size]
         else:
@@ -56,14 +60,17 @@ class IterLayer(object):
             yield smx_a[:i+1]
 
     def flat(self):
-        from operator import mul
         def _iter():
             for chunk in self:
                 for e in chunk.reshape(-1):
                     yield e
 
-        shape = (reduce(mul, self.shape),)
-        return IterLayer(_iter(), shape=shape, dtype=self.dtype, chunks=self.chunks)
+        shape = (reduce(operator.mul, self.shape),)
+        it = IterLayer(_iter(), shape=shape, dtype=self.dtype)
+        if self.has_chunks:
+            return it.to_chunks(self.chunks_size)
+        else:
+            return it
 
     @property
     def shape(self):
@@ -190,13 +197,13 @@ class IterLayer(object):
         smx_a = np.empty(self.shape, dtype=self.dtype)
         init = 0
         end = 0
-        for i, row in enumerate(self):
-            if len(row.shape) <= 1:
-                smx_a[i] = row
+        for smx in self:
+            if len(smx.shape) > 1:
+                end += smx.shape[0]
             else:
-                end += row.shape[0]
-                smx_a[init:end] = row
-                init = end
+                end += 1
+            smx_a[init:end] = smx
+            init = end
         return smx_a
 
     def tee(self):

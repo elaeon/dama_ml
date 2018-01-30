@@ -27,7 +27,7 @@ def parabole(x, fmtypes=None, b=0):
 
 
 def to_int(x, col=None, fmtypes=None):
-    x[col] = x[col].astype(np.int)
+    x[:, col] = x[:, col].astype(np.int)
     return x
 
 
@@ -426,15 +426,15 @@ class TestDataset(unittest.TestCase):
         from ml.processing import Transforms
         from ml.layers import IterLayer
 
-        array = [
+        array = np.asarray([
             [0, 1, -1, 1, '4', 0],
             [1, -1, 0, 2, '5', 1],
             [0, 0, 1, 4, '2', 1],
             [0, 1, 1, 3, '6', 0],
             [1, 1, 0, 7, '7', 1]
-        ]
+        ], dtype=np.dtype("int"))
         t = Transforms()
-        t.add(to_int, col=4, o_features=6)
+        t.add(to_int, col=4, o_features=6, input_dtype='int')
         fmtypes_t = fmtypes.FmtypesT()
         fmtypes_t.add(0, fmtypes.BOOLEAN)
         fmtypes_t.add(2, fmtypes.NANBOOLEAN)
@@ -443,12 +443,12 @@ class TestDataset(unittest.TestCase):
         fmtypes_t.add(4, fmtypes.ORDINAL)
         fmtypes_t.fmtypes_fill(6)
         with Data(name="test", dataset_path="/tmp/",
-                    transforms=t, apply_transforms=True) as data:
-            data.build_dataset(IterLayer(array, shape=(5,6)))
+                    transforms=t, apply_transforms=True, rewrite=True) as data:
+            data.build_dataset(array, chunks_size=2)
             self.assertEqual(data.features_fmtype(fmtypes.BOOLEAN), [0, 5])
             self.assertEqual(data.features_fmtype(fmtypes.NANBOOLEAN), [1, 2])
             self.assertEqual(data.features_fmtype(fmtypes.ORDINAL), [3, 4])
-            data.destroy()
+        data.destroy()
 
     def test_features_fmtype_edit(self):
         from ml import fmtypes

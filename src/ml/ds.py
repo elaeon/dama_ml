@@ -126,36 +126,21 @@ class ReadWriteData(object):
             log.debug("Error opening {} in file {}".format(name, self.url()))
             return None
 
-    def chunks_writer(self, name, data, chunks_size=258, init=0):
+    def chunks_writer(self, name, data, init=0):
         from ml.utils.seq import grouper_chunk
         from tqdm import tqdm
-        log.info("chunks size {}".format(chunks_size))
+        log.info("Writing with chunks size {}".format(data.chunks_size))
         end = init
-        if len(data.shape) == 1:
-            chunk_shape = (chunks_size,)
+        if data.chunks_size != 0:
+            total_data = int(round(data.shape[0] / float(data.chunks_size), 0))
         else:
-            chunk_shape = [chunks_size] + list(data.shape[1:])
-        if hasattr(data, 'chunks') and data.chunks is True:
-            has_chunks = True
-            chunks = data
-        else:
-            chunks = grouper_chunk(chunks_size, data)
-            has_chunks = False
-        total_data = int(round(data.shape[0] / float(chunks_size), 0))
-        for smx in tqdm(chunks, total=total_data):
-            if has_chunks is False:
-                smx_a = np.empty(chunk_shape, dtype=data.dtype)
-                for i, row in enumerate(smx):
-                    smx_a[i] = row
-                chunk = smx_a[:i+1]
-            else:
-                chunk = smx
-            
-            if len(chunk.shape) >= 1:
-                end += chunk.shape[0]
+            total_data = int(data.shape[0])
+        for smx in tqdm(data, total=total_data):
+            if len(smx.shape) >= 1 and data.has_chunks:
+                end += smx.shape[0]
             else:
                 end += 1
-            self.f[name][init:end] = chunk
+            self.f[name][init:end] = smx
             init = end
         return end
 
@@ -483,7 +468,7 @@ class Data(ReadWriteData):
         data = self.processing(data, apply_transforms=self.apply_transforms,
                             chunks_size=chunks_size)
         self._set_space_shape('data', data.shape, data.dtype)
-        end = self.chunks_writer("/data/data", data, chunks_size=chunks_size)
+        end = self.chunks_writer("/data/data", data)
         self._set_space_fmtypes(self.num_features())
         self.build_fmtypes()
         self.md5 = self.calc_md5()
@@ -547,7 +532,9 @@ class Data(ReadWriteData):
         if apply_transforms and not self.transforms.is_empty():
             return self.transforms.apply(data, fmtypes=self.fmtypes, chunks_size=chunks_size)
         else:
-            return data#IterLayer(data, shape=data.shape)
+            if not isinstance(data, IterLayer):
+                return IterLayer(data, shape=data.shape, dtype=data.dtype).to_chunks(chunks_size)
+            return data
 
     @classmethod
     def to_DF(self, dataset):
@@ -742,10 +729,12 @@ class DataLabel(Data):
         """
         data = self.processing(data, apply_transforms=self.apply_transforms, 
                             chunks_size=chunks_size)
+        if not isinstance(labels, IterLayer):
+            labels = IterLayer(labels, shape=labels.shape, dtype=labels.dtype).to_chunks(chunks_size)
         self._set_space_shape('data', data.shape, data.dtype)
         self._set_space_shape('labels', labels.shape, labels.dtype)
-        end = self.chunks_writer("/data/data", data, chunks_size=chunks_size)
-        end = self.chunks_writer("/data/labels", labels, chunks_size=chunks_size)
+        end = self.chunks_writer("/data/data", data)
+        end = self.chunks_writer("/data/labels", labels)
         self._set_space_fmtypes(self.num_features())
         self.build_fmtypes()
         self.md5 = self.calc_md5()

@@ -19,15 +19,15 @@ class TestIterLayers(unittest.TestCase):
         return [round(x, *args) for x in X]
 
     def test_operations_lscalar(self):
-        
         data = np.zeros((20, 2))
-        predictor = IterLayer(self.chunks(data))
-        predictor += 1.
+        predictor = IterLayer(data, shape=data.shape, dtype=data.dtype).to_chunks(chunks_size=2)
+        predictor += 10.
         predictor -= 1.
-        predictor *= 1.
-        predictor /= 1.
-        predictor **= 1
-        self.assertItemsEqual(np.asarray(list(predictor)).reshape(-1), np.zeros((40,)) + 1)
+        predictor *= 3.
+        predictor /= 2.
+        predictor **= 2
+        result = predictor.to_narray()
+        self.assertItemsEqual(result[0], [182.25, 182.25])
 
     def test_operations_rscalar(self):
 
@@ -43,12 +43,13 @@ class TestIterLayers(unittest.TestCase):
     def test_operations_stream(self):
 
         data_0 = np.zeros((20, 2)) - 1 
-        data_1 = np.zeros((20, 2))
-        predictor_0 = IterLayer(self.chunks(data_0, chunk_size=3))
-        predictor_1 = IterLayer(self.chunks(data_1, chunk_size=2))
+        data_1 = np.zeros((20, 2)) + 2
+        predictor_0 = IterLayer(data_0, shape=data_0.shape, dtype=data_0.dtype).to_chunks(chunks_size=3)
+        predictor_1 = IterLayer(data_1, shape=data_1.shape, dtype=data_1.dtype).to_chunks(chunks_size=3)
 
-        predictor = predictor_0 + predictor_1
-        self.assertItemsEqual(np.asarray(list(predictor)).reshape(-1), np.zeros((40,)) + 1)
+        predictor = 4*predictor_0 + predictor_1**3
+        result = predictor.to_narray()
+        self.assertItemsEqual(result[0], [4, 4])
 
     def test_operations_list(self):
         data_0 = np.zeros((20, 2)) - 1 
@@ -177,8 +178,32 @@ class TestIterLayers(unittest.TestCase):
         data_flat = it_flat.to_narray()
         self.assertEqual(len(data_flat.shape), 1)
         self.assertEqual(data_flat.shape[0], 40)
-        
 
+        data = np.random.rand(1000, 2 ,2)
+        it = IterLayer(data, shape=data.shape, dtype=data.dtype)
+        it_flat = it.to_chunks(chunks_size=200).flat()
+        data_flat = it_flat.to_narray()
+        self.assertEqual(len(data_flat.shape), 1)
+        self.assertEqual(data_flat.shape[0], 4000)
+
+    def test_chunks(self):
+        chunks_size = 3
+        data = np.random.rand(10, 1)
+        it = IterLayer(data, shape=data.shape, dtype=data.dtype)
+        it_0 = it.to_chunks(chunks_size)
+        self.assertEqual(it_0.chunks_size, chunks_size)
+        self.assertEqual(it_0.has_chunks, True)
+        for smx in it_0:
+            self.assertEqual(smx.shape[0] <= 3, True)
+
+    def test_from_chunks(self):
+        data = np.random.rand(10, 1)
+        chunks_size = 3
+        it = IterLayer(self.chunks(data, chunk_size=chunks_size), 
+            has_chunks=True, chunks_size=chunks_size)
+        for smx in it.to_chunks(chunks_size):
+            self.assertEqual(smx.shape[0], 1)
+        
 
 def chunk_sizes(seq):
     return [len(list(row)) for row in seq]
