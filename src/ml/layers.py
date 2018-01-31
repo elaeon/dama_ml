@@ -44,6 +44,9 @@ class IterLayer(object):
             return self
         
     def gen_chunks(self, fn_iter, chunks_size):
+        if chunks_size < 1:
+            chunks_size = self.shape[0]
+
         if len(self.shape) == 1:
             chunk_shape = [chunks_size]
         else:
@@ -57,7 +60,10 @@ class IterLayer(object):
                     smx_a[i] = row
                 except ValueError:
                     smx_a[i] = row[0]
-            yield smx_a[:i+1]
+            if i + 1 < chunks_size:
+                yield smx_a[:i+1]
+            else:
+                yield smx_a
 
     def flat(self):
         def _iter():
@@ -85,11 +91,13 @@ class IterLayer(object):
 
     def scalar_operation(self, operator, scalar):
         iter_ = imap(lambda x: operator(x, scalar), self)
-        return IterLayer(iter_, shape=self.shape)
+        return IterLayer(iter_, shape=self.shape, dtype=self.dtype, 
+            has_chunks=self.has_chunks, chunks_size=self.chunks_size)
 
     def stream_operation(self, operator, stream):
         iter_ = imap(lambda x: operator(x[0], x[1]), izip(self, stream))
-        return IterLayer(iter_, shape=self.shape)
+        return IterLayer(iter_, shape=self.shape, dtype=self.dtype, 
+            has_chunks=self.has_chunks, chunks_size=self.chunks_size)
 
     @choice(operator.add)
     def __add__(self, x):
@@ -135,15 +143,18 @@ class IterLayer(object):
         return
 
     @classmethod
-    def avg(self, iters, size, method="arithmetic"):
+    def avg(self, iters_b, size, method="arithmetic"):
+        iters = iter(iters_b)
+        base_iter = next(iters)
         if method == "arithmetic":
-            iter_ = (sum(x) / float(size) for x in izip(*iters))
+            iter_ = (sum(x) / float(size) for x in izip(base_iter, *iters))
         else:
-            iter_ = (reduce(operator.mul, x)**(1. / size) for x in izip(*iters)) 
-        return IterLayer(iter_, shape=self.shape)
+            iter_ = (reduce(operator.mul, x)**(1. / size) for x in izip(base_iter, *iters)) 
+        return IterLayer(iter_, shape=base_iter.shape, dtype=base_iter.dtype, 
+            has_chunks=base_iter.has_chunks, chunks_size=base_iter.chunks_size)
 
     @classmethod
-    def max_counter(self, iters, weights=None):
+    def max_counter(self, iters_b, weights=None):
         def merge(labels, weights):
             if weights is None:
                 return ((label, 1) for label in labels)
@@ -154,8 +165,11 @@ class IterLayer(object):
                     values[label] += w
                 return values.items()
 
-        iter_ = (max(merge(x, weights), key=lambda x: x[1])[0] for x in izip(*iters))
-        return IterLayer(iter_, shape=self.shape)
+        iters = iter(iters_b)
+        base_iter = next(iters)
+        iter_ = (max(merge(x, weights), key=lambda x: x[1])[0] for x in izip(base_iter, *iters))
+        return IterLayer(iter_, shape=base_iter.shape, dtype=base_iter.dtype, 
+            has_chunks=base_iter.has_chunks, chunks_size=base_iter.chunks_size)
 
     @classmethod
     def concat_n(self, iters):
@@ -163,11 +177,13 @@ class IterLayer(object):
 
     def concat_elems(self, data):
         iter_ = (list(itertools.chain(x0, x1)) for x0, x1 in izip(self, data))
-        return IterLayer(iter_)
+        return IterLayer(iter_, shape=None, dtype=self.dtype, 
+            has_chunks=self.has_chunks, chunks_size=self.chunks_size)
 
     def compose(self, fn, *args, **kwargs):
         iter_ = (fn(x, *args, **kwargs) for x in self)
-        return IterLayer(iter_, shape=self.shape)
+        return IterLayer(iter_, shape=self.shape, dtype=self.dtype, 
+            has_chunks=self.has_chunks, chunks_size=self.chunks_size)
 
     def concat(self, iterlayer):
         return IterLayer(itertools.chain(self, iterlayer))
@@ -198,7 +214,7 @@ class IterLayer(object):
         init = 0
         end = 0
         for smx in self:
-            if len(smx.shape) > 1:
+            if len(smx.shape) >= 1 and self.has_chunks:
                 end += smx.shape[0]
             else:
                 end += 1

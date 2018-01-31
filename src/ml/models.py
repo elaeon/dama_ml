@@ -210,7 +210,7 @@ class BaseModel(DataDrive):
 
         output_shape = tuple([data.shape[0], 1]) #fixme change 1 to model's target shape
         if isinstance(data, IterLayer):
-            return IterLayer(self._predict(fn(x, t=transform), raw=raw), shape=output_shape)
+            return IterLayer(self._predict(fn(data, t=transform), raw=raw), shape=output_shape)
         else:
             if chunks_size > 0:
                 return IterLayer(self.chunk_iter(data, chunks_size, transform_fn=fn, 

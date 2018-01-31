@@ -131,10 +131,6 @@ class TransformsFn(object):
             data = IterLayer(data, shape=data.shape, dtype=data.dtype).to_chunks(chunks_size)
         def iter_():
             locate_fn = {}
-            #i_features = data.shape[1:]
-            #if len(i_features) == 0:
-            #    i_features = (1,)
-            #chunk_shape = [chunks_size] + list(i_features)
             for smx in data:
                 for fn_, params in self.transforms:
                     fn = locate_fn.setdefault(fn_, locate(fn_))
@@ -186,7 +182,9 @@ class TransformsClass(TransformsFn):
         for fn_fit in self.initial_fn(data, fmtypes=fmtypes):
             data = fn_fit.transform(data).to_narray()
 
-        return data, fn_fit.fmtypes
+        return IterLayer(data, shape=data.shape, dtype=data.dtype, 
+            chunks_size=chunks_size, has_chunks=None), fn_fit.fmtypes
+        #return data, fn_fit.fmtypes
 
     def destroy(self):
         for transform in self.initial_fn(None):
@@ -398,7 +396,7 @@ class FitTsne(Fit):
             for row, predict in izip(data, self.t(self.dim_rule(data), chunks_size=5000)):
                 yield np.append(row, list(predict), axis=0)
 
-        return IterLayer(iter_(), shape=(data.shape[0], data.shape[1]+2))
+        return IterLayer(iter_(), shape=(data.shape[0], data.shape[1]+2), dtype=data.dtype)
 
     def destroy(self):
         if hasattr(self, 'model'):

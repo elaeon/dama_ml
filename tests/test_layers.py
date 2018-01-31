@@ -16,7 +16,7 @@ class TestIterLayers(unittest.TestCase):
                 yield p
 
     def multi_round(self, X, *args):
-        return [round(x, *args) for x in X]
+        return np.asarray([round(x, *args) for x in X])
 
     def test_operations_lscalar(self):
         data = np.zeros((20, 2))
@@ -78,41 +78,41 @@ class TestIterLayers(unittest.TestCase):
 
     def test_avg(self):
 
-        predictor_0 = IterLayer(self.chunks(np.zeros((20, 2)) + 1, chunk_size=3))
-        predictor_1 = IterLayer(self.chunks(np.zeros((20, 2)) + 2, chunk_size=3))
-        predictor_2 = IterLayer(self.chunks(np.zeros((20, 2)) + 3, chunk_size=3))
+        predictor_0 = IterLayer(self.chunks(np.zeros((20, 2)) + 1, chunk_size=3), shape=(20, 2), dtype='float')
+        predictor_1 = IterLayer(self.chunks(np.zeros((20, 2)) + 2, chunk_size=3), shape=(20, 2), dtype='float')
+        predictor_2 = IterLayer(self.chunks(np.zeros((20, 2)) + 3, chunk_size=3), shape=(20, 2), dtype='float')
 
         predictor_avg = IterLayer.avg([predictor_0, predictor_1, predictor_2], 3)
-        self.assertItemsEqual(np.asarray(list(predictor_avg)).reshape(-1), np.zeros((40,)) + 3)
+        self.assertItemsEqual(predictor_avg.to_narray().reshape(-1), np.zeros((40,)) + 3)
 
-        predictor_0 = IterLayer(self.chunks(np.zeros((20, 2)) + 1, chunk_size=3))
-        predictor_1 = IterLayer(self.chunks(np.zeros((20, 2)) + 2, chunk_size=3))
-        predictor_2 = IterLayer(self.chunks(np.zeros((20, 2)) + 3, chunk_size=3))
+        predictor_0 = IterLayer(self.chunks(np.zeros((20, 2)) + 1, chunk_size=3), shape=(20, 2), dtype='float')
+        predictor_1 = IterLayer(self.chunks(np.zeros((20, 2)) + 2, chunk_size=3), shape=(20, 2), dtype='float')
+        predictor_2 = IterLayer(self.chunks(np.zeros((20, 2)) + 3, chunk_size=3), shape=(20, 2), dtype='float')
 
         predictor_avg = IterLayer.avg([predictor_0, predictor_1, predictor_2], 3, method="geometric")
         predictor_avg = predictor_avg.compose(self.multi_round, 2)
-        self.assertItemsEqual(np.asarray(list(predictor_avg)).reshape(-1), np.zeros((40,)) + 2.88)
+        self.assertItemsEqual(predictor_avg.to_narray().reshape(-1), np.zeros((40,)) + 2.88)
 
     def test_max_counter(self):
 
-        predictor_0 = IterLayer(["0", "1", "0", "1", "2", "0", "1", "2"])
-        predictor_1 = IterLayer(["1", "2", "2", "1", "2", "0", "0", "0"])
-        predictor_2 = IterLayer(["0", "1", "0", "1", "2", "0", "1", "2"])
+        predictor_0 = IterLayer(["0", "1", "0", "1", "2", "0", "1", "2"], shape=(8,), dtype="int")
+        predictor_1 = IterLayer(["1", "2", "2", "1", "2", "0", "0", "0"], shape=(8,), dtype="int")
+        predictor_2 = IterLayer(["0", "1", "0", "1", "2", "0", "1", "2"], shape=(8,), dtype="int")
         predictor_avg = IterLayer.max_counter([predictor_0, predictor_1, predictor_2])
         self.assertEqual(list(predictor_avg), ['0', '1', '0', '1', '2', '0', '1', '2'])
 
         weights = [1.5, 2, 1]
-        predictor_0 = IterLayer(["0", "1", "0", "1", "2", "0", "1", "2"])
-        predictor_1 = IterLayer(["1", "2", "2", "1", "2", "0", "0", "0"])
-        predictor_2 = IterLayer(["0", "1", "0", "1", "2", "0", "1", "2"])        
+        predictor_0 = IterLayer(["0", "1", "0", "1", "2", "0", "1", "2"], shape=(8,), dtype="int")
+        predictor_1 = IterLayer(["1", "2", "2", "1", "2", "0", "0", "0"], shape=(8,), dtype="int")
+        predictor_2 = IterLayer(["0", "1", "0", "1", "2", "0", "1", "2"], shape=(8,), dtype="int")        
         predictor_avg = IterLayer.max_counter([predictor_0, predictor_1, predictor_2], weights=weights)
         self.assertEqual(list(predictor_avg), ['0', '1', '0', '1', '2', '0', '1', '2'])
 
     def test_custom_fn(self):
 
-        predictor = IterLayer(self.chunks(np.zeros((20, 2)) + 1, chunk_size=3))
+        predictor = IterLayer(self.chunks(np.zeros((20, 2)) + 1, chunk_size=3), shape=(20, 2), dtype="int")
         predictor = predictor.compose(self.multi_round, 2)
-        self.assertItemsEqual(np.asarray(list(predictor)).reshape(-1), np.zeros((40,)) + 2)
+        self.assertItemsEqual(predictor.to_narray().reshape(-1), np.zeros((40,)) + 2)
 
     def test_concat_fn(self):
 
@@ -203,6 +203,17 @@ class TestIterLayers(unittest.TestCase):
             has_chunks=True, chunks_size=chunks_size)
         for smx in it.to_chunks(chunks_size):
             self.assertEqual(smx.shape[0], 1)
+
+    def test_chunks_to_array(self):
+        chunks_size = 3
+        data = np.random.rand(10, 1)
+        it = IterLayer(data, shape=data.shape, dtype=data.dtype).to_chunks(chunks_size)
+        self.assertItemsEqual(it.to_narray(), data)
+
+        chunks_size = 0
+        data = np.random.rand(10, 1)
+        it = IterLayer(data, shape=data.shape, dtype=data.dtype).to_chunks(chunks_size)
+        self.assertItemsEqual(it.to_narray(), data)
         
 
 def chunk_sizes(seq):
