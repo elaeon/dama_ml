@@ -21,7 +21,10 @@ log.setLevel(int(settings["loglevel"]))
 
 
 class RegModel(BaseModel):
-    
+    def __init__(self, **params):
+        self.labels_dim = 1
+        super(RegModel, self).__init__(**params)
+
     def scores(self, measures=None):
         if measures is None or isinstance(measures, str):
             measures = metrics.Measure.make_metrics(measures="msle", name=self.model_name)
