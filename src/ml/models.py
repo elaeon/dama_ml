@@ -208,7 +208,7 @@ class BaseModel(DataDrive):
             log.info("Chunk size is set to 1")
             chunks_size = 258
 
-        output_shape = tuple([data.shape[0], 1]) #fixme change 1 to model's target shape
+        output_shape = tuple([data.shape[0], self.labels_dim])
         if isinstance(data, IterLayer):
             return IterLayer(self._predict(fn(data, t=transform), raw=raw), shape=output_shape)
         else:

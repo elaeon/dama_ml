@@ -502,11 +502,11 @@ class TestDataset(unittest.TestCase):
         transforms.add(label_t, o_features=1)
         dl = DataLabel(name="test", dataset_path="/tmp/")
         X = np.random.rand(10, 1)
-        Y = np.random.randint(1, 10, size=(10, 1))
-        Y = transforms.apply(Y, chunks_size=0).to_narray()
+        Y_0 = np.random.randint(1, 10, size=(10, 1))
+        Y = transforms.apply(Y_0, chunks_size=0).to_narray()
         with dl:
             dl.build_dataset(X, Y)
-            self.assertEqual(dl.labels[0], np.log1p(Y[0]))
+            self.assertEqual(dl.labels[0], np.log1p(Y_0[0]))
         dl.destroy()
 
 

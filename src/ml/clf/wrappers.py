@@ -25,6 +25,7 @@ class ClassifModel(BaseModel):
 
         self.le = LabelEncoder()
         self.base_labels = None
+        self.labels_dim = 1
         super(ClassifModel, self).__init__(
             dataset=dataset,
             autoload=autoload,
@@ -318,7 +319,8 @@ class Keras(ClassifModel):
                         save_fn=model.save)
 
     def reformat_labels(self, labels):
-        return (np.arange(self.num_labels) == labels[:,None]).astype(np.float)
+        self.labels_dim = self.num_labels
+        return (np.arange(self.num_labels) == labels[:, None]).astype(np.float)
 
     def train_kfolds(self, batch_size=10, num_steps=100, n_splits=None):
         from sklearn.model_selection import StratifiedKFold
