@@ -187,14 +187,6 @@ class BaseModel(DataDrive):
             self.original_dataset_name = dataset.name
             self.train_ds, self.test_ds, self.validation_ds = self.reformat_all(dataset)
 
-    def chunk_iter(self, data, chunks_size=1, transform_fn=None, uncertain=False, transform=True):
-        from ml.utils.seq import grouper_chunk
-        for chunk in grouper_chunk(chunks_size, data):
-            data = np.asarray(list(chunk))
-            size = data.shape[0]
-            for prediction in self._predict(transform_fn(data, size, transform), raw=uncertain):
-                yield prediction
-
     def predict(self, data, raw=False, transform=True, chunks_size=258):
         def fn(x, s=None, t=True):
             with self.test_ds:
@@ -203,20 +195,8 @@ class BaseModel(DataDrive):
         if self.model is None:
             self.load_model()
 
-        if not isinstance(chunks_size, int):
-            log.info("The parameter chunks_size must be an integer.")            
-            log.info("Chunk size is set to 1")
-            chunks_size = 258
-
         output_shape = tuple([data.shape[0], self.labels_dim])
-        if isinstance(data, IterLayer):
-            return IterLayer(self._predict(fn(data, t=transform), raw=raw), shape=output_shape)
-        else:
-            if chunks_size > 0:
-                return IterLayer(self.chunk_iter(data, chunks_size, transform_fn=fn, 
-                                                uncertain=raw, transform=transform), shape=output_shape)
-            else:
-                return IterLayer(self._predict(fn(data, t=transform), raw=raw), shape=output_shape)
+        return IterLayer(self._predict(fn(data, t=transform), raw=raw), shape=output_shape)
 
     def _metadata(self):
         list_measure = self.scores(measures=self.metrics)

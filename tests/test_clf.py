@@ -70,6 +70,27 @@ class TestSKL(unittest.TestCase):
             'logloss', 'gini_normalized', 'accuracy'])
         classif.destroy()
 
+    def test_predict(self):
+        from ml.processing import Transforms
+        t = Transforms()
+        t.add(mulp, o_features=1, input_dtype='float')
+        X = np.random.rand(100, 1)
+        Y = X[:,0] > .5
+        dataset = DataLabel(name="test_0", dataset_path="/tmp/", 
+            rewrite=True, transforms=t, apply_transforms=True)
+        with dataset:
+            dataset.build_dataset(X, Y)
+        classif = RandomForest(dataset=dataset, 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif.train()
+        values = np.asarray([[1], [2], [.4], [.1], [0], [1]])
+        self.assertEqual(len(classif.predict(values).to_narray()), 6)
+        self.assertEqual(len(classif.predict(np.asarray(values), chunks_size=0).to_narray()), 6)
+        dataset.destroy()
+        classif.destroy()
+
 
 #class TestGpy(unittest.TestCase):
 #    def setUp(self):
