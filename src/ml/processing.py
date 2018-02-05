@@ -122,7 +122,7 @@ class TransformsFn(object):
             transforms.add(locate(fn), **params)
         return transforms
 
-    def apply(self, data, fmtypes=None, chunks_size=258):
+    def apply(self, data, chunks_size=258):
         """
         :type data: array
         :param data: apply the transforms to the data
@@ -134,15 +134,15 @@ class TransformsFn(object):
             for smx in data:
                 for fn_, params in self.transforms:
                     fn = locate_fn.setdefault(fn_, locate(fn_))
-                    smx = fn(smx, fmtypes=fmtypes, **params)
+                    smx = fn(smx, o_features=self.o_features, **params)
                 yield smx
         
         if hasattr(self.o_features, '__iter__'):
             shape = [data.shape[0]] + list(self.o_features)
         else:
             shape = [data.shape[0], self.o_features]
-        return IterLayer(iter_(), shape=shape, dtype=self.input_dtype, 
-            chunks_size=chunks_size, has_chunks=data.has_chunks), fmtypes
+        return IterLayer(iter_(), shape=shape, dtype=None,#self.input_dtype, 
+            chunks_size=chunks_size, has_chunks=data.has_chunks)
 
 
 class TransformsClass(TransformsFn):
@@ -158,7 +158,7 @@ class TransformsClass(TransformsFn):
         """
         return self._from_json(json_transforms, TransformsClass)
 
-    def initial_fn(self, data, fmtypes=None):
+    def initial_fn(self, data):
         for fn, params in self.transforms:
             fn = locate(fn)
             try:
@@ -170,21 +170,20 @@ class TransformsClass(TransformsFn):
                 n_params = params.copy()
                 del n_params["name_00_ml"]
 
-            yield fn(data, name=name, fmtypes=fmtypes, **n_params)
+            yield fn(data, name=name, **n_params)
 
-    def apply(self, data, fmtypes=None, chunks_size=None):
+    def apply(self, data, chunks_size=None):
         """
         :type data: array
         :param data: apply the transforms added to the data
         """
         if isinstance(data, IterLayer):
-            data = data.to_narray()
-        for fn_fit in self.initial_fn(data, fmtypes=fmtypes):
-            data = fn_fit.transform(data).to_narray()
+            data = data.to_df()
+        for fn_fit in self.initial_fn(data):
+            data = fn_fit.transform(data).to_df()
 
-        return IterLayer(data, shape=data.shape, dtype=data.dtype, 
-            chunks_size=chunks_size, has_chunks=None), fn_fit.fmtypes
-        #return data, fn_fit.fmtypes
+        dtype = [(name, data.columns.dtype.str) for name in data.columns]
+        return IterLayer(data, shape=data.shape, dtype=dtype).to_chunks(chunks_size=chunks_size)
 
     def destroy(self):
         for transform in self.initial_fn(None):
@@ -280,7 +279,7 @@ class Transforms(object):
                                     input_dtype=transforms_dict["input_dtype"], **params)
         return transforms
 
-    def apply(self, data, fmtypes=None, chunks_size=258):
+    def apply(self, data, chunks_size=258):
         """
         :type data: array
         :param data: apply the transforms added to the data
@@ -289,7 +288,7 @@ class Transforms(object):
             for t_obj in self.transforms:
                 log.debug("APPLY TRANSFORMS:" + str(t_obj.transforms))
                 log.debug("Transform type:" + t_obj.type())
-                data, fmtypes = t_obj.apply(data, fmtypes=fmtypes, chunks_size=chunks_size)
+                data = t_obj.apply(data, chunks_size=chunks_size)
         return data
 
     def destroy(self):
@@ -303,10 +302,9 @@ class Transforms(object):
 
 
 class Fit(object):
-    def __init__(self, data, name=None, fmtypes=None, path="", **kwargs):
+    def __init__(self, data, name=None, path="", **kwargs):
         self.name = name if name is not None else uuid.uuid4().hex        
         self.meta_path = path + self.module_cls_name() + "_" + self.name
-        self.fmtypes = fmtypes
         self.t = self.fit(data, **kwargs)
 
     @classmethod
@@ -442,7 +440,7 @@ class FitReplaceNan(Fit):
         
 
 
-def resize(data, fmtypes=None, image_size_h=90, image_size_w=90):
+def resize(data, o_features=None, image_size_h=90, image_size_w=90):
     """
     :type data: array
     :param data: data to be resized
@@ -462,7 +460,7 @@ def resize(data, fmtypes=None, image_size_h=90, image_size_w=90):
     return data
 
 
-def contrast(data, fmtypes=None):
+def contrast(data, o_features=None):
     """
     :type data: array
     :param data: data to transform
@@ -474,7 +472,7 @@ def contrast(data, fmtypes=None):
     return exposure.rescale_intensity(data, in_range=(p2, p98))
 
 
-def upsample(data, fmtypes=None):
+def upsample(data, o_features=None):
     """
     :type data: array
     :param data: data to transform
@@ -484,7 +482,7 @@ def upsample(data, fmtypes=None):
     return transform.pyramid_expand(data, upscale=2, sigma=None, order=1, 
                                     mode='reflect', cval=0)
 
-def rgb2gray(data, fmtypes=None):
+def rgb2gray(data, o_features=None):
     """
     :type data: array
     :param data: data to transform
@@ -494,7 +492,7 @@ def rgb2gray(data, fmtypes=None):
     return color.rgb2gray(data)
 
 
-def blur(data, fmtypes=None, level=.2):
+def blur(data, o_features=None, level=.2):
     """
     :type data: array
     :param data: data to transform
@@ -518,7 +516,7 @@ def blur(data, fmtypes=None, level=.2):
 #    return align.process_img(data)
 
 
-def cut(data, fmtypes=None, rectangle=None):
+def cut(data, o_features=None, rectangle=None):
     """
     :type data: array
     :param data: data to cut    
@@ -532,11 +530,11 @@ def cut(data, fmtypes=None, rectangle=None):
     return data[top:bottom, left:right]
 
 
-def as_ubyte(data, fmtypes=None):
+def as_ubyte(data, o_features=None):
     return img_as_ubyte(data)
 
 
-def merge_offset(data, fmtypes=None, image_size=90, bg_color=1):
+def merge_offset(data, o_features=None, image_size=90, bg_color=1):
     """
     :type data: array
     :param data: data transform
@@ -556,7 +554,7 @@ def merge_offset(data, fmtypes=None, image_size=90, bg_color=1):
         return merge_offset3(data, image_size=image_size, bg_color=bg_color)
 
 
-def merge_offset2(data, fmtypes=None, image_size=90, bg_color=1):
+def merge_offset2(data, o_features=None, image_size=90, bg_color=1):
     bg = np.ones((image_size, image_size))
     ndata = np.empty((data.shape[0], image_size, image_size), dtype=data.dtype)
     for i, image in enumerate(data):
@@ -578,7 +576,7 @@ def merge_offset2(data, fmtypes=None, image_size=90, bg_color=1):
         bg2[v_range1, h_range1] = bg2[v_range1, h_range1] + image[v_range2, h_range2]
     return ndata
 
-def merge_offset3(data, fmtypes=None, image_size=90, bg_color=1):
+def merge_offset3(data, o_features=None, image_size=90, bg_color=1):
     ndata = np.empty((data.shape[0], image_size, image_size, 3), dtype=data.dtype)
     for i, image in enumerate(data):
         bg = np.ones((image_size, image_size, 3))
@@ -605,11 +603,11 @@ def merge_offset3(data, fmtypes=None, image_size=90, bg_color=1):
     return ndata
 
 
-def threshold(data, fmtypes=None, block_size=41):
+def threshold(data, o_features=None, block_size=41):
     return filters.threshold_adaptive(data, block_size, offset=0)
 
 
-def pixelate(data, fmtypes=None, pixel_width=None, pixel_height=None, mode='mean'):
+def pixelate(data, o_features=None, pixel_width=None, pixel_height=None, mode='mean'):
     """
     :type data: array
     :param data: data to pixelate
@@ -648,7 +646,7 @@ def pixelate(data, fmtypes=None, pixel_width=None, pixel_height=None, mode='mean
     return data
 
 
-def drop_columns(row, fmtypes=None, exclude_cols=None, include_cols=None):
+def drop_columns(row, o_features=None, exclude_cols=None, include_cols=None):
     if include_cols is not None:
         return row[:, include_cols]
     elif exclude_cols is not None:

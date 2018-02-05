@@ -56,7 +56,7 @@ class SQL(object):
         else:
             return ",".join(columns)
 
-    def stream(self, limit=None, order_by=None, chunks_size=0, dtype="|O"):
+    def stream(self, limit=None, order_by=None, chunks_size=0, dtype="|O", columns_name=False):
         self.limit = limit
         if self.limit is None:
             limit = ""
@@ -77,4 +77,6 @@ class SQL(object):
             order_by=order_by,
             limit=limit)
         cur.execute(query)
+        if columns_name is True:
+            dtype = [(column_name, dtype) for column_name in self.columns]
         return IterLayer(cur, shape=self.shape, dtype=dtype).to_chunks(chunks_size)

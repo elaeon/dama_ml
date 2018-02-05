@@ -140,7 +140,7 @@ class ReadWriteData(object):
                 end += smx.shape[0]
             else:
                 end += 1
-            self.f[name][init:end] = smx
+            self.f[name][init:end] = smx.as_matrix()
             init = end
         return end
 
@@ -467,7 +467,7 @@ class Data(ReadWriteData):
         """
         data = self.processing(data, apply_transforms=self.apply_transforms,
                             chunks_size=chunks_size)
-        self._set_space_shape('data', data.shape, data.dtype)
+        self._set_space_shape('data', data.shape, data.gdtype)
         end = self.chunks_writer("/data/data", data)
         self._set_space_fmtypes(self.num_features())
         self.build_fmtypes()
@@ -530,7 +530,7 @@ class Data(ReadWriteData):
 
         """
         if apply_transforms and not self.transforms.is_empty():
-            return self.transforms.apply(data, fmtypes=self.fmtypes, chunks_size=chunks_size)
+            return self.transforms.apply(data, chunks_size=chunks_size)
         else:
             if not isinstance(data, IterLayer):
                 return IterLayer(data, shape=data.shape, dtype=data.dtype).to_chunks(chunks_size)
@@ -731,7 +731,7 @@ class DataLabel(Data):
                             chunks_size=chunks_size)
         if not isinstance(labels, IterLayer):
             labels = IterLayer(labels, shape=labels.shape, dtype=labels.dtype).to_chunks(chunks_size)
-        self._set_space_shape('data', data.shape, data.dtype)
+        self._set_space_shape('data', data.shape, data.gdtype)
         self._set_space_shape('labels', labels.shape, labels.dtype)
         end = self.chunks_writer("/data/data", data)
         end = self.chunks_writer("/data/labels", labels)

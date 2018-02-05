@@ -4,27 +4,45 @@ import numpy as np
 from ml.processing import Transforms, Fit
 
 
-def linear(x, fmtypes=None):
+def linear(x, o_features=None):
     return x + 1
 
 
-def linear_p(x, b, fmtypes=None):
+def linear_2(x, o_features=None):
+    x0 = np.empty((x.shape[0], o_features), dtype=x.dtype)
+    x0[:, :1] = x + 1
+    return x0
+
+
+def linear_3(x, o_features=None):
+    x0 = np.empty((x.shape[0], o_features), dtype=x.dtype)
+    x0[:, :2] = x + 1
+    return x0
+
+
+def linear_1(x, o_features=None):
+    x0 = np.empty((x.shape[0], o_features), dtype=x.dtype)
+    x0[:, 0] = x[:, 0] + 1
+    return x0
+
+
+def linear_p(x, b, o_features=None):
     return x + b
 
 
-def parabole(x, fmtypes=None, chunks_size=10):
+def parabole(x, o_features=None, chunks_size=10):
     if x.shape[0] > chunks_size:
         raise Exception("Array size must be {}, but {} founded".format(chunks_size, x.shape[0]))
     return x*x
 
 
-def categorical(x, fmtypes=None):
+def categorical(x, o_features=None):
     for i, e in enumerate(x[:, 0]):
         x[i, 0] = int(e.replace("x", ""))
     return x
 
 
-def categorical2(x, fmtypes=None):
+def categorical2(x, o_features=None):
     xo = np.empty(x.shape, dtype=np.dtype("float"))
     xo[:,0] = x[:,0]
     for i, e in enumerate(x[:, 1]):
@@ -32,17 +50,6 @@ def categorical2(x, fmtypes=None):
     for i, row in enumerate(x[:, 2:]):
         xo[i, 2:] = row.astype(int)
     return xo
-
-
-class FitIdent(Fit):
-    def fit(self, data, **params):
-        def transform(data):
-            from ml.utils.numeric_functions import features_fmtype
-            from ml import fmtypes
-            col_i = features_fmtype(self.fmtypes, fmtypes.NANBOOLEAN)
-            data[:, col_i] = np.nan
-            return data
-        return transform
 
 
 class TestTransforms(unittest.TestCase):
@@ -136,6 +143,16 @@ class TestTransforms(unittest.TestCase):
         result = transforms.apply(numbers)
         self.assertItemsEqual(result.to_narray().reshape(-1), np.ones((10, 1)) + 11) # result [12, ..., 12]
 
+    def test_apply_many_dim(self):
+        transforms = Transforms()
+        transforms.add(linear, o_features=1)
+        transforms.add(linear_2, o_features=2)
+        transforms.add(linear_3, o_features=3)
+        transforms.add(linear_1, o_features=1)
+        numbers = np.ones((10, 1))
+        result = transforms.apply(numbers)
+        self.assertItemsEqual(result.to_narray().reshape(-1), np.zeros((10, 1)) + 5)
+
     def test_apply_row_iterlayer(self):
         from ml.layers import IterLayer
         transforms = Transforms()
@@ -151,7 +168,7 @@ class TestTransforms(unittest.TestCase):
         transforms.add(FitStandardScaler)
         transforms.add(FitTruncatedSVD, n_components=2)
         numbers = np.random.rand(1000, 3)
-        result = np.asarray(list(transforms.apply(numbers)))
+        result = transforms.apply(numbers).to_narray()
         self.assertEqual(-.1 <= result.mean() < .1, True)
         self.assertEqual(.9 <= result.std() <= 1.1, True)
         self.assertEqual(result.shape, (1000, 2))
@@ -163,20 +180,20 @@ class TestTransforms(unittest.TestCase):
         transforms.add(linear_p, b=10, o_features=2)
         transforms.add(FitStandardScaler)
         numbers = np.random.rand(1000, 2)        
-        result =  np.asarray(list(transforms.apply(numbers)))
+        result =  transforms.apply(numbers).to_narray()
         self.assertEqual(.95 <= result.std() <= 1.05, True)
         self.assertEqual(-0.1 <= result.mean() <= 0.1, True)
 
-    def test_apply_fmtypes(self):
-        from ml import fmtypes
-        transforms = Transforms()
-        transforms.add(linear, o_features=2)
-        transforms.add(linear_p, b=10, o_features=2)
-        transforms.add(FitIdent)
-        numbers = np.empty((1000, 2))
-        fmtypes = [fmtypes.BOOLEAN.id, fmtypes.NANBOOLEAN.id]
-        result =  np.asarray(list(transforms.apply(numbers, fmtypes=fmtypes)))
-        self.assertEqual(all(np.isnan(result[:, 1])), True)
+    #def test_apply_fmtypes(self):
+    #    from ml import fmtypes
+    #    transforms = Transforms()
+    #    transforms.add(linear, o_features=2)
+    #    transforms.add(linear_p, b=10, o_features=2)
+    #    transforms.add(FitIdent)
+    #    numbers = np.empty((1000, 2))
+    #    fmtypes = [fmtypes.BOOLEAN.id, fmtypes.NANBOOLEAN.id]
+    #    result =  np.asarray(list(transforms.apply(numbers)))
+    #    self.assertEqual(all(np.isnan(result[:, 1])), True)
 
     def test_apply_to_clf(self):
         from ml.ds import DataLabel

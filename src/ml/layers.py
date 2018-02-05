@@ -1,11 +1,22 @@
-from itertools import izip, imap
+from itertools import izip, imap, chain, tee
 import operator
 import collections
-import itertools
 import types
 import numpy as np
+import pandas as pd
 
 from ml.utils.seq import grouper_chunk
+
+class struct_array(np.recarray):
+    @property
+    def sshape(self):
+        return tuple(list(self.shape) + [len(self.dtype.names)])
+
+
+#class df(pd.DataFrame):
+#    @property
+#    def sshape(self):
+#        return tuple(list(self.shape) + [len(self.dtype.names)])
 
 
 def choice(operator):
@@ -24,12 +35,15 @@ def choice(operator):
 class IterLayer(object):
     def __init__(self, fn_iter, shape=None, dtype='float', has_chunks=False, chunks_size=0):
         self.shape = shape
-        self.dtype = np.dtype(dtype)
+        self.dtype = dtype
+        self.gdtype = 'float'
         self.chunks_size = chunks_size
         if isinstance(fn_iter, types.GeneratorType):
             _fn_iter = fn_iter
         elif isinstance(fn_iter, IterLayer):
             _fn_iter = fn_iter.fn_iter
+        elif isinstance(fn_iter, pd.DataFrame):
+            _fn_iter = (e for e in fn_iter.values)
         else:
             _fn_iter = (e for e in fn_iter)
 
@@ -53,17 +67,35 @@ class IterLayer(object):
             i_features = self.shape[1:]
             chunk_shape = [chunks_size] + list(i_features)
 
-        for smx in grouper_chunk(chunks_size, fn_iter):
-            smx_a = np.empty(chunk_shape, dtype=self.dtype)
-            for i, row in enumerate(smx):
-                try:
-                    smx_a[i] = row
-                except ValueError:
-                    smx_a[i] = row[0]
-            if i + 1 < chunks_size:
-                yield smx_a[:i+1]
-            else:
-                yield smx_a
+        if isinstance(self.dtype, str) is None:
+            for smx in grouper_chunk(chunks_size, fn_iter):
+                smx_a = np.empty(chunk_shape, dtype=np.dtype(self.dtype))
+                for i, row in enumerate(smx):
+                    try:
+                        smx_a[i] = row
+                    except ValueError:
+                        smx_a[i] = row[0]
+                if i + 1 < chunks_size:
+                    yield smx_a[:i+1]
+                else:
+                    yield smx_a
+        else:
+            for smx in grouper_chunk(chunks_size, fn_iter):
+                smx_a = pd.DataFrame(np.empty(chunk_shape, 
+                    dtype=self.dtype[0][1]), columns=[c for c, _ in self.dtype])
+                for i, row in enumerate(smx):
+                    try:
+                        #smx_a[i] = row
+                        #smx_a.iloc[i] = row
+                        smx_a.values[i, :] = row
+                    except ValueError:
+                        #smx_a.iloc[i] = row[0]
+                        #smx_a[i] = row[0]
+                        smx_a.values[i, :] = row[0]
+                if i + 1 < chunks_size:
+                    yield smx_a[:i+1]
+                else:
+                    yield smx_a
 
     def flat(self):
         def _iter():
@@ -173,10 +205,10 @@ class IterLayer(object):
 
     @classmethod
     def concat_n(self, iters):
-        return IterLayer(itertools.chain(*iters))
+        return IterLayer(chain(*iters))
 
     def concat_elems(self, data):
-        iter_ = (list(itertools.chain(x0, x1)) for x0, x1 in izip(self, data))
+        iter_ = (list(chain(x0, x1)) for x0, x1 in izip(self, data))
         return IterLayer(iter_, shape=None, dtype=self.dtype, 
             has_chunks=self.has_chunks, chunks_size=self.chunks_size)
 
@@ -186,7 +218,7 @@ class IterLayer(object):
             has_chunks=self.has_chunks, chunks_size=self.chunks_size)
 
     def concat(self, iterlayer):
-        return IterLayer(itertools.chain(self, iterlayer))
+        return IterLayer(chain(self, iterlayer))
 
     def to_datamodelset(self, labels, features, size, ltype):
         from ml.ds import DataLabel
@@ -207,13 +239,16 @@ class IterLayer(object):
             dataset.build_dataset(data, label_m)
         return dataset
 
-    def to_narray(self):
+    def to_narray(self, dtype='float64'):
         if self.shape is None:
             raise Exception("Data shape is None, IterLayer can't be converted to array")
-        smx_a = np.empty(self.shape, dtype=self.dtype)
+        return self._to_narray(self, self.shape, dtype)
+
+    def _to_narray(self, it, shape, dtype):
+        smx_a = np.empty(shape, dtype=dtype)
         init = 0
         end = 0
-        for smx in self:
+        for smx in it:
             if len(smx.shape) >= 1 and self.has_chunks:
                 end += smx.shape[0]
             else:
@@ -222,8 +257,22 @@ class IterLayer(object):
             init = end
         return smx_a
 
+    def to_df(self):
+        #self, peek = tee(self)
+        #df = next(peek)
+        #print(df.shape)
+        if self.has_chunks:
+            df = []
+            #[chunk for chunk in self]
+            for chunk in self:
+                #print(type(chunk))
+                df.append(chunk)
+            return pd.concat(df, axis=0)
+        else:
+            return pd.DataFrame((e for e in self), columns=[c for c, _ in self.dtype])
+
     def tee(self):
-        it0, it1 = itertools.tee(self)
+        it0, it1 = tee(self)
         return IterLayer(it0), IterLayer(it1)
 
     def __iter__(self):
