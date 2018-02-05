@@ -215,7 +215,7 @@ class TestIterLayers(unittest.TestCase):
         it = IterLayer(data, shape=data.shape, dtype=data.dtype).to_chunks(chunks_size)
         self.assertItemsEqual(it.to_narray(), data)
 
-    def test_struct_chunks(self):
+    def test_df_chunks(self):
         chunks_size = 3
         data = np.asarray([
             [0, 1],
@@ -232,7 +232,7 @@ class TestIterLayers(unittest.TestCase):
         data = np.asarray([1,2,3,4,5,6,7,8,9], dtype='float')
         it = IterLayer(data, shape=data.shape, dtype=[('x', 'float')]).to_chunks(chunks_size)
         chunk = next(it)
-        self.assertItemsEqual(chunk.x, [1, 2])
+        self.assertItemsEqual(chunk['x'].values, [1, 2])
 
 
 def chunk_sizes(seq):

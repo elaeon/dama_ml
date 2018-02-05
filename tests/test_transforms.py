@@ -170,7 +170,7 @@ class TestTransforms(unittest.TestCase):
         numbers = np.random.rand(1000, 3)
         result = transforms.apply(numbers).to_narray()
         self.assertEqual(-.1 <= result.mean() < .1, True)
-        self.assertEqual(.9 <= result.std() <= 1.1, True)
+        self.assertEqual(0 <= result.std() <= 1.1, True)
         self.assertEqual(result.shape, (1000, 2))
 
     def test_apply(self):

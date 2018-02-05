@@ -67,7 +67,7 @@ class IterLayer(object):
             i_features = self.shape[1:]
             chunk_shape = [chunks_size] + list(i_features)
 
-        if isinstance(self.dtype, str) is None:
+        if not isinstance(self.dtype, list):
             for smx in grouper_chunk(chunks_size, fn_iter):
                 smx_a = np.empty(chunk_shape, dtype=np.dtype(self.dtype))
                 for i, row in enumerate(smx):
@@ -85,12 +85,8 @@ class IterLayer(object):
                     dtype=self.dtype[0][1]), columns=[c for c, _ in self.dtype])
                 for i, row in enumerate(smx):
                     try:
-                        #smx_a[i] = row
-                        #smx_a.iloc[i] = row
                         smx_a.values[i, :] = row
                     except ValueError:
-                        #smx_a.iloc[i] = row[0]
-                        #smx_a[i] = row[0]
                         smx_a.values[i, :] = row[0]
                 if i + 1 < chunks_size:
                     yield smx_a[:i+1]
@@ -258,18 +254,19 @@ class IterLayer(object):
         return smx_a
 
     def to_df(self):
-        #self, peek = tee(self)
-        #df = next(peek)
-        #print(df.shape)
         if self.has_chunks:
-            df = []
-            #[chunk for chunk in self]
-            for chunk in self:
-                #print(type(chunk))
-                df.append(chunk)
-            return pd.concat(df, axis=0)
+            return pd.concat((chunk for chunk in self), axis=0, copy=False, ignore_index=True)
         else:
-            return pd.DataFrame((e for e in self), columns=[c for c, _ in self.dtype])
+            if isinstance(self.dtype, types.GeneratorType):
+                return pd.DataFrame((e for e in self), columns=[c for c, _ in self.dtype])
+            else:
+                return pd.DataFrame((e for e in self))
+
+    def to_memory(self):
+        if isinstance(self.dtype, types.GeneratorType):
+            return self.to_df()
+        else:
+            return self.to_narray(dtype=self.dtype)
 
     def tee(self):
         it0, it1 = tee(self)

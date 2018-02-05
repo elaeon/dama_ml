@@ -6,7 +6,7 @@ from ml.clf.extended.w_sklearn import RandomForest
 np.random.seed(0)
 
 
-def mulp(row, fmtypes=None):
+def mulp(row, o_features=None):
     return row * 2
 
 

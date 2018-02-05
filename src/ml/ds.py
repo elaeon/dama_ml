@@ -140,7 +140,11 @@ class ReadWriteData(object):
                 end += smx.shape[0]
             else:
                 end += 1
-            self.f[name][init:end] = smx.as_matrix()
+            if hasattr(smx, 'as_matrix'):
+                array = smx.as_matrix()
+            else:
+                array = smx
+            self.f[name][init:end] = array
             init = end
         return end
 

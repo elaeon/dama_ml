@@ -18,20 +18,20 @@ def build_csv_file(path, vector, sep=","):
             f.write("\n")
 
 
-def linear(x, fmtypes=None, b=0):
+def linear(x, o_features=None, b=0):
     return x + b
 
 
-def parabole(x, fmtypes=None, b=0):
+def parabole(x, o_features=None, b=0):
     return x**2 + b
 
 
-def to_int(x, col=None, fmtypes=None):
+def to_int(x, col=None, o_features=None):
     x[:, col] = x[:, col].astype(np.int)
     return x
 
 
-def label_t(x, fmtypes=None):
+def label_t(x, o_features=None):
     return np.log1p(x)
 
 

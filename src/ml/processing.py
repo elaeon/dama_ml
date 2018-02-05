@@ -178,11 +178,14 @@ class TransformsClass(TransformsFn):
         :param data: apply the transforms added to the data
         """
         if isinstance(data, IterLayer):
-            data = data.to_df()
+            data = data.to_memory()
         for fn_fit in self.initial_fn(data):
-            data = fn_fit.transform(data).to_df()
+            data = fn_fit.transform(data).to_memory()
 
-        dtype = [(name, data.columns.dtype.str) for name in data.columns]
+        if not isinstance(data, np.ndarray):
+            dtype = [(name, data.columns.dtype.str) for name in data.columns]
+        else:
+            dtype = data.dtype
         return IterLayer(data, shape=data.shape, dtype=dtype).to_chunks(chunks_size=chunks_size)
 
     def destroy(self):
