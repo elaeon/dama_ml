@@ -33,27 +33,59 @@ def choice(operator):
 
 
 class IterLayer(object):
-    def __init__(self, fn_iter, shape=None, dtype='float', has_chunks=False, chunks_size=0):
-        self.shape = shape
-        self.dtype = dtype
-        self.gdtype = 'float'
-        self.chunks_size = chunks_size
+    def __init__(self, fn_iter, shape=None, dtype=None, has_chunks=False, chunks_size=0):
         if isinstance(fn_iter, types.GeneratorType):
             _fn_iter = fn_iter
         elif isinstance(fn_iter, IterLayer):
-            _fn_iter = fn_iter.fn_iter
+            _fn_iter = fn_iter
         elif isinstance(fn_iter, pd.DataFrame):
             _fn_iter = (e for e in fn_iter.values)
+            dtype = zip(fn_iter.columns.values, fn_iter.dtypes.values)
         else:
             _fn_iter = (e for e in fn_iter)
 
-        self.fn_iter = _fn_iter
+        self.it = _fn_iter
+        self.pushedback = []
+        self.shape = shape
+        self.chunks_size = chunks_size
         self.has_chunks = has_chunks
+        self.chunk_taste(dtype)
+
+    def pushback(self, val):
+        self.pushedback.append(val)
+
+    def chunk_taste(self, dtype):
+        chunk = next(self)
+        if isinstance(chunk, pd.DataFrame):
+            self.dtype = []
+            for c, cdtype in zip(chunk.columns.values, chunk.dtypes.values):
+                if cdtype == np.dtype("|O"):
+                    global_dtype = cdtype
+                self.dtype.append((c, cdtype))
+            global_dtype = cdtype
+        elif hasattr(dtype, '__iter__'):
+            self.dtype = []
+            for c, cdtype in dtype:
+                if cdtype == np.dtype("|O"):
+                    global_dtype = cdtype
+                self.dtype.append((c, cdtype))
+            global_dtype = cdtype
+        elif isinstance(chunk, np.ndarray):
+            self.dtype = chunk.dtype
+            global_dtype = self.dtype
+        else:#scalars
+            if type(chunk).__module__ == '__builtin__':
+                self.dtype = '|O'
+            else:
+                self.dtype = chunk.dtype
+            global_dtype = self.dtype
+        self.global_dtype = global_dtype
+        self.pushback(chunk)
 
     def to_chunks(self, chunks_size):
         if self.has_chunks is False:
-            return IterLayer(self.gen_chunks(self.fn_iter, chunks_size), shape=self.shape, 
-                dtype=self.dtype, chunks_size=chunks_size, has_chunks=True)
+            return IterLayer(self.gen_chunks(self, chunks_size), shape=self.shape, 
+                chunks_size=chunks_size, has_chunks=True)
         else:
             return self
         
@@ -235,9 +267,11 @@ class IterLayer(object):
             dataset.build_dataset(data, label_m)
         return dataset
 
-    def to_narray(self, dtype='float64'):
+    def to_narray(self, dtype=None):
         if self.shape is None:
             raise Exception("Data shape is None, IterLayer can't be converted to array")
+        if dtype is None:
+            dtype = self.global_dtype
         return self._to_narray(self, self.shape, dtype)
 
     def _to_narray(self, it, shape, dtype):
@@ -257,16 +291,16 @@ class IterLayer(object):
         if self.has_chunks:
             return pd.concat((chunk for chunk in self), axis=0, copy=False, ignore_index=True)
         else:
-            if isinstance(self.dtype, types.GeneratorType):
+            if hasattr(self.dtype, '__iter__'):
                 return pd.DataFrame((e for e in self), columns=[c for c, _ in self.dtype])
             else:
                 return pd.DataFrame((e for e in self))
 
     def to_memory(self):
-        if isinstance(self.dtype, types.GeneratorType):
+        if hasattr(self.dtype, '__iter__'):
             return self.to_df()
         else:
-            return self.to_narray(dtype=self.dtype)
+            return self.to_narray()
 
     def tee(self):
         it0, it1 = tee(self)
@@ -276,9 +310,11 @@ class IterLayer(object):
         return self
 
     def next(self):
+        if len(self.pushedback) > 0:
+            return self.pushedback.pop()
         try:
-            return self.fn_iter.next()
+            return self.it.next()
         except StopIteration:
-            if hasattr(self.fn_iter, 'close'):
-                self.fn_iter.close()
+            if hasattr(self.it, 'close'):
+                self.it.close()
             raise StopIteration

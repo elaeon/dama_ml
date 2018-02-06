@@ -141,7 +141,7 @@ class TransformsFn(object):
             shape = [data.shape[0]] + list(self.o_features)
         else:
             shape = [data.shape[0], self.o_features]
-        return IterLayer(iter_(), shape=shape, dtype=None,#self.input_dtype, 
+        return IterLayer(iter_(), shape=shape, dtype=self.input_dtype, 
             chunks_size=chunks_size, has_chunks=data.has_chunks)
 
 
@@ -340,11 +340,6 @@ class FitStandardScaler(Fit):
 
 
 class FitRobustScaler(Fit):
-    def dim_rule(self, data):
-        if len(data.shape) > 2:
-            data = data.reshape(data.shape[0], -1)
-        return data
-
     def fit(self, data, **params):
         from sklearn.preprocessing import RobustScaler
         scaler = RobustScaler(**params)
@@ -353,11 +348,6 @@ class FitRobustScaler(Fit):
 
 
 class FitTruncatedSVD(Fit):
-    def dim_rule(self, data):
-        if len(data.shape) > 2:
-            data = data.reshape(data.shape[0], -1)
-        return data
-
     def fit(self, data, **params):
         from sklearn.decomposition import TruncatedSVD
         svd = TruncatedSVD(**params)
@@ -405,11 +395,6 @@ class FitTsne(Fit):
 
 
 class FitReplaceNan(Fit):
-    def dim_rule(self, data):
-        if len(data.shape) > 2:
-            data = data.reshape(data.shape[0], -1)
-        return data
-    
     def fit(self, data, **params):
         from ml.utils.numeric_functions import is_binary, is_integer
         if len(self.read_meta()) == 0:

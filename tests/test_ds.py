@@ -257,15 +257,6 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(list(df.columns), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'])
         dataset.destroy()
 
-    def test_outlayer(self):
-        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", rewrite=True)
-        with dataset:
-            dataset.build_dataset(self.X, self.Y)
-            outlayers = dataset.outlayers()
-            ds_no_outlayer = dataset.remove_outlayers(list(outlayers))
-            dataset.destroy()
-            ds_no_outlayer.destroy()
-
     def test_ds_build(self):
         X = np.asarray([
             [1,2,3,4,5,6],

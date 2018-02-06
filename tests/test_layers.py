@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+import pandas as pd
 from ml.layers import IterLayer
 
 
@@ -233,6 +234,39 @@ class TestIterLayers(unittest.TestCase):
         it = IterLayer(data, shape=data.shape, dtype=[('x', 'float')]).to_chunks(chunks_size)
         chunk = next(it)
         self.assertItemsEqual(chunk['x'].values, [1, 2])
+
+    def test_chunk_taste(self):
+        chunks_size = 2
+        data = np.asarray([1,2,3,4,5,6,7,8,9], dtype='int')
+        it = IterLayer(data, shape=data.shape).to_chunks(chunks_size)
+        self.assertEqual(it.dtype, np.dtype('int'))
+        self.assertEqual(it.global_dtype, np.dtype('int'))
+        self.assertItemsEqual(it.to_narray(), data)
+
+        data = np.asarray([1,2,3,'4',5,6,7,8,9], dtype='|O')
+        it = IterLayer(data, shape=data.shape).to_chunks(chunks_size)
+        self.assertEqual(it.dtype, np.dtype('|O'))
+        self.assertEqual(it.global_dtype, np.dtype('|O'))
+        self.assertItemsEqual(it.to_narray(), data)
+        
+    def test_chunk_taste_2(self):
+        chunks_size = 2
+        data = np.asarray([[1,2],[3,4],[5,6],[7,8],[9,0]], dtype='int')
+        it = IterLayer(data, shape=data.shape).to_chunks(chunks_size)
+        self.assertEqual(it.dtype, np.dtype('int'))
+        self.assertEqual(it.global_dtype, np.dtype('int'))
+        self.assertItemsEqual(it.flat().to_narray(), data.reshape(-1))
+
+        data = pd.DataFrame(data, columns=['x', 'y'])
+        it = IterLayer(data, shape=data.shape).to_chunks(chunks_size)
+        self.assertEqual(it.global_dtype, np.dtype('int'))
+        self.assertEqual(isinstance(it.to_df(), pd.DataFrame), True)
+
+    def test_chunk_df(self):
+        chunks_size = 2
+        data = np.asarray([[1,2],[3,4],[5,6],[7,8],[9,0]], dtype='int')
+        it = IterLayer(data, shape=data.shape, dtype=[('x', 'int'), ('y', 'float')]).to_chunks(chunks_size)
+        self.assertEqual(isinstance(it.to_memory(), pd.DataFrame), True)
 
 
 def chunk_sizes(seq):

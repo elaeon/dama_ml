@@ -311,7 +311,7 @@ class TestTransforms(unittest.TestCase):
         ]
         data = np.array(data, dtype=float)
         ft = FitReplaceNan(data, name="test_nan_fit", path='/tmp/')
-        data_nonan = np.array(list(ft.transform(data)))
+        data_nonan = ft.transform(data).to_memory()
         self.assertItemsEqual(data_nonan[:,0], [1,0,0,-1])
         self.assertItemsEqual(data_nonan[:,1], [2,2,2.5,2])
         self.assertItemsEqual(data_nonan[:,2], [3,3,3,3])

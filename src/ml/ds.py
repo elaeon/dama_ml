@@ -471,7 +471,7 @@ class Data(ReadWriteData):
         """
         data = self.processing(data, apply_transforms=self.apply_transforms,
                             chunks_size=chunks_size)
-        self._set_space_shape('data', data.shape, data.gdtype)
+        self._set_space_shape('data', data.shape, data.global_dtype)
         end = self.chunks_writer("/data/data", data)
         self._set_space_fmtypes(self.num_features())
         self.build_fmtypes()
@@ -590,29 +590,6 @@ class Data(ReadWriteData):
             clf.fit(data)
             y_pred = clf.predict(data)
         return (i for i, v in enumerate(y_pred) if v == -1)
-        
-    def remove_outlayers(self, outlayers):
-        """
-        removel the outlayers of the data
-        """
-        shape = tuple([self.shape[0] - len(outlayers)] + list(self.shape[1:]))
-        outlayers = iter(outlayers)
-        outlayer = outlayers.next()
-        data = np.empty(shape)
-        counter = 0
-        for index, row in enumerate(self.data):
-            if index == outlayer:
-                try:
-                    outlayer = outlayers.next()
-                except StopIteration:
-                    outlayer = None
-            else:
-                data[counter] = dl.data[index]
-                counter += 1
-        dl_ol, _ = self.empty(self.name+"_n_outlayer", apply_transforms=self.apply_transforms)
-        with dl_ol:
-            dl_ol.build_dataset(data)
-        return dl_ol
 
 
 class DataLabel(Data):
@@ -735,7 +712,7 @@ class DataLabel(Data):
                             chunks_size=chunks_size)
         if not isinstance(labels, IterLayer):
             labels = IterLayer(labels, shape=labels.shape, dtype=labels.dtype).to_chunks(chunks_size)
-        self._set_space_shape('data', data.shape, data.gdtype)
+        self._set_space_shape('data', data.shape, data.global_dtype)
         self._set_space_shape('labels', labels.shape, labels.dtype)
         end = self.chunks_writer("/data/data", data)
         end = self.chunks_writer("/data/labels", labels)
@@ -789,20 +766,6 @@ class DataLabel(Data):
                 dl.transforms = transforms
         return dl
 
-    #def copy(self, name=None, dataset_path=None, percentaje=1):
-    #    """
-    #    :type percentaje: float
-    #    :param percentaje: value between [0, 1], this value represent the size of the dataset to copy.
-    #    
-    #    copy the dataset, a percentaje is permited for the size of the copy
-    #    """
-    #    name = self.name + "_copy_" + uuid.uuid4().hex if name is None else name
-    #    dl = self.convert(name, apply_transforms=False, percentaje=percentaje, 
-    #                    dataset_path=dataset_path)
-    #    with dl:
-    #        dl._applied_transforms = self._applied_transforms
-    #    return dl
-
     @classmethod
     def to_DF(self, dataset, labels):
         if len(dataset.shape) > 2:
@@ -826,31 +789,6 @@ class DataLabel(Data):
     @classmethod
     def from_DF(self, name, df, transforms=None, apply_transforms=None, path=None):
         pass
-        
-    def remove_outlayers(self, outlayers):
-        """
-        removel the outlayers of the data
-        """
-        shape = tuple([self.shape[0] - len(outlayers)] + list(self.shape[1:]))
-        outlayers = iter(outlayers)
-        outlayer = outlayers.next()
-        data = np.empty(shape)
-        labels = np.empty((shape[0],))
-        counter = 0
-        for index, row in enumerate(self.data):
-            if index == outlayer:
-                try:
-                    outlayer = outlayers.next()
-                except StopIteration:
-                    outlayer = None
-            else:
-                data[counter] = dl.data[index]
-                labels[counter] = dl.labels[index]
-                counter += 1
-        dl_ol, _ = self.empty(self.name+"_n_outlayer", apply_transforms=self.apply_transforms)
-        with dl_ol:
-            dl_ol.build_dataset(data, labels)
-        return dl_ol
 
     def to_data(self):
         name = self.name + "_data_" + uuid.uuid4().hex
