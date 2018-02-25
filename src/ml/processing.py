@@ -134,7 +134,7 @@ class TransformsFn(object):
             for smx in data:
                 for fn_, params in self.transforms:
                     fn = locate_fn.setdefault(fn_, locate(fn_))
-                    smx = fn(smx, o_features=self.o_features, **params)
+                    smx = fn(smx, **params)
                 yield smx
         
         if hasattr(self.o_features, '__iter__'):

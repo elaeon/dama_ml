@@ -33,7 +33,7 @@ def choice(operator):
 
 
 class IterLayer(object):
-    def __init__(self, fn_iter, shape=None, dtype=None, has_chunks=False, chunks_size=0):
+    def __init__(self, fn_iter, shape=None, dtype=None, has_chunks=False, chunks_size=0):#delete dtype
         if isinstance(fn_iter, types.GeneratorType):
             _fn_iter = fn_iter
         elif isinstance(fn_iter, IterLayer):
@@ -59,10 +59,13 @@ class IterLayer(object):
         if isinstance(chunk, pd.DataFrame):
             self.dtype = []
             for c, cdtype in zip(chunk.columns.values, chunk.dtypes.values):
+                self.dtype.append((c, cdtype))
+            for _, cdtype in self.dtype:
                 if cdtype == np.dtype("|O"):
                     global_dtype = cdtype
-                self.dtype.append((c, cdtype))
-            global_dtype = cdtype
+                    break
+            else:
+                global_dtype = np.dtype('float64')
         elif hasattr(dtype, '__iter__'):
             self.dtype = []
             for c, cdtype in dtype:
@@ -79,6 +82,7 @@ class IterLayer(object):
             else:
                 self.dtype = chunk.dtype
             global_dtype = self.dtype
+        
         self.global_dtype = global_dtype
         self.pushback(chunk)
 
