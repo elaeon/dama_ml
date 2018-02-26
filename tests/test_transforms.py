@@ -4,45 +4,45 @@ import numpy as np
 from ml.processing import Transforms, Fit
 
 
-def linear(x, o_features=None):
+def linear(x):
     return x + 1
 
 
-def linear_2(x, o_features=None):
-    x0 = np.empty((x.shape[0], o_features), dtype=x.dtype)
+def linear_2(x):
+    x0 = np.empty((x.shape[0], 2), dtype=x.dtype)
     x0[:, :1] = x + 1
     return x0
 
 
-def linear_3(x, o_features=None):
-    x0 = np.empty((x.shape[0], o_features), dtype=x.dtype)
+def linear_3(x):
+    x0 = np.empty((x.shape[0], 3), dtype=x.dtype)
     x0[:, :2] = x + 1
     return x0
 
 
-def linear_1(x, o_features=None):
-    x0 = np.empty((x.shape[0], o_features), dtype=x.dtype)
+def linear_1(x):
+    x0 = np.empty((x.shape[0], 1), dtype=x.dtype)
     x0[:, 0] = x[:, 0] + 1
     return x0
 
 
-def linear_p(x, b, o_features=None):
+def linear_p(x, b):
     return x + b
 
 
-def parabole(x, o_features=None, chunks_size=10):
+def parabole(x, chunks_size=10):
     if x.shape[0] > chunks_size:
         raise Exception("Array size must be {}, but {} founded".format(chunks_size, x.shape[0]))
     return x*x
 
 
-def categorical(x, o_features=None):
+def categorical(x):
     for i, e in enumerate(x[:, 0]):
         x[i, 0] = int(e.replace("x", ""))
     return x
 
 
-def categorical2(x, o_features=None):
+def categorical2(x):
     xo = np.empty(x.shape, dtype=np.dtype("float"))
     xo[:,0] = x[:,0]
     for i, e in enumerate(x[:, 1]):
@@ -99,7 +99,7 @@ class TestTransforms(unittest.TestCase):
         transforms.add(linear_p, b=1)
         transforms.add(FitTsne, name="tsne")
         result = transforms.to_json()
-        txt = '[{"fn": {"o_features": null, "transforms": [["tests.test_transforms.linear", {}]], "input_dtype": "|O"}}, {"fn": {"o_features": null, "transforms": [["tests.test_transforms.linear_p", {"b": 1}], ["tests.test_transforms.linear_p", {"b": 1}]], "input_dtype": "<f8"}}, {"class": {"o_features": null, "transforms": [["ml.processing.FitTsne", {"name_00_ml": "tsne"}]], "input_dtype": "<f8"}}]'
+        txt = '[{"fn": {"transforms": [["tests.test_transforms.linear", {}]], "input_dtype": "|O"}}, {"fn": {"transforms": [["tests.test_transforms.linear_p", {"b": 1}], ["tests.test_transforms.linear_p", {"b": 1}]], "input_dtype": "<f8"}}, {"class": {"transforms": [["ml.processing.FitTsne", {"name_00_ml": "tsne"}]], "input_dtype": "<f8"}}]'
         self.assertEqual(result, txt)
 
         transforms.clean()
@@ -107,7 +107,7 @@ class TestTransforms(unittest.TestCase):
         transforms.add(linear_p, b=1)        
         transforms.add(linear)
         result = transforms.to_json()
-        txt = '[{"fn": {"o_features": null, "transforms": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}], ["tests.test_transforms.linear", {}]], "input_dtype": "<f8"}}]'
+        txt = '[{"fn": {"transforms": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}], ["tests.test_transforms.linear", {}]], "input_dtype": "<f8"}}]'
         self.assertEqual(result, txt)
 
     def test_from_json(self):
@@ -124,31 +124,31 @@ class TestTransforms(unittest.TestCase):
         t1 = Transforms()
         t1.add(linear_p, b=1)
         nt = t0 + t1
-        txt = '[{"fn": {"o_features": null, "transforms": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}]], "input_dtype": "<f8"}}]'
+        txt = '[{"fn": {"transforms": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}]], "input_dtype": "<f8"}}]'
         self.assertEqual(nt.to_json(), txt)
 
         t0 = Transforms()
-        t0.add(linear, o_features=1)
+        t0.add(linear)
         t1 = Transforms()
-        t1.add(linear_p, b=1, o_features=1, input_dtype='float')
+        t1.add(linear_p, b=1, input_dtype='float')
         nt = t0 + t1
-        txt = '[{"fn": {"o_features": 1, "transforms": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}]], "input_dtype": "<f8"}}]'
+        txt = '[{"fn": {"transforms": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}]], "input_dtype": "<f8"}}]'
         self.assertEqual(nt.to_json(), txt)
 
     def test_apply_row(self):
         transforms = Transforms()
-        transforms.add(linear, o_features=1)
-        transforms.add(linear_p, b=10, o_features=1)
+        transforms.add(linear)
+        transforms.add(linear_p, b=10)
         numbers = np.ones((10, 1))
         result = transforms.apply(numbers)
         self.assertItemsEqual(result.to_narray().reshape(-1), np.ones((10, 1)) + 11) # result [12, ..., 12]
 
     def test_apply_many_dim(self):
         transforms = Transforms()
-        transforms.add(linear, o_features=1)
-        transforms.add(linear_2, o_features=2)
-        transforms.add(linear_3, o_features=3)
-        transforms.add(linear_1, o_features=1)
+        transforms.add(linear)
+        transforms.add(linear_2)
+        transforms.add(linear_3)
+        transforms.add(linear_1)
         numbers = np.ones((10, 1))
         result = transforms.apply(numbers)
         self.assertItemsEqual(result.to_narray().reshape(-1), np.zeros((10, 1)) + 5)
@@ -156,8 +156,8 @@ class TestTransforms(unittest.TestCase):
     def test_apply_row_iterlayer(self):
         from ml.layers import IterLayer
         transforms = Transforms()
-        transforms.add(linear, o_features=1)
-        transforms.add(linear_p, b=10, o_features=1)
+        transforms.add(linear)
+        transforms.add(linear_p, b=10)
         numbers = IterLayer((e for e in np.ones((10,))), shape=(10, 1))
         result = transforms.apply(numbers)
         self.assertItemsEqual(result.to_narray().reshape(-1), np.ones((10, 1)) + 11) # result [12, ..., 12]
@@ -176,24 +176,13 @@ class TestTransforms(unittest.TestCase):
     def test_apply(self):
         from ml.processing import FitStandardScaler
         transforms = Transforms()
-        transforms.add(linear, o_features=2)
-        transforms.add(linear_p, b=10, o_features=2)
+        transforms.add(linear)
+        transforms.add(linear_p, b=10)
         transforms.add(FitStandardScaler)
         numbers = np.random.rand(1000, 2)        
         result =  transforms.apply(numbers).to_narray()
         self.assertEqual(.95 <= result.std() <= 1.05, True)
         self.assertEqual(-0.1 <= result.mean() <= 0.1, True)
-
-    #def test_apply_fmtypes(self):
-    #    from ml import fmtypes
-    #    transforms = Transforms()
-    #    transforms.add(linear, o_features=2)
-    #    transforms.add(linear_p, b=10, o_features=2)
-    #    transforms.add(FitIdent)
-    #    numbers = np.empty((1000, 2))
-    #    fmtypes = [fmtypes.BOOLEAN.id, fmtypes.NANBOOLEAN.id]
-    #    result =  np.asarray(list(transforms.apply(numbers)))
-    #    self.assertEqual(all(np.isnan(result[:, 1])), True)
 
     def test_apply_to_clf(self):
         from ml.ds import DataLabel
@@ -201,8 +190,8 @@ class TestTransforms(unittest.TestCase):
         from ml.processing import FitStandardScaler
 
         transforms = Transforms()
-        transforms.add(linear, o_features=2)
-        transforms.add(linear_p, b=10, o_features=2)
+        transforms.add(linear)
+        transforms.add(linear_p, b=10)
         transforms.add(FitStandardScaler)
         X = np.random.rand(100, 2)
         Y = (X[:,0] > .5).astype(float)
@@ -360,13 +349,13 @@ class TestTransforms(unittest.TestCase):
     def test_transforms_drop_cols(self):
         from ml.processing import drop_columns
         transforms = Transforms()
-        transforms.add(drop_columns, include_cols=[1,2], o_features=2)
+        transforms.add(drop_columns, include_cols=[1,2])
         X = np.random.rand(1000, 4)
         result = transforms.apply(X).to_narray()
         self.assertEqual(result.shape, (1000, 2))
 
         transforms = Transforms()
-        transforms.add(drop_columns, exclude_cols=[3], o_features=3)
+        transforms.add(drop_columns, exclude_cols=[3])
         result = transforms.apply(X).to_narray()
         self.assertEqual(result.shape, (1000, 3))
         
@@ -375,9 +364,9 @@ class TestTransforms(unittest.TestCase):
         from ml.processing import FitStandardScaler
 
         transforms = Transforms()
-        transforms.add(drop_columns, include_cols=[1,2], o_features=2)
+        transforms.add(drop_columns, include_cols=[1,2])
         transforms.add(FitStandardScaler, name="scaler")
-        transforms.add(linear_p, b=10, o_features=2)
+        transforms.add(linear_p, b=10)
         X = np.random.rand(10, 4)
         result = transforms.apply(X).to_narray()
         self.assertEqual(result.shape, (10, 2))
@@ -387,9 +376,9 @@ class TestTransforms(unittest.TestCase):
         from ml.processing import FitStandardScaler
 
         transforms = Transforms()
-        transforms.add(drop_columns, include_cols=[1,2], o_features=2)
-        transforms.add(FitStandardScaler, o_features=2, name="scaler")
-        transforms.add(linear_p, b=10, o_features=2)
+        transforms.add(drop_columns, include_cols=[1,2])
+        transforms.add(FitStandardScaler, name="scaler")
+        transforms.add(linear_p, b=10)
         X = np.random.rand(10, 4)
         result = transforms.apply(X)
         self.assertEqual(result.shape, (10, 2))
@@ -397,7 +386,7 @@ class TestTransforms(unittest.TestCase):
     def test_batch_transforms_row(self):
         X = np.random.rand(100, 4)
         transforms = Transforms()
-        transforms.add(parabole, o_features=4, chunks_size=10)
+        transforms.add(parabole, chunks_size=10)
         result = transforms.apply(X, chunks_size=10)
 
     def test_transform_dtype(self):
@@ -405,10 +394,10 @@ class TestTransforms(unittest.TestCase):
             ["1x", "2", "3", "4"], 
             ["5x", "6x", "7", "8"]], dtype=np.dtype("O"))
         transforms = Transforms()
-        transforms.add(categorical, o_features=4, input_dtype=np.dtype("O"))
-        transforms.add(categorical2, o_features=4, input_dtype=np.dtype("O"))
-        transforms.add(linear_p, b=10, o_features=4, input_dtype=np.dtype("O"))
-        transforms.add(parabole, o_features=4, input_dtype=np.dtype("float"))
+        transforms.add(categorical, input_dtype=np.dtype("O"))
+        transforms.add(categorical2, input_dtype=np.dtype("O"))
+        transforms.add(linear_p, b=10, input_dtype=np.dtype("O"))
+        transforms.add(parabole, input_dtype=np.dtype("float"))
         result = transforms.apply(X, chunks_size=10)
         data = result.to_narray()
         self.assertItemsEqual(data[0], [121, 144, 169, 196])

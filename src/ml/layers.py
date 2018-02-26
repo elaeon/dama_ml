@@ -7,13 +7,7 @@ import pandas as pd
 
 from ml.utils.seq import grouper_chunk
 
-class struct_array(np.recarray):
-    @property
-    def sshape(self):
-        return tuple(list(self.shape) + [len(self.dtype.names)])
-
-
-#class df(pd.DataFrame):
+#class struct_array(np.recarray):
 #    @property
 #    def sshape(self):
 #        return tuple(list(self.shape) + [len(self.dtype.names)])
@@ -33,28 +27,45 @@ def choice(operator):
 
 
 class IterLayer(object):
-    def __init__(self, fn_iter, shape=None, dtype=None, has_chunks=False, chunks_size=0):#delete dtype
+    def __init__(self, fn_iter, shape=None, dtype=None, 
+                has_chunks=False, chunks_size=0, length=None):
         if isinstance(fn_iter, types.GeneratorType):
             _fn_iter = fn_iter
+            cdtype = None
         elif isinstance(fn_iter, IterLayer):
             _fn_iter = fn_iter
+            cdtype = None
         elif isinstance(fn_iter, pd.DataFrame):
             _fn_iter = (e for e in fn_iter.values)
-            dtype = zip(fn_iter.columns.values, fn_iter.dtypes.values)
+            cdtype = zip(fn_iter.columns.values, fn_iter.dtypes.values)
         else:
             _fn_iter = (e for e in fn_iter)
+            cdtype = None
 
         self.it = _fn_iter
         self.pushedback = []
-        self.shape = shape
         self.chunks_size = chunks_size
         self.has_chunks = has_chunks
-        self.chunk_taste(dtype)
+        if shape is not None:
+            self.length = shape[0]
+        else:
+            self.length = length
 
+        if dtype is None or shape is None:
+            self.chunk_taste(cdtype)
+        else:
+            if hasattr(dtype, '__iter__'):
+                self.global_dtype = self._get_global_dtype(dtype)
+            else:
+                self.global_dtype = dtype
+            self.dtype = dtype
+            self.shape = shape
+    
     def pushback(self, val):
         self.pushedback.append(val)
 
     def chunk_taste(self, dtype):
+        """Check for the dtype and global dtype in a chunk"""
         chunk = next(self)
         if isinstance(chunk, pd.DataFrame):
             self.dtype = []
@@ -65,14 +76,14 @@ class IterLayer(object):
                     global_dtype = cdtype
                     break
             else:
-                global_dtype = np.dtype('float64')
+                types = set([cdtype for _, cdtype in self.dtype])
+                if len(types) == 1:
+                    global_dtype = self.dtype[0][1]
+                else:
+                    global_dtype = np.dtype('float64')
         elif hasattr(dtype, '__iter__'):
-            self.dtype = []
-            for c, cdtype in dtype:
-                if cdtype == np.dtype("|O"):
-                    global_dtype = cdtype
-                self.dtype.append((c, cdtype))
-            global_dtype = cdtype
+            global_dtype = self._get_global_dtype(dtype)
+            self.dtype = dtype
         elif isinstance(chunk, np.ndarray):
             self.dtype = chunk.dtype
             global_dtype = self.dtype
@@ -83,13 +94,27 @@ class IterLayer(object):
                 self.dtype = chunk.dtype
             global_dtype = self.dtype
         
+        if len(chunk.shape) > 1:
+            self.shape = [self.length] + list(chunk.shape[1:])
+        else:
+            self.shape = [self.length] + list(chunk.shape)
         self.global_dtype = global_dtype
         self.pushback(chunk)
+
+    def _get_global_dtype(self, dtype):
+        global_dtype = None
+        for c, cdtype in self.dtype:
+            if cdtype == np.dtype("|O"):
+                global_dtype = cdtype
+                break
+            else:
+                global_dtype = cdtype
+        return global_dtype
 
     def to_chunks(self, chunks_size):
         if self.has_chunks is False:
             return IterLayer(self.gen_chunks(self, chunks_size), shape=self.shape, 
-                chunks_size=chunks_size, has_chunks=True)
+                chunks_size=chunks_size, has_chunks=True, dtype=self.dtype)
         else:
             return self
         
@@ -136,7 +161,8 @@ class IterLayer(object):
                     yield e
 
         shape = (reduce(operator.mul, self.shape),)
-        it = IterLayer(_iter(), shape=shape, dtype=self.dtype)
+        it = IterLayer(_iter(), shape=shape, dtype=self.dtype, 
+                        gdtype=self.global_dtype, size=self.size)
         if self.has_chunks:
             return it.to_chunks(self.chunks_size)
         else:

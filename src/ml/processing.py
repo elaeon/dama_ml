@@ -49,9 +49,8 @@ class TransformsFn(object):
 
     transforms.add(function2, {'x': 10}) -> function2(x=10)
     """
-    def __init__(self, o_features=None, input_dtype='float'):
+    def __init__(self, input_dtype='float'):
         self.transforms = []
-        self.o_features = o_features
         self.input_dtype = np.dtype(input_dtype)
 
     def __add__(self, o):
@@ -102,8 +101,7 @@ class TransformsFn(object):
         return json.dumps(self.info())
 
     def info(self):
-        return {"o_features": self.o_features, "transforms": self.transforms,
-                "input_dtype": self.input_dtype.str}
+        return {"transforms": self.transforms, "input_dtype": self.input_dtype.str}
 
     @classmethod
     def from_json(self, json_transforms):
@@ -116,7 +114,6 @@ class TransformsFn(object):
     def _from_json(self, json_transforms, transform_base_class):
         transforms_loaded = json.loads(json_transforms)#, object_pairs_hook=OrderedDict)
         transforms = transform_base_class(
-            o_features=transforms_loaded.get("o_features", None), 
             input_dtype=transforms_loaded.get("input_dtype", 'float'))
         for fn, params in transforms_loaded["transforms"]:
             transforms.add(locate(fn), **params)
@@ -137,11 +134,7 @@ class TransformsFn(object):
                     smx = fn(smx, **params)
                 yield smx
         
-        if hasattr(self.o_features, '__iter__'):
-            shape = [data.shape[0]] + list(self.o_features)
-        else:
-            shape = [data.shape[0], self.o_features]
-        return IterLayer(iter_(), shape=shape, dtype=self.input_dtype, 
+        return IterLayer(iter_(), length=data.shape[0], dtype=self.input_dtype, 
             chunks_size=chunks_size, has_chunks=data.has_chunks)
 
 
@@ -211,7 +204,7 @@ class Transforms(object):
     def cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
-    def add(self, fn, name=None, o_features=None, input_dtype="float", **params):
+    def add(self, fn, name=None, input_dtype="float", **params):
         """
         :type fn: function
         :param fn: function to add
@@ -227,15 +220,14 @@ class Transforms(object):
 
         if not self.is_empty():
             last_t_obj = self.transforms[-1]
-            if t_class.type() == last_t_obj.type() and o_features == last_t_obj.o_features\
-                and input_dtype == last_t_obj.input_dtype:
+            if t_class.type() == last_t_obj.type() and input_dtype == last_t_obj.input_dtype:
                 last_t_obj.add(fn, **params)
             else:
-                t_obj = t_class(o_features=o_features, input_dtype=input_dtype)
+                t_obj = t_class(input_dtype=input_dtype)
                 t_obj.add(fn, **params)
                 self.transforms.append(t_obj)
         else:
-            t_obj = t_class(o_features=o_features, input_dtype=input_dtype)
+            t_obj = t_class(input_dtype=input_dtype)
             t_obj.add(fn, **params)
             self.transforms.append(t_obj)
 
@@ -258,7 +250,7 @@ class Transforms(object):
         for transform in o.transforms:
             for fn, params in transform.transforms:
                 all_transforms.add(locate(fn), input_dtype=transform.input_dtype.str, 
-                                    o_features=transform.o_features, **params)
+                                    **params)
         return all_transforms
 
     def to_json(self):
@@ -278,7 +270,7 @@ class Transforms(object):
         for transforms_type in transforms_list:
             for type_, transforms_dict in transforms_type.items():
                 for fn, params in transforms_dict["transforms"]:
-                    transforms.add(locate(fn), o_features=transforms_dict["o_features"], 
+                    transforms.add(locate(fn),  
                                     input_dtype=transforms_dict["input_dtype"], **params)
         return transforms
 
@@ -298,10 +290,6 @@ class Transforms(object):
         for transform in self.transforms:
             if hasattr(transform, 'destroy'):
                 transform.destroy()
-
-    @property
-    def o_features(self):
-        return self.transforms[-1].o_features
 
 
 class Fit(object):
