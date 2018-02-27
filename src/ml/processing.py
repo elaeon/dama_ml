@@ -132,7 +132,9 @@ class TransformsFn(object):
                     smx = fn(smx, **params)
                 yield smx
         
-        return IterLayer(iter_(), length=data.shape[0], chunks_size=chunks_size, 
+        if data.has_chunks:
+            chunks_size = data.chunks_size
+        return IterLayer(iter_(), shape=data.shape, chunks_size=chunks_size, 
                         has_chunks=data.has_chunks)
 
 

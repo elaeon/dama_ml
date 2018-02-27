@@ -187,6 +187,14 @@ class TestIterLayers(unittest.TestCase):
         self.assertEqual(len(data_flat.shape), 1)
         self.assertEqual(data_flat.shape[0], 4000)
 
+    def test_shape(self):
+        data = np.random.rand(10, 3)
+        it = IterLayer(data, shape=data.shape, dtype=data.dtype)
+        self.assertEqual(it.shape, (10, 3))
+        it_c = it.to_chunks(4)
+        self.assertEqual(it_c.shape, (10, 3))
+        print(it_c.shape_w_chunks)
+
     def test_chunks(self):
         chunks_size = 3
         data = np.random.rand(10, 1)
@@ -250,12 +258,12 @@ class TestIterLayers(unittest.TestCase):
         self.assertItemsEqual(it.to_narray(), data)
         
     def test_chunk_taste_2(self):
-        chunks_size = 2
+        chunks_size = 3
         data = np.asarray([[1,2],[3,4],[5,6],[7,8],[9,0]], dtype='int')
-        #it = IterLayer(data, shape=data.shape).to_chunks(chunks_size)
-        #self.assertEqual(it.dtype, np.dtype('int'))
-        #self.assertEqual(it.global_dtype, np.dtype('int'))
-        #self.assertItemsEqual(it.flat().to_narray(), data.reshape(-1))
+        it = IterLayer(data, shape=data.shape).to_chunks(chunks_size)
+        self.assertEqual(it.dtype, np.dtype('int'))
+        self.assertEqual(it.global_dtype, np.dtype('int'))
+        self.assertItemsEqual(it.flat().to_narray(), data.reshape(-1))
 
         data = pd.DataFrame(data, columns=['x', 'y'])
         it = IterLayer(data, shape=data.shape).to_chunks(chunks_size)

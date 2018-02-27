@@ -93,10 +93,16 @@ class IterLayer(object):
             else:
                 shape = (chunk,)
 
+        if self.has_chunks:
+            shape = list(shape[1:])
+            if len(shape) == 0:
+                shape = [0]
+
         if len(shape) > 1:
             self.shape = [self.length] + list(shape[1:])
         else:
             self.shape = [self.length] + list(shape)
+
         self.global_dtype = global_dtype
         self.pushback(chunk)
 
@@ -149,9 +155,10 @@ class IterLayer(object):
                     except ValueError:
                         smx_a.values[i, :] = row[0]
                 if i + 1 < chunks_size:
-                    yield smx_a[:i+1]
+                    yield smx_a.iloc[:i+1]
                 else:
                     yield smx_a
+                
 
     def flat(self):
         def _iter():
@@ -169,6 +176,13 @@ class IterLayer(object):
     @property
     def shape(self):
         return self._shape
+
+    @property
+    def shape_w_chunks(self):
+        r = self.shape[0] % float(self.chunks_size)
+        print(round(self.shape[0] / float(self.chunks_size), 0), r)
+        size = int(round(self.shape[0] / float(self.chunks_size), 0) + r)
+        return tuple([size] + list(self.shape[1:]))
 
     @shape.setter
     def shape(self, v):
@@ -321,8 +335,6 @@ class IterLayer(object):
 
     def to_df(self):
         if self.has_chunks:
-            #for chunk in self:
-            #    print(type(chunk), self.dtype)
             return pd.concat((chunk for chunk in self), axis=0, copy=False, ignore_index=True)
         else:
             if hasattr(self.dtype, '__iter__'):
