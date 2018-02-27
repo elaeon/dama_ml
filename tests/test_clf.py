@@ -6,7 +6,7 @@ from ml.clf.extended.w_sklearn import RandomForest
 np.random.seed(0)
 
 
-def mulp(row, o_features=None):
+def mulp(row):
     return row * 2
 
 
@@ -73,7 +73,7 @@ class TestSKL(unittest.TestCase):
     def test_predict(self):
         from ml.processing import Transforms
         t = Transforms()
-        t.add(mulp, o_features=1, input_dtype='float')
+        t.add(mulp)
         X = np.random.rand(100, 1)
         Y = X[:,0] > .5
         dataset = DataLabel(name="test_0", dataset_path="/tmp/", 
@@ -210,7 +210,7 @@ class TestGrid(unittest.TestCase):
         with self.original_dataset:
             features = self.original_dataset.num_features()
             transforms = Transforms()
-            transforms.add(mulp, o_features=features)
+            transforms.add(mulp)
             dataset = self.original_dataset.convert(name="test_dataset",
                 transforms=transforms, apply_transforms=True, dataset_path="/tmp/")
         

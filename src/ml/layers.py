@@ -19,7 +19,7 @@ def choice(operator):
             if isinstance(x, IterLayer) and isinstance(y, IterLayer):
                 return x.stream_operation(operator, y)
             elif isinstance(y, collections.Iterable):
-                return x.stream_operation(operator, IterLayer(y))
+                return x.stream_operation(operator, IterLayer(y, length=x.length))
             else:
                 return x.scalar_operation(operator, y)
         return view
@@ -31,16 +31,12 @@ class IterLayer(object):
                 has_chunks=False, chunks_size=0, length=None):
         if isinstance(fn_iter, types.GeneratorType):
             _fn_iter = fn_iter
-            cdtype = None
         elif isinstance(fn_iter, IterLayer):
             _fn_iter = fn_iter
-            cdtype = None
         elif isinstance(fn_iter, pd.DataFrame):
             _fn_iter = (e for e in fn_iter.values)
-            cdtype = zip(fn_iter.columns.values, fn_iter.dtypes.values)
         else:
             _fn_iter = (e for e in fn_iter)
-            cdtype = None
 
         self.it = _fn_iter
         self.pushedback = []
@@ -49,10 +45,12 @@ class IterLayer(object):
         if shape is not None:
             self.length = shape[0]
         else:
+            if length is None:
+                print("Warning: you should pass a length value to IterLayer")
             self.length = length
 
         if dtype is None or shape is None:
-            self.chunk_taste(cdtype)
+            self.chunk_taste()
         else:
             if hasattr(dtype, '__iter__'):
                 self.global_dtype = self._get_global_dtype(dtype)
@@ -64,9 +62,10 @@ class IterLayer(object):
     def pushback(self, val):
         self.pushedback.append(val)
 
-    def chunk_taste(self, dtype):
+    def chunk_taste(self):
         """Check for the dtype and global dtype in a chunk"""
         chunk = next(self)
+        print(type(chunk))
         if isinstance(chunk, pd.DataFrame):
             self.dtype = []
             for c, cdtype in zip(chunk.columns.values, chunk.dtypes.values):
@@ -81,9 +80,6 @@ class IterLayer(object):
                     global_dtype = self.dtype[0][1]
                 else:
                     global_dtype = np.dtype('float64')
-        elif hasattr(dtype, '__iter__'):
-            global_dtype = self._get_global_dtype(dtype)
-            self.dtype = dtype
         elif isinstance(chunk, np.ndarray):
             self.dtype = chunk.dtype
             global_dtype = self.dtype
@@ -94,10 +90,19 @@ class IterLayer(object):
                 self.dtype = chunk.dtype
             global_dtype = self.dtype
         
-        if len(chunk.shape) > 1:
-            self.shape = [self.length] + list(chunk.shape[1:])
+        try:
+            shape = chunk.shape
+        except AttributeError:
+            if hasattr(chunk, '__iter__'):
+                shape = (len(chunk),)
+            else:
+                shape = (chunk,)
+
+        if len(shape) > 1:
+            self.shape = [self.length] + list(shape[1:])
         else:
-            self.shape = [self.length] + list(chunk.shape)
+            self.shape = [self.length] + list(shape)
+        print(self.shape)
         self.global_dtype = global_dtype
         self.pushback(chunk)
 

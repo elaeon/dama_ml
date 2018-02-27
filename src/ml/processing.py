@@ -51,7 +51,6 @@ class TransformsFn(object):
     """
     def __init__(self, input_dtype='float'):
         self.transforms = []
-        self.input_dtype = np.dtype(input_dtype)
 
     def __add__(self, o):
         all_transforms = TransformsFn.from_json(self.to_json())
@@ -101,7 +100,7 @@ class TransformsFn(object):
         return json.dumps(self.info())
 
     def info(self):
-        return {"transforms": self.transforms, "input_dtype": self.input_dtype.str}
+        return {"transforms": self.transforms}
 
     @classmethod
     def from_json(self, json_transforms):
@@ -113,8 +112,7 @@ class TransformsFn(object):
     @classmethod
     def _from_json(self, json_transforms, transform_base_class):
         transforms_loaded = json.loads(json_transforms)#, object_pairs_hook=OrderedDict)
-        transforms = transform_base_class(
-            input_dtype=transforms_loaded.get("input_dtype", 'float'))
+        transforms = transform_base_class()
         for fn, params in transforms_loaded["transforms"]:
             transforms.add(locate(fn), **params)
         return transforms
@@ -134,8 +132,8 @@ class TransformsFn(object):
                     smx = fn(smx, **params)
                 yield smx
         
-        return IterLayer(iter_(), length=data.shape[0], dtype=self.input_dtype, 
-            chunks_size=chunks_size, has_chunks=data.has_chunks)
+        return IterLayer(iter_(), length=data.shape[0], chunks_size=chunks_size, 
+                        has_chunks=data.has_chunks)
 
 
 class TransformsClass(TransformsFn):
@@ -204,7 +202,7 @@ class Transforms(object):
     def cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
-    def add(self, fn, name=None, input_dtype="float", **params):
+    def add(self, fn, name=None, **params):
         """
         :type fn: function
         :param fn: function to add
@@ -220,14 +218,14 @@ class Transforms(object):
 
         if not self.is_empty():
             last_t_obj = self.transforms[-1]
-            if t_class.type() == last_t_obj.type() and input_dtype == last_t_obj.input_dtype:
+            if t_class.type() == last_t_obj.type():
                 last_t_obj.add(fn, **params)
             else:
-                t_obj = t_class(input_dtype=input_dtype)
+                t_obj = t_class()
                 t_obj.add(fn, **params)
                 self.transforms.append(t_obj)
         else:
-            t_obj = t_class(input_dtype=input_dtype)
+            t_obj = t_class()
             t_obj.add(fn, **params)
             self.transforms.append(t_obj)
 
@@ -249,8 +247,7 @@ class Transforms(object):
             return all_transforms
         for transform in o.transforms:
             for fn, params in transform.transforms:
-                all_transforms.add(locate(fn), input_dtype=transform.input_dtype.str, 
-                                    **params)
+                all_transforms.add(locate(fn), **params)
         return all_transforms
 
     def to_json(self):
@@ -270,8 +267,7 @@ class Transforms(object):
         for transforms_type in transforms_list:
             for type_, transforms_dict in transforms_type.items():
                 for fn, params in transforms_dict["transforms"]:
-                    transforms.add(locate(fn),  
-                                    input_dtype=transforms_dict["input_dtype"], **params)
+                    transforms.add(locate(fn), **params)
         return transforms
 
     def apply(self, data, chunks_size=258):

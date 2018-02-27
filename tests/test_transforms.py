@@ -94,12 +94,12 @@ class TestTransforms(unittest.TestCase):
     def test_json(self):
         from ml.processing import FitTsne
         transforms = Transforms()
-        transforms.add(linear, input_dtype=np.dtype("object"))
+        transforms.add(linear)
         transforms.add(linear_p, b=1)
         transforms.add(linear_p, b=1)
         transforms.add(FitTsne, name="tsne")
         result = transforms.to_json()
-        txt = '[{"fn": {"transforms": [["tests.test_transforms.linear", {}]], "input_dtype": "|O"}}, {"fn": {"transforms": [["tests.test_transforms.linear_p", {"b": 1}], ["tests.test_transforms.linear_p", {"b": 1}]], "input_dtype": "<f8"}}, {"class": {"transforms": [["ml.processing.FitTsne", {"name_00_ml": "tsne"}]], "input_dtype": "<f8"}}]'
+        txt = '[{"fn": {"transforms": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}], ["tests.test_transforms.linear_p", {"b": 1}]]}}, {"class": {"transforms": [["ml.processing.FitTsne", {"name_00_ml": "tsne"}]]}}]'
         self.assertEqual(result, txt)
 
         transforms.clean()
@@ -107,7 +107,7 @@ class TestTransforms(unittest.TestCase):
         transforms.add(linear_p, b=1)        
         transforms.add(linear)
         result = transforms.to_json()
-        txt = '[{"fn": {"transforms": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}], ["tests.test_transforms.linear", {}]], "input_dtype": "<f8"}}]'
+        txt = '[{"fn": {"transforms": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}], ["tests.test_transforms.linear", {}]]}}]'
         self.assertEqual(result, txt)
 
     def test_from_json(self):
@@ -124,15 +124,15 @@ class TestTransforms(unittest.TestCase):
         t1 = Transforms()
         t1.add(linear_p, b=1)
         nt = t0 + t1
-        txt = '[{"fn": {"transforms": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}]], "input_dtype": "<f8"}}]'
+        txt = '[{"fn": {"transforms": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}]]}}]'
         self.assertEqual(nt.to_json(), txt)
 
         t0 = Transforms()
         t0.add(linear)
         t1 = Transforms()
-        t1.add(linear_p, b=1, input_dtype='float')
+        t1.add(linear_p, b=1)
         nt = t0 + t1
-        txt = '[{"fn": {"transforms": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}]], "input_dtype": "<f8"}}]'
+        txt = '[{"fn": {"transforms": [["tests.test_transforms.linear", {}], ["tests.test_transforms.linear_p", {"b": 1}]]}}]'
         self.assertEqual(nt.to_json(), txt)
 
     def test_apply_row(self):
@@ -394,10 +394,10 @@ class TestTransforms(unittest.TestCase):
             ["1x", "2", "3", "4"], 
             ["5x", "6x", "7", "8"]], dtype=np.dtype("O"))
         transforms = Transforms()
-        transforms.add(categorical, input_dtype=np.dtype("O"))
-        transforms.add(categorical2, input_dtype=np.dtype("O"))
-        transforms.add(linear_p, b=10, input_dtype=np.dtype("O"))
-        transforms.add(parabole, input_dtype=np.dtype("float"))
+        transforms.add(categorical)
+        transforms.add(categorical2)
+        transforms.add(linear_p, b=10)
+        transforms.add(parabole)
         result = transforms.apply(X, chunks_size=10)
         data = result.to_narray()
         self.assertItemsEqual(data[0], [121, 144, 169, 196])

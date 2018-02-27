@@ -425,7 +425,7 @@ class TestDataset(unittest.TestCase):
             [1, 1, 0, 7, '7', 1]
         ], dtype=np.dtype("int"))
         t = Transforms()
-        t.add(to_int, col=4, o_features=6, input_dtype='int')
+        t.add(to_int, col=4, o_features=6)
         fmtypes_t = fmtypes.FmtypesT()
         fmtypes_t.add(0, fmtypes.BOOLEAN)
         fmtypes_t.add(2, fmtypes.NANBOOLEAN)
