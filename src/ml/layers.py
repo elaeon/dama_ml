@@ -29,12 +29,14 @@ def choice(operator):
 class IterLayer(object):
     def __init__(self, fn_iter, shape=None, dtype=None, 
                 has_chunks=False, chunks_size=0, length=None):
+        dtypes = None
         if isinstance(fn_iter, types.GeneratorType):
             _fn_iter = fn_iter
         elif isinstance(fn_iter, IterLayer):
             _fn_iter = fn_iter
         elif isinstance(fn_iter, pd.DataFrame):
             _fn_iter = (e for e in fn_iter.values)
+            dtypes = zip(fn_iter.columns.values, fn_iter.dtypes.values)
         else:
             _fn_iter = (e for e in fn_iter)
 
@@ -45,12 +47,12 @@ class IterLayer(object):
         if shape is not None:
             self.length = shape[0]
         else:
-            if length is None:
-                print("Warning: you should pass a length value to IterLayer")
+            #if length is None:
+            #    print("Warning: you should pass a length value to IterLayer")
             self.length = length
 
         if dtype is None or shape is None:
-            self.chunk_taste()
+            self.chunk_taste(dtypes)
         else:
             if hasattr(dtype, '__iter__'):
                 self.global_dtype = self._get_global_dtype(dtype)
@@ -62,24 +64,17 @@ class IterLayer(object):
     def pushback(self, val):
         self.pushedback.append(val)
 
-    def chunk_taste(self):
+    def chunk_taste(self, dtypes):
         """Check for the dtype and global dtype in a chunk"""
         chunk = next(self)
-        print(type(chunk))
         if isinstance(chunk, pd.DataFrame):
             self.dtype = []
             for c, cdtype in zip(chunk.columns.values, chunk.dtypes.values):
                 self.dtype.append((c, cdtype))
-            for _, cdtype in self.dtype:
-                if cdtype == np.dtype("|O"):
-                    global_dtype = cdtype
-                    break
-            else:
-                types = set([cdtype for _, cdtype in self.dtype])
-                if len(types) == 1:
-                    global_dtype = self.dtype[0][1]
-                else:
-                    global_dtype = np.dtype('float64')
+            global_dtype = self._get_global_dtype(self.dtype)
+        elif dtypes is not None:
+            self.dtype = dtypes
+            global_dtype = self._get_global_dtype(dtypes)
         elif isinstance(chunk, np.ndarray):
             self.dtype = chunk.dtype
             global_dtype = self.dtype
@@ -102,13 +97,12 @@ class IterLayer(object):
             self.shape = [self.length] + list(shape[1:])
         else:
             self.shape = [self.length] + list(shape)
-        print(self.shape)
         self.global_dtype = global_dtype
         self.pushback(chunk)
 
     def _get_global_dtype(self, dtype):
         global_dtype = None
-        for c, cdtype in self.dtype:
+        for c, cdtype in dtype:
             if cdtype == np.dtype("|O"):
                 global_dtype = cdtype
                 break
@@ -166,8 +160,7 @@ class IterLayer(object):
                     yield e
 
         shape = (reduce(operator.mul, self.shape),)
-        it = IterLayer(_iter(), shape=shape, dtype=self.dtype, 
-                        gdtype=self.global_dtype, size=self.size)
+        it = IterLayer(_iter(), shape=shape, dtype=self.dtype, length=self.length)
         if self.has_chunks:
             return it.to_chunks(self.chunks_size)
         else:
@@ -316,14 +309,20 @@ class IterLayer(object):
         for smx in it:
             if len(smx.shape) >= 1 and self.has_chunks:
                 end += smx.shape[0]
+            elif len(smx.shape) > 1 and not self.has_chunks:
+                end += smx.shape[0]
             else:
                 end += 1
+            if isinstance(smx, IterLayer):
+                smx = smx.to_narray()
             smx_a[init:end] = smx
             init = end
         return smx_a
 
     def to_df(self):
         if self.has_chunks:
+            #for chunk in self:
+            #    print(type(chunk), self.dtype)
             return pd.concat((chunk for chunk in self), axis=0, copy=False, ignore_index=True)
         else:
             if hasattr(self.dtype, '__iter__'):
@@ -331,7 +330,7 @@ class IterLayer(object):
             else:
                 return pd.DataFrame((e for e in self))
 
-    def to_memory(self):
+    def to_memory(self):   
         if hasattr(self.dtype, '__iter__'):
             return self.to_df()
         else:

@@ -54,7 +54,7 @@ class TestIterLayers(unittest.TestCase):
 
     def test_operations_list(self):
         data_0 = np.zeros((20, 2)) - 1 
-        data_1 = np.zeros((20, 2))
+        data_1 = np.zeros((20, 2)) + 1
         w = [1, 2]
         predictor_0 = IterLayer(data_0, length=20).to_chunks(chunks_size=3)
         predictor_1 = IterLayer(data_1, length=20).to_chunks(chunks_size=2)
@@ -62,8 +62,8 @@ class TestIterLayers(unittest.TestCase):
         predictor = IterLayer([predictor_0, predictor_1], length=40)
         predictors = predictor * w
         predictors = predictors.to_narray()
-        #self.assertItemsEqual(np.asarray(list(predictors[0])).reshape(-1), np.zeros((40)))
-        #self.assertItemsEqual(np.asarray(list(predictors[1])).reshape(-1), np.zeros((40,)) + 2)
+        self.assertItemsEqual(predictors.reshape(-1)[:40], np.zeros((40)) - 1)
+        self.assertItemsEqual(predictors.reshape(-1)[40:], np.zeros((40)) + 2)
 
     def test_operations(self):
 
@@ -252,10 +252,10 @@ class TestIterLayers(unittest.TestCase):
     def test_chunk_taste_2(self):
         chunks_size = 2
         data = np.asarray([[1,2],[3,4],[5,6],[7,8],[9,0]], dtype='int')
-        it = IterLayer(data, shape=data.shape).to_chunks(chunks_size)
-        self.assertEqual(it.dtype, np.dtype('int'))
-        self.assertEqual(it.global_dtype, np.dtype('int'))
-        self.assertItemsEqual(it.flat().to_narray(), data.reshape(-1))
+        #it = IterLayer(data, shape=data.shape).to_chunks(chunks_size)
+        #self.assertEqual(it.dtype, np.dtype('int'))
+        #self.assertEqual(it.global_dtype, np.dtype('int'))
+        #self.assertItemsEqual(it.flat().to_narray(), data.reshape(-1))
 
         data = pd.DataFrame(data, columns=['x', 'y'])
         it = IterLayer(data, shape=data.shape).to_chunks(chunks_size)
