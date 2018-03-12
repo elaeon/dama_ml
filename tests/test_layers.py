@@ -163,29 +163,25 @@ class TestIterLayers(unittest.TestCase):
         it = IterLayer(data, shape=data.shape, dtype=data.dtype)
         it_flat = it.flat()
         data_flat = it_flat.to_narray()
-        self.assertEqual(len(data_flat.shape), 1)
-        self.assertEqual(data_flat.shape[0], 10)
+        self.assertEqual(data_flat.shape, (10,))
 
         data = np.random.rand(10, 5)
         it = IterLayer(data, shape=data.shape, dtype=data.dtype)
         it_flat = it.flat()
         data_flat = it_flat.to_narray()
-        self.assertEqual(len(data_flat.shape), 1)
-        self.assertEqual(data_flat.shape[0], 50)
+        self.assertEqual(data_flat.shape, (50,))
 
         data = np.random.rand(10, 2 ,2)
         it = IterLayer(data, shape=data.shape, dtype=data.dtype)
         it_flat = it.flat()
         data_flat = it_flat.to_narray()
-        self.assertEqual(len(data_flat.shape), 1)
-        self.assertEqual(data_flat.shape[0], 40)
+        self.assertEqual(data_flat.shape, (40,))
 
         data = np.random.rand(1000, 2 ,2)
         it = IterLayer(data, shape=data.shape, dtype=data.dtype)
-        it_flat = it.to_chunks(chunks_size=200).flat()
+        it_flat = it.to_chunks(chunks_size=100).flat()
         data_flat = it_flat.to_narray()
-        self.assertEqual(len(data_flat.shape), 1)
-        self.assertEqual(data_flat.shape[0], 4000)
+        self.assertEqual(data_flat.shape, (4000,))
 
     def test_shape(self):
         data = np.random.rand(10, 3)
@@ -193,7 +189,7 @@ class TestIterLayers(unittest.TestCase):
         self.assertEqual(it.shape, (10, 3))
         it_c = it.to_chunks(4)
         self.assertEqual(it_c.shape, (10, 3))
-        print(it_c.shape_w_chunks)
+        self.assertEqual(it_c.shape_w_chunks, (4, 3, 3))
 
     def test_chunks(self):
         chunks_size = 3

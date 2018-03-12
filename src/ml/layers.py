@@ -180,9 +180,11 @@ class IterLayer(object):
     @property
     def shape_w_chunks(self):
         r = self.shape[0] % float(self.chunks_size)
-        print(round(self.shape[0] / float(self.chunks_size), 0), r)
-        size = int(round(self.shape[0] / float(self.chunks_size), 0) + r)
-        return tuple([size] + list(self.shape[1:]))
+        size = self.shape[0] / self.chunks_size
+        r = self.shape[0] % self.chunks_size
+        if r > 0:
+            size += 1
+        return tuple([self.chunks_size, size] + list(self.shape[1:]))
 
     @shape.setter
     def shape(self, v):
