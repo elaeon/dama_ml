@@ -24,8 +24,8 @@ class TestMsssiM(unittest.TestCase):
         image_path = self.img1
         image = np.expand_dims(io.imread(image_path), axis=0)
         transforms = Transforms()
-        transforms.add(rgb2gray, o_features=image.shape[1:3])
-        transforms.add(merge_offset, o_features=(90, 90))
+        transforms.add(rgb2gray)
+        transforms.add(merge_offset)
         image = transforms.apply(image)
         img = img_as_float(image.to_narray()[0])
         rows, cols = img.shape
@@ -76,8 +76,8 @@ class TestMsssiM(unittest.TestCase):
 
         image1 = np.expand_dims(io.imread(image_path1), axis=0)
         transforms = Transforms()
-        transforms.add(rgb2gray, o_features=image1.shape[1:3])
-        transforms.add(merge_offset, o_features=(90,90))
+        transforms.add(rgb2gray)
+        transforms.add(merge_offset)
         image1 = transforms.apply(image1)
         img1 = img_as_float(image1.to_narray()[0])
         rows1, cols1 = img1.shape

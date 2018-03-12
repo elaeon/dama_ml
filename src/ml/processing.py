@@ -414,7 +414,7 @@ class FitReplaceNan(Fit):
         
 
 
-def resize(data, o_features=None, image_size_h=90, image_size_w=90):
+def resize(data, image_size_h=90, image_size_w=90):
     """
     :type data: array
     :param data: data to be resized
@@ -434,7 +434,7 @@ def resize(data, o_features=None, image_size_h=90, image_size_w=90):
     return data
 
 
-def contrast(data, o_features=None):
+def contrast(data):
     """
     :type data: array
     :param data: data to transform
@@ -446,7 +446,7 @@ def contrast(data, o_features=None):
     return exposure.rescale_intensity(data, in_range=(p2, p98))
 
 
-def upsample(data, o_features=None):
+def upsample(data):
     """
     :type data: array
     :param data: data to transform
@@ -456,7 +456,7 @@ def upsample(data, o_features=None):
     return transform.pyramid_expand(data, upscale=2, sigma=None, order=1, 
                                     mode='reflect', cval=0)
 
-def rgb2gray(data, o_features=None):
+def rgb2gray(data):
     """
     :type data: array
     :param data: data to transform
@@ -466,7 +466,7 @@ def rgb2gray(data, o_features=None):
     return color.rgb2gray(data)
 
 
-def blur(data, o_features=None, level=.2):
+def blur(data, level=.2):
     """
     :type data: array
     :param data: data to transform
@@ -490,7 +490,7 @@ def blur(data, o_features=None, level=.2):
 #    return align.process_img(data)
 
 
-def cut(data, o_features=None, rectangle=None):
+def cut(data, rectangle=None):
     """
     :type data: array
     :param data: data to cut    
@@ -504,11 +504,11 @@ def cut(data, o_features=None, rectangle=None):
     return data[top:bottom, left:right]
 
 
-def as_ubyte(data, o_features=None):
+def as_ubyte(data):
     return img_as_ubyte(data)
 
 
-def merge_offset(data, o_features=None, image_size=90, bg_color=1):
+def merge_offset(data, image_size=90, bg_color=1):
     """
     :type data: array
     :param data: data transform
@@ -528,7 +528,7 @@ def merge_offset(data, o_features=None, image_size=90, bg_color=1):
         return merge_offset3(data, image_size=image_size, bg_color=bg_color)
 
 
-def merge_offset2(data, o_features=None, image_size=90, bg_color=1):
+def merge_offset2(data, image_size=90, bg_color=1):
     bg = np.ones((image_size, image_size))
     ndata = np.empty((data.shape[0], image_size, image_size), dtype=data.dtype)
     for i, image in enumerate(data):
@@ -550,7 +550,8 @@ def merge_offset2(data, o_features=None, image_size=90, bg_color=1):
         bg2[v_range1, h_range1] = bg2[v_range1, h_range1] + image[v_range2, h_range2]
     return ndata
 
-def merge_offset3(data, o_features=None, image_size=90, bg_color=1):
+
+def merge_offset3(data, image_size=90, bg_color=1):
     ndata = np.empty((data.shape[0], image_size, image_size, 3), dtype=data.dtype)
     for i, image in enumerate(data):
         bg = np.ones((image_size, image_size, 3))
@@ -577,11 +578,11 @@ def merge_offset3(data, o_features=None, image_size=90, bg_color=1):
     return ndata
 
 
-def threshold(data, o_features=None, block_size=41):
+def threshold(data, block_size=41):
     return filters.threshold_adaptive(data, block_size, offset=0)
 
 
-def pixelate(data, o_features=None, pixel_width=None, pixel_height=None, mode='mean'):
+def pixelate(data, pixel_width=None, pixel_height=None, mode='mean'):
     """
     :type data: array
     :param data: data to pixelate
@@ -620,7 +621,7 @@ def pixelate(data, o_features=None, pixel_width=None, pixel_height=None, mode='m
     return data
 
 
-def drop_columns(row, o_features=None, exclude_cols=None, include_cols=None):
+def drop_columns(row, exclude_cols=None, include_cols=None):
     if include_cols is not None:
         return row[:, include_cols]
     elif exclude_cols is not None:

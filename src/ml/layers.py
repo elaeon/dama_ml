@@ -91,17 +91,18 @@ class IterLayer(object):
             if hasattr(chunk, '__iter__'):
                 shape = (len(chunk),)
             else:
-                shape = (chunk,)
+                shape = (1,)
 
         if self.has_chunks:
             shape = list(shape[1:])
             if len(shape) == 0:
                 shape = [0]
-
-        if len(shape) > 1:
-            self.shape = [self.length] + list(shape[1:])
-        else:
             self.shape = [self.length] + list(shape)
+        else:
+            if len(shape) > 1:
+                self.shape = [self.length] + list(shape[1:])
+            else:
+                self.shape = [self.length] + list(shape)
 
         self.global_dtype = global_dtype
         self.pushback(chunk)
@@ -277,7 +278,13 @@ class IterLayer(object):
 
     @classmethod
     def concat_n(self, iters):
-        return IterLayer(chain(*iters))
+        if len(iters) > 1:
+            base_iter = iters[0]
+            shape = [len(iters) * base_iter.shape[0]] + list(base_iter.shape[1:])
+            return IterLayer(chain(*iters), shape=shape, has_chunks=base_iter.has_chunks, 
+                chunks_size=base_iter.chunks_size)
+        elif len(iters) == 1:
+            return iters[0]
 
     def concat_elems(self, data):
         iter_ = (list(chain(x0, x1)) for x0, x1 in izip(self, data))
