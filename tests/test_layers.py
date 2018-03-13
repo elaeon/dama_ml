@@ -70,7 +70,8 @@ class TestIterLayers(unittest.TestCase):
         predictor_0 = IterLayer(data_0, shape=data_0.shape)
         predictor_1 = IterLayer(data_0+1, shape=data_0.shape)
         predictor = predictor_0 + predictor_1
-        #print(predictor.flat().compose(round, 0).to_narray())
+        predictor = predictor.flat().compose(round, 0).to_narray()
+        self.assertItemsEqual(predictor, np.zeros((60,)) + 3)
 
     def test_avg(self):
         predictor_0 = IterLayer(np.zeros((20, 2)) + 1, shape=(20, 2), dtype='float').to_chunks(chunks_size=3)

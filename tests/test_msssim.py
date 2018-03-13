@@ -65,7 +65,7 @@ class TestMsssiM(unittest.TestCase):
             #print('tf_ssim_noise', tf_ssim_noise)
             #print('tf_msssim_none', tf_msssim_none)
             #print('tf_msssim_noise', tf_msssim_noise)
-            if tf_msssim_none != np.nan:
+            if tf_msssim_none == 1:
                 self.assertEqual(tf_msssim_none, 1)
 
     def test_two_img(self):
@@ -107,6 +107,6 @@ class TestMsssiM(unittest.TestCase):
             #tf_msssim_2 = sess.run(msssim_index,
             #                         feed_dict={image1: img1, image2: img2})
 
-            if tf_msssim_1 != np.nan:
+            if tf_msssim_1 == 1:
                 self.assertEqual(tf_msssim_1, 1)
 
