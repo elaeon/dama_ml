@@ -3,12 +3,15 @@ from ml import fmtypes
 import psycopg2
 from ml.layers import IterLayer
 import numpy as np
+from tqdm import tqdm
+from collections import OrderedDict
 
 
 class SQL(object):
     def __init__(self, username, db_name, table_name, order_by=None, limit=None, 
         chunks_size=0, columns_name=False):
         self.conn = None
+        self.cur = None
         self.username = username
         self.db_name = db_name
         self.table_name = table_name
@@ -29,24 +32,37 @@ class SQL(object):
         self.close()
 
     def __getitem__(self, key):
-        cur = self.conn.cursor("sqlds", scrollable=False, withhold=False)
-        columns = self.columns()
+        self.cur = self.conn.cursor("sqlds", scrollable=False, withhold=False)
+        columns = self.columns(exclude_id=True)
 
-        if not isinstance(key, list) and not isinstance(key, slice):
+        if isinstance(key, str):
             _columns = [key]
             num_features = len(_columns)
             size = self.shape[0]
             start = 0
-        elif isinstance(key, slice):
-            num_features = len(columns)
+        elif isinstance(key, list):
+            _columns = key
+            num_features = len(_columns)
+            size = self.shape[0]
+            start = 0
+        elif isinstance(key, int):
             _columns = columns.keys()
+            num_features = len(_columns)
+            size = 1
+            start = key
+        elif isinstance(key, slice):
+            _columns = columns.keys()
+            num_features = len(_columns)
             if key.start is None:
                 start = 0
             else:
                 start = key.start
 
             if key.stop is None:
-                stop = self.limit
+                if self.limit is not None:
+                    stop = self.limit
+                else:
+                    stop = self.shape[0]
             else:
                 stop = key.stop
                 self.limit = key.stop
@@ -63,10 +79,10 @@ class SQL(object):
             columns=self.format_columns(_columns), table_name=self.table_name,
             order_by=self.order_by_txt,
             limit=self.limit_txt)
-        cur.execute(query)
+        self.cur.execute(query)
         #cur.itersize = 2000
-        cur.scroll(start)
-        it = IterLayer(cur, shape=(size, num_features), dtype=self.dtype)
+        self.cur.scroll(start)
+        it = IterLayer(self.cur, shape=(size, num_features), dtype=self.dtype)
         if self.chunks_size is not None:
             return it.to_chunks(self.chunks_size)
         return it
@@ -107,14 +123,16 @@ class SQL(object):
         cur.execute(query, {"table_name": self.table_name})
         return cur.fetchone()[0]
 
-    def columns(self):
+    def columns(self, exclude_id=False):
         cur = self.conn.cursor()
-        query = "SELECT * FROM information_schema.columns WHERE table_name=%(table_name)s"
+        query = "SELECT * FROM information_schema.columns WHERE table_name=%(table_name)s ORDER BY ordinal_position"
         cur.execute(query, {"table_name": self.table_name})
-        columns = {}
-        types = {"text": "|O", "integer": "int"}
+        columns = OrderedDict()
+        types = {"text": "|O", "integer": "int", "double precision": "float"}
         for column in cur.fetchall():
             columns[column[3]] = types.get(column[7], "|O")
+        if exclude_id is True:
+            del columns["id"]
         return columns
 
     def format_columns(self, columns):
@@ -123,29 +141,43 @@ class SQL(object):
         else:
             return ",".join(columns)
 
-    def build_schema(self, columns_name, fmtypes, indexes):
-        
+    def build_schema(self, columns, indexes=None):
         def build():
             columns_types = ["id serial PRIMARY KEY"]
-            for col, fmtype in zip(columns_name, fmtypes):
+            for col, fmtype in columns:
                 columns_types.append("{col} {type}".format(col=col, type=fmtype.db_type))
             cols = "("+", ".join(columns_types)+")"
-        #    index = "CREATE INDEX {id_name}_{name}_index ON {name} ({id_name})".format(name=table_name, id_name=id_name)
             cur = self.conn.cursor()
             cur.execute("""
                 CREATE TABLE {name}
                 {columns};
             """.format(name=self.table_name, columns=cols))
-            #cur.execute(index)
+            if isinstance(indexes, list):
+                for index in indexes:
+                    if isinstance(index, tuple):
+                        index_columns = ",".join(index)
+                        index_name = "_".join(index)
+                    else:
+                        index_columns = index
+                        index_name = index
+                    index_q = "CREATE INDEX {i_name}_{name}_index ON {name} ({i_columns})".format(
+                        name=self.table_name, i_name=index_name, i_columns=index_columns)
+                    cur.execute(index_q)
 
         if not self.exists():
-            build()        
-        #else:
-        #    cur.execute("DROP TABLE {name};".format(name=table_name))
-        #    build()
+            build()
         self.conn.commit()
-        #cur.close()
-        #conn.close()
+
+    def insert(self, data):
+        header = self.columns(exclude_id=True)
+        columns = "("+", ".join(header)+")"
+        insert_str = "INSERT INTO {name} {columns} VALUES".format(name=self.table_name, columns=columns)
+        values_str = "("+", ".join(["%s" for _ in range(len(header))])+")"
+        insert = insert_str+" "+values_str
+        cur = self.conn.cursor()
+        for row in tqdm(data):
+            cur.execute(insert, row)
+        self.conn.commit()
 
     def exists(self):
         cur = self.conn.cursor()

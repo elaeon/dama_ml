@@ -4,13 +4,8 @@ import collections
 import types
 import numpy as np
 import pandas as pd
-
+import psycopg2
 from ml.utils.seq import grouper_chunk
-
-#class struct_array(np.recarray):
-#    @property
-#    def sshape(self):
-#        return tuple(list(self.shape) + [len(self.dtype.names)])
 
 
 def choice(operator):
@@ -30,7 +25,7 @@ class IterLayer(object):
     def __init__(self, fn_iter, shape=None, dtype=None, 
                 has_chunks=False, chunks_size=0, length=None):
         dtypes = None
-        if isinstance(fn_iter, types.GeneratorType):
+        if isinstance(fn_iter, types.GeneratorType) or isinstance(fn_iter, psycopg2.extensions.cursor):
             _fn_iter = fn_iter
         elif isinstance(fn_iter, IterLayer):
             _fn_iter = fn_iter
