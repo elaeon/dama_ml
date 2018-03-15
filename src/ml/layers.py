@@ -155,7 +155,6 @@ class IterLayer(object):
                 else:
                     yield smx_a
                 
-
     def flat(self):
         def _iter():
             for chunk in self:
@@ -173,6 +172,13 @@ class IterLayer(object):
     def shape(self):
         return self._shape
 
+    @shape.setter
+    def shape(self, v):
+        if isinstance(v, list):
+            self._shape = tuple(v)
+        else:
+            self._shape = v
+
     @property
     def shape_w_chunks(self):
         r = self.shape[0] % float(self.chunks_size)
@@ -181,13 +187,6 @@ class IterLayer(object):
         if r > 0:
             size += 1
         return tuple([self.chunks_size, size] + list(self.shape[1:]))
-
-    @shape.setter
-    def shape(self, v):
-        if isinstance(v, list):
-            self._shape = tuple(v)
-        else:
-            self._shape = v
 
     def scalar_operation(self, operator, scalar):
         iter_ = imap(lambda x: operator(x, scalar), self)
@@ -318,6 +317,7 @@ class IterLayer(object):
             raise Exception("Data shape is None, IterLayer can't be converted to array")
         if dtype is None:
             dtype = self.global_dtype
+        
         if self.has_chunks:
             return self._to_narray_chunks(self, self.shape, dtype)
         else:
@@ -328,21 +328,11 @@ class IterLayer(object):
         init = 0
         end = 0
         for smx in it:
-            #if len(smx.shape) >= 1 and self.has_chunks:
-            #    end += smx.shape[0]
-            #elif len(smx.shape) > 1 and not self.has_chunks:
-            #    end += smx.shape[0]
-            #else:
-            #    end += 1
-            #if isinstance(smx, IterLayer):
-            #    smx = smx.to_narray()
             if isinstance(smx, IterLayer):
                 smx = smx.to_narray()
                 end += smx.shape[0]
             elif hasattr(smx, 'shape'):
                 end += smx.shape[0]
-            #else:
-            #    end += 1
             smx_a[init:end] = smx
             init = end
         return smx_a
@@ -391,4 +381,6 @@ class IterLayer(object):
         except StopIteration:
             if hasattr(self.it, 'close'):
                 self.it.close()
+            raise StopIteration
+        except psycopg2.InterfaceError:
             raise StopIteration

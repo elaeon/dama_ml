@@ -17,3 +17,4 @@ xmltodict==0.10.2
 dill==0.2.6
 keras==2.0.2
 seaborn==0.7.1
+psycopg2==2.7.3.2

@@ -1,8 +1,16 @@
 import unittest
 import numpy as np
+import pandas as pd
 
 from ml.extractors.db import SQL
 from ml import fmtypes
+
+
+def get_column(data, column_index):
+    column = []
+    for row in data:
+        column.append(row[column_index])
+    return column
 
 
 class TestSQL(unittest.TestCase):
@@ -31,39 +39,48 @@ class TestSQL(unittest.TestCase):
             sql.destroy()
 
     def test_index(self):
-        with SQL(username="alejandro", db_name="ml",
-            table_name="test") as sql:
+        with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
             self.assertItemsEqual(sql[1].to_narray()[0], self.data[1])
             self.assertItemsEqual(sql[5].to_narray()[0], self.data[5])
             self.assertItemsEqual(sql[1:].to_narray()[2], self.data[1:][2])
             self.assertItemsEqual(sql[:10].to_narray()[5], self.data[:10][5])
             self.assertItemsEqual(sql[3:8].to_narray()[1], self.data[3:8][1])
-            #print(sql["visitors"].flat().to_narray())
+ 
+    def test_key(self):
+        with SQL(username="alejandro", db_name="ml", table_name="test", chunks_size=2) as sql:
+            self.assertItemsEqual(sql["A"].flat().to_narray(), get_column(self.data, 0))
+            self.assertItemsEqual(sql["B"].flat().to_narray(), get_column(self.data, 1))
+            self.assertItemsEqual(sql["C"].flat().to_narray(), get_column(self.data, 2))
+
+    def test_multikey(self):
+        with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
+            self.assertItemsEqual(sql[["A", "B"]].to_narray()[0], ['a', 1])
+            self.assertItemsEqual(sql[["B", "C"]].to_narray()[0], [1, 0.1])
+            self.assertItemsEqual(sql[["A", "C"]].to_narray()[0], ['a', 0.1])
 
     def test_data_df(self):
-        with SQL(username="alejandro", db_name="ml",
-            table_name="test", limit=100, chunks_size=12, columns_name=True) as sql:
-            print(sql["visitors"].to_df())
+        with SQL(username="alejandro", db_name="ml", table_name="test",
+            chunks_size=12, columns_name=True) as sql:
+            self.assertEqual(type(sql["A"].to_df()), pd.DataFrame)
 
-    def test_slice(self):
-        with SQL(username="alejandro", db_name="ml", order_by=['store_id'],
-            table_name="test", limit=100, chunks_size=12, columns_name=False) as sql:
-            print(sql[2:6].to_memory())
+    def test_chunks(self):
+        with SQL(username="alejandro", db_name="ml", order_by=['id'],
+            table_name="test", chunks_size=3, columns_name=False) as sql:
+            self.assertItemsEqual(sql[2:6].flat().to_memory()[0], np.asarray(self.data[2:6])[0][0])
 
     def test_columns(self):
         with SQL(username="alejandro", db_name="ml",
-            table_name="test", limit=100, chunks_size=12, columns_name=True) as sql:
-            print(sql.columns())
+            table_name="test", chunks_size=12, columns_name=True) as sql:
+            columns = sql.columns()
+            self.assertEqual(columns.keys(), ['id', 'a', 'b', 'c'])
+            self.assertEqual(columns.values(), ['int', '|O', 'int', 'float'])
 
     def test_shape(self):
-        with SQL(username="alejandro", db_name="ml",
-            table_name="test", limit=100) as sql:
-            self.assertEqual(sql.shape, (100, 10))
+        with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
+            self.assertEqual(sql.shape, (12, 3))
 
-        with SQL(username="alejandro", db_name="ml",
-            table_name="test", limit=None) as sql:
-            #self.assertEqual(sql.shape, (100, 10))
-            print(sql.shape)
+        with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
+            self.assertEqual(sql[3:].shape, (9, 3))
 
 
 if __name__ == '__main__':

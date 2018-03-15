@@ -5,17 +5,18 @@ from ml.layers import IterLayer
 import numpy as np
 from tqdm import tqdm
 from collections import OrderedDict
+import uuid
 
 
 class SQL(object):
-    def __init__(self, username, db_name, table_name, order_by=None, limit=None, 
+    def __init__(self, username, db_name, table_name, order_by=None, 
         chunks_size=0, columns_name=False):
         self.conn = None
         self.cur = None
         self.username = username
         self.db_name = db_name
         self.table_name = table_name
-        self.limit = limit
+        self.limit = None
         self.order_by = order_by
         self._build_order_text()
         self._build_limit_text()
@@ -32,7 +33,7 @@ class SQL(object):
         self.close()
 
     def __getitem__(self, key):
-        self.cur = self.conn.cursor("sqlds", scrollable=False, withhold=False)
+        self.cur = self.conn.cursor(uuid.uuid4().hex, scrollable=False, withhold=False)
         columns = self.columns(exclude_id=True)
 
         if isinstance(key, str):
@@ -59,10 +60,7 @@ class SQL(object):
                 start = key.start
 
             if key.stop is None:
-                if self.limit is not None:
-                    stop = self.limit
-                else:
-                    stop = self.shape[0]
+                stop = self.shape[0]
             else:
                 stop = key.stop
                 self.limit = key.stop
@@ -71,7 +69,7 @@ class SQL(object):
             size = abs(start - stop)
 
         if self.columns_name is True:
-            self.dtype = [(column_name, columns[column_name]) for column_name in _columns]
+            self.dtype = [(column_name, columns[column_name.lower()]) for column_name in _columns]
         else:
             self.dtype = None
 
@@ -83,7 +81,7 @@ class SQL(object):
         #cur.itersize = 2000
         self.cur.scroll(start)
         it = IterLayer(self.cur, shape=(size, num_features), dtype=self.dtype)
-        if self.chunks_size is not None:
+        if self.chunks_size is not None and self.chunks_size > 0:
             return it.to_chunks(self.chunks_size)
         return it
 
@@ -107,21 +105,21 @@ class SQL(object):
 
     @property
     def shape(self):
-        if self.limit is not None:
-            return self.limit, self.num_columns()
-        else:
-            cur = self.conn.cursor()
-            query = "SELECT COUNT(*) FROM {table_name}".format(
-                table_name=self.table_name)
-            cur.execute(query)
-            size = cur.fetchone()[0]
-            return size, self.num_columns()
+        cur = self.conn.cursor()
+        query = "SELECT COUNT(*) FROM {table_name}".format(
+            table_name=self.table_name)
+        cur.execute(query)
+        size = cur.fetchone()[0]
+        return size, self.num_columns(exclude_id=True)
 
-    def num_columns(self):
+    def num_columns(self, exclude_id=False):
         cur = self.conn.cursor()
         query = "SELECT COUNT(*) FROM information_schema.columns WHERE table_name=%(table_name)s"
         cur.execute(query, {"table_name": self.table_name})
-        return cur.fetchone()[0]
+        if exclude_id is True:
+            return cur.fetchone()[0] - 1
+        else:
+            return cur.fetchone()[0]
 
     def columns(self, exclude_id=False):
         cur = self.conn.cursor()
