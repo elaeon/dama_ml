@@ -22,7 +22,7 @@ def choice(operator):
 
 
 class IterLayer(object):
-    def __init__(self, fn_iter, shape=None, dtype=None, 
+    def __init__(self, fn_iter, shape=None, dtype=None, type_elem=None,
                 has_chunks=False, chunks_size=0, length=None):
         dtypes = None
         if isinstance(fn_iter, types.GeneratorType) or isinstance(fn_iter, psycopg2.extensions.cursor):
@@ -42,11 +42,10 @@ class IterLayer(object):
         if shape is not None:
             self.length = shape[0]
         else:
-            #if length is None:
-            #    print("Warning: you should pass a length value to IterLayer")
             self.length = length
 
-        if dtype is None or shape is None:
+        if dtype is None:
+            #obtain dtype, shape, global_dtype and type_elem
             self.chunk_taste(dtypes)
         else:
             if hasattr(dtype, '__iter__'):
@@ -55,6 +54,7 @@ class IterLayer(object):
                 self.global_dtype = dtype
             self.dtype = dtype
             self.shape = shape
+            self.type_elem = np.ndarray if not isinstance(self.dtype, list) else pd.DataFrame
     
     def pushback(self, val):
         self.pushedback.append(val)
@@ -62,20 +62,23 @@ class IterLayer(object):
     def chunk_taste(self, dtypes):
         """Check for the dtype and global dtype in a chunk"""
         chunk = next(self)
-        if isinstance(chunk, pd.DataFrame):
+        if dtypes is not None:
+            self.dtype = dtypes
+            global_dtype = self._get_global_dtype(dtypes)
+        elif isinstance(chunk, pd.DataFrame):
             self.dtype = []
             for c, cdtype in zip(chunk.columns.values, chunk.dtypes.values):
                 self.dtype.append((c, cdtype))
             global_dtype = self._get_global_dtype(self.dtype)
-        elif dtypes is not None:
-            self.dtype = dtypes
-            global_dtype = self._get_global_dtype(dtypes)
         elif isinstance(chunk, np.ndarray):
             self.dtype = chunk.dtype
             global_dtype = self.dtype
         else:#scalars
             if type(chunk).__module__ == '__builtin__':
-                self.dtype = '|O'
+                if hasattr(chunk, '__iter__'):
+                    self.dtype = "|O"
+                else:
+                    self.dtype = type(chunk)
             else:
                 self.dtype = chunk.dtype
             global_dtype = self.dtype
@@ -101,6 +104,7 @@ class IterLayer(object):
 
         self.global_dtype = global_dtype
         self.pushback(chunk)
+        self.type_elem = type(chunk)
 
     def _get_global_dtype(self, dtype):
         global_dtype = None
@@ -112,14 +116,16 @@ class IterLayer(object):
                 global_dtype = cdtype
         return global_dtype
 
-    def to_chunks(self, chunks_size):
+    def to_chunks(self, chunks_size, dtype=None):
         if self.has_chunks is False:
-            return IterLayer(self.gen_chunks(self, chunks_size), shape=self.shape, 
-                chunks_size=chunks_size, has_chunks=True, dtype=self.dtype)
+            if dtype is None:
+                dtype = self.dtype
+            return IterLayer(self.gen_chunks(chunks_size, dtype), shape=self.shape, 
+                chunks_size=chunks_size, has_chunks=True, dtype=dtype)
         else:
             return self
-        
-    def gen_chunks(self, fn_iter, chunks_size):
+    
+    def gen_chunks(self, chunks_size, dtype):
         if chunks_size < 1:
             chunks_size = self.shape[0]
 
@@ -129,9 +135,9 @@ class IterLayer(object):
             i_features = self.shape[1:]
             chunk_shape = [chunks_size] + list(i_features)
 
-        if not isinstance(self.dtype, list):
-            for smx in grouper_chunk(chunks_size, fn_iter):
-                smx_a = np.empty(chunk_shape, dtype=np.dtype(self.dtype))
+        if not isinstance(dtype, list):
+            for smx in grouper_chunk(chunks_size, self):
+                smx_a = np.empty(chunk_shape, dtype=np.dtype(dtype))
                 for i, row in enumerate(smx):
                     try:
                         smx_a[i] = row
@@ -142,9 +148,9 @@ class IterLayer(object):
                 else:
                     yield smx_a
         else:
-            for smx in grouper_chunk(chunks_size, fn_iter):
+            for smx in grouper_chunk(chunks_size, self):
                 smx_a = pd.DataFrame(np.empty(chunk_shape, 
-                    dtype=self.dtype[0][1]), columns=[c for c, _ in self.dtype])
+                    dtype=dtype[0][1]), columns=[c for c, _ in dtype])
                 for i, row in enumerate(smx):
                     try:
                         smx_a.values[i, :] = row
@@ -157,14 +163,22 @@ class IterLayer(object):
                 
     def flat(self):
         def _iter():
-            for chunk in self:
-                for e in chunk.reshape(-1):
+            if self.type_elem == np.ndarray:
+                for chunk in self:
+                    for e in chunk.reshape(-1):
+                        yield e
+            elif self.type_elem == pd.DataFrame:
+                for chunk in self:
+                    for e in chunk.values.reshape(-1):
+                        yield e
+            elif self.type_elem.__module__ == '__builtin__':
+                for e in chain.from_iterable(self):
                     yield e
-
+        
         shape = (reduce(operator.mul, self.shape),)
         it = IterLayer(_iter(), shape=shape, dtype=self.dtype, length=self.length)
-        if self.has_chunks:
-            return it.to_chunks(self.chunks_size)
+        if self.has_chunks:            
+            return it.to_chunks(self.chunks_size, dtype=self.global_dtype)
         else:
             return it
 
