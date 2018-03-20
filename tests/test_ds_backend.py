@@ -82,6 +82,38 @@ class TestSQL(unittest.TestCase):
         with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
             self.assertEqual(sql[3:].shape, (9, 3))
 
+    def test_update(self):
+        with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
+            sql.update(3, ("0", 0, 0))
+            self.assertItemsEqual(sql[3].flat().to_memory(), ["0", 0, 0])
+
+    def test_insert_update_by_index(self):
+        with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
+            sql[12] = ["0", 0, 0]
+            self.assertItemsEqual(sql[12].to_memory()[0], ["0", 0, 0])
+            sql[10] = ["0", 0, 0]
+            self.assertItemsEqual(sql[10].to_memory()[0], ["0", 0, 0])
+            values = [["k", 11, 1.1], ["l", 12, 1.2], ["m", 13, 1.3]]
+            sql[10:] = values
+            sql_values = sql[10:].to_memory()
+            self.assertItemsEqual(sql_values[0], values[0])
+            self.assertItemsEqual(sql_values[1], values[1])
+            self.assertItemsEqual(sql_values[2], values[2])
+
+            values = [["A", 1, 1], ["B", 2, 2], ["C", 3, 3]]
+            sql[:3] = values
+            sql_values = sql[:3].to_memory()
+            self.assertItemsEqual(sql_values[0], values[0])
+            self.assertItemsEqual(sql_values[1], values[1])
+            self.assertItemsEqual(sql_values[2], values[2])
+
+            values = [["M", 13, 13], ["N", 14, 1.4], ["O", 15, 1.5]]
+            sql[12:14] = values
+            sql_values = sql[12:15].to_memory()
+            self.assertItemsEqual(sql_values[0], values[0])
+            self.assertItemsEqual(sql_values[1], values[1])
+            self.assertItemsEqual(sql_values[2], values[2])
+
 
 if __name__ == '__main__':
     unittest.main()

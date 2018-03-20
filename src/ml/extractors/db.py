@@ -9,7 +9,7 @@ import uuid
 
 
 class SQL(object):
-    def __init__(self, username, db_name, table_name, order_by=None, 
+    def __init__(self, username, db_name, table_name, order_by=["id"], 
         chunks_size=0, columns_name=False):
         self.conn = None
         self.cur = None
@@ -86,7 +86,47 @@ class SQL(object):
         return it
 
     def __setitem__(self, key, value):
-        pass
+        if isinstance(key, str):
+            #_columns = [key]
+            #num_features = len(_columns)
+            #size = self.shape[0]
+            #start = 0
+            pass
+        elif isinstance(key, list):
+            pass
+            #_columns = key
+            #num_features = len(_columns)
+            #size = self.shape[0]
+            #start = 0
+        elif isinstance(key, int):
+            if key >= self.last_id():
+                self.insert([value])
+            else:
+                self.update(key, value)
+        elif isinstance(key, slice):
+            if key.start is None:
+                start = 0
+            else:
+                start = key.start
+
+            if key.stop is None:
+                stop = self.shape[0]
+            else:
+                stop = key.stop
+
+            last_id = self.last_id()
+            if stop <= last_id:
+                i = start
+                for row in value:
+                    self.update(i, row)
+                    i += 1
+            elif start <= last_id and stop >= last_id:
+                size = abs(start - last_id)
+                i = start
+                for row in value[:size]:
+                    self.update(i, row)
+                    i += 1
+                self.insert(value[size:])
 
     def _build_limit_text(self):
         if self.limit is None:
@@ -111,6 +151,12 @@ class SQL(object):
         cur.execute(query)
         size = cur.fetchone()[0]
         return size, self.num_columns(exclude_id=True)
+
+    def last_id(self):
+        cur = self.conn.cursor()
+        query = "SELECT last_value FROM {table_name}_id_seq".format(table_name=self.table_name)
+        cur.execute(query)
+        return cur.fetchone()[0]
 
     def num_columns(self, exclude_id=False):
         cur = self.conn.cursor()
@@ -175,6 +221,15 @@ class SQL(object):
         cur = self.conn.cursor()
         for row in tqdm(data):
             cur.execute(insert, row)
+        self.conn.commit()
+
+    def update(self, id, values):
+        header = self.columns(exclude_id=True)
+        columns = "("+", ".join(header)+")"
+        update_str = "UPDATE {name} SET {columns} = {values} WHERE id = {id}".format(name=self.table_name, 
+            columns=columns, values=tuple(values), id=id+1)
+        cur = self.conn.cursor()
+        cur.execute(update_str)
         self.conn.commit()
 
     def exists(self):
