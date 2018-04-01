@@ -18,6 +18,6 @@ class CSV(object):
             with zf.open(filename, 'r') as f:
                 csv_reader = csv.reader(f, delimiter=self.delimiter)
                 for i, row in enumerate(csv_reader):
-                    print(row)
                     if limit is not None and i > limit:
                         break
+                    yield row
