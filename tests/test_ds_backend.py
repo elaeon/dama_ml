@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from ml.extractors.db import SQL
+from ml.db import SQL
 from ml import fmtypes
 
 

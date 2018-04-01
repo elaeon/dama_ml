@@ -1,11 +1,9 @@
-import csv
-from ml import fmtypes
 import psycopg2
-from ml.layers import IterLayer
-import numpy as np
+import uuid
 from tqdm import tqdm
 from collections import OrderedDict
-import uuid
+from ml import fmtypes
+from ml.layers import IterLayer
 
 
 class SQL(object):
