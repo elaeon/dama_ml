@@ -1,27 +1,19 @@
 import unittest
 import zipfile
-import csv
-import StringIO
 
 from ml.extractors.file import CSV
 
 
 class TestCSV(unittest.TestCase):
     def setUp(self):
-        with zipfile.ZipFile("/tmp/test.zip", "w", zipfile.ZIP_DEFLATED) as zf:
-            output = StringIO.StringIO()
-            csv_writer = csv.writer(output, delimiter=",")
-            header = ["A", "B", "C", "D", "F"]
-            csv_writer.writerow(header)
-            row = [1, 2, 3, 4, 5]
-            csv_writer.writerow(row)
-            zf.writestr("test.csv", output.getvalue())
-            output.close()
+        self.iterator = [["A", "B", "C", "D", "F"], [1, 2, 3, 4, 5]]
+        csv_writer = CSV(filepath="/tmp/test.zip", filename="test.csv")
+        csv_writer.writer(self.iterator)
 
     def test_csv(self):
         csv = CSV("/tmp/test.zip")
-        for row in csv.stream(limit=1):
-            print(row)
+        for r0, r1 in zip(self.iterator, csv.reader(limit=1)):
+            self.assertItemsEqual(map(str, r0), r1)
 
 
 if __name__ == '__main__':
