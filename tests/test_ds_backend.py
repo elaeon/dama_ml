@@ -60,17 +60,17 @@ class TestSQL(unittest.TestCase):
 
     def test_data_df(self):
         with SQL(username="alejandro", db_name="ml", table_name="test",
-            chunks_size=12, columns_name=True) as sql:
+            chunks_size=12, df=True) as sql:
             self.assertEqual(type(sql["A"].to_df()), pd.DataFrame)
 
     def test_chunks(self):
         with SQL(username="alejandro", db_name="ml", order_by=['id'],
-            table_name="test", chunks_size=3, columns_name=False) as sql:
+            table_name="test", chunks_size=3, df=False) as sql:
             self.assertItemsEqual(sql[2:6].flat().to_memory()[0], np.asarray(self.data[2:6])[0][0])
 
     def test_columns(self):
         with SQL(username="alejandro", db_name="ml",
-            table_name="test", chunks_size=12, columns_name=True) as sql:
+            table_name="test", chunks_size=12, df=True) as sql:
             columns = sql.columns()
             self.assertEqual(columns.keys(), ['id', 'a', 'b', 'c'])
             self.assertEqual(columns.values(), ['int', '|O', 'int', 'float'])
@@ -113,6 +113,14 @@ class TestSQL(unittest.TestCase):
             self.assertItemsEqual(sql_values[0], values[0])
             self.assertItemsEqual(sql_values[1], values[1])
             self.assertItemsEqual(sql_values[2], values[2])
+
+    def test_index_limit(self):
+        with SQL(username="alejandro", db_name="ml", table_name="test", only=["A"]) as sql:
+            self.assertItemsEqual(sql[:3].flat().to_memory(), ["a", "b", "c"])
+        with SQL(username="alejandro", db_name="ml", table_name="test", only=["B", "C"]) as sql:
+            self.assertItemsEqual(sql[:3].flat().to_memory(), [1, 0.1, 2, 0.2, 3, 0.3])
+        with SQL(username="alejandro", db_name="ml", table_name="test", only=["A", "B", "C"]) as sql:
+            self.assertItemsEqual(sql[:3].flat().to_memory(), ["a", 1, 0.1, "b", 2, 0.2, "c", 3, 0.3])
 
 
 if __name__ == '__main__':

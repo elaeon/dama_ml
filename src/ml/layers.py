@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import psycopg2
 from ml.utils.seq import grouper_chunk
+from ml.utils.numeric_functions import max_type
 
 
 def choice(operator):
@@ -76,7 +77,11 @@ class IterLayer(object):
         else:#scalars
             if type(chunk).__module__ == '__builtin__':
                 if hasattr(chunk, '__iter__'):
-                    self.dtype = "|O"
+                    type_e = max_type(chunk)
+                    if isinstance(type_e, list) or isinstance(type_e, tuple):
+                        self.dtype = "|O"
+                    else:
+                        self.dtype = type_e
                 else:
                     self.dtype = type(chunk)
             else:

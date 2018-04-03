@@ -268,8 +268,12 @@ class Transforms(object):
         transforms = Transforms()
         for transforms_type in transforms_list:
             for type_, transforms_dict in transforms_type.items():
-                for fn, params in transforms_dict["transforms"]:
-                    transforms.add(locate(fn), **params)
+                for fn_str, params in transforms_dict["transforms"]:
+                    fn = locate(fn_str)
+                    if fn is not None:
+                        transforms.add(fn, **params)
+                    else:
+                        log.debug("Function {} not found in class path".format(fn_str))
         return transforms
 
     def apply(self, data, chunks_size=258):

@@ -9,7 +9,7 @@ class CSV(object):
         self.delimiter = delimiter
         self.filename = filename
 
-    def reader(self, limit=None):
+    def reader(self, header=True, limit=None):
         with zipfile.ZipFile(self.filepath, 'r') as zf:
             files = zf.namelist()
             if len(files) == 1:
@@ -19,6 +19,8 @@ class CSV(object):
 
             with zf.open(filename, 'r') as f:
                 csv_reader = csv.reader(f, delimiter=self.delimiter)
+                if header is False:
+                    next(csv_reader)
                 for i, row in enumerate(csv_reader):
                     if limit is not None and i > limit:
                         break

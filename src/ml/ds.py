@@ -144,7 +144,16 @@ class ReadWriteData(object):
                 array = smx.as_matrix()
             else:
                 array = smx
-            self.f[name][init:end] = array
+            try:
+                self.f[name][init:end] = array
+            except TypeError:
+                if self.dtype == "|O":
+                    type_ = "string"
+                else:
+                    type_ = self.dtype
+                e = TypeError("All elements in array must be of type '{}' but found '{}'".format(
+                    type_, self.dtype))
+                raise e
             init = end
         return end
 

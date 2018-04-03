@@ -8,7 +8,7 @@ from ml.layers import IterLayer
 
 class SQL(object):
     def __init__(self, username, db_name, table_name, order_by=["id"], 
-        chunks_size=0, columns_name=False):
+        chunks_size=0, df=False, only=None):
         self.conn = None
         self.cur = None
         self.username = username
@@ -19,7 +19,11 @@ class SQL(object):
         self._build_order_text()
         self._build_limit_text()
         self.chunks_size = chunks_size
-        self.columns_name = columns_name
+        self.df_dtype = df
+        if only is not None:
+            self.only_columns = set([column.lower() for column in only])
+        else:
+            self.only_columns = only
 
     def __enter__(self):
         self.conn = psycopg2.connect(
@@ -66,7 +70,7 @@ class SQL(object):
 
             size = abs(start - stop)
 
-        if self.columns_name is True:
+        if self.df_dtype is True:
             self.dtype = [(column_name, columns[column_name.lower()]) for column_name in _columns]
         else:
             self.dtype = None
@@ -170,11 +174,16 @@ class SQL(object):
         query = "SELECT * FROM information_schema.columns WHERE table_name=%(table_name)s ORDER BY ordinal_position"
         cur.execute(query, {"table_name": self.table_name})
         columns = OrderedDict()
-        types = {"text": "|O", "integer": "int", "double precision": "float"}
-        for column in cur.fetchall():
-            columns[column[3]] = types.get(column[7], "|O")
-        if exclude_id is True:
-            del columns["id"]
+        types = {"text": "|O", "integer": "int", "double precision": "float", "boolean": "bool"}
+        if self.only_columns is None:                
+            for column in cur.fetchall():
+                columns[column[3]] = types.get(column[7], "|O")
+            if exclude_id is True:
+                del columns["id"]
+        else:
+            for column in cur.fetchall():
+                if column[3] in self.only_columns:
+                    columns[column[3]] = types.get(column[7], "|O")
         return columns
 
     def format_columns(self, columns):

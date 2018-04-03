@@ -1,6 +1,8 @@
 from itertools import izip
 from operator import mul
 import numpy as np
+import sys
+
 
 def pearsoncc(X, Y):
     """ Compute Pearson Correlation Coefficient. """
@@ -196,3 +198,10 @@ def swap_noise(x, y, p=.15, cols=[1]):
         M[s0, cols] = nv1
 
     return M
+
+
+def max_type(items):
+    sizeof = [sys.getsizeof(e) for e in items]
+    types = [type(e) for e in items]
+    v = max(zip(items, sizeof, types), key=lambda x: x[1])
+    return v[2]
