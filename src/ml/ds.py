@@ -144,6 +144,7 @@ class ReadWriteData(object):
                 array = smx.as_matrix()
             else:
                 array = smx
+
             try:
                 self.f[name][init:end] = array
             except TypeError:
@@ -723,8 +724,8 @@ class DataLabel(Data):
             labels = IterLayer(labels, shape=labels.shape, dtype=labels.dtype).to_chunks(chunks_size)
         self._set_space_shape('data', data.shape, data.global_dtype)
         self._set_space_shape('labels', labels.shape, labels.dtype)
-        end = self.chunks_writer("/data/data", data)
-        end = self.chunks_writer("/data/labels", labels)
+        self.chunks_writer("/data/data", data)
+        self.chunks_writer("/data/labels", labels)
         self._set_space_fmtypes(self.num_features())
         self.build_fmtypes()
         self.md5 = self.calc_md5()

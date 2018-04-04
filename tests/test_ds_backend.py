@@ -40,11 +40,11 @@ class TestSQL(unittest.TestCase):
 
     def test_index(self):
         with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-            self.assertItemsEqual(sql[1].to_narray()[0], self.data[1])
-            self.assertItemsEqual(sql[5].to_narray()[0], self.data[5])
-            self.assertItemsEqual(sql[1:].to_narray()[2], self.data[1:][2])
-            self.assertItemsEqual(sql[:10].to_narray()[5], self.data[:10][5])
-            self.assertItemsEqual(sql[3:8].to_narray()[1], self.data[3:8][1])
+            self.assertItemsEqual(sql[1].to_memory()[0], self.data[1])
+            self.assertItemsEqual(sql[5].to_memory()[0], self.data[5])
+            self.assertItemsEqual(sql[1:].to_memory()[2], self.data[1:][2])
+            self.assertItemsEqual(sql[:10].to_memory()[5], self.data[:10][5])
+            self.assertItemsEqual(sql[3:8].to_memory()[1], self.data[3:8][1])
  
     def test_key(self):
         with SQL(username="alejandro", db_name="ml", table_name="test", chunks_size=2) as sql:

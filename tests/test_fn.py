@@ -117,6 +117,20 @@ class TestNumericFn(unittest.TestCase):
             d_type.append(data_type(unique_size(column), column.size).name)
         self.assertEqual(d_type, ['boolean', 'nan boolean', 'ordinal', 'ordinal', 'ordinal', 'ordinal'])
 
+    def test_max_type(self):
+        from ml.utils.numeric_functions import max_type
+        items = [True, True, 1]
+        type_e = max_type(items)
+        self.assertEqual(int, type_e)
+        
+        items = [1, False, 1/3.]
+        type_e = max_type(items)
+        self.assertEqual(float, type_e)
+
+        items = [1, False, 'a', 1.1]
+        type_e = max_type(items)
+        self.assertEqual(str, type_e)
+
 
 if __name__ == '__main__':
     unittest.main()

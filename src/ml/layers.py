@@ -78,7 +78,8 @@ class IterLayer(object):
             if type(chunk).__module__ == '__builtin__':
                 if hasattr(chunk, '__iter__'):
                     type_e = max_type(chunk)
-                    if isinstance(type_e, list) or isinstance(type_e, tuple):
+                    if isinstance(type_e, list) or isinstance(type_e, tuple) or\
+                        type_e == str or type_e == unicode:
                         self.dtype = "|O"
                     else:
                         self.dtype = type_e
@@ -154,13 +155,13 @@ class IterLayer(object):
                     yield smx_a
         else:
             for smx in grouper_chunk(chunks_size, self):
-                smx_a = pd.DataFrame(np.empty(chunk_shape, 
-                    dtype=dtype[0][1]), columns=[c for c, _ in dtype])
+                smx_a = pd.DataFrame(index=np.arange(0, chunk_shape[0]), 
+                    dtype=dtype[0][1], columns=[c for c, _ in dtype])
                 for i, row in enumerate(smx):
-                    try:
-                        smx_a.values[i, :] = row
-                    except ValueError:
-                        smx_a.values[i, :] = row[0]
+                    #try:
+                    smx_a.values[i] = row
+                    #except ValueError:
+                    #    smx_a.values[i] = row[0]
                 if i + 1 < chunks_size:
                     yield smx_a.iloc[:i+1]
                 else:
