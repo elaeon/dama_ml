@@ -113,14 +113,8 @@ class IterLayer(object):
         self.type_elem = type(chunk)
 
     def _get_global_dtype(self, dtype):
-        global_dtype = None
-        for c, cdtype in dtype:
-            if cdtype == np.dtype("|O"):
-                global_dtype = cdtype
-                break
-            else:
-                global_dtype = cdtype
-        return global_dtype
+        sizeof = [(np.dtype(type(cdtype)), cdtype) for _, cdtype in dtype]
+        return max(sizeof, key=lambda x: x[0])[1]
 
     def to_chunks(self, chunks_size, dtype=None):
         if self.has_chunks is False:
@@ -154,14 +148,19 @@ class IterLayer(object):
                 else:
                     yield smx_a
         else:
+            cdtype = dict(dtype)
+            columns = [c for c, _ in dtype]
             for smx in grouper_chunk(chunks_size, self):
-                smx_a = pd.DataFrame(index=np.arange(0, chunk_shape[0]), 
-                    dtype=dtype[0][1], columns=[c for c, _ in dtype])
+                x = np.empty(chunk_shape[0], dtype=dtype)
                 for i, row in enumerate(smx):
-                    #try:
-                    smx_a.values[i] = row
-                    #except ValueError:
-                    #    smx_a.values[i] = row[0]
+                    try:
+                        x[i] = row
+                    except ValueError:
+                        x[i] = row[0]
+                smx_a = pd.DataFrame(x,
+                    index=np.arange(0, chunk_shape[0]), 
+                    columns=columns)
+                
                 if i + 1 < chunks_size:
                     yield smx_a.iloc[:i+1]
                 else:
