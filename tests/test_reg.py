@@ -6,6 +6,10 @@ from ml.reg.extended.w_sklearn import RandomForestRegressor
 np.random.seed(0)
 
 
+def mulp(row):
+    return row * 2
+
+
 class TestRegSKL(unittest.TestCase):
     def setUp(self):
         self.X = np.random.rand(100, 10)
@@ -18,10 +22,11 @@ class TestRegSKL(unittest.TestCase):
         dl = DataLabel(name="reg0", dataset_path="/tmp/", rewrite=True)
         with dl:
             dl.build_dataset(self.X, self.Y)
-        reg = RandomForestRegressor(dataset=dl, 
+        reg = RandomForestRegressor( 
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
+        reg.set_dataset(dl)
         reg.train(num_steps=1)
         self.assertEqual(type(reg.load_meta()), type({}))
         reg.destroy()
@@ -31,16 +36,18 @@ class TestRegSKL(unittest.TestCase):
         dl = DataLabel(name="reg0", dataset_path="/tmp/", rewrite=True)
         with dl:
             dl.build_dataset(self.X, self.Y)
-        reg = RandomForestRegressor(dataset=dl, 
+        reg = RandomForestRegressor(
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
+        reg.set_dataset(dl)
         reg.train(num_steps=1)
 
         reg = RandomForestRegressor(
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
+        reg.load()
         reg.destroy()
         dl.destroy()
 
@@ -48,15 +55,38 @@ class TestRegSKL(unittest.TestCase):
         dl = DataLabel(name="reg0", dataset_path="/tmp/", rewrite=True)
         with dl:
             dl.build_dataset(self.X, self.Y)
-        reg = RandomForestRegressor(dataset=dl, 
+        reg = RandomForestRegressor(
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
+        reg.set_dataset(dl)
         reg.train(num_steps=1)
         scores_table = reg.scores2table()
         reg.destroy()
         dl.destroy()
         self.assertEqual(scores_table.headers, ['', 'msle'])
+
+    def test_predict(self):
+        from ml.processing import Transforms
+        t = Transforms()
+        t.add(mulp)
+        X = np.random.rand(100, 1)
+        Y = np.random.rand(100)
+        dataset = DataLabel(name="test_0", dataset_path="/tmp/", 
+            rewrite=True, transforms=t, apply_transforms=True)
+        with dataset:
+            dataset.build_dataset(X, Y)
+        classif = RandomForestRegressor(
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif.set_dataset(dataset)
+        classif.train()
+        values = np.asarray([[1], [2], [.4], [.1], [0], [1]])
+        self.assertEqual(len(classif.predict(values).to_memory()), 6)
+        self.assertEqual(len(classif.predict(np.asarray(values), chunks_size=0).to_narray()), 6)
+        dataset.destroy()
+        classif.destroy()
 
 
 if __name__ == '__main__':

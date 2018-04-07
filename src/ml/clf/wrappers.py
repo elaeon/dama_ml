@@ -4,7 +4,7 @@ import logging
 
 from sklearn.preprocessing import LabelEncoder
 from ml.utils.config import get_settings
-from ml.models import MLModel, DataDrive, BaseModel
+from ml.models import MLModel, SupervicedModel
 from ml.ds import DataLabel, Data
 from ml.clf import measures as metrics
 from ml.layers import IterLayer
@@ -18,21 +18,19 @@ log.addHandler(handler)
 log.setLevel(int(settings["loglevel"]))
 
 
-class ClassifModel(BaseModel):
-    def __init__(self, model_name=None, dataset=None, check_point_path=None, 
-                model_version=None, autoload=False, group_name=None, metrics=None):
-
+class ClassifModel(SupervicedModel):
+    def __init__(self, **params):
         self.le = LabelEncoder()
         self.base_labels = None
         self.labels_dim = 1
-        super(ClassifModel, self).__init__(
-            dataset=dataset,
-            autoload=autoload,
-            metrics=metrics,
-            check_point_path=check_point_path,
-            model_version=model_version,
-            model_name=model_name,
-            group_name=group_name)
+        super(ClassifModel, self).__init__(**params)
+
+    def load(self):
+        self.test_ds = self.get_dataset()
+        self.get_train_validation_ds()
+        with self.load_original_ds() as ds:
+            if isinstance(ds, DataLabel):
+                self.labels_encode(ds.labels)
 
     def scores(self, measures=None):
         from tqdm import tqdm
@@ -95,21 +93,6 @@ class ClassifModel(BaseModel):
         self.le.fit(labels)
         self.num_labels = self.le.classes_.shape[0]
         self.base_labels = self.le.classes_
-
-    def load_original_ds(self):
-        return Data.original_ds(self.original_dataset_name, self.original_dataset_path)
-
-    #def load_dataset(self, dataset):
-    #    if dataset is None:
-    #        self.test_ds = self.get_dataset()
-    #        with self.load_original_ds() as ds:
-    #            if isinstance(ds, DataLabel):
-    #                self.labels_encode(ds.labels)
-    #    else:
-    #        self.set_dataset(dataset)
-
-    #    with self.test_ds:
-    #        self.num_features = self.test_ds.num_features()
 
     def position_index(self, label):
         if isinstance(label, np.ndarray) or isinstance(label, list):

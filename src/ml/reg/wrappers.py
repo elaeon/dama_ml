@@ -4,7 +4,7 @@ import logging
 
 from sklearn.preprocessing import LabelEncoder
 from ml.utils.config import get_settings
-from ml.models import BaseModel, MLModel
+from ml.models import SupervicedModel, MLModel
 from ml.ds import DataLabel, Data
 from ml.clf import measures as metrics
 from ml.layers import IterLayer
@@ -20,10 +20,14 @@ log.addHandler(handler)
 log.setLevel(int(settings["loglevel"]))
 
 
-class RegModel(BaseModel):
+class RegModel(SupervicedModel):
     def __init__(self, **params):
         self.labels_dim = 1
         super(RegModel, self).__init__(**params)
+
+    def load(self):
+        self.test_ds = self.get_dataset()
+        self.get_train_validation_ds()
 
     def scores(self, measures=None):
         if measures is None or isinstance(measures, str):

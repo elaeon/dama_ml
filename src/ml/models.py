@@ -132,15 +132,13 @@ class DataDrive(object):
 
 
 class BaseModel(DataDrive):
-    def __init__(self, model_name=None, dataset=None, check_point_path=None, 
-                model_version=None, autoload=False, group_name=None, metrics=None):
+    def __init__(self, model_name=None, check_point_path=None, 
+                model_version=None, group_name=None, metrics=None):
         self.model = None
         self.original_dataset_md5 = None
         self.original_dataset_path = None
         self.original_dataset_name = None
-        self.train_ds = None
         self.test_ds = None
-        self.validation_ds = None
         self.ext = "ckpt.pkl"
         self.metrics = metrics
 
@@ -166,31 +164,10 @@ class BaseModel(DataDrive):
         pass
 
     def load(self):
-        self.test_ds = self.get_dataset()
-        self.get_train_validation_ds()
-        with self.load_original_ds() as ds:
-            if isinstance(ds, DataLabel):
-                self.labels_encode(ds.labels)
-
-    #def load_dataset(self, dataset, rewrite=True):
-    #    if dataset is None:
-    #        self.test_ds = self.get_dataset()
-    #    else:
-    #        if self.rewrite is True:
-    #            self.set_dataset(dataset)
-    #        else:
-    #            self.test_ds = self.get_dataset()
-    #            self.get_train_validation_ds()
-
-    #    with self.test_ds:
-    #        self.num_features = self.test_ds.num_features()
+        pass
 
     def set_dataset(self, dataset, reformat=True):
-        with dataset:
-            self.original_dataset_md5 = dataset.md5
-            self.original_dataset_path = dataset.dataset_path
-            self.original_dataset_name = dataset.name
-            self.train_ds, self.test_ds, self.validation_ds = self.reformat_all(dataset)
+        pass
             
     @property
     def num_features(self):
@@ -209,25 +186,21 @@ class BaseModel(DataDrive):
         return IterLayer(self._predict(fn(data, t=transform), raw=raw), shape=output_shape)
 
     def _metadata(self):
-        list_measure = self.scores(measures=self.metrics)
-        with self.test_ds, self.train_ds, self.validation_ds:
-            return {"test_ds_path": self.test_ds.dataset_path,
-                    "test_ds_name": self.test_ds.name,
-                    "train_ds_path": self.train_ds.dataset_path,
-                    "train_ds_name": self.train_ds.name,
-                    "validation_ds_path": self.validation_ds.dataset_path,
-                    "validation_ds_name": self.validation_ds.name,
-                    "md5": self.test_ds.md5,
-                    "original_ds_md5": self.original_dataset_md5,
-                    "original_ds_path": self.original_dataset_path,
-                    "original_ds_name": self.original_dataset_name,
-                    "original_dataset_name": self.original_dataset_name,
-                    "group_name": self.group_name,
-                    "model_module": self.module_cls_name(),
-                    "model_name": self.model_name,
-                    "model_version": self.model_version,
-                    "score": list_measure.measures_to_dict()}
-        
+        with self.test_ds:
+            return {
+                "test_ds_path": self.test_ds.dataset_path,
+                "test_ds_name": self.test_ds.name,
+                "md5": self.test_ds.md5,
+                "original_ds_md5": self.original_dataset_md5,
+                "original_ds_path": self.original_dataset_path,
+                "original_ds_name": self.original_dataset_name,
+                "original_dataset_name": self.original_dataset_name,
+                "group_name": self.group_name,
+                "model_module": self.module_cls_name(),
+                "model_name": self.model_name,
+                "model_version": self.model_version
+            }
+
     def get_dataset(self):
         from ml.ds import Data
         log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name, 
@@ -243,16 +216,6 @@ class BaseModel(DataDrive):
             log.info("The dataset md5 is not equal to the model '{}'".format(
                 self.__class__.__name__))
         return dataset
-
-    def get_train_validation_ds(self):
-        from ml.ds import Data
-        log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name, 
-            self.model_version, self.check_point_path))
-        meta = self.load_meta()
-        self.train_ds = Data.original_ds(name=meta["train_ds_name"], 
-            dataset_path=meta["train_ds_path"])
-        self.validation_ds = Data.original_ds(name=meta["validation_ds_name"], 
-            dataset_path=meta["validation_ds_path"])
 
     def preload_model(self):
         self.model = MLModel(fit_fn=None, 
@@ -280,6 +243,72 @@ class BaseModel(DataDrive):
     def _predict(self, data, raw=False):
         pass
 
+    def train(self, batch_size=0, num_steps=0, n_splits=None, obj_fn=None, model_params={}):
+        log.info("Training")
+        self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, **model_params)
+        log.info("Saving model")
+        self.save_model()
+
+    def scores2table(self):
+        from ml.clf.measures import ListMeasure
+        return ListMeasure.dict_to_measures(self.load_meta().get("score", None))
+
+    def load_original_ds(self):
+        return Data.original_ds(self.original_dataset_name, self.original_dataset_path)
+
+
+class SupervicedModel(BaseModel):
+    def __init__(self, model_name=None, check_point_path=None, 
+                model_version=None, group_name=None, metrics=None):
+        self.train_ds = None
+        self.validation_ds = None
+        super(SupervicedModel, self).__init__(
+            check_point_path=check_point_path,
+            model_version=model_version,
+            model_name=model_name,
+            group_name=group_name,
+            metrics=metrics)
+
+    def load(self):
+        pass
+
+    def set_dataset(self, dataset):
+        with dataset:
+            self.original_dataset_md5 = dataset.md5
+            self.original_dataset_path = dataset.dataset_path
+            self.original_dataset_name = dataset.name
+            self.train_ds, self.test_ds, self.validation_ds = self.reformat_all(dataset)
+
+    def _metadata(self):
+        list_measure = self.scores(measures=self.metrics)
+        with self.test_ds, self.train_ds, self.validation_ds:
+            return {"test_ds_path": self.test_ds.dataset_path,
+                    "test_ds_name": self.test_ds.name,
+                    "train_ds_path": self.train_ds.dataset_path,
+                    "train_ds_name": self.train_ds.name,
+                    "validation_ds_path": self.validation_ds.dataset_path,
+                    "validation_ds_name": self.validation_ds.name,
+                    "md5": self.test_ds.md5,
+                    "original_ds_md5": self.original_dataset_md5,
+                    "original_ds_path": self.original_dataset_path,
+                    "original_ds_name": self.original_dataset_name,
+                    "original_dataset_name": self.original_dataset_name,
+                    "group_name": self.group_name,
+                    "model_module": self.module_cls_name(),
+                    "model_name": self.model_name,
+                    "model_version": self.model_version,
+                    "score": list_measure.measures_to_dict()}
+
+    def get_train_validation_ds(self):
+        from ml.ds import Data
+        log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name, 
+            self.model_version, self.check_point_path))
+        meta = self.load_meta()
+        self.train_ds = Data.original_ds(name=meta["train_ds_name"], 
+            dataset_path=meta["train_ds_path"])
+        self.validation_ds = Data.original_ds(name=meta["validation_ds_name"], 
+            dataset_path=meta["validation_ds_path"])
+
     def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2, obj_fn=None, 
                     model_params={}):
         from sklearn.model_selection import StratifiedKFold
@@ -302,7 +331,3 @@ class BaseModel(DataDrive):
             self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, **model_params)
         log.info("Saving model")
         self.save_model()
-
-    def scores2table(self):
-        from ml.clf.measures import ListMeasure
-        return ListMeasure.dict_to_measures(self.load_meta().get("score", None))

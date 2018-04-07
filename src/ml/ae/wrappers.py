@@ -22,18 +22,27 @@ if backend._BACKEND == "theano":
 
 
 class BaseAe(BaseModel):
-    def __init__(self, model_name=None, dataset=None, check_point_path=None, 
-                model_version=None, autoload=True, group_name=None, latent_dim=2):
+    def __init__(self, model_name=None, check_point_path=None, 
+                model_version=None, group_name=None, latent_dim=2):
         self.model_encoder = None
         self.model_decoder = None
         self.latent_dim = latent_dim
         super(BaseAe, self).__init__(
-            dataset=dataset,
-            autoload=autoload,
             check_point_path=check_point_path,
             model_version=model_version,
             model_name=model_name,
             group_name=group_name)
+
+    def set_dataset(self, dataset):
+        with dataset:
+            self.original_dataset_md5 = dataset.md5
+            self.original_dataset_path = dataset.dataset_path
+            self.original_dataset_name = dataset.name
+            self.train_ds, self.test_ds = self.reformat_all(dataset)
+
+    def load(self):
+        self.test_ds = self.get_dataset()
+        self.train_ds = self.test_ds
 
     def reformat_all(self, dataset):
         if dataset.module_cls_name() == DataLabel.module_cls_name() or\
@@ -53,18 +62,11 @@ class BaseAe(BaseModel):
         else:
             train_ds = dataset
 
-        return train_ds, train_ds, train_ds
+        return train_ds, train_ds
         
     def scores(self, measures=None):
         from ml.clf.measures import ListMeasure
         return ListMeasure()
-
-    def chunk_iter(self, data, chunk_size=1, transform_fn=None, uncertain=False, decoder=True, transform=True):
-        from ml.utils.seq import grouper_chunk
-        for chunk in grouper_chunk(chunk_size, data):
-            data = np.asarray(list(chunk))
-            for prediction in self._predict(transform_fn(data, transform), raw=uncertain, decoder=decoder):
-                yield prediction
 
     def predict(self, data, raw=False, transform=True, chunks_size=258, model_type="decoder"):
         def fn(x, t=True):
@@ -75,19 +77,8 @@ class BaseAe(BaseModel):
             self.load_model()
 
         decoder = model_type == "decoder"
-        if not isinstance(chunks_size, int):
-            log.info("The parameter chunk_size must be an integer.")            
-            log.info("Chunk size is set to 1")
-            chunks_size = 258
-
-        if isinstance(data, IterLayer):
-            return IterLayer(self._predict(fn(x, t=transform), raw=raw))
-        else:
-            if chunks_size > 0:
-                return IterLayer(self.chunk_iter(data, chunks_size, transform_fn=fn, 
-                                                uncertain=raw, transform=transform, decoder=decoder))
-            else:
-                return IterLayer(self._predict(fn(data, t=transform), raw=raw, decoder=decoder))
+        output_shape = tuple([data.shape[0], self.latent_dim])
+        return IterLayer(self._predict(fn(data, t=transform), raw=raw, decoder=decoder), shape=output_shape)
 
 
 class Keras(BaseAe):

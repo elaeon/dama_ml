@@ -22,32 +22,36 @@ class TestSKL(unittest.TestCase):
         self.dataset.destroy()
 
     def test_load_meta(self):
-        classif = RandomForest(dataset=self.dataset, 
+        classif = RandomForest(
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
+        classif.set_dataset(self.dataset)
         classif.train(num_steps=1)
         self.assertEqual(type(classif.load_meta()), type({}))
         classif.destroy()
 
     def test_empty_load(self):
-        classif = RandomForest(dataset=self.dataset, 
+        classif = RandomForest(
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
+        classif.set_dataset(self.dataset)
         classif.train(num_steps=1)
 
         classif = RandomForest(
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
+        classif.load()
         classif.destroy()
 
     def test_scores(self):        
-        classif = RandomForest(dataset=self.dataset, 
+        classif = RandomForest(
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
+        classif.set_dataset(self.dataset)
         classif.train(num_steps=1)
         scores_table = classif.scores2table()
         classif.destroy()
@@ -59,11 +63,12 @@ class TestSKL(unittest.TestCase):
         from ml.clf.measures import Measure
         metrics = Measure.make_metrics(None)
         metrics.add(gini_normalized, greater_is_better=True, uncertain=True)
-        classif = RandomForest(dataset=self.dataset, 
+        classif = RandomForest(
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/",
             metrics=metrics)
+        classif.set_dataset(self.dataset)
         classif.train(num_steps=1)
         scores_table = classif.scores2table()
         self.assertEqual(scores_table.headers, ['', 'f1', 'auc', 'recall', 'precision', 
@@ -80,10 +85,11 @@ class TestSKL(unittest.TestCase):
             rewrite=True, transforms=t, apply_transforms=True)
         with dataset:
             dataset.build_dataset(X, Y)
-        classif = RandomForest(dataset=dataset, 
+        classif = RandomForest(
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
+        classif.set_dataset(dataset)
         classif.train()
         values = np.asarray([[1], [2], [.4], [.1], [0], [1]])
         self.assertEqual(len(classif.predict(values).to_narray()), 6)
@@ -113,7 +119,7 @@ class TestSKL(unittest.TestCase):
         classif.load()
         with self.dataset:
             values = self.dataset.data[:6]
-        self.assertEqual(len(classif.predict(values).to_narray()), 6)
+        self.assertEqual(len(classif.predict(values).to_memory()), 6)
         classif.destroy()
 
 #class TestGpy(unittest.TestCase):
@@ -454,13 +460,11 @@ class TestXgboost(unittest.TestCase):
             self.dataset.build_dataset(X, Y)
         try:
             from ml.clf.extended.w_xgboost import Xgboost
-        
-            classif = Xgboost(dataset=self.dataset, 
+            classif = Xgboost(
                 model_name="test", 
                 model_version="1",
-                check_point_path="/tmp/",
-                dtype="int",
-                ltype="int")
+                check_point_path="/tmp/")
+            classif.set_dataset(self.dataset)
             params={'max_depth':2, 'eta':1, 'silent':1, 'objective':'binary:logistic'}
             classif.train(num_steps=1, model_params=params)
         except ImportError:
@@ -480,6 +484,7 @@ class TestXgboost(unittest.TestCase):
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
+        classif.load()
         with self.dataset:
             predict = classif.predict(self.dataset.data, transform=False, raw=False)
             self.assertEqual(len(list(predict)), 100)

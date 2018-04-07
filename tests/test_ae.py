@@ -3,13 +3,7 @@ import numpy as np
 from ml.ds import Data
 
 
-class TestAE(unittest.TestCase):
-    def setUp(self):
-        pass
-        
-    def tearDown(self):
-        pass
-
+class TestUnsupervicedModel(unittest.TestCase):
     def test_parametric_tsne(self):
         from ml.ae.extended.w_keras import PTsne
 
@@ -21,14 +15,24 @@ class TestAE(unittest.TestCase):
         with dataset:
             dataset.build_dataset(Y)
         classif = PTsne(model_name="tsne", model_version="1", 
-            check_point_path="/tmp/", dataset=dataset, latent_dim=2)
+            check_point_path="/tmp/", latent_dim=2)
+        classif.set_dataset(dataset)
         classif.train(batch_size=8, num_steps=2)
 
         classif = PTsne(model_name="tsne", model_version="1", 
             check_point_path="/tmp/")
-        self.assertEqual(len(list(classif.predict([X[1]]))[0]), 2)
+        classif.load()
+        self.assertEqual(classif.predict(X[:1]).shape, (1, 2))
         classif.destroy()
         dataset.destroy()
+
+
+class TestAE(unittest.TestCase):
+    def setUp(self):
+        pass
+        
+    def tearDown(self):
+        pass
 
     def test_vae(self):
         from ml.ae.extended.w_keras import VAE
@@ -40,19 +44,21 @@ class TestAE(unittest.TestCase):
         with dataset:
             dataset.build_dataset(X)
 
-        vae = VAE(dataset=dataset, 
+        vae = VAE( 
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/",
             intermediate_dim=5)
+        vae.set_dataset(dataset)
         vae.train(batch_size=1, num_steps=10)
 
         vae = VAE( 
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
-        encoder = np.asarray(list(vae.predict(X[0:1], chunks_size=10, model_type="encoder")))
-        decoder = np.asarray(list(vae.predict(X[0:1], chunks_size=10, model_type="decoder")))
+        vae.load()
+        encoder = vae.predict(X[0:1], chunks_size=10, model_type="encoder")
+        decoder = vae.predict(X[0:1], chunks_size=10, model_type="decoder")
         self.assertEqual(encoder.shape, (1, 2))
         self.assertEqual(decoder.shape, (1, 10))
         dataset.destroy()
@@ -67,20 +73,23 @@ class TestAE(unittest.TestCase):
         with dataset:
             dataset.build_dataset(X)
 
-        dae = DAE(dataset=dataset, 
+        dae = DAE( 
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/",
             intermediate_dim=5)
+        dae.set_dataset(dataset)
         dae.train(batch_size=1, num_steps=10)
 
         dae = DAE( 
             model_name="test", 
             model_version="1",
             check_point_path="/tmp/")
-        encoder = np.asarray(list(dae.predict(X[0:1], chunks_size=10, model_type="encoder")))
-        #decoder = np.asarray(list(dae.predict(X[0:1], chunk_size=10, model_type="decoder")))
-        #print(encoder)
+        dae.load()
+        encoder = dae.predict(X[0:1], chunks_size=10, model_type="encoder")
+        self.assertEqual(encoder.shape, (1, 10))
+        decoder = dae.predict(X[0:1], chunks_size=10, model_type="decoder")
+        self.assertEqual(decoder.shape, (1, 10))
         dataset.destroy()
         dae.destroy()
 
