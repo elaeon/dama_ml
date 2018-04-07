@@ -115,8 +115,8 @@ class DataDrive(object):
         rm(self.get_model_path()+".xmeta")
         if hasattr(self, 'dataset'):
             self.dataset.destroy()
-        if hasattr(self, 'test'):
-            self.test.destroy()
+        if hasattr(self, 'test_ds'):
+            self.test_ds.destroy()
 
     @classmethod
     def cls_name(cls):
@@ -133,8 +133,7 @@ class DataDrive(object):
 
 class BaseModel(DataDrive):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
-                model_version=None, autoload=True, group_name=None, metrics=None,
-                dtype='float64', ltype='float'):
+                model_version=None, autoload=False, group_name=None, metrics=None):
         self.model = None
         self.original_dataset_md5 = None
         self.original_dataset_path = None
@@ -144,17 +143,12 @@ class BaseModel(DataDrive):
         self.validation_ds = None
         self.ext = "ckpt.pkl"
         self.metrics = metrics
-        self.ltype = ltype
-        self.dtype = dtype
 
         super(BaseModel, self).__init__(
             check_point_path=check_point_path,
             model_version=model_version,
             model_name=model_name,
             group_name=group_name)
-
-        if autoload is True:
-            self.load_dataset(dataset)
 
     def scores(self, measures=None):
         pass
@@ -171,21 +165,37 @@ class BaseModel(DataDrive):
     def reformat_labels(self, labels):
         pass
 
-    def load_dataset(self, dataset):
-        if dataset is None:
-            self.test_ds = self.get_dataset()
-        else:
-            self.set_dataset(dataset)
+    def load(self):
+        self.test_ds = self.get_dataset()
+        self.get_train_validation_ds()
+        with self.load_original_ds() as ds:
+            if isinstance(ds, DataLabel):
+                self.labels_encode(ds.labels)
 
-        with self.test_ds:
-            self.num_features = self.test_ds.num_features()
+    #def load_dataset(self, dataset, rewrite=True):
+    #    if dataset is None:
+    #        self.test_ds = self.get_dataset()
+    #    else:
+    #        if self.rewrite is True:
+    #            self.set_dataset(dataset)
+    #        else:
+    #            self.test_ds = self.get_dataset()
+    #            self.get_train_validation_ds()
 
-    def set_dataset(self, dataset):
+    #    with self.test_ds:
+    #        self.num_features = self.test_ds.num_features()
+
+    def set_dataset(self, dataset, reformat=True):
         with dataset:
             self.original_dataset_md5 = dataset.md5
             self.original_dataset_path = dataset.dataset_path
             self.original_dataset_name = dataset.name
             self.train_ds, self.test_ds, self.validation_ds = self.reformat_all(dataset)
+            
+    @property
+    def num_features(self):
+        with self.test_ds:
+            return self.test_ds.num_features()
 
     def predict(self, data, raw=False, transform=True, chunks_size=258):
         def fn(x, s=None, t=True):
@@ -200,9 +210,13 @@ class BaseModel(DataDrive):
 
     def _metadata(self):
         list_measure = self.scores(measures=self.metrics)
-        with self.test_ds:
+        with self.test_ds, self.train_ds, self.validation_ds:
             return {"test_ds_path": self.test_ds.dataset_path,
                     "test_ds_name": self.test_ds.name,
+                    "train_ds_path": self.train_ds.dataset_path,
+                    "train_ds_name": self.train_ds.name,
+                    "validation_ds_path": self.validation_ds.dataset_path,
+                    "validation_ds_name": self.validation_ds.name,
                     "md5": self.test_ds.md5,
                     "original_ds_md5": self.original_dataset_md5,
                     "original_ds_path": self.original_dataset_path,
@@ -229,6 +243,16 @@ class BaseModel(DataDrive):
             log.info("The dataset md5 is not equal to the model '{}'".format(
                 self.__class__.__name__))
         return dataset
+
+    def get_train_validation_ds(self):
+        from ml.ds import Data
+        log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name, 
+            self.model_version, self.check_point_path))
+        meta = self.load_meta()
+        self.train_ds = Data.original_ds(name=meta["train_ds_name"], 
+            dataset_path=meta["train_ds_path"])
+        self.validation_ds = Data.original_ds(name=meta["validation_ds_name"], 
+            dataset_path=meta["validation_ds_path"])
 
     def preload_model(self):
         self.model = MLModel(fit_fn=None, 
@@ -277,8 +301,6 @@ class BaseModel(DataDrive):
         else:
             self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, **model_params)
         log.info("Saving model")
-        self.train_ds.destroy()
-        self.validation_ds.destroy()
         self.save_model()
 
     def scores2table(self):

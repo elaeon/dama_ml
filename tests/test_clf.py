@@ -91,6 +91,30 @@ class TestSKL(unittest.TestCase):
         dataset.destroy()
         classif.destroy()
 
+    def test_load(self):
+        classif = RandomForest(
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif.set_dataset(self.dataset)
+        classif.train(num_steps=1)
+
+        classif = RandomForest(
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif.load()
+        classif.train(num_steps=1)
+
+        classif = RandomForest( 
+            model_name="test", 
+            model_version="1",
+            check_point_path="/tmp/")
+        classif.load()
+        with self.dataset:
+            values = self.dataset.data[:6]
+        self.assertEqual(len(classif.predict(values).to_narray()), 6)
+        classif.destroy()
 
 #class TestGpy(unittest.TestCase):
 #    def setUp(self):

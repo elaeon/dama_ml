@@ -20,8 +20,7 @@ log.setLevel(int(settings["loglevel"]))
 
 class ClassifModel(BaseModel):
     def __init__(self, model_name=None, dataset=None, check_point_path=None, 
-                model_version=None, autoload=True, group_name=None, metrics=None,
-                dtype='float64', ltype='int'):
+                model_version=None, autoload=False, group_name=None, metrics=None):
 
         self.le = LabelEncoder()
         self.base_labels = None
@@ -30,8 +29,6 @@ class ClassifModel(BaseModel):
             dataset=dataset,
             autoload=autoload,
             metrics=metrics,
-            dtype=dtype,
-            ltype=ltype,
             check_point_path=check_point_path,
             model_version=model_version,
             model_name=model_name,
@@ -91,16 +88,6 @@ class ClassifModel(BaseModel):
     def reformat_labels(self, labels):
         return labels
 
-    #def transform_shape(self, data, size=None):
-    #    if isinstance(data, IterLayer):
-    #        return np.asarray(list(data))
-    #    elif len(data.shape) > 2:
-    #        if size is None:
-    #            size = data.shape[0]
-    #        return data[:].reshape(size, -1)
-    #    else:
-    #        return data
-
     def is_binary():
         return self.num_labels == 2
 
@@ -112,17 +99,17 @@ class ClassifModel(BaseModel):
     def load_original_ds(self):
         return Data.original_ds(self.original_dataset_name, self.original_dataset_path)
 
-    def load_dataset(self, dataset):
-        if dataset is None:
-            self.test_ds = self.get_dataset()
-            with self.load_original_ds() as ds:
-                if isinstance(ds, DataLabel):
-                    self.labels_encode(ds.labels)
-        else:
-            self.set_dataset(dataset)
+    #def load_dataset(self, dataset):
+    #    if dataset is None:
+    #        self.test_ds = self.get_dataset()
+    #        with self.load_original_ds() as ds:
+    #            if isinstance(ds, DataLabel):
+    #                self.labels_encode(ds.labels)
+    #    else:
+    #        self.set_dataset(dataset)
 
-        with self.test_ds:
-            self.num_features = self.test_ds.num_features()
+    #    with self.test_ds:
+    #        self.num_features = self.test_ds.num_features()
 
     def position_index(self, label):
         if isinstance(label, np.ndarray) or isinstance(label, list):
