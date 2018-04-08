@@ -59,11 +59,11 @@ class DataDrive(object):
     def _metadata(self):
         pass
 
-    def save_meta(self):
+    def save_meta(self, metadata):
         from ml.ds import save_metadata
         if self.check_point_path is not None:
             path = self.make_model_file()
-            save_metadata(path+".xmeta", self._metadata())
+            save_metadata(path+".xmeta", metadata)
 
     def edit_meta(self, key, value):
         from ml.ds import save_metadata
@@ -224,10 +224,7 @@ class BaseModel(DataDrive):
                             save_fn=None)
 
     def save_model(self):
-        if self.check_point_path is not None:
-            path = self.make_model_file()
-            self.model.save('{}.{}'.format(path, self.ext))
-            self.save_meta()
+        pass
 
     def has_model_file(self):
         import os
@@ -278,26 +275,37 @@ class SupervicedModel(BaseModel):
             self.original_dataset_path = dataset.dataset_path
             self.original_dataset_name = dataset.name
             self.train_ds, self.test_ds, self.validation_ds = self.reformat_all(dataset)
+        self.save_meta(self._metadata())
+
+    def save_model(self):
+        if self.check_point_path is not None:
+            path = self.make_model_file()
+            self.model.save('{}.{}'.format(path, self.ext))
+            list_measure = self.scores(measures=self.metrics)
+            metadata = self._metadata()
+            metadata["score"] = list_measure.measures_to_dict()
+            self.save_meta(metadata)
 
     def _metadata(self):
-        list_measure = self.scores(measures=self.metrics)
         with self.test_ds, self.train_ds, self.validation_ds:
-            return {"test_ds_path": self.test_ds.dataset_path,
-                    "test_ds_name": self.test_ds.name,
-                    "train_ds_path": self.train_ds.dataset_path,
-                    "train_ds_name": self.train_ds.name,
-                    "validation_ds_path": self.validation_ds.dataset_path,
-                    "validation_ds_name": self.validation_ds.name,
-                    "md5": self.test_ds.md5,
-                    "original_ds_md5": self.original_dataset_md5,
-                    "original_ds_path": self.original_dataset_path,
-                    "original_ds_name": self.original_dataset_name,
-                    "original_dataset_name": self.original_dataset_name,
-                    "group_name": self.group_name,
-                    "model_module": self.module_cls_name(),
-                    "model_name": self.model_name,
-                    "model_version": self.model_version,
-                    "score": list_measure.measures_to_dict()}
+            return {
+                "test_ds_path": self.test_ds.dataset_path,
+                "test_ds_name": self.test_ds.name,
+                "train_ds_path": self.train_ds.dataset_path,
+                "train_ds_name": self.train_ds.name,
+                "validation_ds_path": self.validation_ds.dataset_path,
+                "validation_ds_name": self.validation_ds.name,
+                "md5": self.test_ds.md5,
+                "original_ds_md5": self.original_dataset_md5,
+                "original_ds_path": self.original_dataset_path,
+                "original_ds_name": self.original_dataset_name,
+                "original_dataset_name": self.original_dataset_name,
+                "group_name": self.group_name,
+                "model_module": self.module_cls_name(),
+                "model_name": self.model_name,
+                "model_version": self.model_version,
+                "score": None
+            }
 
     def get_train_validation_ds(self):
         from ml.ds import Data

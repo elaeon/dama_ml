@@ -123,7 +123,7 @@ class Keras(BaseAe):
         if self.check_point_path is not None:
             models_path = self.make_model_file()
             self.model.save('{}.{}'.format(models_path, self.ext))
-            self.save_meta()
+            self.save_meta(self._metadata())
 
     def load_model(self):
         log.info("loading models...")
