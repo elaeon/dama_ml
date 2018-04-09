@@ -122,6 +122,30 @@ class TestSQL(unittest.TestCase):
         with SQL(username="alejandro", db_name="ml", table_name="test", only=["A", "B", "C"]) as sql:
             self.assertItemsEqual(sql[:3].flat().to_memory(), ["a", 1, 0.1, "b", 2, 0.2, "c", 3, 0.3])
 
+    def test_random(self):
+        with SQL(username="alejandro", db_name="ml", table_name="test", only=["A"], order_by="rand") as sql:
+            sql[:10].to_memory()
+            self.assertItemsEqual(sql.query, "SELECT a FROM test ORDER BY random() LIMIT 10")
+
+    def test_sample(self):
+        with SQL(username="alejandro", db_name="ml", table_name="test", only=["A"], order_by="rand") as sql:
+            self.assertEqual(len(sql[:].sample(5).to_memory()), 5)
+
+    def test_order_by(self):
+        with SQL(username="alejandro", db_name="ml", table_name="test", only=["A"]) as sql:
+            sql[:10].to_memory()
+            self.assertItemsEqual(sql.query, "SELECT a FROM test ORDER BY id LIMIT 10")
+
+    def test_no_order(self):
+        with SQL(username="alejandro", db_name="ml", table_name="test", only=["A"], order_by=None) as sql:
+            sql[:10].to_memory()
+            self.assertItemsEqual(sql.query, "SELECT a FROM test  LIMIT 10")
+
+    def test_no_order_no_limit(self):
+        with SQL(username="alejandro", db_name="ml", table_name="test", only=["A"], order_by=None) as sql:
+            sql[:].to_memory()
+            self.assertItemsEqual(sql.query, "SELECT a FROM test  ")
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,5 +1,6 @@
 from itertools import izip
 from operator import mul
+import heapq as hq
 import numpy as np
 
 
@@ -204,3 +205,47 @@ def max_type(items):
     types = [type(e) for e in items]
     v = max(zip(sizeof, types), key=lambda x: x[0])
     return v[1]
+
+
+def wsr(stream, k):
+    heap = []
+    hkey = lambda w: -np.random.exponential(1.0/w)
+
+    for item, weight in stream:
+        if len(heap) < k:
+            hq.heappush(heap, (hkey(weight), item))
+        elif hkey(weight) > heap[0][0]:
+            hq.heapreplace(heap, (hkey(weight), item))
+
+    while len(heap) > 0:
+        yield hq.heappop(heap)[1]
+
+
+def wsrj(stream, k):
+    reservoir = []
+    hkey = lambda w: np.random.exponential(1.0/w)
+
+    for item, weight in stream:
+        if len(reservoir) < k:
+            hq.heappush(reservoir, (hkey(weight), item))
+        else:
+            break
+
+    while True:
+        T_w = reservoir[0][0]
+        r = np.random.uniform(0, 1)
+        X_w = np.log(r) / np.log(T_w)
+        w_c = 0
+        for item, weight in stream:
+            if 0 < X_w - w_c <= weight:
+                r2 = np.random.uniform(T_w, 1)
+                k_i = r2**(1/weight)
+                hq.heapreplace(reservoir, (k_i, item))                
+                break
+            w_c += weight
+        
+        if all(False for _ in stream):
+            break
+
+    while len(reservoir) > 0:
+        yield hq.heappop(reservoir)[1]

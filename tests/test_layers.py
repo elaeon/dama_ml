@@ -310,6 +310,22 @@ class TestIterLayers(unittest.TestCase):
         it = IterLayer(iter_, shape=(10,))
         self.assertItemsEqual(it.flat().to_memory(), result)
 
+    def test_sample(self):
+        order = (i for i in range(20))
+        it = IterLayer(order, shape=(20,))
+        self.assertEqual(len(it.sample(5).to_memory()), 5)
+
+    def test_split(self):
+        it = IterLayer(((i, 'X', 'Z') for i in range(20)), shape=(20,))
+        it0, it1 = it.split(2)
+        self.assertItemsEqual(it0.to_memory()[0], [0, 'X'])
+        self.assertItemsEqual(it1.flat().to_memory(), np.asarray(['Z']*20))
+
+        it = IterLayer(((i, 'X', 'Z') for i in range(20)), shape=(20,))
+        it_0, it_1 = it.split(2)
+        self.assertItemsEqual(it_0.to_chunks(2).to_memory()[0], [0, 'X'])
+        self.assertItemsEqual(it_1.to_chunks(2).flat().to_memory(), np.asarray(['Z']*20))
+
 
 def chunk_sizes(seq):
     return [len(list(row)) for row in seq]

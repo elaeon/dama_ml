@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import psycopg2
 from ml.utils.seq import grouper_chunk
-from ml.utils.numeric_functions import max_type
+from ml.utils.numeric_functions import max_type, wsrj
 
 
 def choice(operator):
@@ -55,7 +55,10 @@ class IterLayer(object):
                 self.global_dtype = dtype
             self.dtype = dtype
             self.shape = shape
-            self.type_elem = np.ndarray if not isinstance(self.dtype, list) else pd.DataFrame
+            if self.has_chunks:
+                self.type_elem = np.ndarray if not isinstance(self.dtype, list) else pd.DataFrame
+            else:
+                self.type_elem = tuple
     
     def pushback(self, val):
         self.pushedback.append(val)
@@ -186,6 +189,34 @@ class IterLayer(object):
             return it.to_chunks(self.chunks_size, dtype=self.global_dtype)
         else:
             return it
+
+    def sample(self, k):
+        if not self.has_chunks:
+            shape = tuple([k] + list(self.shape[1:]))
+        else:
+            shape = tuple([k*self.chunks_size] + list(self.shape[1:]))
+        return IterLayer(wsrj(izip(self, self.weights_gen()), k), shape=shape, 
+            dtype=self.dtype, chunks_size=self.chunks_size, 
+            has_chunks=self.has_chunks)
+
+    def split(self, i):
+        if self.type_elem == pd.DataFrame:
+            a, b = tee((row.iloc[:, :i], row.iloc[:, i:]) for row in self)
+        else:
+            a, b = tee((row[:i], row[i:]) for row in self)
+        shape_0 = tuple([self.shape[0], i])
+        shape_1 = tuple([self.shape[0], self.shape[1] - i])
+        it0 = IterLayer((item for item, _ in a), shape=shape_0, dtype=self.dtype, 
+                chunks_size=self.chunks_size, has_chunks=self.has_chunks)
+        it1 = IterLayer((item for _, item in b), shape=shape_1, dtype=self.dtype, 
+                chunks_size=self.chunks_size, has_chunks=self.has_chunks)
+        return it0, it1
+
+    def weights_gen(self):
+        i = 0
+        while i < self.shape[0]:
+            yield 1
+            i += 1
 
     @property
     def shape(self):

@@ -20,6 +20,8 @@ class SQL(object):
         self._build_limit_text()
         self.chunks_size = chunks_size
         self.df_dtype = df
+        self.query = None
+
         if only is not None:
             self.only_columns = set([column.lower() for column in only])
         else:
@@ -75,11 +77,11 @@ class SQL(object):
         else:
             self.dtype = None
 
-        query = "SELECT {columns} FROM {table_name} {order_by} {limit}".format(
+        self.query = "SELECT {columns} FROM {table_name} {order_by} {limit}".format(
             columns=self.format_columns(_columns), table_name=self.table_name,
             order_by=self.order_by_txt,
             limit=self.limit_txt)
-        self.cur.execute(query)
+        self.cur.execute(self.query)
         #cur.itersize = 2000
         self.cur.scroll(start)
         it = IterLayer(self.cur, shape=(size, num_features), dtype=self.dtype)
@@ -140,7 +142,10 @@ class SQL(object):
         if self.order_by is None:
             self.order_by_txt = ""
         else:
-            self.order_by_txt = "ORDER BY " + ",".join(self.order_by)
+            if "rand" in self.order_by:
+                self.order_by_txt = "ORDER BY random()"
+            else:
+                self.order_by_txt = "ORDER BY " + ",".join(self.order_by)
 
     def close(self):
         self.conn.close()
