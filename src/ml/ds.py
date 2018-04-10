@@ -136,25 +136,28 @@ class ReadWriteData(object):
         else:
             total_data = int(data.shape[0])
         for smx in tqdm(data, total=total_data):
-            if len(smx.shape) >= 1 and data.has_chunks:
+            if hasattr(smx, 'shape') and len(smx.shape) >= 1 and data.has_chunks:
                 end += smx.shape[0]
             else:
                 end += 1
+
             if hasattr(smx, 'as_matrix'):
                 array = smx.as_matrix()
+            elif not hasattr(smx, '__iter__'):
+                array = (smx,)
             else:
                 array = smx
 
             try:
                 self.f[name][init:end] = array
-            except TypeError:
+            except TypeError as e:
                 if self.dtype == "|O":
                     type_ = "string"
                 else:
                     type_ = self.dtype
-                e = TypeError("All elements in array must be of type '{}' but found '{}'".format(
+                print(e)
+                raise TypeError("All elements in array must be of type '{}' but found '{}'".format(
                     type_, self.dtype))
-                raise e
             init = end
         return end
 

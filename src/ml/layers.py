@@ -123,12 +123,12 @@ class IterLayer(object):
         if self.has_chunks is False:
             if dtype is None:
                 dtype = self.dtype
-            return IterLayer(self.gen_chunks(chunks_size, dtype), shape=self.shape, 
+            return IterLayer(self.chunks_gen(chunks_size, dtype), shape=self.shape, 
                 chunks_size=chunks_size, has_chunks=True, dtype=dtype)
         else:
             return self
     
-    def gen_chunks(self, chunks_size, dtype):
+    def chunks_gen(self, chunks_size, dtype):
         if chunks_size < 1:
             chunks_size = self.shape[0]
 
@@ -163,7 +163,6 @@ class IterLayer(object):
                 smx_a = pd.DataFrame(x,
                     index=np.arange(0, chunk_shape[0]), 
                     columns=columns)
-                
                 if i + 1 < chunks_size:
                     yield smx_a.iloc[:i+1]
                 else:
@@ -190,33 +189,51 @@ class IterLayer(object):
         else:
             return it
 
-    def sample(self, k):
-        if not self.has_chunks:
-            shape = tuple([k] + list(self.shape[1:]))
+    def sample(self, k, with_chunks=False):
+        shape = tuple([k] + list(self.shape[1:]))
+        if with_chunks is False:
+            return IterLayer(wsrj(izip(self.clean_chunks(), self.weights_gen(k)), k), shape=shape, 
+                dtype=self.dtype, chunks_size=self.chunks_size, 
+                has_chunks=self.has_chunks)
         else:
-            shape = tuple([k*self.chunks_size] + list(self.shape[1:]))
-        return IterLayer(wsrj(izip(self, self.weights_gen()), k), shape=shape, 
-            dtype=self.dtype, chunks_size=self.chunks_size, 
-            has_chunks=self.has_chunks)
+            raise Exception("Not implemented")
 
     def split(self, i):
         if self.type_elem == pd.DataFrame:
             a, b = tee((row.iloc[:, :i], row.iloc[:, i:]) for row in self)
         else:
             a, b = tee((row[:i], row[i:]) for row in self)
+
+        if hasattr(self.dtype, '__iter__'):
+            dtype_0 = self.dtype[:i]
+            dtype_1 = self.dtype[i:]
+        else:
+            dtype_0 = self.dtype
+            dtype_1 = self.dtype
+
         shape_0 = tuple([self.shape[0], i])
         shape_1 = tuple([self.shape[0], self.shape[1] - i])
-        it0 = IterLayer((item for item, _ in a), shape=shape_0, dtype=self.dtype, 
+        it0 = IterLayer((item for item, _ in a), shape=shape_0, dtype=dtype_0, 
                 chunks_size=self.chunks_size, has_chunks=self.has_chunks)
-        it1 = IterLayer((item for _, item in b), shape=shape_1, dtype=self.dtype, 
+        it1 = IterLayer((item for _, item in b), shape=shape_1, dtype=dtype_1, 
                 chunks_size=self.chunks_size, has_chunks=self.has_chunks)
         return it0, it1
 
-    def weights_gen(self):
+    def weights_gen(self, size):
         i = 0
-        while i < self.shape[0]:
+        while i < size:
             yield 1
             i += 1
+
+    def clean_chunks(self):
+        if self.has_chunks:
+            def cleaner():
+                for chunk in self:
+                    for row in chunk:
+                        yield row
+            return IterLayer(cleaner(), shape=self.shape, has_chunks=False, 
+                chunks_size=0, dtype=None)
+        return self
 
     @property
     def shape(self):

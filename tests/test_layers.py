@@ -187,6 +187,7 @@ class TestIterLayers(unittest.TestCase):
         it_0 = it.to_chunks(chunks_size)
         self.assertEqual(it_0.chunks_size, chunks_size)
         self.assertEqual(it_0.has_chunks, True)
+        self.assertEqual(it_0.shape_w_chunks, (chunks_size, (10/3)+1, 1))
         for smx in it_0:
             self.assertEqual(smx.shape[0] <= 3, True)
 
@@ -310,10 +311,19 @@ class TestIterLayers(unittest.TestCase):
         it = IterLayer(iter_, shape=(10,))
         self.assertItemsEqual(it.flat().to_memory(), result)
 
+    def test_clean_chunks(self):
+        it = IterLayer(((i, 'X', 'Z') for i in range(20)), shape=(20, 3))
+        chunks_size = 2
+        it_0 = it.to_chunks(chunks_size=chunks_size)
+        for smx in it_0.clean_chunks():
+            self.assertEqual(smx.shape[0] <=3, True)
+
     def test_sample(self):
         order = (i for i in range(20))
         it = IterLayer(order, shape=(20,))
-        self.assertEqual(len(it.sample(5).to_memory()), 5)
+        it_0 = it.to_chunks(chunks_size=2)
+        it_s = it_0.sample(5)
+        self.assertEqual(len(it_s.to_memory()), 5)
 
     def test_split(self):
         it = IterLayer(((i, 'X', 'Z') for i in range(20)), shape=(20,))
@@ -325,6 +335,18 @@ class TestIterLayers(unittest.TestCase):
         it_0, it_1 = it.split(2)
         self.assertItemsEqual(it_0.to_chunks(2).to_memory()[0], [0, 'X'])
         self.assertItemsEqual(it_1.to_chunks(2).flat().to_memory(), np.asarray(['Z']*20))
+
+        data = ((i, 'X'+str(i), 'Z') for i in range(20))
+        it = IterLayer(data, shape=(20, 3), 
+            dtype=[('A', 'int'), ('B', '|O'), ('C', '|O')])
+        it_0, it_1 = it.to_chunks(chunks_size=2).split(2)
+        self.assertItemsEqual(it_0.to_memory().iloc[0, :].values, [0, 'X0'])
+        self.assertItemsEqual(it_1.flat().to_memory(), np.asarray(['Z']*20))
+
+        data = ((i, 'X', 'Z') for i in range(20))
+        it = IterLayer(data, shape=(20, 3), 
+            dtype=[('A', 'int'), ('B', 'str'), ('C', 'str')])
+        self.assertItemsEqual(it.split(2)[0].to_memory().iloc[0, :], [0, 'X'])
 
 
 def chunk_sizes(seq):
