@@ -141,8 +141,8 @@ class ReadWriteData(object):
             else:
                 end += 1
 
-            if hasattr(smx, 'as_matrix'):
-                array = smx.as_matrix()
+            if isinstance(smx, pd.DataFrame):
+                array = smx.values
             elif not hasattr(smx, '__iter__'):
                 array = (smx,)
             else:
@@ -155,7 +155,6 @@ class ReadWriteData(object):
                     type_ = "string"
                 else:
                     type_ = self.dtype
-                print(e)
                 raise TypeError("All elements in array must be of type '{}' but found '{}'".format(
                     type_, self.dtype))
             init = end

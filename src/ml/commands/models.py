@@ -2,7 +2,7 @@ import os
 
 from ml.utils.config import get_settings
 from ml.utils.order import order_table_print
-from ml.clf.wrappers import DataDrive
+from ml.models import DataDrive
 from ml.clf.measures import ListMeasure
 from ml.utils.files import get_models_path, get_models_from_dataset, rm
 from ml.ds import Data

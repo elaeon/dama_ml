@@ -9,6 +9,7 @@ from pydoc import locate
 
 import logging
 import numpy as np
+import pandas as pd
 import json
 import uuid
 import sys
@@ -124,6 +125,9 @@ class TransformsFn(object):
         """
         if isinstance(data, np.ndarray):
             data = IterLayer(data, shape=data.shape, dtype=data.dtype).to_chunks(chunks_size)
+        elif isinstance(data, pd.DataFrame):
+            data = IterLayer(data, shape=data.shape).to_chunks(chunks_size)
+
         def iter_():
             locate_fn = {}
             for smx in data:
@@ -132,10 +136,8 @@ class TransformsFn(object):
                     smx = fn(smx, **params)
                 yield smx
         
-        if data.has_chunks:
-            chunks_size = data.chunks_size
         return IterLayer(iter_(), shape=data.shape, chunks_size=chunks_size, 
-                        has_chunks=data.has_chunks)
+                    has_chunks=True)
 
 
 class TransformsClass(TransformsFn):

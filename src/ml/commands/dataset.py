@@ -3,7 +3,7 @@ import os
 from ml.utils.config import get_settings
 from ml.utils.order import order_table_print
 from ml.utils.numeric_functions import humanize_bytesize
-from ml.clf.wrappers import DataDrive
+from ml.models import DataDrive
 from ml.clf.measures import ListMeasure
 from ml.ds import DataLabel, Data
 from ml.utils.files import rm, get_models_path

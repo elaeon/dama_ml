@@ -191,6 +191,17 @@ class TestIterLayers(unittest.TestCase):
         for smx in it_0:
             self.assertEqual(smx.shape[0] <= 3, True)
 
+    def test_chunks_obj(self):
+        chunks_size = 3
+        data = pd.DataFrame([[1, '5.0']], columns=['A', 'B'])
+        it = IterLayer(data, shape=data.shape)
+        it_0 = it.to_chunks(chunks_size)
+        self.assertEqual(it_0.chunks_size, chunks_size)
+        self.assertEqual(it_0.has_chunks, True)
+        self.assertEqual(it_0.shape_w_chunks, (chunks_size, 1, 2))
+        for smx in it_0:
+            self.assertItemsEqual(smx.values[0], [1, '5.0'])
+
     def test_from_chunks(self):
         data = np.random.rand(10, 1)
         chunks_size = 2

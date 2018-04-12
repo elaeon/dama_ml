@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import psycopg2
 from ml.utils.seq import grouper_chunk
-from ml.utils.numeric_functions import max_type, wsrj
+from ml.utils.numeric_functions import max_type, wsrj, wsr
 
 
 def choice(operator):
@@ -157,7 +157,7 @@ class IterLayer(object):
                 x = np.empty(chunk_shape[0], dtype=dtype)
                 for i, row in enumerate(smx):
                     try:
-                        x[i] = row
+                        x[i] = tuple(row)
                     except ValueError:
                         x[i] = row[0]
                 smx_a = pd.DataFrame(x,
@@ -192,8 +192,8 @@ class IterLayer(object):
     def sample(self, k, with_chunks=False):
         shape = tuple([k] + list(self.shape[1:]))
         if with_chunks is False:
-            return IterLayer(wsrj(izip(self.clean_chunks(), self.weights_gen(k)), k), shape=shape, 
-                dtype=self.dtype, chunks_size=self.chunks_size, 
+            return IterLayer(wsrj(izip(self.clean_chunks(), self.weights_gen(self.shape[0])), k), 
+                shape=shape, dtype=self.dtype, chunks_size=self.chunks_size, 
                 has_chunks=self.has_chunks)
         else:
             raise Exception("Not implemented")
