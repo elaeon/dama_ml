@@ -1,5 +1,5 @@
 import numpy as np
-from ml.clf.wrappers import DataDrive
+from ml.models import DataDrive
 from ml.clf.measures import ListMeasure, Measure
 from ml.ds import Data
 from ml.utils.config import get_settings
@@ -19,11 +19,10 @@ log.setLevel(int(settings["loglevel"]))
 
 class Grid(DataDrive):
     def __init__(self, clfs=[], model_name=None, dataset=None, 
-            check_point_path=None, model_version=None, meta_name="", 
+            check_point_path=None, meta_name="", 
             group_name=None, metrics=None):
         super(Grid, self).__init__(
             check_point_path=check_point_path,
-            model_version=model_version,
             model_name=model_name,
             group_name=group_name)
         
@@ -31,20 +30,24 @@ class Grid(DataDrive):
         self.meta_name = meta_name
         self.fn_output = None
         self.metrics = metrics
-
-        if len(clfs) == 0:
-            self.reload()
-        else:
+        if len(clfs) > 0:
             self.classifs = self.transform_clfs(clfs, fn=lambda x: x)
+        else:
+            self.classifs = None
 
     def reset_dataset(self, dataset):
         for classif in self.classifs:
             classif.load_dataset(dataset)
 
-    def reload(self):
-        meta = self.load_meta()
-        self.classifs = self.transform_clfs(meta.get('models', {}), fn=locate)
-        self.output(meta["output"])
+    @classmethod
+    def read_meta(self, path):        
+        from ml.ds import load_metadata
+        return load_metadata(path+".xmeta")
+
+    #def reload(self):
+    #    meta = self.load_meta()
+    #    self.classifs = self.transform_clfs(meta.get('models', {}), fn=locate)
+    #    self.output(meta["output"])
 
     def classifs_to_string(self, classifs):
         classifs = [{"classif": model.module_cls_name(), 
@@ -70,18 +73,16 @@ class Grid(DataDrive):
         if inspect.isclass(classif):
             model = classif(dataset=dataset, 
                     model_name=model_name, 
-                    model_version=model_version, 
                     check_point_path=check_point_path,
-                    group_name=self.group_name,
-                    autoload=True)
+                    group_name=self.group_name)
 
         return model
 
-    def train(self):
-        model_params = {}
-        for classif in self.classifs:
-            classif.train(model_params=model_params)
-        self.save_model()
+    #def train(self):
+    #    model_params = {}
+    #    for classif in self.classifs:
+    #        classif.train(model_params=model_params)
+    #    self.save_model()
     
     def all_clf_scores(self, measures=None):
         from operator import add
@@ -197,18 +198,23 @@ class Grid(DataDrive):
         rm(self.get_model_path()+".xmeta")
 
     def _metadata(self, calc_scores=True):
-        if calc_scores:
-            list_measure = self.scores(self.metrics)
-        else:
-            list_measure = ListMeasure()
+        models = {}
+        for classif in self.classifs:
+            model_meta = classif._metadata(keys=["model", "train"])
+            models[classif.model_name] = {}
+            models[classif.model_name]["model"] = model_meta["model"]["model_path"]
+            models[classif.model_name]["train"] = model_meta["train"]["model_path"]
+        models["output"] = self.fn_output
+        models["score"] = self.scores(self.metrics).measures_to_dict()
+        return models
 
-        return {"models": self.classifs_to_string(self.classifs),
-                "model_name": self.model_name,
-                "output": self.fn_output,
-                "score": list_measure.measures_to_dict()}
-
-    def save_model(self):
-        self.save_meta()
+    def save(self):
+        from ml.ds import save_metadata
+        if self.check_point_path:
+            metadata = self._metadata()
+            self.path_m = self.make_model_file()
+            save_metadata(self.path_m+".xmeta", metadata)
+            print(self.path_m)
 
     def output(self, fn):
         self.fn_output = fn

@@ -55,6 +55,8 @@ class DataDrive(object):
             self.check_point_path = check_point_path
         self.model_name = model_name
         self.group_name = group_name
+        self.path_m = None
+        self.path_mv = None
 
     def _metadata(self):
         pass
@@ -64,28 +66,21 @@ class DataDrive(object):
         if self.check_point_path is not None and keys is not None:
             metadata = self._metadata(keys)
             if "model" in metadata:
-                path_m = self.make_model_file()
-                save_metadata(path_m+".xmeta", metadata["model"])
+                self.path_m = self.make_model_file()
+                save_metadata(self.path_m+".xmeta", metadata["model"])
             if "train" in metadata:
-                path_mv = self.make_model_version_file()
-                save_metadata(path_mv+".xmeta", metadata["train"])
+                self.path_mv = self.make_model_version_file()
+                save_metadata(self.path_mv+".xmeta", metadata["train"])
 
     def load_meta(self):
         from ml.ds import load_metadata
         if self.check_point_path is not None:
             metadata = {}
-            path = self.make_model_file()
-            metadata["model"] = load_metadata(path+".xmeta")
-            path_mv = self.make_model_version_file()
-            metadata["train"] = load_metadata(path_mv+".xmeta")
+            self.path_m = self.make_model_file()
+            metadata["model"] = load_metadata(self.path+".xmeta")
+            self.path_mv = self.make_model_version_file()
+            metadata["train"] = load_metadata(self.path_mv+".xmeta")
             return metadata
-
-    @classmethod
-    def read_meta(self, data_name, path):        
-        from ml.ds import load_metadata
-        if data_name is not None:
-            return load_metadata(path+".xmeta").get(data_name, None)
-        return load_metadata(path+".xmeta")
 
     def make_model_file(self):
         check_point = check_or_create_path_dir(self.check_point_path, self.__class__.__name__)
@@ -105,10 +100,9 @@ class DataDrive(object):
     def destroy(self):
         """remove the dataset associated to the model and his checkpoints"""
         from ml.utils.files import rm
-        model_version_file = self.make_model_version_file()
-        rm(self.make_model_file()+".xmeta")
-        rm(model_version_file+"."+self.ext)
-        rm(model_version_file+".xmeta")
+        rm(self.path_m+".xmeta")
+        rm(self.path_mv+"."+self.ext)
+        rm(self.path_mv+".xmeta")
         if hasattr(self, 'dataset'):
             self.dataset.destroy()
         if hasattr(self, 'test_ds'):
@@ -193,13 +187,13 @@ class BaseModel(DataDrive):
                 "test_ds_path": self.test_ds.dataset_path,
                 "test_ds_name": self.test_ds.name,
                 "md5": self.test_ds.md5,
-                "original_ds_md5": self.original_dataset_md5,
-                "original_ds_path": self.original_dataset_path,
-                "original_ds_name": self.original_dataset_name,
+                "original_dataset_md5": self.original_dataset_md5,
+                "original_dataset_path": self.original_dataset_path,
                 "original_dataset_name": self.original_dataset_name,
                 "group_name": self.group_name,
                 "model_module": self.module_cls_name(),
-                "model_name": self.model_name
+                "model_name": self.model_name,
+                "model_path": self.path_m
             }
 
     def metadata_train(self):
@@ -207,17 +201,17 @@ class BaseModel(DataDrive):
             "model_version": self.model_version,
             "params": self.model_params,
             "num_steps": self.num_steps,
-            "score": self.scores(measures=self.metrics).measures_to_dict()
+            "score": self.scores(measures=self.metrics).measures_to_dict(),
+            "model_path": self.path_mv
         }
 
-    def _metadata(self, keys=None):
+    def _metadata(self, keys={}):
         metadata_model_train = {}
-        if "model" in keys:            
+        if "model" in keys:
             metadata_model_train["model"] = self.metadata_model()
         if "train" in keys:
             metadata_model_train["train"] = self.metadata_train()
         return metadata_model_train
-            
 
     def get_dataset(self):
         from ml.ds import Data
@@ -225,9 +219,9 @@ class BaseModel(DataDrive):
             self.model_version, self.check_point_path))
         meta = self.load_meta()["model"]
         dataset = Data.original_ds(name=meta["test_ds_name"], dataset_path=meta["test_ds_path"])
-        self.original_dataset_md5 = meta["original_ds_md5"]
-        self.original_dataset_path = meta["original_ds_path"]
-        self.original_dataset_name = meta["original_ds_name"]
+        self.original_dataset_md5 = meta["original_dataset_md5"]
+        self.original_dataset_path = meta["original_dataset_path"]
+        self.original_dataset_name = meta["original_dataset_name"]
     
         self.group_name = meta.get('group_name', None)
         if meta.get('md5', None) != dataset.md5:
@@ -316,12 +310,12 @@ class SupervicedModel(BaseModel):
                 "validation_ds_name": self.validation_ds.name,
                 "md5": self.test_ds.md5,
                 "original_ds_md5": self.original_dataset_md5,
-                "original_ds_path": self.original_dataset_path,
-                "original_ds_name": self.original_dataset_name,
+                "original_dataset_path": self.original_dataset_path,
                 "original_dataset_name": self.original_dataset_name,
                 "group_name": self.group_name,
                 "model_module": self.module_cls_name(),
-                "model_name": self.model_name
+                "model_name": self.model_name,
+                "model_path": self.path_m
             }
 
     def get_train_validation_ds(self):
@@ -349,7 +343,7 @@ class SupervicedModel(BaseModel):
 
     def train(self, batch_size=0, num_steps=0, n_splits=None, obj_fn=None, model_params={}):
         log.info("Training")
-        self.models_params = model_params
+        self.model_params = model_params
         self.num_steps = num_steps
         if n_splits is not None:
             self.model = self.train_kfolds(batch_size=batch_size, num_steps=num_steps, 
