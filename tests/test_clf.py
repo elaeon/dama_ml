@@ -23,36 +23,38 @@ class TestSKL(unittest.TestCase):
 
     def test_load_meta(self):
         classif = RandomForest(
-            model_name="test", 
-            model_version="1",
+            model_name="test_model",
             check_point_path="/tmp/")
         classif.set_dataset(self.dataset)
         classif.train(num_steps=1)
-        self.assertEqual(type(classif.load_meta()), type({}))
+        classif.save(model_version="1")
+        meta = classif.load_meta()
+        self.assertEqual(meta["model"]["original_ds_path"], "/tmp/")
+        self.assertEqual(meta["train"]["model_version"], "1")
         classif.destroy()
 
     def test_empty_load(self):
         classif = RandomForest(
             model_name="test", 
-            model_version="1",
             check_point_path="/tmp/")
         classif.set_dataset(self.dataset)
         classif.train(num_steps=1)
+        classif.save(model_version="1")
 
         classif = RandomForest(
             model_name="test", 
-            model_version="1",
             check_point_path="/tmp/")
         classif.load()
+        self.assertEqual(classif.original_dataset_path, "/tmp/")
         classif.destroy()
 
     def test_scores(self):        
         classif = RandomForest(
             model_name="test", 
-            model_version="1",
             check_point_path="/tmp/")
         classif.set_dataset(self.dataset)
         classif.train(num_steps=1)
+        classif.save(model_version="1")
         scores_table = classif.scores2table()
         classif.destroy()
         self.assertEqual(scores_table.headers, ['', 'f1', 'auc', 'recall', 'precision', 
@@ -65,11 +67,11 @@ class TestSKL(unittest.TestCase):
         metrics.add(gini_normalized, greater_is_better=True, uncertain=True)
         classif = RandomForest(
             model_name="test", 
-            model_version="1",
             check_point_path="/tmp/",
             metrics=metrics)
         classif.set_dataset(self.dataset)
         classif.train(num_steps=1)
+        classif.save(model_version="1")
         scores_table = classif.scores2table()
         self.assertEqual(scores_table.headers, ['', 'f1', 'auc', 'recall', 'precision', 
             'logloss', 'gini_normalized', 'accuracy'])
@@ -87,36 +89,34 @@ class TestSKL(unittest.TestCase):
             dataset.build_dataset(X, Y)
         classif = RandomForest(
             model_name="test", 
-            model_version="1",
             check_point_path="/tmp/")
         classif.set_dataset(dataset)
         classif.train()
         values = np.asarray([[1], [2], [.4], [.1], [0], [1]])
-        self.assertEqual(len(classif.predict(values).to_narray()), 6)
-        self.assertEqual(len(classif.predict(np.asarray(values), chunks_size=0).to_narray()), 6)
+        self.assertEqual(len(classif.predict(values).to_memory()), 6)
+        self.assertEqual(len(classif.predict(np.asarray(values), chunks_size=0).to_memory()), 6)
         dataset.destroy()
         classif.destroy()
 
     def test_load(self):
         classif = RandomForest(
             model_name="test", 
-            model_version="1",
             check_point_path="/tmp/")
         classif.set_dataset(self.dataset)
         classif.train(num_steps=1)
+        classif.save(model_version="1")
 
         classif = RandomForest(
             model_name="test", 
-            model_version="1",
             check_point_path="/tmp/")
-        classif.load()
+        classif.load(model_version="1")
         classif.train(num_steps=1)
+        classif.save(model_version="2")
 
         classif = RandomForest( 
             model_name="test", 
-            model_version="1",
             check_point_path="/tmp/")
-        classif.load()
+        classif.load(model_version="2")
         with self.dataset:
             values = self.dataset.data[:6]
         self.assertEqual(len(classif.predict(values).to_memory()), 6)
@@ -462,11 +462,11 @@ class TestXgboost(unittest.TestCase):
             from ml.clf.extended.w_xgboost import Xgboost
             classif = Xgboost(
                 model_name="test", 
-                model_version="1",
                 check_point_path="/tmp/")
             classif.set_dataset(self.dataset)
             params={'max_depth':2, 'eta':1, 'silent':1, 'objective':'binary:logistic'}
             classif.train(num_steps=1, model_params=params)
+            classif.save(model_version="1")
         except ImportError:
             return
         finally:
@@ -481,10 +481,9 @@ class TestXgboost(unittest.TestCase):
         except ImportError:
             return
         classif = Xgboost(
-            model_name="test", 
-            model_version="1",
+            model_name="test",
             check_point_path="/tmp/")
-        classif.load()
+        classif.load(model_version="1")
         with self.dataset:
             predict = classif.predict(self.dataset.data, transform=False, raw=False)
             self.assertEqual(len(list(predict)), 100)

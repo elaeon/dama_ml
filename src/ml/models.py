@@ -6,6 +6,7 @@ import numpy as np
 
 from ml.ds import DataLabel, Data
 from ml.layers import IterLayer
+from ml.utils.files import check_or_create_path_dir
 
 
 settings = get_settings("ml")
@@ -46,43 +47,38 @@ class MLModel:
 
 
 class DataDrive(object):
-    def __init__(self, check_point_path=None, model_version=None, model_name=None,
+    def __init__(self, check_point_path=None, model_name=None,
                 group_name=None):
         if check_point_path is None:
             self.check_point_path = settings["checkpoints_path"]
         else:
             self.check_point_path = check_point_path
-        self.model_version = model_version
-        self.model_name = uuid.uuid4().hex if model_name is None else model_name
+        self.model_name = model_name
         self.group_name = group_name
 
     def _metadata(self):
         pass
 
-    def save_meta(self, metadata):
+    def save_meta(self, keys=None):
         from ml.ds import save_metadata
-        if self.check_point_path is not None:
-            path = self.make_model_file()
-            save_metadata(path+".xmeta", metadata)
-
-    def edit_meta(self, key, value):
-        from ml.ds import save_metadata
-        meta = self.load_meta()
-        meta[key] = value
-        if self.check_point_path is not None:
-            path = self.make_model_file()
-            save_metadata(path+".xmeta", meta)
+        if self.check_point_path is not None and keys is not None:
+            metadata = self._metadata(keys)
+            if "model" in metadata:
+                path_m = self.make_model_file()
+                save_metadata(path_m+".xmeta", metadata["model"])
+            if "train" in metadata:
+                path_mv = self.make_model_version_file()
+                save_metadata(path_mv+".xmeta", metadata["train"])
 
     def load_meta(self):
         from ml.ds import load_metadata
         if self.check_point_path is not None:
+            metadata = {}
             path = self.make_model_file()
-            return load_metadata(path+".xmeta")
-
-    def get_model_path(self):
-        model_name_v = self.get_model_name_v()
-        path = os.path.join(self.check_point_path, self.__class__.__name__, model_name_v)
-        return os.path.join(path, model_name_v)
+            metadata["model"] = load_metadata(path+".xmeta")
+            path_mv = self.make_model_version_file()
+            metadata["train"] = load_metadata(path_mv+".xmeta")
+            return metadata
 
     @classmethod
     def read_meta(self, data_name, path):        
@@ -91,19 +87,17 @@ class DataDrive(object):
             return load_metadata(path+".xmeta").get(data_name, None)
         return load_metadata(path+".xmeta")
 
-    def get_model_name_v(self):
-        if self.model_version is None:
-            id_ = "0"
-        else:
-            id_ = self.model_version
-        return "{}.{}".format(self.model_name, id_)
-
     def make_model_file(self):
-        from ml.utils.files import check_or_create_path_dir
-        model_name_v = self.get_model_name_v()
         check_point = check_or_create_path_dir(self.check_point_path, self.__class__.__name__)
-        destination = check_or_create_path_dir(check_point, model_name_v)
-        return os.path.join(check_point, model_name_v, model_name_v)
+        destination = check_or_create_path_dir(check_point, self.model_name)
+        return os.path.join(destination, "meta")
+
+    def make_model_version_file(self):
+        model_name_v = "version.{}".format(self.model_version)
+        check_point = check_or_create_path_dir(self.check_point_path, self.__class__.__name__)
+        destination = check_or_create_path_dir(check_point, self.model_name)
+        model = check_or_create_path_dir(destination, model_name_v)
+        return os.path.join(model, "meta")
 
     def print_meta(self):
         print(self.load_meta())
@@ -111,12 +105,18 @@ class DataDrive(object):
     def destroy(self):
         """remove the dataset associated to the model and his checkpoints"""
         from ml.utils.files import rm
-        rm(self.get_model_path()+"."+self.ext)
-        rm(self.get_model_path()+".xmeta")
+        model_version_file = self.make_model_version_file()
+        rm(self.make_model_file()+".xmeta")
+        rm(model_version_file+"."+self.ext)
+        rm(model_version_file+".xmeta")
         if hasattr(self, 'dataset'):
             self.dataset.destroy()
         if hasattr(self, 'test_ds'):
             self.test_ds.destroy()
+        if hasattr(self, 'train_ds'):
+            self.train_ds.destroy()
+        if hasattr(self, 'validation_ds'):
+            self.validation_ds.destroy()
 
     @classmethod
     def cls_name(cls):
@@ -133,7 +133,7 @@ class DataDrive(object):
 
 class BaseModel(DataDrive):
     def __init__(self, model_name=None, check_point_path=None, 
-                model_version=None, group_name=None, metrics=None):
+                group_name=None, metrics=None):
         self.model = None
         self.original_dataset_md5 = None
         self.original_dataset_path = None
@@ -141,10 +141,12 @@ class BaseModel(DataDrive):
         self.test_ds = None
         self.ext = "ckpt.pkl"
         self.metrics = metrics
+        self.model_params = None
+        self.num_steps = None
+        self.model_version = None
 
         super(BaseModel, self).__init__(
             check_point_path=check_point_path,
-            model_version=model_version,
             model_name=model_name,
             group_name=group_name)
 
@@ -185,7 +187,7 @@ class BaseModel(DataDrive):
         output_shape = tuple([data.shape[0], self.labels_dim])
         return IterLayer(self._predict(fn(data, t=transform), raw=raw), shape=output_shape)
 
-    def _metadata(self):
+    def metadata_model(self):
         with self.test_ds:
             return {
                 "test_ds_path": self.test_ds.dataset_path,
@@ -197,15 +199,31 @@ class BaseModel(DataDrive):
                 "original_dataset_name": self.original_dataset_name,
                 "group_name": self.group_name,
                 "model_module": self.module_cls_name(),
-                "model_name": self.model_name,
-                "model_version": self.model_version
+                "model_name": self.model_name
             }
+
+    def metadata_train(self):
+        return {
+            "model_version": self.model_version,
+            "params": self.model_params,
+            "num_steps": self.num_steps,
+            "score": self.scores(measures=self.metrics).measures_to_dict()
+        }
+
+    def _metadata(self, keys=None):
+        metadata_model_train = {}
+        if "model" in keys:            
+            metadata_model_train["model"] = self.metadata_model()
+        if "train" in keys:
+            metadata_model_train["train"] = self.metadata_train()
+        return metadata_model_train
+            
 
     def get_dataset(self):
         from ml.ds import Data
         log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name, 
             self.model_version, self.check_point_path))
-        meta = self.load_meta()
+        meta = self.load_meta()["model"]
         dataset = Data.original_ds(name=meta["test_ds_name"], dataset_path=meta["test_ds_path"])
         self.original_dataset_md5 = meta["original_ds_md5"]
         self.original_dataset_path = meta["original_ds_path"]
@@ -223,7 +241,7 @@ class BaseModel(DataDrive):
                             load_fn=self.load_fn,
                             save_fn=None)
 
-    def save_model(self):
+    def save(self):
         pass
 
     def has_model_file(self):
@@ -234,7 +252,7 @@ class BaseModel(DataDrive):
     def load_model(self):        
         self.preload_model()
         if self.check_point_path is not None:
-            path = self.get_model_path()
+            path = self.make_model_version_file()
             self.model.load('{}.{}'.format(path, self.ext))
 
     def _predict(self, data, raw=False):
@@ -243,25 +261,28 @@ class BaseModel(DataDrive):
     def train(self, batch_size=0, num_steps=0, n_splits=None, obj_fn=None, model_params={}):
         log.info("Training")
         self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, **model_params)
-        log.info("Saving model")
-        self.save_model()
 
     def scores2table(self):
         from ml.clf.measures import ListMeasure
-        return ListMeasure.dict_to_measures(self.load_meta().get("score", None))
+        meta = self.load_meta()
+        try:
+            scores = meta["train"]["score"]
+        except KeyError:
+            return
+        else:
+            return ListMeasure.dict_to_measures(scores)
 
     def load_original_ds(self):
         return Data.original_ds(self.original_dataset_name, self.original_dataset_path)
 
 
 class SupervicedModel(BaseModel):
-    def __init__(self, model_name=None, check_point_path=None, 
-                model_version=None, group_name=None, metrics=None):
+    def __init__(self, model_name=None, check_point_path=None, group_name=None, 
+            metrics=None):
         self.train_ds = None
         self.validation_ds = None
         super(SupervicedModel, self).__init__(
             check_point_path=check_point_path,
-            model_version=model_version,
             model_name=model_name,
             group_name=group_name,
             metrics=metrics)
@@ -275,18 +296,16 @@ class SupervicedModel(BaseModel):
             self.original_dataset_path = dataset.dataset_path
             self.original_dataset_name = dataset.name
             self.train_ds, self.test_ds, self.validation_ds = self.reformat_all(dataset)
-        self.save_meta(self._metadata())
+        self.save_meta(keys="model")
 
-    def save_model(self):
+    def save(self, model_version="1"):
+        self.model_version = model_version
         if self.check_point_path is not None:
-            path = self.make_model_file()
+            path = self.make_model_version_file()
             self.model.save('{}.{}'.format(path, self.ext))
-            list_measure = self.scores(measures=self.metrics)
-            metadata = self._metadata()
-            metadata["score"] = list_measure.measures_to_dict()
-            self.save_meta(metadata)
+            self.save_meta(keys=["model", "train"])
 
-    def _metadata(self):
+    def metadata_model(self):
         with self.test_ds, self.train_ds, self.validation_ds:
             return {
                 "test_ds_path": self.test_ds.dataset_path,
@@ -302,16 +321,14 @@ class SupervicedModel(BaseModel):
                 "original_dataset_name": self.original_dataset_name,
                 "group_name": self.group_name,
                 "model_module": self.module_cls_name(),
-                "model_name": self.model_name,
-                "model_version": self.model_version,
-                "score": None
+                "model_name": self.model_name
             }
 
     def get_train_validation_ds(self):
         from ml.ds import Data
         log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name, 
             self.model_version, self.check_point_path))
-        meta = self.load_meta()
+        meta = self.load_meta()["model"]
         self.train_ds = Data.original_ds(name=meta["train_ds_name"], 
             dataset_path=meta["train_ds_path"])
         self.validation_ds = Data.original_ds(name=meta["validation_ds_name"], 
@@ -332,10 +349,10 @@ class SupervicedModel(BaseModel):
 
     def train(self, batch_size=0, num_steps=0, n_splits=None, obj_fn=None, model_params={}):
         log.info("Training")
+        self.models_params = model_params
+        self.num_steps = num_steps
         if n_splits is not None:
             self.model = self.train_kfolds(batch_size=batch_size, num_steps=num_steps, 
                             n_splits=n_splits, obj_fn=obj_fn, model_params=model_params)
         else:
             self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, **model_params)
-        log.info("Saving model")
-        self.save_model()

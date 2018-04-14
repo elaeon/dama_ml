@@ -25,24 +25,24 @@ class ClassifModel(SupervicedModel):
         self.labels_dim = 1
         super(ClassifModel, self).__init__(**params)
 
-    def load(self):
+    def load(self, model_version):
+        self.model_version = model_version
         self.test_ds = self.get_dataset()
         self.get_train_validation_ds()
         with self.load_original_ds() as ds:
             if isinstance(ds, DataLabel):
                 self.labels_encode(ds.labels)
+        self.load_model()
 
     def scores(self, measures=None):
-        from tqdm import tqdm
         if measures is None or isinstance(measures, str):
             measures = metrics.Measure.make_metrics(measures, name=self.model_name)
         with self.test_ds:
             test_data = self.test_ds.data[:]
             test_labels = self.test_ds.labels[:]
 
-        predictions = np.asarray(list(tqdm(
-            self.predict(test_data, raw=measures.has_uncertain(), transform=False, chunks_size=0), 
-            total=test_labels.shape[0])))
+        predictions = self.predict(test_data, raw=measures.has_uncertain(), 
+            transform=False, chunks_size=0).to_memory()
         measures.set_data(predictions, test_labels, self.numerical_labels2classes)
         log.info("Getting scores")
         return measures.to_list()

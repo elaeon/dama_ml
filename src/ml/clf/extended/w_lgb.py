@@ -20,8 +20,6 @@ class LightGBM(LGB):
                 return np.concatenate((np.abs(label - 1), label), axis=1)
             else:
                 return label
-        elif raw is None:
-            return self.position_index(label)
         else:
             t = []
             for label in self.position_index(label):

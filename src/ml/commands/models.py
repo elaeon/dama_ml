@@ -24,21 +24,20 @@ def run(args):
                 if args.info == meta.get("group_name", None) or\
                     args.info == meta.get("model_name", None):
                     measure = "logloss" if not args.measure else args.measure
-                    scores = DataDrive.read_meta("score", model_path)
-                    if scores is not None:
-                        score_ = scores.get(measure, {"values": [""], "reverse": False})
-                        if isinstance(score_, dict):
-                            score = score_['values'][0]
-                            order_m = order_m or score_['reverse']
-                    else:
+                    try:
+                        scores = meta["score"]
+                        if scores is not None:
+                            selected_score = scores[measure]
+                            score = selected_score['values'][0]
+                            order_m = order_m or selected_score['reverse']
+                        else:
+                            score = None
+                    except KeyError:
                         score = None
 
-                    try:
-                        name, version = name_version.split(".")
-                        table.append([clf, name, version, 
-                                    meta.get("group_name", None), score])
-                    except ValueError:
-                        pass
+                    name, version = name_version.split(".")
+                    table.append([clf, name, version, 
+                                meta.get("group_name", None), score])
 
                     if args.meta:
                         print(meta)
