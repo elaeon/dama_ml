@@ -270,146 +270,54 @@ class TestGrid(unittest.TestCase):
         dataset.destroy()
         classif.destroy()
 
-    def test_compose_grid(self):
-        from ml.clf.extended.w_sklearn import RandomForest, AdaBoost, KNN
-        from ml.clf.ensemble import Grid, EnsembleLayers
+    #def test_ensemble_bagging(self):
+    #    from ml.clf.extended.w_sklearn import RandomForest, AdaBoost, KNN
+    #    from ml.clf.extended.w_sklearn import LogisticRegression
+    #    from ml.clf.ensemble import Grid, EnsembleLayers
 
-        rf = RandomForest(model_name="test_rf", model_version="1", dataset=self.original_dataset)
-        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.original_dataset)
-        rf.train()
-        ab.train()
+    #    rf = RandomForest(model_name="test_rf", model_version="1", dataset=self.original_dataset)
+    #    ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.original_dataset)
+    #    knn = KNN(model_name="test_knn", model_version="1", dataset=self.original_dataset)
+    #    rf.train()
+    #    ab.train()
+    #    knn.train()
 
-        layer_1 = Grid([rf, ab], 
-            model_name="test_grid0", 
-            model_version="1",
-            check_point_path="/tmp/")
+    #    classif_1 = Grid([rf, ab, knn],
+    #        model_name="test_grid0",            
+    #        check_point_path="/tmp/",
+    #        model_version="1")
+    #    classif_1.output("bagging")
 
-        knn = KNN(model_name="test_knn", model_version="1", autoload=False)
-        ab2 = AdaBoost(model_name="test_ab_2", model_version="1", autoload=False)
-        layer_2 = Grid([ab2, knn],
-            model_name="test_grid1", 
-            model_version="1",
-            check_point_path="/tmp/")
-        layer_2.output(lambda x, y: (x**.25) * .85 * y**.35)
+    #    lr = LogisticRegression(model_name="test_lr", model_version="1", autoload=False)
+    #    classif_2 = Grid([lr],
+    #        model_name="test_grid1",
+    #        check_point_path="/tmp/", 
+    #        model_version="1")
+    #    classif_2.output(lambda x: x)
 
-        ensemble = EnsembleLayers( 
-            model_name="test_ensemble_grid", 
-            model_version="1",
-            check_point_path="/tmp/",
-            raw_dataset=self.original_dataset)
-        ensemble.add(layer_1)
-        ensemble.add(layer_2)
+    #    ensemble = EnsembleLayers( 
+    #        model_name="test_ensemble_grid", 
+    #        model_version="1",            
+    #        check_point_path="/tmp/",
+    #        raw_dataset=self.original_dataset)
 
-        ensemble.train()
-        t0 = layer_1.scores()
-        t1 = ensemble.scores()
-        all_ = (t0 + t1)
-        all_.print_scores()
-        self.assertEqual(len(all_.measures), 2)
-        ensemble.destroy()
+    #    ensemble.add(classif_1)
+    #    ensemble.add(classif_2)
+    #    ensemble.train()
+    #    ensemble.scores().print_scores()
 
-    def test_compose_grid_predict(self):
-        from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
-        from ml.clf.extended.w_sklearn import LogisticRegression, KNN
-        from ml.clf.ensemble import Grid, EnsembleLayers      
-        from ml.processing import FitRobustScaler, Transforms
-
-        transforms = Transforms()
-        transforms.add(FitRobustScaler)
-        with self.original_dataset:
-            ds0 = self.original_dataset.convert("ds_test_0", transforms=transforms, apply_transforms=True)
-
-        rf = RandomForest(model_name="test_rf", model_version="1", dataset=ds0)
-        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=ds0)
-        rf.train()
-        ab.train()
-
-        classif_1 = Grid([rf, ab],
-            model_name="test_grid0",            
-            check_point_path="/tmp/",
-            model_version="1")
-
-        knn = KNN(model_name="test_knn", model_version="1", autoload=False)
-        ab2 = AdaBoost(model_name="test_ab_2", model_version="1", autoload=False)
-        classif_2 = Grid([knn, ab2],
-            model_name="test_grid1",            
-            check_point_path="/tmp/", 
-            model_version="1")
-        classif_2.output(lambda x, y: (x + y) / 2)
-
-        ensemble = EnsembleLayers( 
-            model_name="test_ensemble_grid", 
-            model_version="1",            
-            check_point_path="/tmp/",
-            raw_dataset=self.original_dataset)
-
-        ensemble.add(classif_1)
-        ensemble.add(classif_2)
-        ensemble.train()
-        ensemble.scores().print_scores()
-
-        ensemble = EnsembleLayers(
-            model_name="test_ensemble_grid", 
-            model_version="1",
-            check_point_path="/tmp/")
+    #    ensemble = EnsembleLayers(
+    #        model_name="test_ensemble_grid", 
+    #        model_version="1",
+    #        check_point_path="/tmp/")
         
-        with self.original_dataset:
-            data = self.original_dataset.data[:1]
+    #    with self.original_dataset:
+    #        data = self.original_dataset.data[:10]
 
-        predict = ensemble.predict(data, raw=True)
-        self.assertEqual(predict.shape[1], 2)
-
-        ensemble.destroy()
-        ds0.destroy()
-
-    def test_ensemble_bagging(self):
-        from ml.clf.extended.w_sklearn import RandomForest, AdaBoost, KNN
-        from ml.clf.extended.w_sklearn import LogisticRegression
-        from ml.clf.ensemble import Grid, EnsembleLayers
-
-        rf = RandomForest(model_name="test_rf", model_version="1", dataset=self.original_dataset)
-        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.original_dataset)
-        knn = KNN(model_name="test_knn", model_version="1", dataset=self.original_dataset)
-        rf.train()
-        ab.train()
-        knn.train()
-
-        classif_1 = Grid([rf, ab, knn],
-            model_name="test_grid0",            
-            check_point_path="/tmp/",
-            model_version="1")
-        classif_1.output("bagging")
-
-        lr = LogisticRegression(model_name="test_lr", model_version="1", autoload=False)
-        classif_2 = Grid([lr],
-            model_name="test_grid1",
-            check_point_path="/tmp/", 
-            model_version="1")
-        classif_2.output(lambda x: x)
-
-        ensemble = EnsembleLayers( 
-            model_name="test_ensemble_grid", 
-            model_version="1",            
-            check_point_path="/tmp/",
-            raw_dataset=self.original_dataset)
-
-        ensemble.add(classif_1)
-        ensemble.add(classif_2)
-        ensemble.train()
-        ensemble.scores().print_scores()
-
-        ensemble = EnsembleLayers(
-            model_name="test_ensemble_grid", 
-            model_version="1",
-            check_point_path="/tmp/")
-        
-        with self.original_dataset:
-            data = self.original_dataset.data[:10]
-
-        predict = ensemble.predict(data, raw=True)
-        self.assertEqual(predict.shape[1], 2)
-        self.assertEqual(len(list(predict)), 10)
-        ensemble.destroy()
+    #    predict = ensemble.predict(data, raw=True)
+    #    self.assertEqual(predict.shape[1], 2)
+    #    self.assertEqual(len(list(predict)), 10)
+    #    ensemble.destroy()
 
 
 #class TestBoosting(unittest.TestCase):
@@ -559,32 +467,31 @@ class TestLightGBM(unittest.TestCase):
 
 class TestKFold(unittest.TestCase):
     def setUp(self):
-        self.X = np.random.rand(10, 2)
+        self.X = np.random.rand(1000, 2)
         self.Y = (self.X[:,0] > .5).astype(float)
 
     def tearDown(self):
         pass
 
     def test_predict(self):
-        from ml.clf.extended.w_keras import FCNet
+        #from ml.clf.extended.w_keras import FCNet
         dataset = DataLabel(dataset_path="/tmp/", rewrite=True)
         with dataset:
             dataset.build_dataset(self.X, self.Y)
-        classif = FCNet(dataset=dataset, 
-            model_name="test", 
-            model_version="1",
-            check_point_path="/tmp/",
-            dtype="float",
-            ltype="float")
-        classif.train(num_steps=1, batch_size=128, n_splits=4)
-
-        classif = FCNet(
-            model_name="test", 
-            model_version="1",
+        classif = RandomForest(
+            model_name="test",
             check_point_path="/tmp/")
+        classif.set_dataset(dataset)
+        classif.train(num_steps=1, batch_size=128, n_splits=4)
+        classif.save(model_version="1")
+
+        classif = RandomForest(
+            model_name="test",
+            check_point_path="/tmp/")
+        classif.load(model_version="1")
         with dataset:
             predict = classif.predict(dataset.data)
-            self.assertEqual(len(list(predict)), 10)
+            self.assertEqual(len(list(predict)), 1000)
         classif.destroy()
         dataset.destroy()
 

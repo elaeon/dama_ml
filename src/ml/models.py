@@ -336,8 +336,8 @@ class SupervicedModel(BaseModel):
         model = self.prepare_model_k(obj_fn=obj_fn)
         cv = StratifiedKFold(n_splits=n_splits)
         with self.train_ds:
-            data = self.train_ds.data
-            labels = self.train_ds.labels
+            data = self.train_ds.data[:]
+            labels = self.train_ds.labels[:]
             for k, (train, test) in enumerate(cv.split(data, labels), 1):
                 model.fit(data[train], labels[train])
                 print("fold ", k)

@@ -269,7 +269,6 @@ class TFL(ClassifModel):
                 show_metric=True, 
                 batch_size=batch_size,
                 run_id="tfl_model")
-            self.save_model()
 
 
 class Keras(ClassifModel):
@@ -322,5 +321,4 @@ class Keras(ClassifModel):
                     batch_size=batch_size,
                     shuffle="batch",
                     validation_data=(self.validation_ds.data, self.validation_ds.labels))
-        self.save_model()
 
