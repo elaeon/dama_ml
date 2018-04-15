@@ -77,7 +77,7 @@ class DataDrive(object):
         if self.check_point_path is not None:
             metadata = {}
             self.path_m = self.make_model_file()
-            metadata["model"] = load_metadata(self.path+".xmeta")
+            metadata["model"] = load_metadata(self.path_m+".xmeta")
             self.path_mv = self.make_model_version_file()
             metadata["train"] = load_metadata(self.path_mv+".xmeta")
             return metadata
@@ -100,9 +100,11 @@ class DataDrive(object):
     def destroy(self):
         """remove the dataset associated to the model and his checkpoints"""
         from ml.utils.files import rm
-        rm(self.path_m+".xmeta")
-        rm(self.path_mv+"."+self.ext)
-        rm(self.path_mv+".xmeta")
+        if self.path_m is not None:
+            rm(self.path_m+".xmeta")
+        if self.path_mv is not None:
+            rm(self.path_mv+"."+self.ext)
+            rm(self.path_mv+".xmeta")
         if hasattr(self, 'dataset'):
             self.dataset.destroy()
         if hasattr(self, 'test_ds'):
@@ -309,7 +311,7 @@ class SupervicedModel(BaseModel):
                 "validation_ds_path": self.validation_ds.dataset_path,
                 "validation_ds_name": self.validation_ds.name,
                 "md5": self.test_ds.md5,
-                "original_ds_md5": self.original_dataset_md5,
+                "original_dataset_md5": self.original_dataset_md5,
                 "original_dataset_path": self.original_dataset_path,
                 "original_dataset_name": self.original_dataset_name,
                 "group_name": self.group_name,

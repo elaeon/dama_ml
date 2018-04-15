@@ -24,11 +24,13 @@ class TestRegSKL(unittest.TestCase):
             dl.build_dataset(self.X, self.Y)
         reg = RandomForestRegressor( 
             model_name="test", 
-            model_version="1",
             check_point_path="/tmp/")
         reg.set_dataset(dl)
         reg.train(num_steps=1)
-        self.assertEqual(type(reg.load_meta()), type({}))
+        reg.save(model_version="1")
+        meta = reg.load_meta()
+        self.assertEqual(meta["model"]["original_dataset_path"], "/tmp/")
+        self.assertEqual(meta["train"]["model_version"], "1")
         reg.destroy()
         dl.destroy()
 
@@ -37,17 +39,17 @@ class TestRegSKL(unittest.TestCase):
         with dl:
             dl.build_dataset(self.X, self.Y)
         reg = RandomForestRegressor(
-            model_name="test", 
-            model_version="1",
+            model_name="test",
             check_point_path="/tmp/")
         reg.set_dataset(dl)
         reg.train(num_steps=1)
+        reg.save(model_version="1")
 
         reg = RandomForestRegressor(
             model_name="test", 
-            model_version="1",
             check_point_path="/tmp/")
-        reg.load()
+        reg.load(model_version="1")
+        self.assertEqual(reg.original_dataset_path, "/tmp/")
         reg.destroy()
         dl.destroy()
 
@@ -57,10 +59,10 @@ class TestRegSKL(unittest.TestCase):
             dl.build_dataset(self.X, self.Y)
         reg = RandomForestRegressor(
             model_name="test", 
-            model_version="1",
             check_point_path="/tmp/")
         reg.set_dataset(dl)
         reg.train(num_steps=1)
+        reg.save(model_version="1")
         scores_table = reg.scores2table()
         reg.destroy()
         dl.destroy()
@@ -76,17 +78,17 @@ class TestRegSKL(unittest.TestCase):
             rewrite=True, transforms=t, apply_transforms=True)
         with dataset:
             dataset.build_dataset(X, Y)
-        classif = RandomForestRegressor(
+        reg = RandomForestRegressor(
             model_name="test", 
-            model_version="1",
             check_point_path="/tmp/")
-        classif.set_dataset(dataset)
-        classif.train()
+        reg.set_dataset(dataset)
+        reg.train()
+        reg.save(model_version="1")
         values = np.asarray([[1], [2], [.4], [.1], [0], [1]])
-        self.assertEqual(len(classif.predict(values).to_memory()), 6)
-        self.assertEqual(len(classif.predict(np.asarray(values), chunks_size=0).to_narray()), 6)
+        self.assertEqual(len(reg.predict(values).to_memory()), 6)
+        self.assertEqual(len(reg.predict(np.asarray(values), chunks_size=0).to_memory()), 6)
         dataset.destroy()
-        classif.destroy()
+        reg.destroy()
 
 
 if __name__ == '__main__':

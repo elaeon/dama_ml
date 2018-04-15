@@ -29,7 +29,7 @@ class TestSKL(unittest.TestCase):
         classif.train(num_steps=1)
         classif.save(model_version="1")
         meta = classif.load_meta()
-        self.assertEqual(meta["model"]["original_ds_path"], "/tmp/")
+        self.assertEqual(meta["model"]["original_dataset_path"], "/tmp/")
         self.assertEqual(meta["train"]["model_version"], "1")
         classif.destroy()
 
@@ -44,7 +44,7 @@ class TestSKL(unittest.TestCase):
         classif = RandomForest(
             model_name="test", 
             check_point_path="/tmp/")
-        classif.load()
+        classif.load(model_version="1")
         self.assertEqual(classif.original_dataset_path, "/tmp/")
         classif.destroy()
 
@@ -92,6 +92,7 @@ class TestSKL(unittest.TestCase):
             check_point_path="/tmp/")
         classif.set_dataset(dataset)
         classif.train()
+        classif.save(model_version="1")
         values = np.asarray([[1], [2], [.4], [.1], [0], [1]])
         self.assertEqual(len(classif.predict(values).to_memory()), 6)
         self.assertEqual(len(classif.predict(np.asarray(values), chunks_size=0).to_memory()), 6)
@@ -188,29 +189,25 @@ class TestGrid(unittest.TestCase):
         rf.save(model_version="1")
         ab.save(model_version="1")
 
-        classif = Grid([rf, ab],
-            dataset=self.original_dataset, 
+        classif = Grid([rf, ab], 
             model_name="test_grid", 
             check_point_path="/tmp/")
-        classif.calc_scores = False
         classif.output("avg")
         classif.save()
-        #meta = classif.load_meta()
-        #print(meta)
-        #self.assertItemsEqual(meta.keys(), classif._metadata(calc_scores=False).keys())
+        meta = classif.load_meta()
+        self.assertItemsEqual(meta.keys(), classif._metadata(calc_scores=False).keys())
 
-        #classif = Grid( 
-        #    model_name="test_grid", 
-        #    model_version="1",
-        #    check_point_path="/tmp/")
+        classif = Grid( 
+            model_name="test_grid", 
+            check_point_path="/tmp/")
         
-        #with self.original_dataset:
-        #    data = self.original_dataset.data[:1]
+        classif.load()
+        with self.original_dataset:
+            data = self.original_dataset.data[:1]
 
-        #for p in classif.predict(data, raw=True, transform=True):
-        #    self.assertEqual(len(list(p)), 2)
-
-        #classif.destroy()
+        for p in classif.predict(data, raw=True, transform=True):
+            self.assertEqual(len(list(p)), 2)
+        classif.destroy()
 
     def test_grid_gini_measure(self):
         from ml.clf.ensemble import Grid
@@ -221,18 +218,21 @@ class TestGrid(unittest.TestCase):
         metrics = Measure.make_metrics(None)
         metrics.add(gini_normalized, greater_is_better=True, uncertain=True)
 
-        rf = RandomForest(model_name="test_rf", model_version="1", dataset=self.original_dataset)
-        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.original_dataset)
+        rf = RandomForest(model_name="test_rf")
+        rf.set_dataset(self.original_dataset)
+        ab = AdaBoost(model_name="test_ab")
+        ab.set_dataset(self.original_dataset)
         rf.train()
+        rf.save(model_version="1")
         ab.train()
+        ab.save(model_version="1")
+
         classif = Grid([rf, ab],
             model_name="test_grid0", 
-            model_version="1",
             check_point_path="/tmp/",
             metrics=metrics)
-
         classif.output(lambda x, y: (x + y) / 2)
-        classif.save_model()
+        classif.save()
         self.assertEqual(len(classif.scores2table().measures[0]), 8)
         classif.destroy()
 
@@ -248,18 +248,20 @@ class TestGrid(unittest.TestCase):
             dataset = self.original_dataset.convert(name="test_dataset",
                 transforms=transforms, apply_transforms=True, dataset_path="/tmp/")
         
-        rf = RandomForest(model_name="test_rf", model_version="1", dataset=dataset)
-        ab = AdaBoost(model_name="test_ab", model_version="1", dataset=self.original_dataset)
+        rf = RandomForest(model_name="test_rf")
+        rf.set_dataset(dataset)
+        ab = AdaBoost(model_name="test_ab")
+        ab.set_dataset(self.original_dataset)
         rf.train()
+        rf.save(model_version="1")
         ab.train()
+        ab.save(model_version="1")
 
         classif = Grid([rf, ab],
             model_name="test_grid0", 
-            model_version="1",
             check_point_path="/tmp/")
-
         classif.output(lambda x, y: (x + y) / 2)
-        classif.save_model()   
+        classif.save()   
         with self.original_dataset:
             data = self.original_dataset.data[:1]
 

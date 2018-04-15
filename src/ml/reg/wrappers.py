@@ -25,7 +25,8 @@ class RegModel(SupervicedModel):
         self.labels_dim = 1
         super(RegModel, self).__init__(**params)
 
-    def load(self):
+    def load(self, model_version="1"):
+        self.model_version = model_version
         self.test_ds = self.get_dataset()
         self.get_train_validation_ds()
 

@@ -18,7 +18,7 @@ log.setLevel(int(settings["loglevel"]))
 
 
 class Grid(DataDrive):
-    def __init__(self, clfs=[], model_name=None, dataset=None, 
+    def __init__(self, clfs=[], model_name=None,
             check_point_path=None, meta_name="", 
             group_name=None, metrics=None):
         super(Grid, self).__init__(
@@ -30,27 +30,19 @@ class Grid(DataDrive):
         self.meta_name = meta_name
         self.fn_output = None
         self.metrics = metrics
+
         if len(clfs) > 0:
             self.classifs = self.transform_clfs(clfs, fn=lambda x: x)
         else:
             self.classifs = None
-
-    def reset_dataset(self, dataset):
-        for classif in self.classifs:
-            classif.load_dataset(dataset)
 
     @classmethod
     def read_meta(self, path):        
         from ml.ds import load_metadata
         return load_metadata(path+".xmeta")
 
-    #def reload(self):
-    #    meta = self.load_meta()
-    #    self.classifs = self.transform_clfs(meta.get('models', {}), fn=locate)
-    #    self.output(meta["output"])
-
     def classifs_to_string(self, classifs):
-        classifs = [{"classif": model.module_cls_name(), 
+        classifs = [{"model_module": model.module_cls_name(), 
             "model_name": model.model_name, "model_version": model.model_version, 
             "check_point_path": model.check_point_path} 
             for model in classifs]
@@ -61,28 +53,22 @@ class Grid(DataDrive):
         for classif_obj in classifs:
             #Case: load model from metadata, 
             if isinstance(classif_obj, dict):
-                classif_obj["classif"] = fn(classif_obj["classif"])
+                classif_obj["model_module"] = fn(classif_obj["model_module"])
                 layer.append(self.load_model(**classif_obj))
             #Case: [model0, model1, ...]
             else:
                 layer.append(classif_obj)
         return layer
 
-    def load_model(self, classif=None, model_name=None, model_version=None,
-        check_point_path=None, dataset=None):
-        if inspect.isclass(classif):
-            model = classif(dataset=dataset, 
-                    model_name=model_name, 
-                    check_point_path=check_point_path,
-                    group_name=self.group_name)
-
+    def load_model(self, model_module=None, model_name=None, model_version=None,
+        check_point_path=None):
+        if inspect.isclass(model_module):
+            model = model_module( 
+                model_name=model_name, 
+                check_point_path=check_point_path,
+                group_name=None)
+            model.load(model_version=model_version)
         return model
-
-    #def train(self):
-    #    model_params = {}
-    #    for classif in self.classifs:
-    #        classif.train(model_params=model_params)
-    #    self.save_model()
     
     def all_clf_scores(self, measures=None):
         from operator import add
@@ -193,28 +179,38 @@ class Grid(DataDrive):
 
     def destroy(self):
         from ml.utils.files import rm
-        for clf in self.classifs:
-            clf.destroy()
-        rm(self.get_model_path()+".xmeta")
+        rm(self.path_m+".xmeta")
 
     def _metadata(self, calc_scores=True):
-        models = {}
-        for classif in self.classifs:
-            model_meta = classif._metadata(keys=["model", "train"])
-            models[classif.model_name] = {}
-            models[classif.model_name]["model"] = model_meta["model"]["model_path"]
-            models[classif.model_name]["train"] = model_meta["train"]["model_path"]
+        models = {"models": None}
+        models["models"] = self.classifs_to_string(self.classifs)
         models["output"] = self.fn_output
         models["score"] = self.scores(self.metrics).measures_to_dict()
         return models
 
-    def save(self):
-        from ml.ds import save_metadata
-        if self.check_point_path:
-            metadata = self._metadata()
+    def load_meta(self):
+        from ml.ds import load_metadata
+        if self.check_point_path is not None:
+            metadata = {}
             self.path_m = self.make_model_file()
-            save_metadata(self.path_m+".xmeta", metadata)
-            print(self.path_m)
+            return load_metadata(self.path_m+".xmeta")
+
+    def save_meta(self):
+        from ml.ds import save_metadata
+        metadata = self._metadata()
+        self.path_m = self.make_model_file()
+        save_metadata(self.path_m+".xmeta", metadata)
+
+    def load(self):
+        from ml.ds import load_metadata
+        metadata = self.load_meta()
+        self.fn_output = metadata["output"]
+        self.classifs = self.transform_clfs(metadata.get('models', {}), fn=locate)
+        self.output(metadata["output"])
+
+    def save(self):
+        if self.check_point_path:
+            self.save_meta()
 
     def output(self, fn):
         self.fn_output = fn
@@ -237,6 +233,10 @@ class EnsembleLayers(DataDrive):
 
     def add(self, ensemble):
         self.layers.append(ensemble)
+
+    def reset_dataset(self, dataset):
+        for classif in self.classifs:
+            classif.load_dataset(dataset)
 
     def train(self, n_splits=None):
         self.layers[0].save_model()
