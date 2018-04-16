@@ -125,8 +125,12 @@ class TransformsFn(object):
         """
         if isinstance(data, np.ndarray):
             data = IterLayer(data, shape=data.shape, dtype=data.dtype).to_chunks(chunks_size)
+            has_chunks = True
         elif isinstance(data, pd.DataFrame):
             data = IterLayer(data, shape=data.shape).to_chunks(chunks_size)
+            has_chunks = True
+        elif isinstance(data, IterLayer):
+            has_chunks = data.has_chunks
 
         def iter_():
             locate_fn = {}
@@ -137,7 +141,7 @@ class TransformsFn(object):
                 yield smx
         
         return IterLayer(iter_(), shape=data.shape, chunks_size=chunks_size, 
-                    has_chunks=True)
+                    has_chunks=has_chunks)
 
 
 class TransformsClass(TransformsFn):
@@ -153,7 +157,7 @@ class TransformsClass(TransformsFn):
         """
         return self._from_json(json_transforms, TransformsClass)
 
-    def initial_fn(self, data):
+    def initial_fn(self, data=None):
         for fn, params in self.transforms:
             fn = locate(fn)
             try:
@@ -184,7 +188,7 @@ class TransformsClass(TransformsFn):
         return IterLayer(data, shape=data.shape, dtype=dtype).to_chunks(chunks_size=chunks_size)
 
     def destroy(self):
-        for transform in self.initial_fn(None):
+        for transform in self.initial_fn():
             if hasattr(transform, 'destroy'):
                 transform.destroy()
 
@@ -300,7 +304,10 @@ class Fit(object):
     def __init__(self, data, name=None, path="", **kwargs):
         self.name = name if name is not None else uuid.uuid4().hex        
         self.meta_path = path + self.module_cls_name() + "_" + self.name
-        self.t = self.fit(data, **kwargs)
+        if data is not None:
+            self.t = self.fit(data, **kwargs)
+        else:
+            self.t = None
 
     @classmethod
     def module_cls_name(cls):

@@ -152,7 +152,7 @@ class TestTransforms(unittest.TestCase):
         numbers = np.ones((10, 1))
         result = transforms.apply(numbers)
         self.assertItemsEqual(result.to_narray().reshape(-1), np.zeros((10, 1)) + 5)
-#***
+
     def test_apply_row_iterlayer(self):
         from ml.layers import IterLayer
         transforms = Transforms()
@@ -160,8 +160,7 @@ class TestTransforms(unittest.TestCase):
         transforms.add(linear_p, b=10)
         numbers = IterLayer((e for e in np.ones((10,))), shape=(10,))
         result = transforms.apply(numbers)
-        print(result.to_memory())
-        #self.assertItemsEqual(result.to_memory().reshape(-1), np.ones((10, 1)) + 11) # result [12, ..., 12]
+        self.assertItemsEqual(result.to_memory().reshape(-1), np.ones((10, 1)) + 11) # result [12, ..., 12]
 
     def test_apply_col(self):
         from ml.processing import FitStandardScaler, FitTruncatedSVD
@@ -225,7 +224,7 @@ class TestTransforms(unittest.TestCase):
             except Exception:
                 print("OK")
             dataset.destroy()
-#***
+
     def test_transform_col_model(self):
         from ml.ds import DataLabel
         from ml.processing import FitTsne
@@ -243,7 +242,7 @@ class TestTransforms(unittest.TestCase):
         dataset.destroy()
         transforms.destroy()
         self.assertEqual(shape, (100, 6))
-#***
+
     def test_transforms_clf(self):
         from ml.ds import DataLabel
         from ml.processing import FitTsne
@@ -269,7 +268,7 @@ class TestTransforms(unittest.TestCase):
         transforms.destroy()
         classif.destroy()
         dataset.destroy()
-#***
+
     def test_transforms_convert(self):
         from ml.ds import DataLabel
         from ml.processing import FitTsne
