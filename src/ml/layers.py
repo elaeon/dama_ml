@@ -58,10 +58,15 @@ class IterLayer(object):
             if self.has_chunks:
                 self.type_elem = np.ndarray if not isinstance(self.dtype, list) else pd.DataFrame
             else:
-                self.type_elem = tuple
+                self.type_elem = self.chunk_type_elem()
     
     def pushback(self, val):
         self.pushedback.append(val)
+
+    def chunk_type_elem(self):
+        chunk = next(self)
+        self.pushback(chunk)
+        return type(chunk)
 
     def chunk_taste(self, dtypes):
         """Check for the dtype and global dtype in a chunk"""
@@ -158,8 +163,8 @@ class IterLayer(object):
                 for i, row in enumerate(smx):
                     try:
                         x[i] = tuple(row)
-                    except ValueError:
-                        x[i] = row[0]
+                    except TypeError:
+                        x[i] = row
                 smx_a = pd.DataFrame(x,
                     index=np.arange(0, chunk_shape[0]), 
                     columns=columns)
@@ -399,7 +404,10 @@ class IterLayer(object):
                 smx = smx.to_narray()
                 end += smx.shape[0]
             elif hasattr(smx, 'shape'):
+                #if len(smx.shape) > 0:
                 end += smx.shape[0]
+                #else:
+                #    end += 1
             smx_a[init:end] = smx
             init = end
         return smx_a

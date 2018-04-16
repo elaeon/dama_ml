@@ -237,7 +237,7 @@ class BaseModel(DataDrive):
                             load_fn=self.load_fn,
                             save_fn=None)
 
-    def save(self):
+    def save(self, model_version="1"):
         pass
 
     def has_model_file(self):

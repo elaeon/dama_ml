@@ -359,16 +359,17 @@ class FitTsne(Fit):
         from ml.ae.extended.w_keras import PTsne
         from ml.ds import Data
 
-        tsne = PTsne(model_name=self.name, model_version="1", autoload=False)
+        tsne = PTsne(model_name=self.name)
         if not tsne.exist():
             dataset = Data(dataset_path="/tmp", rewrite=True)
             with dataset:
                 dataset.build_dataset(data)
-            tsne = PTsne(model_name=self.name, model_version="1", 
-                        dataset=dataset, latent_dim=2)
+            tsne = PTsne(model_name=self.name, latent_dim=2)
+            tsne.set_dataset(dataset)
             tsne.train(batch_size=50, num_steps=4)
+            tsne.save(model_version="1")
         else:
-            tsne.load_dataset(None)
+            tsne.load(model_version="1")
         self.model = tsne
         return tsne.predict
 

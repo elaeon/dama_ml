@@ -22,7 +22,8 @@ install_requires = [
     'xmltodict==0.10.2',
     'dill==0.2.6.',
     'keras==2.0.2',
-    'seaborn==0.7.1'
+    'seaborn==0.7.1',
+    'psycopg2==2.7.3.2'
 ]
 
 this_dir = abspath(dirname(__file__))
@@ -39,7 +40,7 @@ tests_require = [
 
 setup(
     name='ml',
-    version='0.4.0',
+    version='0.5.0',
     description='A modern machine learning framework',
     long_description=long_description,
     author="Alejandro G. Martínez Romero",

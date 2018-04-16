@@ -29,6 +29,7 @@ class RegModel(SupervicedModel):
         self.model_version = model_version
         self.test_ds = self.get_dataset()
         self.get_train_validation_ds()
+        self.load_model()
 
     def scores(self, measures=None):
         if measures is None or isinstance(measures, str):

@@ -14,14 +14,14 @@ class TestUnsupervicedModel(unittest.TestCase):
         Y = np.sin(6*X)
         with dataset:
             dataset.build_dataset(Y)
-        classif = PTsne(model_name="tsne", model_version="1", 
+        classif = PTsne(model_name="tsne", 
             check_point_path="/tmp/", latent_dim=2)
         classif.set_dataset(dataset)
         classif.train(batch_size=8, num_steps=2)
+        classif.save(model_version="1")
 
-        classif = PTsne(model_name="tsne", model_version="1", 
-            check_point_path="/tmp/")
-        classif.load()
+        classif = PTsne(model_name="tsne", check_point_path="/tmp/")
+        classif.load(model_version="1")
         self.assertEqual(classif.predict(X[:1]).shape, (1, 2))
         classif.destroy()
         dataset.destroy()
@@ -46,17 +46,16 @@ class TestAE(unittest.TestCase):
 
         vae = VAE( 
             model_name="test", 
-            model_version="1",
             check_point_path="/tmp/",
             intermediate_dim=5)
         vae.set_dataset(dataset)
         vae.train(batch_size=1, num_steps=10)
+        vae.save(model_version="1")
 
         vae = VAE( 
-            model_name="test", 
-            model_version="1",
+            model_name="test",
             check_point_path="/tmp/")
-        vae.load()
+        vae.load(model_version="1")
         encoder = vae.predict(X[0:1], chunks_size=10, model_type="encoder")
         decoder = vae.predict(X[0:1], chunks_size=10, model_type="decoder")
         self.assertEqual(encoder.shape, (1, 2))
@@ -75,17 +74,16 @@ class TestAE(unittest.TestCase):
 
         dae = DAE( 
             model_name="test", 
-            model_version="1",
             check_point_path="/tmp/",
             intermediate_dim=5)
         dae.set_dataset(dataset)
         dae.train(batch_size=1, num_steps=10)
+        dae.save(model_version="1")
 
         dae = DAE( 
             model_name="test", 
-            model_version="1",
             check_point_path="/tmp/")
-        dae.load()
+        dae.load(model_version="1")
         encoder = dae.predict(X[0:1], chunks_size=10, model_type="encoder")
         self.assertEqual(encoder.shape, (1, 10))
         decoder = dae.predict(X[0:1], chunks_size=10, model_type="decoder")

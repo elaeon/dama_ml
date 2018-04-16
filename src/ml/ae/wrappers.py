@@ -23,13 +23,12 @@ if backend._BACKEND == "theano":
 
 class BaseAe(BaseModel):
     def __init__(self, model_name=None, check_point_path=None, 
-                model_version=None, group_name=None, latent_dim=2):
+                group_name=None, latent_dim=2):
         self.model_encoder = None
         self.model_decoder = None
         self.latent_dim = latent_dim
         super(BaseAe, self).__init__(
             check_point_path=check_point_path,
-            model_version=model_version,
             model_name=model_name,
             group_name=group_name)
 
@@ -40,9 +39,18 @@ class BaseAe(BaseModel):
             self.original_dataset_name = dataset.name
             self.train_ds, self.test_ds = self.reformat_all(dataset)
 
-    def load(self):
+    def load(self, model_version):
+        self.model_version = model_version
         self.test_ds = self.get_dataset()
         self.train_ds = self.test_ds
+        self.load_model()
+
+    def save(self, model_version="1"):
+        self.model_version = model_version
+        if self.check_point_path is not None:
+            path = self.make_model_version_file()
+            self.model.save('{}.{}'.format(path, self.ext))
+            self.save_meta(keys=["model", "train"])
 
     def reformat_all(self, dataset):
         if dataset.module_cls_name() == DataLabel.module_cls_name() or\
@@ -119,19 +127,17 @@ class Keras(BaseAe):
 
         return [self.model, self.encoder_m, self.decoder_m]
 
-    def save_model(self):
-        if self.check_point_path is not None:
-            models_path = self.make_model_file()
-            self.model.save('{}.{}'.format(models_path, self.ext))
-            self.save_meta(self._metadata())
-
     def load_model(self):
-        log.info("loading models...")
         models = self.preload_model()
         if self.check_point_path is not None:
-            path = self.get_model_path()
+            path = self.make_model_version_file()
             for model in models:
                 model.load('{}.{}'.format(path, self.ext))
+
+    def load(self, model_version):
+        self.model_version = model_version
+        self.test_ds = self.get_dataset()
+        self.load_model()
 
     def _predict(self, data, raw=False, decoder=True):
         if decoder is True:

@@ -45,7 +45,6 @@ class PTsne(Keras):
             num_steps,
             validation_data=z,
             nb_val_samples=batch_size)
-        self.save_model()
 
 
 def sampling(args, **kwargs):
@@ -154,16 +153,15 @@ class VAE(Keras):
             epochs=num_steps,
             validation_data=z,
             nb_val_samples=batch_size_z)
-        self.save_model()
         
-    def _metadata(self):
-        meta = super(VAE, self)._metadata()
-        meta["intermediate_dim"] = self.intermediate_dim
+    def _metadata(self, keys={}):
+        meta = super(VAE, self)._metadata(keys=keys)
+        meta["model"]["intermediate_dim"] = self.intermediate_dim
         return meta
 
     def get_dataset(self):
         meta = self.load_meta()
-        self.intermediate_dim = meta["intermediate_dim"]
+        self.intermediate_dim = meta["model"]["intermediate_dim"]
         return super(VAE, self).get_dataset()
 
 
@@ -237,14 +235,13 @@ class DAE(Keras):
             epochs=num_steps,
             validation_data=z,
             nb_val_samples=batch_size_z)
-        self.save_model()
         
-    def _metadata(self):
-        meta = super(DAE, self)._metadata()
-        meta["intermediate_dim"] = self.intermediate_dim
+    def _metadata(self, keys={}):
+        meta = super(DAE, self)._metadata(keys=keys)
+        meta["model"]["intermediate_dim"] = self.intermediate_dim
         return meta
 
     def get_dataset(self):
         meta = self.load_meta()
-        self.intermediate_dim = meta["intermediate_dim"]
+        self.intermediate_dim = meta["model"]["intermediate_dim"]
         return super(DAE, self).get_dataset()
