@@ -209,7 +209,7 @@ def max_type(items):
 
 def wsr(stream, k):
     heap = []
-    hkey = lambda w: -np.random.exponential(1.0/w)
+    hkey = lambda w: -np.random.exponential(1./w)
 
     for item, weight in stream:
         if len(heap) < k:
@@ -223,7 +223,7 @@ def wsr(stream, k):
 
 def wsrj(stream, k):
     reservoir = []
-    hkey = lambda w: np.random.exponential(1.0/w)
+    hkey = lambda w: np.random.exponential(1./w)
 
     for item, weight in stream:
         if len(reservoir) < k:
@@ -239,7 +239,7 @@ def wsrj(stream, k):
         for item, weight in stream:
             if 0 < X_w - w_c <= weight:
                 r2 = np.random.uniform(T_w, 1)
-                k_i = r2**(1/weight)
+                k_i = r2**(1./weight)
                 hq.heapreplace(reservoir, (k_i, item))                
                 break
             w_c += weight

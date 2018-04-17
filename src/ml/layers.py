@@ -194,12 +194,16 @@ class IterLayer(object):
         else:
             return it
 
-    def sample(self, k, with_chunks=False):
+    def sample(self, k, with_chunks=False, col=None, weight_fn=None):
         shape = tuple([k] + list(self.shape[1:]))
         if with_chunks is False:
-            return IterLayer(wsrj(izip(self.clean_chunks(), self.weights_gen(self.shape[0])), k), 
+            if self.has_chunks:
+                data = self.clean_chunks()
+            else:
+                data = self
+            return IterLayer(wsrj(self.weights_gen(data, col, weight_fn), k), 
                 shape=shape, dtype=self.dtype, chunks_size=self.chunks_size, 
-                has_chunks=self.has_chunks)
+                has_chunks=self.has_chunks)     
         else:
             raise Exception("Not implemented")
 
@@ -224,11 +228,16 @@ class IterLayer(object):
                 chunks_size=self.chunks_size, has_chunks=self.has_chunks)
         return it0, it1
 
-    def weights_gen(self, size):
-        i = 0
-        while i < size:
-            yield 1
-            i += 1
+    def weights_gen(self, data, col, weight_fn):
+        if not hasattr(self.type_elem, '__iter__'):
+            for row in data:
+                yield row, weight_fn(row)
+        elif col is not None:
+            for row in data:
+                yield row, weight_fn(row[col])
+        else:
+            for row in data:
+                yield row, 1
 
     def clean_chunks(self):
         if self.has_chunks:
@@ -404,10 +413,7 @@ class IterLayer(object):
                 smx = smx.to_narray()
                 end += smx.shape[0]
             elif hasattr(smx, 'shape'):
-                #if len(smx.shape) > 0:
                 end += smx.shape[0]
-                #else:
-                #    end += 1
             smx_a[init:end] = smx
             init = end
         return smx_a

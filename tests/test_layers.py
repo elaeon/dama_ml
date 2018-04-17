@@ -336,6 +336,41 @@ class TestIterLayers(unittest.TestCase):
         it_s = it_0.sample(5)
         self.assertEqual(len(it_s.to_memory()), 5)
 
+    def test_gen_weights(self):
+        order = (i for i in range(4))
+        it = IterLayer(order, shape=(4,))
+        it_0 = it.weights_gen(it, None, lambda x: x%2+1)
+        self.assertItemsEqual(list(it_0), [(0, 1), (1, 2), (2, 1), (3, 2)])
+
+        def fn(v):
+            if v == 0:
+                return 1
+            else:
+                return 99
+
+        data = np.zeros((20, 4)) + [1,2,3,0]
+        data[:, 3] = np.random.rand(1,20) > .5
+        it = IterLayer(data, shape=(20, 4))
+        w_v = list(it.weights_gen(it, 3, fn))
+        self.assertEqual(w_v[0][1], fn(data[0][3]))
+
+    def test_sample_weight(self):
+        import collections
+        def fn(v):
+            if v == 0:
+                return 1
+            else:
+                return 90
+
+        num_items = 200000
+        num_samples = 20000
+        data = np.zeros((num_items, 4)) + [1, 2, 3, 0]
+        data[:, 3] = np.random.rand(1, num_items) > .5
+        it = IterLayer(data, shape=(num_items, 4))
+        it_s = it.sample(num_samples, col=3, weight_fn=fn)
+        c = collections.Counter(it_s.to_memory()[:, 3])
+        self.assertEqual(c[1]/float(num_samples) > .79, True)
+
     def test_split(self):
         it = IterLayer(((i, 'X', 'Z') for i in range(20)), shape=(20,))
         it0, it1 = it.split(2)

@@ -75,7 +75,6 @@ def get_models_path(checkpoints_path):
     return classes
 
 
-
 def get_models_from_dataset(dataset, checkpoints_path):
     from ml.clf.wrappers import DataDrive
     from collections import defaultdict

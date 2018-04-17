@@ -32,7 +32,7 @@ class ClassifModel(SupervicedModel):
         with self.load_original_ds() as ds:
             if isinstance(ds, DataLabel):
                 self.labels_encode(ds.labels)
-        self.load_model()
+        #self.load_model()
 
     def scores(self, measures=None):
         if measures is None or isinstance(measures, str):
