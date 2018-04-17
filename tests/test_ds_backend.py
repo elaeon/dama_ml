@@ -39,8 +39,11 @@ class TestSQL(unittest.TestCase):
             pass
 
     def tearDown(self):
-        with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-            sql.destroy()
+        try:
+            with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
+                sql.destroy()
+        except psycopg2.OperationalError:
+            pass
 
     def test_index(self):
         try:

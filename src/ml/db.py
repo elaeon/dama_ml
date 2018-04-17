@@ -82,7 +82,7 @@ class SQL(object):
             order_by=self.order_by_txt,
             limit=self.limit_txt)
         self.cur.execute(self.query)
-        #cur.itersize = 2000
+        self.cur.itersize = 2000
         self.cur.scroll(start)
         it = IterLayer(self.cur, shape=(size, num_features), dtype=self.dtype)
         if self.chunks_size is not None and self.chunks_size > 0:
