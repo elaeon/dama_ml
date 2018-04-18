@@ -145,5 +145,4 @@ class Keras(BaseAe):
         else:
             model = self.encoder_m
 
-        for prediction in model.predict(data):
-            yield prediction
+        return model.predict(data)

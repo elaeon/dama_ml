@@ -161,9 +161,7 @@ class ClassifModel(SupervicedModel):
 
     def _predict(self, data, raw=False):
         prediction = self.model.predict(data)
-        if not isinstance(prediction, np.ndarray):
-            prediction = np.asarray(prediction, dtype=np.float)
-        return self.convert_label(prediction, raw=raw)
+        return self.convert_labels(prediction, raw=raw)
 
 
 

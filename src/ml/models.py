@@ -31,13 +31,18 @@ class MLModel:
         return self.fit_fn(*args, **kwargs)
 
     def predict(self, data):
-        if isinstance(data, IterLayer):
-            data = data.to_narray()
         if self.transform_data is not None:
-            prediction = self.predictors[0](self.transform_data(data))
+            if data.has_chunks:
+                for chunk in data:
+                    yield self.predictors[0](self.transform_data(chunk))
+            else:
+                raise Exception("Data has not chunks")
         else:
-            prediction = self.predictors[0](data)
-        return prediction
+            if data.has_chunks:
+                for chunk in data:
+                    yield self.predictors[0](chunk)
+            else:
+                raise Exception("Data has not chunks")
 
     def load(self, path):
         return self.load_fn(path)

@@ -97,10 +97,7 @@ class RegModel(SupervicedModel):
         return dl_train, dl_test, dl_validation
 
     def _predict(self, data, raw=False):
-        prediction = self.model.predict(data)
-        if not isinstance(prediction, np.ndarray):
-            prediction = np.asarray(prediction, dtype=np.float)
-        return prediction
+        return self.model.predict(data)
 
 
 class SKLP(RegModel):

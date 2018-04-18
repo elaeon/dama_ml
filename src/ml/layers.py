@@ -27,16 +27,15 @@ class IterLayer(object):
                 has_chunks=False, chunks_size=0, length=None):
         dtypes = None
         if isinstance(fn_iter, types.GeneratorType) or isinstance(fn_iter, psycopg2.extensions.cursor):
-            _fn_iter = fn_iter
+            self.it = fn_iter
         elif isinstance(fn_iter, IterLayer):
-            _fn_iter = fn_iter
+            self.it = fn_iter
         elif isinstance(fn_iter, pd.DataFrame):
-            _fn_iter = (e for e in fn_iter.values)
+            self.it = fn_iter.itertuples(index=False)
             dtypes = zip(fn_iter.columns.values, fn_iter.dtypes.values)
         else:
-            _fn_iter = (e for e in fn_iter)
+            self.it = (e for e in fn_iter)
 
-        self.it = _fn_iter
         self.pushedback = []
         self.chunks_size = chunks_size
         self.has_chunks = has_chunks
