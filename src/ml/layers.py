@@ -5,8 +5,19 @@ import types
 import numpy as np
 import pandas as pd
 import psycopg2
+import logging
+
+from ml.utils.config import get_settings
 from ml.utils.seq import grouper_chunk
 from ml.utils.numeric_functions import max_type, wsrj, wsr
+
+settings = get_settings("ml")
+log = logging.getLogger(__name__)
+logFormatter = logging.Formatter("[%(name)s] - [%(levelname)s] %(message)s")
+handler = logging.StreamHandler()
+handler.setFormatter(logFormatter)
+log.addHandler(handler)
+log.setLevel(int(settings["loglevel"]))
 
 
 def choice(operator):
@@ -424,6 +435,8 @@ class IterLayer(object):
         for smx in it:
             if isinstance(smx, IterLayer):
                 smx = smx.to_narray()
+                end += smx.shape[0]
+            elif hasattr(smx, 'shape') and len(smx.shape) > 0:
                 end += smx.shape[0]
             else:
                 end += 1

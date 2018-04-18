@@ -43,7 +43,6 @@ class BaseAe(BaseModel):
         self.model_version = model_version
         self.test_ds = self.get_dataset()
         self.train_ds = self.test_ds
-        self.load_model()
 
     def save(self, model_version="1"):
         self.model_version = model_version

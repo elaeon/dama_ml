@@ -8,17 +8,18 @@ import numpy as np
 
 
 class Xgboost(XGB):
-    def convert_label(self, label, raw=False):
+    def convert_labels(self, labels, raw=False):
         if raw is True:
-            if len(label.shape) == 1:
-                label = label.reshape(-1, 1)
-                return np.concatenate((np.abs(label - 1), label), axis=1)
-            else:
-                return label
-        elif raw is None:
-            return self.position_index(label)
+            for chunk in labels:
+                if len(chunk.shape) == 1:
+                    label = chunk.reshape(-1, 1)
+                    yield np.concatenate((np.abs(label - 1), label), axis=1)
+                else:
+                    yield chunk
         else:
-            return self.le.inverse_transform(self.position_index(label.reshape(-1, 1)))
+            for chunk in labels:
+                for label in self.position_index(chunk):
+                    yield self.le.inverse_transform(int(round(label, 0)))
 
     def prepare_model(self, obj_fn=None, num_steps=None, **params):
         with self.train_ds, self.validation_ds:

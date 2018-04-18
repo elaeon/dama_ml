@@ -32,7 +32,6 @@ class ClassifModel(SupervicedModel):
         with self.load_original_ds() as ds:
             if isinstance(ds, DataLabel):
                 self.labels_encode(ds.labels)
-        #self.load_model()
 
     def scores(self, measures=None):
         if measures is None or isinstance(measures, str):
@@ -94,18 +93,20 @@ class ClassifModel(SupervicedModel):
         self.num_labels = self.le.classes_.shape[0]
         self.base_labels = self.le.classes_
 
-    def position_index(self, label):
-        if isinstance(label, np.ndarray) or isinstance(label, list):
-            return np.argmax(label, axis=1)
-        return label
-
-    def convert_label(self, label, raw=False):
-        if raw is True:
-            return label
-        elif raw is None:
-            return self.position_index(label)
+    def position_index(self, labels):
+        if len(labels.shape) >= 2:
+            return np.argmax(labels, axis=1)
         else:
-            return self.le.inverse_transform(self.position_index(label))
+            return labels
+
+    def convert_labels(self, labels, raw=False):
+        if raw is True:
+            for chunk in labels:
+                yield chunk
+        else:
+            for chunk in labels:
+                for label in self.position_index(chunk):
+                    yield self.le.inverse_transform(int(round(label, 0)))
 
     def numerical_labels2classes(self, labels):
         if len(labels.shape) > 1 and labels.shape[1] > 1:

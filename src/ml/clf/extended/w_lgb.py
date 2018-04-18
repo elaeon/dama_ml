@@ -7,12 +7,6 @@ import numpy as np
 
 
 class LightGBM(LGB):
-    def position_index(self, labels):
-        for label in labels:
-            if isinstance(label, np.ndarray) or isinstance(label, list):
-                yield np.argmax(label, axis=1)
-            yield label
-
     def convert_labels(self, labels, raw=False):
         if raw is True:
             for chunk in labels:
