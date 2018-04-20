@@ -139,6 +139,17 @@ class TransformsFn(object):
                     fn = locate_fn.setdefault(fn_, locate(fn_))
                     smx = fn(smx, **params)
                 yield smx
+
+        def apply_fn(fn, data, **params):
+            for smx in data:
+                yield fn(smx, **params)
+
+        def iter2_(data):
+            locate_fn = {}
+            for fn_, params in self.transforms:
+                fn = locate_fn.setdefault(fn_, locate(fn_))
+                data = apply_fn(fn, data, **params)
+            return data
         
         return IterLayer(iter_(), shape=data.shape, chunks_size=chunks_size, 
                     has_chunks=has_chunks)
@@ -384,8 +395,8 @@ class FitTsne(Fit):
         from itertools import izip
 
         def iter_():
-            for row, predict in izip(data, self.t(self.dim_rule(data), chunks_size=5000)):
-                yield np.append(row, list(predict), axis=0)
+            for row, predict in izip(data, self.t(self.dim_rule(data), chunks_size=1)):
+                yield np.append(row, list(predict)[0], axis=0)
 
         return IterLayer(iter_(), shape=(data.shape[0], data.shape[1]+2), dtype=data.dtype)
 

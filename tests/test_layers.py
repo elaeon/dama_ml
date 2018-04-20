@@ -396,6 +396,21 @@ class TestIterLayers(unittest.TestCase):
             dtype=[('A', 'int'), ('B', 'str'), ('C', 'str')])
         self.assertItemsEqual(it.split(2)[0].to_memory().iloc[0, :], [0, 'X'])
 
+    def test_raw(self):
+        data = [1, 2, 3, 4, 5]
+        it = IterLayer(data, shape=(len(data),))
+        self.assertItemsEqual(it.to_memory(), data)
+
+        data = np.random.rand(2, 3)
+        it = IterLayer(data, shape=data.shape)
+        for i, row in enumerate(it.to_memory()):
+            self.assertItemsEqual(row, data[i])
+
+        data = [[1,2], [3,4]]
+        it = IterLayer(data, shape=(len(data), 2))
+        for i, row in enumerate(it.to_memory()):
+            self.assertItemsEqual(row, data[i])
+
 
 def chunk_sizes(seq):
     return [len(list(row)) for row in seq]

@@ -50,6 +50,7 @@ class IterLayer(object):
         self.pushedback = []
         self.chunks_size = chunks_size
         self.has_chunks = has_chunks
+        self.o_shape = shape
         if shape is not None:
             self.length = shape[0]
         else:
@@ -117,14 +118,19 @@ class IterLayer(object):
 
         if self.has_chunks:
             shape = list(shape[1:])
-            if len(shape) == 0:
-                shape = [0]
+            #if len(shape) == 0:
+            #    shape = [0]
             self.shape = [self.length] + list(shape)
         else:
-            if len(shape) > 1:
-                self.shape = [self.length] + list(shape[1:])
+            if len(shape) == 1:
+                if shape[0] == 1:
+                    self.shape = [self.length]
+                elif self.o_shape is not None and self.o_shape[-1] == 1:
+                    self.shape = [self.length]
+                else:
+                    self.shape = [self.length, shape[0]]
             else:
-                self.shape = [self.length] + list(shape)
+                self.shape = [self.length] + list(shape[1:])
 
         self.global_dtype = global_dtype
         self.pushback(chunk)
@@ -188,7 +194,10 @@ class IterLayer(object):
             if self.type_elem == np.ndarray:
                 for chunk in self:
                     for e in chunk.reshape(-1):
-                        yield e
+                        if hasattr(e, '__iter__') and len(e) == 1:
+                            yield e[0]
+                        else:
+                            yield e
             elif self.type_elem == pd.DataFrame:
                 for chunk in self:
                     for e in chunk.values.reshape(-1):
@@ -212,8 +221,7 @@ class IterLayer(object):
             else:
                 data = self
             return IterLayer(wsrj(self.weights_gen(data, col, weight_fn), k), 
-                shape=shape, dtype=self.dtype, chunks_size=self.chunks_size, 
-                has_chunks=self.has_chunks)     
+                shape=shape, dtype=self.dtype).to_chunks(chunks_size=self.chunks_size)
         else:
             raise Exception("Not implemented")
 
@@ -436,7 +444,7 @@ class IterLayer(object):
             if isinstance(smx, IterLayer):
                 smx = smx.to_narray()
                 end += smx.shape[0]
-            elif hasattr(smx, 'shape') and len(smx.shape) > 0:
+            elif hasattr(smx, 'shape') and smx.shape == shape:
                 end += smx.shape[0]
             else:
                 end += 1

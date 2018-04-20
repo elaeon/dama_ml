@@ -52,6 +52,26 @@ def categorical2(x):
     return xo
 
 
+counter = {}
+def counter_group(data):
+    global counter
+    for row in data:
+        key = "-".join(map(str, row))
+        if key in counter:
+            counter[key] += 1
+        else:
+            counter[key] = 1
+    return data
+
+    
+def add_counter_group(data):
+    ndata = np.empty((data.shape[0], data.shape[1] + 1), dtype=data.dtype)
+    for i, row in enumerate(data):
+        key = "-".join(map(str, row))
+        ndata[i] = np.append(row, counter[key])
+    return ndata
+
+
 class TestTransforms(unittest.TestCase):
     def setUp(self):
         pass
@@ -264,9 +284,9 @@ class TestTransforms(unittest.TestCase):
         classif.set_dataset(dataset)
         classif.train()
         classif.save(model_version="1")
-        classif.scores().print_scores()
-        transforms.destroy()
-        classif.destroy()
+        #classif.scores().print_scores()
+        #transforms.destroy()
+        #classif.destroy()
         dataset.destroy()
 
     def test_transforms_convert(self):
@@ -400,6 +420,26 @@ class TestTransforms(unittest.TestCase):
         result = transforms.apply(X, chunks_size=10)
         data = result.to_narray()
         self.assertItemsEqual(data[0], [121, 144, 169, 196])
+
+    def test_transforms_apply(self):
+        global counter
+        X = np.asarray([
+            [1, 2], 
+            [2, 3],
+            [3, 4],
+            [5, 6],
+            [1, 2],
+            [2, 3],
+            [1, 1],
+            [1, 2],
+            [1, 2]], dtype=np.dtype("int"))
+        transforms = Transforms()
+        transforms.add(counter_group)
+        transforms.add(add_counter_group)
+        result = transforms.apply(X, chunks_size=2)
+        data = result.to_memory()
+        #print(data)
+        #print(counter)
 
 
 if __name__ == '__main__':

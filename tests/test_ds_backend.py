@@ -59,18 +59,18 @@ class TestSQL(unittest.TestCase):
     def test_key(self):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test", chunks_size=2) as sql:
-                self.assertItemsEqual(sql["A"].flat().to_narray(), get_column(self.data, 0))
-                self.assertItemsEqual(sql["B"].flat().to_narray(), get_column(self.data, 1))
-                self.assertItemsEqual(sql["C"].flat().to_narray(), get_column(self.data, 2))
+                self.assertItemsEqual(sql["A"].flat().to_memory(), get_column(self.data, 0))
+                self.assertItemsEqual(sql["B"].flat().to_memory(), get_column(self.data, 1))
+                self.assertItemsEqual(sql["C"].flat().to_memory(), get_column(self.data, 2))
         except psycopg2.OperationalError:
             pass
 
     def test_multikey(self):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                self.assertItemsEqual(sql[["A", "B"]].to_narray()[0], ['a', 1])
-                self.assertItemsEqual(sql[["B", "C"]].to_narray()[0], [1, 0.1])
-                self.assertItemsEqual(sql[["A", "C"]].to_narray()[0], ['a', 0.1])
+                self.assertItemsEqual(sql[["A", "B"]].to_memory()[0], ['a', 1])
+                self.assertItemsEqual(sql[["B", "C"]].to_memory()[0], [1, 0.1])
+                self.assertItemsEqual(sql[["A", "C"]].to_memory()[0], ['a', 0.1])
         except psycopg2.OperationalError:
             pass
 
@@ -78,7 +78,7 @@ class TestSQL(unittest.TestCase):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test",
                 chunks_size=12, df=True) as sql:
-                self.assertEqual(type(sql["A"].to_df()), pd.DataFrame)
+                self.assertEqual(type(sql["A"].to_memory()), pd.DataFrame)
         except psycopg2.OperationalError:
             pass
 

@@ -94,6 +94,7 @@ class TestSKL(unittest.TestCase):
         classif.train()
         classif.save(model_version="1")
         values = np.asarray([[1], [2], [.4], [.1], [0], [1]])
+        self.assertItemsEqual(classif.predict(values).to_memory(), [True, True, False, False, False, True])
         self.assertEqual(len(classif.predict(values).to_memory()), 6)
         self.assertEqual(len(classif.predict(np.asarray(values), chunks_size=0).to_memory()), 6)
         dataset.destroy()
@@ -206,7 +207,7 @@ class TestGrid(unittest.TestCase):
             data = self.original_dataset.data[:1]
 
         for p in classif.predict(data, raw=True, transform=True):
-            self.assertEqual(len(list(p)), 2)
+            self.assertEqual(p.shape, (1, 2))
         classif.destroy()
 
     def test_grid_gini_measure(self):
@@ -265,8 +266,8 @@ class TestGrid(unittest.TestCase):
         with self.original_dataset:
             data = self.original_dataset.data[:1]
 
-        for p in classif.predict(data, raw=True, transform=True):
-            self.assertEqual(len(list(p)), 2)
+        for p in classif.predict(data, raw=False, transform=True):
+            self.assertEqual(type(p), np.dtype('int'))
         dataset.destroy()
         classif.destroy()
 

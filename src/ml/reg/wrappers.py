@@ -37,9 +37,8 @@ class RegModel(SupervicedModel):
             test_data = self.test_ds.data[:]
             test_labels = self.test_ds.labels[:]
 
-        predictions = np.asarray(list(tqdm(
-            self.predict(test_data, raw=measures.has_uncertain(), transform=False, chunks_size=0), 
-            total=test_labels.shape[0])))
+        predictions = self.predict(test_data, raw=measures.has_uncertain(), 
+            transform=False, chunks_size=0).to_memory()
         measures.set_data(predictions, test_labels, None)
         log.info("Getting scores")
         return measures.to_list()
@@ -96,7 +95,8 @@ class RegModel(SupervicedModel):
         return dl_train, dl_test, dl_validation
 
     def _predict(self, data, raw=False):
-        return self.model.predict(data)
+        for p in self.model.predict(data):
+            yield p
 
 
 class SKLP(RegModel):

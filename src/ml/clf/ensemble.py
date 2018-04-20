@@ -85,8 +85,7 @@ class Grid(DataDrive):
 
         with self.classifs[0].test_ds as test_ds:
             test_labels = test_ds.labels[:]
-        predictions = np.asarray(list(tqdm(self.predict_test(raw=measures.has_uncertain(), chunks_size=0),
-            total=test_labels.shape[0])))
+        predictions = self.predict_test(raw=measures.has_uncertain(), chunks_size=0).to_memory()
         measures.set_data(predictions, test_labels, self.numerical_labels2classes)
         list_measure = measures.to_list()
         if all_clf is True:
@@ -100,7 +99,7 @@ class Grid(DataDrive):
                 self.le = classif.le
                 break
 
-        if len(labels.shape) > 1 and labels.shape[1] > 1:
+        if len(labels.shape) >= 2:
             return self.le.inverse_transform(np.argmax(labels, axis=1))
         else:
             return self.le.inverse_transform(labels.astype('int'))
