@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 
 from ml.processing import Transforms, Fit
+from ml.layers import IterLayer
 
 
 def linear(x):
@@ -52,19 +53,18 @@ def categorical2(x):
     return xo
 
 
-counter = {}
 def counter_group(data):
-    global counter
+    counter = {}
     for row in data:
         key = "-".join(map(str, row))
         if key in counter:
             counter[key] += 1
         else:
             counter[key] = 1
-    return data
+    return counter
 
     
-def add_counter_group(data):
+def add_counter_group(data, counter):
     ndata = np.empty((data.shape[0], data.shape[1] + 1), dtype=data.dtype)
     for i, row in enumerate(data):
         key = "-".join(map(str, row))
@@ -174,7 +174,6 @@ class TestTransforms(unittest.TestCase):
         self.assertItemsEqual(result.to_narray().reshape(-1), np.zeros((10, 1)) + 5)
 
     def test_apply_row_iterlayer(self):
-        from ml.layers import IterLayer
         transforms = Transforms()
         transforms.add(linear)
         transforms.add(linear_p, b=10)
@@ -284,9 +283,9 @@ class TestTransforms(unittest.TestCase):
         classif.set_dataset(dataset)
         classif.train()
         classif.save(model_version="1")
-        #classif.scores().print_scores()
-        #transforms.destroy()
-        #classif.destroy()
+        classif.scores().print_scores()
+        transforms.destroy()
+        classif.destroy()
         dataset.destroy()
 
     def test_transforms_convert(self):
@@ -422,7 +421,6 @@ class TestTransforms(unittest.TestCase):
         self.assertItemsEqual(data[0], [121, 144, 169, 196])
 
     def test_transforms_apply(self):
-        global counter
         X = np.asarray([
             [1, 2], 
             [2, 3],
@@ -433,13 +431,11 @@ class TestTransforms(unittest.TestCase):
             [1, 1],
             [1, 2],
             [1, 2]], dtype=np.dtype("int"))
-        transforms = Transforms()
-        transforms.add(counter_group)
-        transforms.add(add_counter_group)
-        result = transforms.apply(X, chunks_size=2)
-        data = result.to_memory()
-        #print(data)
-        #print(counter)
+        it = IterLayer(X, shape=X.shape)
+        m = counter_group(it)
+        it = IterLayer(X, shape=X.shape)
+        data = add_counter_group(it, m)
+        print(data)
 
 
 if __name__ == '__main__':

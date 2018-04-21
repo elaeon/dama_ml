@@ -118,6 +118,14 @@ class TransformsFn(object):
             transforms.add(locate(fn), **params)
         return transforms
 
+    def iter_(self, data):
+        locate_fn = {}
+        for smx in data:
+            for fn_, params in self.transforms:
+                fn = locate_fn.setdefault(fn_, locate(fn_))
+                smx = fn(smx, **params)
+            yield smx
+
     def apply(self, data, chunks_size=258):
         """
         :type data: array
@@ -131,27 +139,8 @@ class TransformsFn(object):
             has_chunks = True
         elif isinstance(data, IterLayer):
             has_chunks = data.has_chunks
-
-        def iter_():
-            locate_fn = {}
-            for smx in data:
-                for fn_, params in self.transforms:
-                    fn = locate_fn.setdefault(fn_, locate(fn_))
-                    smx = fn(smx, **params)
-                yield smx
-
-        def apply_fn(fn, data, **params):
-            for smx in data:
-                yield fn(smx, **params)
-
-        def iter2_(data):
-            locate_fn = {}
-            for fn_, params in self.transforms:
-                fn = locate_fn.setdefault(fn_, locate(fn_))
-                data = apply_fn(fn, data, **params)
-            return data
         
-        return IterLayer(iter_(), shape=data.shape, chunks_size=chunks_size, 
+        return IterLayer(self.iter_(data), shape=data.shape, chunks_size=chunks_size, 
                     has_chunks=has_chunks)
 
 
