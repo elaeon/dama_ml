@@ -301,20 +301,31 @@ class Transforms(object):
 
 
 class Process(object):
-    def __init__(self, fn, name=None, path=""):
+    def __init__(self, data, name=None, path=""):
         self.name = name
-        self.fn = fn
         self.meta_path = path + self.module_cls_name() + "_" + self.name
+        self.data = self.save_data(data)
+        self.dtype = data.dtype
+
+    def save_data(self, data):
+        from ml.ds import Data
+        with Data(name="test", dataset_path="/tmp/") as ds:
+            ds.build_dataset(data)
 
     @classmethod
     def module_cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
-    def apply(self, data):
-        self.save(self.fn(data))
+    def process(self, fn, **params):
+        from ml.ds import Data
+        with Data(name="test", dataset_path="/tmp/") as ds:
+            self.save(fn(ds.to_iter(self.dtype), **params))
 
-    def map(self, fn, data):
-        return fn(data, self.load())
+    def map(self, fn):
+        from ml.ds import Data
+        with Data(name="test", dataset_path="/tmp/") as ds:
+            it = ds.to_iter(self.dtype)
+            return IterLayer(fn(it, self.load()), has_chunks=it.has_chunks, chunks_size=it.chunks_size)
 
     def load(self):
         pass

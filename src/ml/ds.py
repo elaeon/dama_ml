@@ -388,6 +388,9 @@ class Data(ReadWriteData):
         """
         return self._get_data('data')
 
+    def to_iter(self, dtype=dtype, chunks_size=258):
+        return IterLayer(self.data, shape=self.shape, dtype=dtype).to_chunks(chunks_size=chunks_size)
+
     def num_features(self):
         """
         return the number of features of the dataset
