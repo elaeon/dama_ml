@@ -421,6 +421,14 @@ class TestTransforms(unittest.TestCase):
         self.assertItemsEqual(data[0], [121, 144, 169, 196])
 
     def test_transforms_apply(self):
+        from ml.processing import Process
+        class P(Process):
+            def load(self):
+                return self.counter
+
+            def save(self, result):
+                self.counter = result
+
         X = np.asarray([
             [1, 2], 
             [2, 3],
@@ -432,10 +440,10 @@ class TestTransforms(unittest.TestCase):
             [1, 2],
             [1, 2]], dtype=np.dtype("int"))
         it = IterLayer(X, shape=X.shape)
-        m = counter_group(it)
+        cg = P(counter_group, name="test")
+        cg.apply(it)
         it = IterLayer(X, shape=X.shape)
-        data = add_counter_group(it, m)
-        print(data)
+        self.assertItemsEqual(cg.map(add_counter_group, it)[0], [1,2,4])
 
 
 if __name__ == '__main__':

@@ -118,7 +118,7 @@ class TransformsFn(object):
             transforms.add(locate(fn), **params)
         return transforms
 
-    def iter_(self, data):
+    def reduce(self, data):
         locate_fn = {}
         for smx in data:
             for fn_, params in self.transforms:
@@ -140,7 +140,7 @@ class TransformsFn(object):
         elif isinstance(data, IterLayer):
             has_chunks = data.has_chunks
         
-        return IterLayer(self.iter_(data), shape=data.shape, chunks_size=chunks_size, 
+        return IterLayer(self.reduce(data), shape=data.shape, chunks_size=chunks_size, 
                     has_chunks=has_chunks)
 
 
@@ -298,6 +298,29 @@ class Transforms(object):
         for transform in self.transforms:
             if hasattr(transform, 'destroy'):
                 transform.destroy()
+
+
+class Process(object):
+    def __init__(self, fn, name=None, path=""):
+        self.name = name
+        self.fn = fn
+        self.meta_path = path + self.module_cls_name() + "_" + self.name
+
+    @classmethod
+    def module_cls_name(cls):
+        return "{}.{}".format(cls.__module__, cls.__name__)
+
+    def apply(self, data):
+        self.save(self.fn(data))
+
+    def map(self, fn, data):
+        return fn(data, self.load())
+
+    def load(self):
+        pass
+
+    def save(self, result):
+        pass
 
 
 class Fit(object):
