@@ -309,8 +309,9 @@ class Process(object):
 
     def save_data(self, data):
         from ml.ds import Data
-        with Data(name="test", dataset_path="/tmp/") as ds:
+        with Data(name="test", dataset_path="/tmp/", rewrite=True) as ds:
             ds.build_dataset(data)
+        self.ds = ds
 
     @classmethod
     def module_cls_name(cls):
@@ -321,11 +322,10 @@ class Process(object):
         with Data(name="test", dataset_path="/tmp/") as ds:
             self.save(fn(ds.to_iter(self.dtype), **params))
 
-    def map(self, fn):
-        from ml.ds import Data
-        with Data(name="test", dataset_path="/tmp/") as ds:
-            it = ds.to_iter(self.dtype)
-            return IterLayer(fn(it, self.load()), has_chunks=it.has_chunks, chunks_size=it.chunks_size)
+    def map(self, fn, **params):
+        it = self.ds.to_iter(self.dtype)
+        return IterLayer(fn(it, self.load(), **params), length=self.ds.shape[0],
+                has_chunks=it.has_chunks, chunks_size=it.chunks_size)
 
     def load(self):
         pass
