@@ -139,6 +139,7 @@ class TransformsFn(object):
             has_chunks = True
         elif isinstance(data, IterLayer):
             has_chunks = data.has_chunks
+            chunks_size = data.chunks_size
         
         return IterLayer(self.reduce(data), shape=data.shape, chunks_size=chunks_size, 
                     has_chunks=has_chunks)
@@ -320,10 +321,10 @@ class Process(object):
     def process(self, fn, **params):
         from ml.ds import Data
         with Data(name="test", dataset_path="/tmp/") as ds:
-            self.save(fn(ds.to_iter(self.dtype), **params))
+            self.save(fn(ds.to_iter(self.dtype, chunks_size=1000), **params))
 
     def map(self, fn, **params):
-        it = self.ds.to_iter(self.dtype)
+        it = self.ds.to_iter(self.dtype, chunks_size=1000)
         return IterLayer(fn(it, self.load(), **params), length=self.ds.shape[0],
                 has_chunks=it.has_chunks, chunks_size=it.chunks_size)
 

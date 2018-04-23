@@ -127,7 +127,6 @@ class ReadWriteData(object):
             return None
 
     def chunks_writer(self, name, data, init=0):
-        from ml.utils.seq import grouper_chunk
         from tqdm import tqdm
         log.info("Writing with chunks size {}".format(data.chunks_size))
         end = init
@@ -159,6 +158,18 @@ class ReadWriteData(object):
                     type_, self.dtype))
             init = end
         return end
+
+    def chunks_writer_split(self, data_key, labels_key, data, labels_column):
+        from tqdm import tqdm
+        log.info("Writing with chunks size {}".format(data.chunks_size))
+        #end = init
+        if data.chunks_size != 0:
+            total_data = int(round(data.shape[0] / float(data.chunks_size), 0))
+        else:
+            total_data = int(data.shape[0])
+        for smx in tqdm(data, total=total_data):
+            print(smx)
+            break
 
     def create_route(self):
         """
@@ -486,7 +497,7 @@ class Data(ReadWriteData):
         """
         data = self.processing(data, apply_transforms=self.apply_transforms,
                             chunks_size=chunks_size)
-        self._set_space_shape('data', data.shape, data.global_dtype)
+        self._set_space_shape('data', data.shape, dtype=data.global_dtype)
         end = self.chunks_writer("/data/data", data)
         self._set_space_fmtypes(self.num_features())
         self.build_fmtypes()
@@ -733,6 +744,14 @@ class DataLabel(Data):
         self.chunks_writer("/data/labels", labels)
         self._set_space_fmtypes(self.num_features())
         self.build_fmtypes()
+        self.md5 = self.calc_md5()
+
+    def from_data(self, data, labels, chunks_size=258):
+        data = self.processing(data, apply_transforms=self.apply_transforms, 
+            chunks_size=chunks_size)
+        self._set_space_shape('data', data.shape, data.global_dtype)
+        self._set_space_shape('labels', (data.shape[0],), data.global_dtype)
+        self.chunks_writer_split("/data/data", "/data/labels", data, labels)
         self.md5 = self.calc_md5()
 
     def empty(self, name, apply_transforms=False, dataset_path=None,
