@@ -24,23 +24,24 @@ def run(args):
                 meta = load_metadata(model_path)
                 if args.info == meta.get("model_name", None) or\
                     args.info == meta.get("group_name", None):
-                        model_version_path = os.path.join(
-                            settings["checkpoints_path"], clf, model_name, "version.2", "meta.xmeta")
-                        meta_v = load_metadata(model_version_path)
-                        measure = "logloss" if not args.measure else args.measure
-                        try:
-                            scores = meta_v["score"]
-                            if scores is not None:
-                                selected_score = scores[measure]
-                                score = selected_score['values'][0]
-                                order_m = order_m or selected_score['reverse']
-                            else:
+                        for version in meta.get("model", {}).get("versions", ["1"]):
+                            model_version_path = os.path.join(
+                                settings["checkpoints_path"], clf, model_name, "version."+version, "meta.xmeta")
+                            meta_v = load_metadata(model_version_path)
+                            measure = "logloss" if not args.measure else args.measure
+                            try:
+                                scores = meta_v["score"]
+                                if scores is not None:
+                                    selected_score = scores[measure]
+                                    score = selected_score['values'][0]
+                                    order_m = order_m or selected_score['reverse']
+                                else:
+                                    score = None
+                            except KeyError:
                                 score = None
-                        except KeyError:
-                            score = None
 
-                        table.append([clf, model_name, "2", 
-                                    meta.get("group_name", None), score])
+                            table.append([clf, model_name, version, 
+                                        meta.get("group_name", None), score])
 
                         if args.meta:
                             print(meta)

@@ -38,18 +38,19 @@ class BaseAe(BaseModel):
             self.original_dataset_path = dataset.dataset_path
             self.original_dataset_name = dataset.name
             self.train_ds, self.test_ds = self.reformat_all(dataset)
+        self.save_meta(keys="model")
 
     def load(self, model_version):
         self.model_version = model_version
         self.test_ds = self.get_dataset()
         self.train_ds = self.test_ds
 
-    def save(self, model_version="1"):
-        self.model_version = model_version
-        if self.check_point_path is not None:
-            path = self.make_model_version_file()
-            self.model.save('{}.{}'.format(path, self.ext))
-            self.save_meta(keys=["model", "train"])
+    #def save(self, model_version="1"):
+    #    self.model_version = model_version
+    #    if self.check_point_path is not None:
+    #        path = self.make_model_version_file()
+    #        self.model.save('{}.{}'.format(path, self.ext))
+    #        self.save_meta(keys=["model", "train"])
 
     def reformat_all(self, dataset):
         if dataset.module_cls_name() == DataLabel.module_cls_name() or\

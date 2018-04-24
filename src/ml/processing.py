@@ -302,29 +302,33 @@ class Transforms(object):
 
 
 class Process(object):
-    def __init__(self, data, name=None, path=""):
+    def __init__(self, data, name=None, path="/tmp/", rewrite=False):
         self.name = name
+        self.dataset_path = path
         self.meta_path = path + self.module_cls_name() + "_" + self.name
-        self.data = self.save_data(data)
+        self.save_data(data, rewrite=rewrite)
         self.dtype = data.dtype
 
-    def save_data(self, data):
+    def save_data(self, data, rewrite):
         from ml.ds import Data
-        with Data(name="test", dataset_path="/tmp/", rewrite=True) as ds:
-            ds.build_dataset(data)
+        if rewrite:
+            with Data(name=self.name, dataset_path=self.dataset_path, rewrite=True) as ds:
+                ds.build_dataset(data)
+        else:
+            ds = Data.original_ds(name=self.name, dataset_path=self.dataset_path)
         self.ds = ds
 
     @classmethod
     def module_cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
-    def process(self, fn, **params):
+    def process(self, fn, chunks_size=258, **params):
         from ml.ds import Data
-        with Data(name="test", dataset_path="/tmp/") as ds:
-            self.save(fn(ds.to_iter(self.dtype, chunks_size=1000), **params))
+        with self.ds:
+            self.save(fn(self.ds.to_iter(self.dtype, chunks_size=chunks_size), **params))
 
-    def map(self, fn, **params):
-        it = self.ds.to_iter(self.dtype, chunks_size=1000)
+    def map(self, fn, chunks_size=258, **params):
+        it = self.ds.to_iter(self.dtype, chunks_size=chunks_size)
         return IterLayer(fn(it, self.load(), **params), length=self.ds.shape[0],
                 has_chunks=it.has_chunks, chunks_size=it.chunks_size)
 

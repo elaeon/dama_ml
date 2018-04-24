@@ -130,8 +130,10 @@ class ReadWriteData(object):
         from tqdm import tqdm
         log.info("Writing with chunks size {}".format(data.chunks_size))
         end = init
-        if data.chunks_size != 0:
+        if data.chunks_size != 0 and data.chunks_size < data.shape[0]:
             total_data = int(round(data.shape[0] / float(data.chunks_size), 0))
+        elif data.chunks_size > data.shape[0]:
+            total_data = 1
         else:
             total_data = int(data.shape[0])
         for smx in tqdm(data, total=total_data):
@@ -149,6 +151,7 @@ class ReadWriteData(object):
 
             try:
                 self.f[name][init:end] = array
+                init = end
             except TypeError as e:
                 if self.dtype == "|O":
                     type_ = "string"
@@ -156,20 +159,44 @@ class ReadWriteData(object):
                     type_ = self.dtype
                 raise TypeError("All elements in array must be of type '{}' but found '{}'".format(
                     type_, self.dtype))
-            init = end
         return end
 
     def chunks_writer_split(self, data_key, labels_key, data, labels_column):
         from tqdm import tqdm
         log.info("Writing with chunks size {}".format(data.chunks_size))
-        #end = init
-        if data.chunks_size != 0:
+        if data.chunks_size != 0 and data.chunks_size < data.shape[0]:
             total_data = int(round(data.shape[0] / float(data.chunks_size), 0))
+        elif data.chunks_size > data.shape[0]:
+            total_data = 1
         else:
             total_data = int(data.shape[0])
+        init = 0
+        end = init
         for smx in tqdm(data, total=total_data):
-            print(smx)
-            break
+            if hasattr(smx, 'shape') and len(smx.shape) >= 1 and data.has_chunks:
+                end += smx.shape[0]
+            else:
+                end += 1
+
+            if isinstance(smx, pd.DataFrame):
+                #array_data = smx[smx.columns.difference([labels_column])].values
+                array_data = smx.drop([labels_column], axis=1).values
+                array_labels = smx[labels_column].values
+            else:
+                array_data = np.delete(smx, labels_column)
+                array_labels = smx[:, labels_column]
+
+            try:
+                self.f[data_key][init:end] = array_data
+                self.f[labels_key][init:end] = array_labels
+                init = end
+            except TypeError as e:
+                if self.dtype == "|O":
+                    type_ = "string"
+                else:
+                    type_ = self.dtype
+                raise TypeError("All elements in array must be of type '{}' but found '{}'".format(
+                    type_, self.dtype))
 
     def create_route(self):
         """
@@ -400,7 +427,19 @@ class Data(ReadWriteData):
         return self._get_data('data')
 
     def to_iter(self, dtype=dtype, chunks_size=258):
-        return IterLayer(self.data, shape=self.shape, dtype=dtype).to_chunks(chunks_size=chunks_size)
+        def iter_(data):
+            c = 0
+            init = 0
+            end = chunks_size
+            while c < self.data.shape[0] / float(chunks_size):
+                for e in self.data[init:end]:
+                    yield e
+                init = end
+                end += chunks_size
+                c += 1
+
+        #return IterLayer(self.data, shape=self.shape, dtype=dtype).to_chunks(chunks_size=chunks_size)
+        return IterLayer(iter_(self.data), shape=self.shape, dtype=dtype).to_chunks(chunks_size=chunks_size)
 
     def num_features(self):
         """
@@ -749,7 +788,8 @@ class DataLabel(Data):
     def from_data(self, data, labels, chunks_size=258):
         data = self.processing(data, apply_transforms=self.apply_transforms, 
             chunks_size=chunks_size)
-        self._set_space_shape('data', data.shape, data.global_dtype)
+        data_shape = list(data.shape[:-1]) + [data.shape[-1] - 1]
+        self._set_space_shape('data', data_shape, data.global_dtype)
         self._set_space_shape('labels', (data.shape[0],), data.global_dtype)
         self.chunks_writer_split("/data/data", "/data/labels", data, labels)
         self.md5 = self.calc_md5()

@@ -69,12 +69,17 @@ class DataDrive(object):
     def save_meta(self, keys=None):
         from ml.ds import save_metadata
         if self.check_point_path is not None and keys is not None:
-            metadata = self._metadata(keys)
-            if "model" in metadata:
+            metadata_tmp = self.load_meta()
+            if "model" in keys:
                 self.path_m = self.make_model_file()
+                metadata = self._metadata(["model"])   
+                if not self.model_version in metadata["model"]["versions"] and\
+                    self.model_version is not None:
+                    metadata_tmp["model"]["versions"].append(self.model_version)
+                    metadata["model"]["versions"] = metadata_tmp["model"]["versions"]
                 save_metadata(self.path_m+".xmeta", metadata["model"])
-            if "train" in metadata:
-                self.path_mv = self.make_model_version_file()
+            if "train" in keys:
+                metadata = self._metadata(["train"])
                 save_metadata(self.path_mv+".xmeta", metadata["train"])
 
     def load_meta(self):
@@ -83,8 +88,11 @@ class DataDrive(object):
             metadata = {}
             self.path_m = self.make_model_file()
             metadata["model"] = load_metadata(self.path_m+".xmeta")
-            self.path_mv = self.make_model_version_file()
-            metadata["train"] = load_metadata(self.path_mv+".xmeta")
+            if self.model_version is not None:
+                self.path_mv = self.make_model_version_file()
+                metadata["train"] = load_metadata(self.path_mv+".xmeta")
+            else:
+                metadata["train"] = {}
             return metadata
 
     def make_model_file(self):
@@ -200,7 +208,8 @@ class BaseModel(DataDrive):
                 "group_name": self.group_name,
                 "model_module": self.module_cls_name(),
                 "model_name": self.model_name,
-                "model_path": self.path_m
+                "model_path": self.path_m,
+                "versions": []
             }
 
     def metadata_train(self):
@@ -243,7 +252,11 @@ class BaseModel(DataDrive):
                             save_fn=None)
 
     def save(self, model_version="1"):
-        pass
+        self.model_version = model_version
+        if self.check_point_path is not None:
+            self.path_mv = self.make_model_version_file()
+            self.model.save('{}.{}'.format(self.path_mv, self.ext))
+            self.save_meta(keys=["model", "train"])
 
     def has_model_file(self):
         import os
@@ -252,9 +265,9 @@ class BaseModel(DataDrive):
 
     def load_model(self):        
         self.preload_model()
-        if self.check_point_path is not None:
-            path = self.make_model_version_file()
-            self.model.load('{}.{}'.format(path, self.ext))
+        if self.check_point_path is not None and self.model_version is not None:
+            self.path_mv = self.make_model_version_file()
+            self.model.load('{}.{}'.format(self.path_mv, self.ext))
 
     def _predict(self, data, raw=False):
         pass
@@ -299,13 +312,6 @@ class SupervicedModel(BaseModel):
             self.train_ds, self.test_ds, self.validation_ds = self.reformat_all(dataset)
         self.save_meta(keys="model")
 
-    def save(self, model_version="1"):
-        self.model_version = model_version
-        if self.check_point_path is not None:
-            path = self.make_model_version_file()
-            self.model.save('{}.{}'.format(path, self.ext))
-            self.save_meta(keys=["model", "train"])
-
     def metadata_model(self):
         with self.test_ds, self.train_ds, self.validation_ds:
             return {
@@ -322,7 +328,8 @@ class SupervicedModel(BaseModel):
                 "group_name": self.group_name,
                 "model_module": self.module_cls_name(),
                 "model_name": self.model_name,
-                "model_path": self.path_m
+                "model_path": self.path_m,
+                "versions": []
             }
 
     def get_train_validation_ds(self):

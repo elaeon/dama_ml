@@ -90,6 +90,25 @@ class TestRegSKL(unittest.TestCase):
         dataset.destroy()
         reg.destroy()
 
+    def test_add_version(self):
+        X = np.random.rand(100, 1)
+        Y = np.random.rand(100)
+        dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        with dataset:
+            dataset.build_dataset(X, Y)
+        reg = RandomForestRegressor(
+            model_name="test", 
+            check_point_path="/tmp/")
+        reg.set_dataset(dataset)
+        reg.train()
+        reg.save(model_version="1")
+        reg.save(model_version="2")
+        reg.save(model_version="3")
+        metadata = reg.load_meta()
+        self.assertItemsEqual(metadata["model"]["versions"], ["1", "2", "3"])
+        dataset.destroy()
+        reg.destroy()
+
 
 if __name__ == '__main__':
     unittest.main()

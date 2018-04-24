@@ -156,7 +156,8 @@ class VAE(Keras):
         
     def _metadata(self, keys={}):
         meta = super(VAE, self)._metadata(keys=keys)
-        meta["model"]["intermediate_dim"] = self.intermediate_dim
+        if "model" in meta:
+            meta["model"]["intermediate_dim"] = self.intermediate_dim
         return meta
 
     def get_dataset(self):
@@ -238,7 +239,8 @@ class DAE(Keras):
         
     def _metadata(self, keys={}):
         meta = super(DAE, self)._metadata(keys=keys)
-        meta["model"]["intermediate_dim"] = self.intermediate_dim
+        if "model" in meta:
+            meta["model"]["intermediate_dim"] = self.intermediate_dim
         return meta
 
     def get_dataset(self):
