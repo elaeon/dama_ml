@@ -161,12 +161,15 @@ class IterLayer(object):
 
         if not isinstance(dtype, list):
             for smx in grouper_chunk(chunks_size, self):
-                smx_a = np.empty(chunk_shape, dtype=np.dtype(dtype))
+                smx_a = np.empty(chunk_shape, dtype=dtype)
                 for i, row in enumerate(smx):
-                    try:
-                        smx_a[i] = row
-                    except ValueError:
+                    #try:
+                    if hasattr(row, '__iter__') and len(row) == 1:
                         smx_a[i] = row[0]
+                    else:
+                        smx_a[i] = row
+                    #except ValueError:
+                    #    smx_a[i] = row[0]
                 if i + 1 < chunks_size:
                     yield smx_a[:i+1]
                 else:

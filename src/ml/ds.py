@@ -786,13 +786,16 @@ class DataLabel(Data):
         self.md5 = self.calc_md5()
 
     def from_data(self, data, labels, chunks_size=258):
-        data = self.processing(data, apply_transforms=self.apply_transforms, 
-            chunks_size=chunks_size)
-        data_shape = list(data.shape[:-1]) + [data.shape[-1] - 1]
-        self._set_space_shape('data', data_shape, data.global_dtype)
-        self._set_space_shape('labels', (data.shape[0],), data.global_dtype)
-        self.chunks_writer_split("/data/data", "/data/labels", data, labels)
-        self.md5 = self.calc_md5()
+        if isinstance(labels, str):
+            data = self.processing(data, apply_transforms=self.apply_transforms, 
+                chunks_size=chunks_size)
+            data_shape = list(data.shape[:-1]) + [data.shape[-1] - 1]
+            self._set_space_shape('data', data_shape, data.global_dtype)
+            self._set_space_shape('labels', (data.shape[0],), data.global_dtype)
+            self.chunks_writer_split("/data/data", "/data/labels", data, labels)
+            self.md5 = self.calc_md5()
+        else:
+            self.build_dataset(data, labels, chunks_size=chunks_size)
 
     def empty(self, name, apply_transforms=False, dataset_path=None,
                 transforms=None):
