@@ -185,7 +185,7 @@ class BaseModel(DataDrive):
         with self.test_ds:
             return self.test_ds.num_features()
 
-    def predict(self, data, raw=False, transform=True, chunks_size=258):
+    def predict(self, data, output=None, transform=True, chunks_size=258):
         def fn(x, s=None, t=True):
             with self.test_ds:
                 return self.test_ds.processing(x, apply_transforms=t, chunks_size=chunks_size)
@@ -194,7 +194,7 @@ class BaseModel(DataDrive):
             self.load_model()
 
         output_shape = tuple([data.shape[0], self.labels_dim])
-        return IterLayer(self._predict(fn(data, t=transform), raw=raw), shape=output_shape)
+        return IterLayer(self._predict(fn(data, t=transform), output=output), shape=output_shape)
 
     def metadata_model(self):
         with self.test_ds:
@@ -269,7 +269,7 @@ class BaseModel(DataDrive):
             self.path_mv = self.make_model_version_file()
             self.model.load('{}.{}'.format(self.path_mv, self.ext))
 
-    def _predict(self, data, raw=False):
+    def _predict(self, data, output=None):
         pass
 
     def train(self, batch_size=0, num_steps=0, n_splits=None, obj_fn=None, model_params={}):

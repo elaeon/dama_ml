@@ -40,39 +40,39 @@ class ClassifModel(SupervicedModel):
             test_data = self.test_ds.data[:]
             test_labels = self.test_ds.labels[:]
 
-        predictions = self.predict(test_data, raw=measures.has_uncertain(), 
-            transform=False, chunks_size=0).to_memory()
-        measures.set_data(predictions, test_labels, self.numerical_labels2classes)
-        log.info("Getting scores")
+        for output in measures.outputs():
+            predictions = self.predict(test_data, output=output, 
+                transform=False, chunks_size=0).to_memory()
+            measures.set_data(predictions, test_labels, output=output)
         return measures.to_list()
 
-    def confusion_matrix(self):
-        from tqdm import tqdm
-        with self.test_ds:
-            test_data = self.test_ds.data[:]
-            test_labels = self.test_ds.labels[:]
-        predictions = self.predict(test_data, raw=False, 
-            transform=False, chunks_size=0)
-        measure = metrics.Measure(np.asarray(list(tqdm(predictions, 
-                        total=test_labels.shape[0]))),
-                        test_labels, 
-                        labels2classes=self.numerical_labels2classes,
-                        name=self.__class__.__name__)
-        measure.add(metrics.confusion_matrix, greater_is_better=None, uncertain=False)
-        return measure.to_list()
+    #def confusion_matrix(self):
+    #    from tqdm import tqdm
+    #    with self.test_ds:
+    #        test_data = self.test_ds.data[:]
+    #        test_labels = self.test_ds.labels[:]
+    #    predictions = self.predict(test_data, raw=False, 
+    #        transform=False, chunks_size=0)
+    #    measure = metrics.Measure(np.asarray(list(tqdm(predictions, 
+    #                    total=test_labels.shape[0]))),
+    #                    test_labels, 
+    #                    labels2classes=self.numerical_labels2classes,
+    #                    name=self.__class__.__name__)
+    #    measure.add(metrics.confusion_matrix, greater_is_better=None, uncertain=False)
+    #    return measure.to_list()
 
-    def only_is(self, op):
-        with self.test_ds:
-            test_data = self.test_ds.data[:]
-            test_labels = self.test_ds.labels[:]
-        predictions = np.asarray(list(self.predict(test_data, raw=False, transform=False)))
-        data = zip(*filter(
-                        lambda x: op(x[1], x[2]), 
-                        zip(test_data, 
-                            self.numerical_labels2classes(predictions), 
-                            self.numerical_labels2classes(test_labels))))
-        if len(data) > 0:
-            return np.array(data[0]), data[1], data[2]
+    #def only_is(self, op):
+    #    with self.test_ds:
+    #        test_data = self.test_ds.data[:]
+    #        test_labels = self.test_ds.labels[:]
+    #    predictions = np.asarray(list(self.predict(test_data, raw=False, transform=False)))
+    #    data = zip(*filter(
+    #                    lambda x: op(x[1], x[2]), 
+    #                    zip(test_data, 
+    #                        self.numerical_labels2classes(predictions), 
+    #                        self.numerical_labels2classes(test_labels))))
+    #    if len(data) > 0:
+    #        return np.array(data[0]), data[1], data[2]
 
     def erroneous_clf(self):
         import operator
@@ -99,8 +99,8 @@ class ClassifModel(SupervicedModel):
         else:
             return labels
 
-    def convert_labels(self, labels, raw=False):
-        if raw is True:
+    def convert_labels(self, labels, output=None):
+        if output is 'uncertain' or output is 'n_dim':
             for chunk in labels:
                 yield chunk
         else:
@@ -160,17 +160,17 @@ class ClassifModel(SupervicedModel):
 
             return dl_train, dl_test, dl_validation
 
-    def _predict(self, data, raw=False):
+    def _predict(self, data, output=None):
         prediction = self.model.predict(data)
-        return self.convert_labels(prediction, raw=raw)
+        return self.convert_labels(prediction, output=output)
 
 
 
 class SKL(ClassifModel):
-    def convert_label(self, label, raw=False):
-        if raw is True:
+    def convert_label(self, label, output=None):
+        if output is 'n_dim':
             return (np.arange(self.num_labels) == label).astype(np.float32)
-        elif raw is None:
+        elif output is None:
             return self.position_index(label)
         else:
             return self.le.inverse_transform(self.position_index(label))
@@ -254,9 +254,10 @@ class TFL(ClassifModel):
                             load_fn=self.load_fn,
                             save_fn=model.save)
 
-    def predict(self, data, raw=False, transform=True, chunks_size=1):
+    def predict(self, data, output=None, transform=True, chunks_size=1):
         with tf.Graph().as_default():
-            return super(TFL, self).predict(data, raw=raw, transform=transform, chunks_size=chunks_size)
+            return super(TFL, self).predict(data, output=output, transform=transform, 
+                chunks_size=chunks_size)
 
     def train(self, batch_size=10, num_steps=1000, n_splits=None):
         with tf.Graph().as_default():

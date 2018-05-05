@@ -12,10 +12,10 @@ log.addHandler(handler)
 log.setLevel(int(settings["loglevel"]))
 
 
-def greater_is_better_fn(reverse, uncertain):
+def greater_is_better_fn(reverse, output):
     def view(fn):
         fn.reverse = reverse
-        fn.uncertain = uncertain
+        fn.output = output
         return fn
     return view
 
@@ -34,46 +34,28 @@ class Measure(object):
     :param labels2classes_fn: function for transform the labels to classes
     """
 
-    def __init__(self, predictions=None, labels=None, labels2classes=None, name=None):
-        self.set_data(predictions, labels, labels2classes)
+    def __init__(self, predictions=None, labels=None, name=None):
+        self.predictions = {}
+        self.set_data(predictions, labels)
         self.name = name
         self.measures = []
-        self.uncertain = False
 
-    def add(self, measure, greater_is_better=True, uncertain=False):
-        self.uncertain = self.uncertain or uncertain
-        self.measures.append(greater_is_better_fn(greater_is_better, uncertain)(measure))
+    def add(self, measure, greater_is_better=True, output=None):
+        self.measures.append(greater_is_better_fn(greater_is_better, output)(measure))
 
-    def set_data(self, predictions, labels, labels2classes):
+    def set_data(self, predictions, labels, output=None):
         self.labels = labels
-        self.predictions = predictions
-        if labels2classes is None:
-            self.labels2classes = lambda x: x
-        else:
-            self.labels2classes = labels2classes
+        self.predictions[output] = predictions
+
+    def outputs(self):
+        groups = {}
+        for measure in self.measures:
+            groups[str(measure.output)] = measure.output
+        return groups.values()
 
     def scores(self):
-        if self.has_discrete():
-            labels = self.labels2classes(self.labels)
-            predictions_c = self.labels2classes(self.predictions)
-
         for measure in self.measures:
-            if measure.uncertain:
-                yield measure(self.labels, self.predictions)
-            else:
-                yield measure(labels, predictions_c)
-
-    def has_uncertain(self):
-        for measure in self.measures:
-            if measure.uncertain is True:
-                return True
-        return False
-
-    def has_discrete(self):
-        for measure in self.measures:
-            if measure.uncertain is False:
-                return True
-        return False
+            yield measure(self.labels, self.predictions[measure.output])
 
     def to_list(self):
         list_measure = ListMeasure(headers=[""]+[fn.__name__ for fn in self.measures],
@@ -85,21 +67,21 @@ class Measure(object):
     def make_metrics(self, measures=None, name=None):
         measure = Measure(name=name)
         if measures is None:
-            measure.add(accuracy, greater_is_better=True, uncertain=False)
-            measure.add(precision, greater_is_better=True, uncertain=False)
-            measure.add(recall, greater_is_better=True, uncertain=False)
-            measure.add(f1, greater_is_better=True, uncertain=False)
-            measure.add(auc, greater_is_better=True, uncertain=False)
-            measure.add(logloss, greater_is_better=False, uncertain=True)
+            measure.add(accuracy, greater_is_better=True, output='discrete')
+            measure.add(precision, greater_is_better=True, output='discrete')
+            measure.add(recall, greater_is_better=True, output='discrete')
+            measure.add(f1, greater_is_better=True, output='discrete')
+            measure.add(auc, greater_is_better=True, output='discrete')
+            measure.add(logloss, greater_is_better=False, output='n_dim')
         elif isinstance(measures, str):
             import sys
             m = sys.modules['ml.clf.measures']
             if hasattr(m, measures) and measures != 'logloss':
                 measure.add(getattr(m, measures), greater_is_better=True, 
-                            uncertain=False)
+                            output='discrete')
             elif measures == 'logloss':
                 measure.add(getattr(m, measures), greater_is_better=False, 
-                            uncertain=True)
+                            output='n_dim')
         return measure
 
 
@@ -233,7 +215,7 @@ class ListMeasure(object):
         order = [v["reverse"] for k, v in data_dict.items()]
         return ListMeasure(headers=headers, measures=measures, order=order)
 
-    def print_scores(self, order_column=None):
+    def to_table(self, order_column=None):
         """
         :type order_column: string
         :param order_column: order the matrix by the order_column name that you pass
@@ -243,9 +225,12 @@ class ListMeasure(object):
 
         print the matrix
         """
-        from ml.utils.order import order_table_print
+        from ml.utils.order import order_table
         self.drop_empty_columns()
-        order_table_print(self.headers, self.measures, order_column, natural_order=self.order)
+        return order_table(self.headers, self.measures, order_column, natural_order=self.order)
+
+    def __str__(self):
+        return self.to_table()
 
     def empty_columns(self):
         """

@@ -59,12 +59,13 @@ class TestSKL(unittest.TestCase):
         classif.destroy()
         self.assertEqual(scores_table.headers, ['', 'f1', 'auc', 'recall', 'precision', 
             'logloss', 'accuracy'])
+        self.assertEqual(scores_table.measures[0][5] < 1, True)
 
     def test_new_scores(self):
         from ml.utils.numeric_functions import gini_normalized
         from ml.clf.measures import Measure
         metrics = Measure.make_metrics(None)
-        metrics.add(gini_normalized, greater_is_better=True, uncertain=True)
+        metrics.add(gini_normalized, greater_is_better=True, output='uncertain')
         classif = RandomForest(
             model_name="test", 
             check_point_path="/tmp/",
@@ -206,7 +207,7 @@ class TestGrid(unittest.TestCase):
         with self.original_dataset:
             data = self.original_dataset.data[:1]
 
-        for p in classif.predict(data, raw=True, transform=True):
+        for p in classif.predict(data, output='uncertain', transform=True):
             self.assertEqual(p.shape, (1, 2))
         classif.destroy()
 
@@ -217,7 +218,7 @@ class TestGrid(unittest.TestCase):
         from ml.clf.measures import Measure
 
         metrics = Measure.make_metrics(None)
-        metrics.add(gini_normalized, greater_is_better=True, uncertain=True)
+        metrics.add(gini_normalized, greater_is_better=True, output='uncertain')
 
         rf = RandomForest(model_name="test_rf")
         rf.set_dataset(self.original_dataset)
@@ -266,7 +267,7 @@ class TestGrid(unittest.TestCase):
         with self.original_dataset:
             data = self.original_dataset.data[:1]
 
-        for p in classif.predict(data, raw=False, transform=True):
+        for p in classif.predict(data, output=None, transform=True):
             self.assertEqual(type(p), np.dtype('int'))
         dataset.destroy()
         classif.destroy()
@@ -400,7 +401,7 @@ class TestXgboost(unittest.TestCase):
             check_point_path="/tmp/")
         classif.load(model_version="1")
         with self.dataset:
-            predict = classif.predict(self.dataset.data, transform=False, raw=False)
+            predict = classif.predict(self.dataset.data, transform=False, output=None)
             self.assertEqual(len(list(predict)), 100)
         classif.destroy()
 
@@ -461,7 +462,7 @@ class TestLightGBM(unittest.TestCase):
             check_point_path="/tmp/")
         classif.load(model_version=self.model_version)
         with self.dataset:
-            predict = classif.predict(self.dataset.data, transform=False, raw=False)
+            predict = classif.predict(self.dataset.data, transform=False, output=None)
             self.assertEqual(len(list(predict)), 100)
         classif.destroy()
 

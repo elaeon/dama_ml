@@ -28,7 +28,6 @@ class TestListMeasure(unittest.TestCase):
 
     def test_list_measure_to_dict(self):
         list_measure_1_2 = self.list_measure1 + self.list_measure2
-        #list_measure_1_2.print_scores()
         self.assertEqual(list_measure_1_2.measures_to_dict(), 
             {'M1': {'values': [1, 0.5], 'reverse': False}, 
             'Name': {'values': ['Row1', 'Row2'], 'reverse': False}})
@@ -40,7 +39,6 @@ class TestListMeasure(unittest.TestCase):
         list_measure.drop_empty_columns()
         self.assertEqual(list_measure.headers, ["Name", "M2"])
         self.assertEqual(list_measure.measures, [["Row1", 0], ["Row2", None]]) 
-        #list_measure.print_scores()
 
 
 class TestMeasure(unittest.TestCase):
@@ -85,6 +83,16 @@ class TestMeasure(unittest.TestCase):
         measure.add(gini_normalized)
         metrics = [round(v, 2) for v in list(measure.scores())]
         self.assertEqual(metrics, [0.59])
+
+    def test_output(self):
+        from ml.clf.measures import accuracy, precision, f1
+        from ml.utils.numeric_functions import gini_normalized
+        measure = Measure(self.pred_l, self.labels, name="test0")
+        measure.add(accuracy, output="discrete")
+        measure.add(precision, output="discrete")
+        measure.add(gini_normalized, output="uncertain")
+        measure.add(f1, output=None)
+        self.assertItemsEqual(measure.outputs(), ['discrete', None, 'uncertain'])
 
 
 if __name__ == '__main__':

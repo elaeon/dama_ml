@@ -85,8 +85,9 @@ class Grid(DataDrive):
 
         with self.classifs[0].test_ds as test_ds:
             test_labels = test_ds.labels[:]
-        predictions = self.predict_test(raw=measures.has_uncertain(), chunks_size=0).to_memory()
-        measures.set_data(predictions, test_labels, self.numerical_labels2classes)
+        for output in measures.outputs():
+            predictions = self.predict_test(output=output, chunks_size=0).to_memory()
+            measures.set_data(predictions, test_labels, output=output)
         list_measure = measures.to_list()
         if all_clf is True:
             return list_measure + self.all_clf_scores(measures=measures)
@@ -149,20 +150,20 @@ class Grid(DataDrive):
         best = self.ordered_best_predictors(measure=measure)[0].counter
         return best
 
-    def predict_test(self, raw=False, chunks_size=258):
+    def predict_test(self, output=None, chunks_size=258):
         def iter_():
             for classif in self.classifs:
                 with classif.test_ds as test_ds:
                     test_data = test_ds.data[:]
-                yield classif.predict(test_data, raw=raw, transform=False, 
+                yield classif.predict(test_data, output=output, transform=False, 
                                         chunks_size=chunks_size)
 
         return self.output_layer(iter_)
 
-    def predict(self, data, raw=False, transform=True, chunks_size=258):
+    def predict(self, data, output=None, transform=True, chunks_size=258):
         def iter_():
             for classif in self.classifs:
-                yield classif.predict(data, raw=raw, transform=transform, 
+                yield classif.predict(data, output=output, transform=transform, 
                                     chunks_size=chunks_size)
         return self.output_layer(iter_)
 

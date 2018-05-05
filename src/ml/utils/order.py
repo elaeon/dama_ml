@@ -34,7 +34,7 @@ def build_blocks(list_2d, block_size, index):
     return blocks
 
 
-def order_table_print(headers, table, order_column, natural_order=None):
+def order_table(headers, table, order_column, natural_order=None):
     """
     :type natural_order: list
     :param natural_order: define the order for each column.
@@ -58,9 +58,7 @@ def order_table_print(headers, table, order_column, natural_order=None):
             reverse = True
 
         table = sorted(table, key=lambda x: x[order_index], reverse=reverse)
-        print(tabulate(table, headers))
-        print("")
-        print("")
+        return tabulate(table, headers)
 
 
 def order_from_ordered(ordered, data):

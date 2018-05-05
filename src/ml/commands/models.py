@@ -63,16 +63,16 @@ def run(args):
     else:
         headers = ["classif", "model name", "version", "dataset", "group"]
         table = []
-        for clf, models_name_v in models_path.items():
-            for name_version in models_name_v:
-                meta = DataDrive.read_meta(None, os.path.join(
-                    settings["checkpoints_path"], clf, name_version, name_version))
-                try:
-                    if meta is not None:
-                        name, version = name_version.split(".")
-                        table.append([clf, name, version, meta.get("dataset_name", None),
+        for clf in os.listdir(settings["checkpoints_path"]):
+            for model_name in os.listdir(os.path.join(settings["checkpoints_path"], clf)):
+                meta = load_metadata(os.path.join(settings["checkpoints_path"], 
+                    clf, model_name, "meta.xmeta"))
+                if "versions" in meta:
+                    for version in meta["versions"]:
+                        path = os.path.join(settings["checkpoints_path"], clf, 
+                            model_name, "version.{}".format(version), "meta.xmeta")
+                        meta = load_metadata(path)
+                        table.append([clf, model_name, version, meta.get("dataset_name", None),
                                 meta.get("group_name", None)])
-                except ValueError:
-                    pass
         list_measure = ListMeasure(headers=headers, measures=table)
         list_measure.print_scores(order_column="classif")
