@@ -7,15 +7,21 @@ import numpy as np
 
 
 class LightGBM(LGB):
-    def convert_label(self, label, raw=False):
-        if raw is True:
-            if len(label.shape) == 1:
-                label = label.reshape(-1, 1)
-                return np.concatenate((np.abs(label - 1), label), axis=1)
-            else:
-                return label
-        elif raw is None:
-            return self.position_index(label)
+    def convert_label(self, labels, output=None):
+        if output is None:
+            for chunk in labels:
+                yield chunk
+        elif output == 'n_dim':
+            for chunk in labels:
+                if len(chunk.shape) == 1:
+                    label = chunk.reshape(-1, 1)
+                    yield np.concatenate((np.abs(label - 1), label), axis=1)
+                else:
+                    yield chunk
+        else:
+            for chunk in labels:
+                for label in self.position_index(chunk):
+                    yield label
 
     def prepare_model(self, obj_fn=None, num_steps=0, **params):
         with self.train_ds, self.validation_ds:

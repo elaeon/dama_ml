@@ -37,25 +37,29 @@ class RegModel(SupervicedModel):
             test_data = self.test_ds.data[:]
             test_labels = self.test_ds.labels[:]
 
-        predictions = self.predict(test_data, raw=measures.has_uncertain(), 
-            transform=False, chunks_size=0).to_memory()
-        measures.set_data(predictions, test_labels, None)
-        log.info("Getting scores")
+        for output in measures.outputs():
+            predictions = self.predict(test_data, output=output, 
+                transform=False, chunks_size=0).to_memory()
+            measures.set_data(predictions, test_labels, output=output)
         return measures.to_list()
 
-    def confusion_matrix(self):
-        with self.test_ds:
-            test_data = self.test_ds.data[:]
-            test_labes = self.test_ds.labels[:]
-        predictions = self.predict(test_data, raw=False, transform=False, 
-                                chunks_size=0)
-        measure = metrics.Measure(np.asarray(list(tqdm(predictions, 
-                        total=test_labels.shape[0]))),
-                        test_labels, 
-                        labels2classes=None,
-                        name=self.__class__.__name__)
-        measure.add(metrics.confusion_matrix, greater_is_better=None, uncertain=False)
-        return measure.to_list()
+    #def confusion_matrix(self):
+    #    with self.test_ds:
+    #        test_data = self.test_ds.data[:]
+    #        test_labes = self.test_ds.labels[:]
+    #    predictions = self.predict(test_data, raw=False, transform=False, 
+    #                            chunks_size=0)
+    #    measure = metrics.Measure(np.asarray(list(tqdm(predictions, 
+    #                    total=test_labels.shape[0]))),
+    #                    test_labels, 
+    #                    labels2classes=None,
+    #                    name=self.__class__.__name__)
+    #    measure.add(metrics.confusion_matrix, greater_is_better=None, uncertain=False)
+    #    return measure.to_list()
+
+    def convert_labels(self, labels, output=None):
+        for chunk in labels:
+            yield chunk
 
     def reformat_all(self, dataset):
         log.info("Reformating {}...".format(self.cls_name()))
@@ -94,9 +98,9 @@ class RegModel(SupervicedModel):
 
         return dl_train, dl_test, dl_validation
 
-    def _predict(self, data, raw=False):
-        for p in self.model.predict(data):
-            yield p
+    def _predict(self, data, output=None):
+        prediction = self.model.predict(data)
+        return self.convert_labels(prediction, output=output)
 
 
 class SKLP(RegModel):

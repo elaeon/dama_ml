@@ -8,8 +8,11 @@ import numpy as np
 
 
 class Xgboost(XGB):
-    def convert_labels(self, labels, raw=False):
-        if raw is True:
+    def convert_labels(self, labels, output=None):
+        if output is None:
+            for chunk in labels:
+                yield chunk
+        elif output == 'n_dim':
             for chunk in labels:
                 if len(chunk.shape) == 1:
                     label = chunk.reshape(-1, 1)

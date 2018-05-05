@@ -402,7 +402,7 @@ class TestXgboost(unittest.TestCase):
         classif.load(model_version="1")
         with self.dataset:
             predict = classif.predict(self.dataset.data, transform=False, output=None)
-            self.assertEqual(len(list(predict)), 100)
+            self.assertEqual(predict.to_memory().shape[0], 100)
         classif.destroy()
 
 
@@ -463,7 +463,7 @@ class TestLightGBM(unittest.TestCase):
         classif.load(model_version=self.model_version)
         with self.dataset:
             predict = classif.predict(self.dataset.data, transform=False, output=None)
-            self.assertEqual(len(list(predict)), 100)
+            self.assertEqual(predict.to_memory().shape[0], 100)
         classif.destroy()
 
 
@@ -476,7 +476,6 @@ class TestKFold(unittest.TestCase):
         pass
 
     def test_predict(self):
-        #from ml.clf.extended.w_keras import FCNet
         dataset = DataLabel(dataset_path="/tmp/", rewrite=True)
         with dataset:
             dataset.build_dataset(self.X, self.Y)

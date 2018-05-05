@@ -465,7 +465,7 @@ class Data(ReadWriteData):
 
         This function print the details of the dataset.
         """
-        from ml.utils.order import order_table_print
+        from ml.utils.order import order_table
         print('       ')
         print('DATASET NAME: {}'.format(self.name))
         print('Author: {}'.format(self.author))
@@ -478,7 +478,7 @@ class Data(ReadWriteData):
         headers = ["Dataset", "Shape", "dType"]
         table = []
         table.append(["dataset", self.shape, self.dtype])
-        order_table_print(headers, table, "shape")
+        print(order_table(headers, table, "shape"))
 
     def calc_md5(self):
         """
@@ -748,7 +748,7 @@ class DataLabel(Data):
 
         This function print the details of the dataset.
         """
-        from ml.utils.order import order_table_print
+        from ml.utils.order import order_table
         print('       ')
         print('DATASET NAME: {}'.format(self.name))
         print('Author: {}'.format(self.author))
@@ -761,13 +761,13 @@ class DataLabel(Data):
         headers = ["Dataset", "Shape", "dType", "Labels", "ltype"]
         table = []
         table.append(["dataset", self.shape, self.dtype, self.labels.size, self.ltype])
-        order_table_print(headers, table, "shape")
+        print(order_table(headers, table, "shape"))
         if classes == True:
             headers = ["class", "# items", "%"]
             items = [(cls, total, (total/float(self.shape[0]))*100) 
                     for cls, total in self.labels_info().items()]
             items_p = [0, 0]
-            order_table_print(headers, items, "# items")
+            print(order_table(headers, items, "# items"))
 
     def build_dataset(self, data, labels, chunks_size=258):
         """

@@ -283,7 +283,7 @@ class TestTransforms(unittest.TestCase):
         classif.set_dataset(dataset)
         classif.train()
         classif.save(model_version="1")
-        classif.scores().print_scores()
+        print(classif.scores())
         transforms.destroy()
         classif.destroy()
         dataset.destroy()

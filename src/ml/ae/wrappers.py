@@ -76,7 +76,7 @@ class BaseAe(BaseModel):
         from ml.clf.measures import ListMeasure
         return ListMeasure()
 
-    def predict(self, data, raw=False, transform=True, chunks_size=258, model_type="decoder"):
+    def predict(self, data, output=None, transform=True, chunks_size=258, model_type="decoder"):
         def fn(x, t=True):
             with self.test_ds:
                 return self.test_ds.processing(x, apply_transforms=t, chunks_size=chunks_size)
@@ -86,7 +86,7 @@ class BaseAe(BaseModel):
 
         decoder = model_type == "decoder"
         output_shape = tuple([data.shape[0], self.latent_dim])
-        return IterLayer(self._predict(fn(data, t=transform), raw=raw, decoder=decoder), shape=output_shape)
+        return IterLayer(self._predict(fn(data, t=transform), output=output, decoder=decoder), shape=output_shape)
 
 
 class Keras(BaseAe):
@@ -139,7 +139,7 @@ class Keras(BaseAe):
         self.test_ds = self.get_dataset()
         self.load_model()
 
-    def _predict(self, data, raw=False, decoder=True):
+    def _predict(self, data, output=None, decoder=True):
         if decoder is True:
             model = self.model if not hasattr(self, 'decoder_m') else self.decoder_m
         else:

@@ -215,7 +215,7 @@ class ListMeasure(object):
         order = [v["reverse"] for k, v in data_dict.items()]
         return ListMeasure(headers=headers, measures=measures, order=order)
 
-    def to_table(self, order_column=None):
+    def to_tabulate(self, order_column=None):
         """
         :type order_column: string
         :param order_column: order the matrix by the order_column name that you pass
@@ -230,7 +230,7 @@ class ListMeasure(object):
         return order_table(self.headers, self.measures, order_column, natural_order=self.order)
 
     def __str__(self):
-        return self.to_table()
+        return self.to_tabulate()
 
     def empty_columns(self):
         """
