@@ -431,7 +431,9 @@ class Data(ReadWriteData):
             c = 0
             init = 0
             end = chunks_size
-            while c < round(self.data.shape[0] / float(chunks_size), 0):
+            max_iter = round(self.data.shape[0] / float(chunks_size), 0)
+            max_iter = 1 if max_iter == 0 else max_iter
+            while c < max_iter:
                 for e in self.data[init:end]:
                     yield e
                 init = end

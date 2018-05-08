@@ -322,12 +322,12 @@ class Process(object):
     def module_cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
-    def process(self, fn, chunks_size=258, **params):
+    def map(self, fn, chunks_size=258, **params):
         from ml.ds import Data
         with self.ds:
             self.save(fn(self.ds.to_iter(self.dtype, chunks_size=chunks_size), **params))
 
-    def map(self, fn, chunks_size=258, **params):
+    def reduce(self, fn, chunks_size=258, **params):
         it = self.ds.to_iter(self.dtype, chunks_size=chunks_size)
         return IterLayer(fn(it, self.load(), **params), length=self.ds.shape[0],
                 has_chunks=it.has_chunks, chunks_size=it.chunks_size)

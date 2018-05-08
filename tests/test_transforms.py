@@ -55,21 +55,23 @@ def categorical2(x):
 
 def counter_group(data):
     counter = {}
-    for row in data:
-        key = "-".join(map(str, row))
-        if key in counter:
-            counter[key] += 1
-        else:
-            counter[key] = 1
+    for chunk in data:
+        for row in chunk:
+            key = "-".join(map(str, row))
+            if key in counter:
+                counter[key] += 1
+            else:
+                counter[key] = 1
     return counter
 
     
 def add_counter_group(data, counter):
-    ndata = np.empty((data.shape[0], data.shape[1] + 1), dtype=data.dtype)
-    for i, row in enumerate(data):
-        key = "-".join(map(str, row))
-        ndata[i] = np.append(row, counter[key])
-    return ndata
+    for chunk in data:
+        tmp_chunk = np.empty((chunk.shape[0], chunk.shape[1]+1))
+        for i, row in enumerate(chunk):
+            key = "-".join(map(str, row))
+            tmp_chunk[i] = np.append(row, counter[key])
+        yield tmp_chunk
 
 
 class TestTransforms(unittest.TestCase):
@@ -420,30 +422,30 @@ class TestTransforms(unittest.TestCase):
         data = result.to_narray()
         self.assertItemsEqual(data[0], [121, 144, 169, 196])
 
-    #def test_transforms_apply(self):
-    #    from ml.processing import Process
-    #    class P(Process):
-    #        def load(self):
-    #            return self.counter
+    def test_transforms_apply(self):
+        from ml.processing import Process
+        class P(Process):
+            def load(self):
+                return self.counter
 
-    #        def save(self, result):
-    #            self.counter = result
+            def save(self, result):
+                self.counter = result
 
-    #    X = np.asarray([
-    #        [1, 2], 
-    #        [2, 3],
-    #        [3, 4],
-    #        [5, 6],
-    #        [1, 2],
-    #        [2, 3],
-    #        [1, 1],
-    #        [1, 2],
-    #        [1, 2]], dtype=np.dtype("int"))
-    #    it = IterLayer(X, shape=X.shape)
-    #    cg = P(name="test")
-    #    cg.process(counter_group, it)
-    #    it = IterLayer(X, shape=X.shape)
-    #    self.assertItemsEqual(cg.map(add_counter_group, it).to_memory()[0], [1,2,4])
+        X = np.asarray([
+            [1, 2], 
+            [2, 3],
+            [3, 4],
+            [5, 6],
+            [1, 2],
+            [2, 3],
+            [1, 1],
+            [1, 2],
+            [1, 2]], dtype=np.dtype("int"))
+        it = IterLayer(X, shape=X.shape)
+        cg = P(it, name="test", path="/tmp", rewrite=True)
+        cg.map(counter_group)
+        with cg.ds:
+            self.assertItemsEqual(cg.reduce(add_counter_group, chunks_size=2).to_memory()[0], [1,2,4])
 
 
 if __name__ == '__main__':
