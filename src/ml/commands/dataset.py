@@ -1,7 +1,6 @@
 import os
 
 from ml.utils.config import get_settings
-from ml.utils.order import order_table_print
 from ml.utils.numeric_functions import humanize_bytesize
 from ml.models import DataDrive
 from ml.clf.measures import ListMeasure
@@ -57,7 +56,7 @@ def run(args):
                 total_size += size
         print("Total size: {}".format(humanize_bytesize(total_size)))
         list_measure = ListMeasure(headers=headers, measures=table)
-        list_measure.print_scores(order_column="dataset")
+        print(list_measure.to_tabulate(order_column="dataset"))
 
 
 def dataset_model_relation():

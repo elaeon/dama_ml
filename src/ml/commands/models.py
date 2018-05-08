@@ -1,7 +1,6 @@
 import os
 
 from ml.utils.config import get_settings
-from ml.utils.order import order_table_print
 from ml.models import DataDrive
 from ml.clf.measures import ListMeasure
 from ml.utils.files import get_models_path, get_models_from_dataset, rm
@@ -50,7 +49,7 @@ def run(args):
             "{}".format(measure)]
         order = [False, False, False, False, order_m]
         list_measure = ListMeasure(headers=headers, measures=table, order=order)
-        list_measure.print_scores(order_column=measure)
+        print(list_measure.to_tabulate(order_column=measure))
     elif args.rm:
         for model_name in args.rm:
             clf, model_name, version = model_name.split(".")

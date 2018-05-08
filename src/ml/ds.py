@@ -431,14 +431,13 @@ class Data(ReadWriteData):
             c = 0
             init = 0
             end = chunks_size
-            while c < self.data.shape[0] / float(chunks_size):
+            while c < round(self.data.shape[0] / float(chunks_size), 0):
                 for e in self.data[init:end]:
                     yield e
                 init = end
                 end += chunks_size
                 c += 1
 
-        #return IterLayer(self.data, shape=self.shape, dtype=dtype).to_chunks(chunks_size=chunks_size)
         return IterLayer(iter_(self.data), shape=self.shape, dtype=dtype).to_chunks(chunks_size=chunks_size)
 
     def num_features(self):

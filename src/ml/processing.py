@@ -311,8 +311,8 @@ class Process(object):
 
     def save_data(self, data, rewrite):
         from ml.ds import Data
-        if rewrite:
-            with Data(name=self.name, dataset_path=self.dataset_path, rewrite=True) as ds:
+        if rewrite is True:
+            with Data(name=self.name, dataset_path=self.dataset_path, rewrite=rewrite) as ds:
                 ds.build_dataset(data)
         else:
             ds = Data.original_ds(name=self.name, dataset_path=self.dataset_path)

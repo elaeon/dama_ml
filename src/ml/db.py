@@ -31,6 +31,7 @@ class SQL(object):
         self.conn = psycopg2.connect(
             "dbname={db_name} user={username}".format(db_name=self.db_name, 
                                                         username=self.username))
+        self.conn.autocommit = False
         return self
 
     def __exit__(self, type, value, traceback):
@@ -224,15 +225,20 @@ class SQL(object):
             build()
         self.conn.commit()
 
-    def insert(self, data):
+    def insert(self, data, chunks_size=258):
+        from psycopg2.extras import execute_values
+        from ml.utils.seq import grouper_chunk
         header = self.columns(exclude_id=True)
         columns = "("+", ".join(header)+")"
-        insert_str = "INSERT INTO {name} {columns} VALUES".format(name=self.table_name, columns=columns)
-        values_str = "("+", ".join(["%s" for _ in range(len(header))])+")"
-        insert = insert_str+" "+values_str
+        insert_str = "INSERT INTO {name} {columns} VALUES".format(
+            name=self.table_name, columns=columns)
+        #values_str = "("+", ".join(["%s" for _ in range(len(header))])+")"
+        #insert = insert_str+" "+values_str
+        insert = insert_str + " %s"
         cur = self.conn.cursor()
-        for row in tqdm(data):
-            cur.execute(insert, row)
+        for row in tqdm(grouper_chunk(chunks_size, data)):
+            #cur.execute(insert, cache_row)
+            execute_values(cur, insert, row, page_size=chunks_size)
         self.conn.commit()
 
     def update(self, id, values):
