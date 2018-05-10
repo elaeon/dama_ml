@@ -44,26 +44,26 @@ class TestDataset(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_build_dataset_dim_7_1_2(self):
+    def test_from_data_dim_7_1_2(self):
         dataset = DataLabel(
             name="test_ds_0",
             dataset_path="/tmp/",
             rewrite=True)
         with dataset:
-            dataset.build_dataset(self.X, self.Y)
+            dataset.from_data(self.X, self.Y)
             X_train, X_validation, X_test, y_train, y_validation, y_test = dataset.cv()
             self.assertEqual(y_train.shape, (7,))
             self.assertEqual(y_validation.shape, (1,))
             self.assertEqual(y_test.shape, (2,))
         dataset.destroy()
 
-    def test_build_dataset_dim_5_2_3(self):
+    def test_from_data_dim_5_2_3(self):
         dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
             rewrite=True)
         with dataset:
-            dataset.build_dataset(self.X, self.Y)
+            dataset.from_data(self.X, self.Y)
             X_train, X_validation, X_test, y_train, y_validation, y_test = dataset.cv(train_size=.5, valid_size=.2)
             self.assertEqual(y_train.shape, (5,))
             self.assertEqual(y_validation.shape, (2,))
@@ -76,7 +76,7 @@ class TestDataset(unittest.TestCase):
             dataset_path="/tmp/",
             rewrite=True)
         with dataset:
-            dataset.build_dataset(self.X, self.Y)
+            dataset.from_data(self.X, self.Y)
             dataset0, label0 = dataset.only_labels([0])
             self.assertItemsEqual(label0, np.zeros(5))
             dataset1, label1 = dataset.only_labels([1])
@@ -89,7 +89,7 @@ class TestDataset(unittest.TestCase):
             dataset_path="/tmp/",
             rewrite=True)
         with dataset:
-            dataset.build_dataset(self.X, self.Y)
+            dataset.from_data(self.X, self.Y)
             labels_counter = dataset.labels_info()
             self.assertEqual(labels_counter[0]+labels_counter[1], 10)
         dataset.destroy()
@@ -100,7 +100,7 @@ class TestDataset(unittest.TestCase):
             dataset_path="/tmp/",
             rewrite=True)
         with dataset:
-            dataset.build_dataset(self.X, self.Y)
+            dataset.from_data(self.X, self.Y)
             self.assertEqual(dataset.distinct_data() > 0, True)
         dataset.destroy()
 
@@ -110,7 +110,7 @@ class TestDataset(unittest.TestCase):
             dataset_path="/tmp/",
             rewrite=True)
         with dataset:
-            dataset.build_dataset(self.X, self.Y)
+            dataset.from_data(self.X, self.Y)
             self.assertEqual(dataset.sparcity() > .3, True)
         dataset.destroy()
 
@@ -120,7 +120,7 @@ class TestDataset(unittest.TestCase):
             dataset_path="/tmp/",
             rewrite=True)
         with dataset:
-            dataset.build_dataset(self.X, self.Y)
+            dataset.from_data(self.X, self.Y)
             ds = dataset.convert("test_convert", percentaje=.5, dataset_path="/tmp")
 
         with ds:
@@ -135,7 +135,7 @@ class TestDataset(unittest.TestCase):
             dataset_path="/tmp/",
             rewrite=True)
         with dataset:
-            dataset.build_dataset(self.X, self.Y)
+            dataset.from_data(self.X, self.Y)
             dataset.apply_transforms = True
             copy = dataset.convert("test_2", apply_transforms=False, dataset_path="/tmp/")
         with copy:
@@ -148,7 +148,7 @@ class TestDataset(unittest.TestCase):
             name="test_ds",
             dataset_path="/tmp/",
             rewrite=True) as dataset:
-            dataset.build_dataset(self.X, self.Y)
+            dataset.from_data(self.X, self.Y)
             dsb = dataset.convert("convert_test", dataset_path="/tmp/", percentaje=.5)
         with dsb:
             self.assertEqual(round(self.X.shape[0]/2,0), dsb.data.shape[0])
@@ -163,7 +163,7 @@ class TestDataset(unittest.TestCase):
             rewrite=True, transforms=transforms, apply_transforms=True)
         
         with dataset:
-            dataset.build_dataset(self.X, self.Y)
+            dataset.from_data(self.X, self.Y)
             transforms = Transforms()
             transforms.add(parabole, o_features=o_features)
             dsb = dataset.convert("convert_test", dataset_path="/tmp/",
@@ -184,7 +184,7 @@ class TestDataset(unittest.TestCase):
             rewrite=True, transforms=transforms, apply_transforms=True)
         
         with dataset:
-            dataset.build_dataset(self.X)
+            dataset.from_data(self.X)
             transforms = Transforms()
             transforms.add(parabole, o_features=o_features)
             dsb = dataset.convert("convert_test", dataset_path="/tmp/",
@@ -207,7 +207,7 @@ class TestDataset(unittest.TestCase):
         transforms = Transforms()
         transforms.add(parabole, o_features=o_features)
         with dataset:
-            dataset.build_dataset(self.X, self.Y)
+            dataset.from_data(self.X, self.Y)
             dsb = dataset.convert("convert_test", dataset_path="/tmp/",
                                 transforms=transforms, apply_transforms=False)
 
@@ -227,7 +227,7 @@ class TestDataset(unittest.TestCase):
             rewrite=True,
             apply_transforms=False,
             transforms=transforms) as dataset:
-            dataset.build_dataset(self.X, self.Y)
+            dataset.from_data(self.X, self.Y)
             transforms = Transforms()
             transforms.add(linear, b=2, o_features=self.X.shape[1])
             dsb = dataset.convert("add_transform", transforms=transforms, 
@@ -243,7 +243,7 @@ class TestDataset(unittest.TestCase):
             name="test_ds",
             dataset_path="/tmp/",
             rewrite=True) as dataset:
-            dataset.build_dataset(self.X, self.Y)
+            dataset.from_data(self.X, self.Y)
             df = dataset.to_df()
         self.assertEqual(list(df.columns), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'target'])
         dataset.destroy()
@@ -252,7 +252,7 @@ class TestDataset(unittest.TestCase):
             name="test_ds",
             dataset_path="/tmp/",
             rewrite=True) as dataset:
-            dataset.build_dataset(self.X)
+            dataset.from_data(self.X)
             df = dataset.to_df()
         self.assertEqual(list(df.columns), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'])
         dataset.destroy()
@@ -265,7 +265,7 @@ class TestDataset(unittest.TestCase):
             [-1,0,-1,0,-1,0]], dtype=np.float)
         dl = Data(name="test", dataset_path="/tmp", rewrite=True)
         with dl:
-            dl.build_dataset(X)
+            dl.from_data(X)
             self.assertItemsEqual(dl.data[0], X[0])
             self.assertItemsEqual(dl.data[1], X[1])
             self.assertItemsEqual(dl.data[2], X[2])
@@ -277,7 +277,7 @@ class TestDataset(unittest.TestCase):
         Y = np.asarray(['1','2','3','4','5'], dtype=str)
         dl = DataLabel(name="test", dataset_path="/tmp", rewrite=True)
         with dl:
-            dl.build_dataset(X, Y)
+            dl.from_data(X, Y)
             self.assertEqual(dl.dtype, X.dtype)
             self.assertEqual(dl.ltype, Y.dtype)
         dl.destroy()
@@ -299,7 +299,7 @@ class TestDataset(unittest.TestCase):
             self.assertEqual(dsb.apply_transforms, False)
             self.assertEqual(dsb.hash_header is not None, True)
 
-            dsb.build_dataset(self.X.astype('float32'), self.Y)
+            dsb.from_data(self.X.astype('float32'), self.Y)
             self.assertEqual(dsb.md5 is not None, True)
             dsb.destroy()
 
@@ -323,7 +323,7 @@ class TestDataset(unittest.TestCase):
             name="test_ds_1",
             dataset_path="/tmp/",
             rewrite=True) as dataset:
-            dataset.build_dataset(X, Y)
+            dataset.from_data(X, Y)
             dataset.to_libsvm(name="test.txt", save_to="/tmp")
             check("/tmp/test.txt")
             dataset.destroy()
@@ -354,7 +354,7 @@ class TestDataset(unittest.TestCase):
             name="test_ds_1",
             dataset_path="/tmp/",
             rewrite=True) as dataset:
-            dataset.build_dataset(self.X, self.Y)
+            dataset.from_data(self.X, self.Y)
             data = dataset.to_data()
         with data:
             self.assertEqual(data.shape, (10, 10))
@@ -363,7 +363,7 @@ class TestDataset(unittest.TestCase):
 
     def test_datalabel_to_data(self):
         with DataLabel(name="test_ds_1", dataset_path="/tmp/", rewrite=True) as dataset:
-            dataset.build_dataset(self.X, self.Y)
+            dataset.from_data(self.X, self.Y)
             data = dataset.to_data()
         with data:
             self.assertEqual(data.shape, (10, 10))
@@ -373,7 +373,7 @@ class TestDataset(unittest.TestCase):
     def test_text_ds(self):
         X = np.asarray([(str(line)*10, "1") for line in range(100)], dtype=np.dtype("O"))
         with Data(name="test", dataset_path="/tmp/", rewrite=True) as ds:
-            ds.build_dataset(X)
+            ds.from_data(X)
             self.assertEqual(ds.shape, (100, 2))
             self.assertEqual(ds.dtype, X.dtype)
             ds.destroy()
@@ -385,15 +385,34 @@ class TestDataset(unittest.TestCase):
         with DataLabelSetFile(
             training_data_path=['/tmp/test_X.csv', '/tmp/test_Y.csv'], 
                 sep=[",", "|"], merge_field="id", dataset_path="/tmp/") as dbf:
-            dbf.build_dataset(labels_column="0_y")
+            dbf.from_data(labels_column="0_y")
             self.assertEqual(dbf.shape, self.X.shape)
             self.assertEqual(dbf.labels.shape, self.Y.shape)
             dbf.destroy()
 
     def test_fmtypes(self):
         with Data(name="test", dataset_path="/tmp/") as data:
-            data.build_dataset(self.X)
-            self.assertEqual(data.fmtypes.shape[0], self.X.shape[1])
+            data.from_data(self.X)
+            columns = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
+            data.columns = columns
+            self.assertEqual(data.columns.shape[0], self.X.shape[1])
+            self.assertItemsEqual(data.columns[:], columns)
+            data.destroy()
+
+    def test_fmtypes_set_columns(self):
+        with Data(name="test", dataset_path="/tmp/") as data:
+            data.from_data(self.X)
+            columns = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
+            data.columns = columns
+            data.columns[2] = 'X'
+            self.assertEqual(data.columns[2], 'X')
+            data.destroy()
+
+    def test_fmtypes_empty(self):
+        with Data(name="test", dataset_path="/tmp/") as data:
+            data.from_data(self.X)
+            self.assertItemsEqual(data.columns, [u'c0', u'c1', u'c2', u'c3', 
+                u'c4', u'c5', u'c6', u'c7', u'c8', u'c9'])
             data.destroy()
 
     def test_features_fmtype(self):
@@ -406,10 +425,12 @@ class TestDataset(unittest.TestCase):
                 [0, 1, 1, 3, 6, 0],
                 [1, 1, 0, 7, 7, 1]
             ], dtype=int)
-            data.build_dataset(array)
-            self.assertEqual(data.features_fmtype(fmtypes.BOOLEAN), [0, 5])
-            self.assertEqual(data.features_fmtype(fmtypes.NANBOOLEAN), [1, 2, 3])
-            self.assertEqual(data.features_fmtype(fmtypes.ORDINAL), [4])
+            data.from_data(array)
+            data.columns = ['a', 'b', 'c', 'd', 'e', 'f']
+            #print(data.features_fmtype(fmtypes.BOOLEAN))
+            #self.assertEqual(data.features_fmtype(fmtypes.BOOLEAN), [0, 5])
+            #self.assertEqual(data.features_fmtype(fmtypes.NANBOOLEAN), [1, 2, 3])
+            #self.assertEqual(data.features_fmtype(fmtypes.ORDINAL), [4])
             data.destroy()
 
     def test_features_fmtype_set(self):
@@ -425,7 +446,7 @@ class TestDataset(unittest.TestCase):
             [1, 1, 0, 7, '7', 1]
         ], dtype=np.dtype("int"))
         t = Transforms()
-        t.add(to_int, col=4, o_features=6)
+        t.add(to_int, col=4)
         fmtypes_t = fmtypes.FmtypesT()
         fmtypes_t.add(0, fmtypes.BOOLEAN)
         fmtypes_t.add(2, fmtypes.NANBOOLEAN)
@@ -435,10 +456,10 @@ class TestDataset(unittest.TestCase):
         fmtypes_t.fmtypes_fill(6)
         with Data(name="test", dataset_path="/tmp/",
                     transforms=t, apply_transforms=True, rewrite=True) as data:
-            data.build_dataset(array, chunks_size=2)
-            self.assertEqual(data.features_fmtype(fmtypes.BOOLEAN), [0, 5])
-            self.assertEqual(data.features_fmtype(fmtypes.NANBOOLEAN), [1, 2])
-            self.assertEqual(data.features_fmtype(fmtypes.ORDINAL), [3, 4])
+            data.from_data(array, chunks_size=2)
+            #self.assertEqual(data.features_fmtype(fmtypes.BOOLEAN), [0, 5])
+            #self.assertEqual(data.features_fmtype(fmtypes.NANBOOLEAN), [1, 2])
+            #self.assertEqual(data.features_fmtype(fmtypes.ORDINAL), [3, 4])
         data.destroy()
 
     def test_features_fmtype_edit(self):
@@ -451,18 +472,18 @@ class TestDataset(unittest.TestCase):
                 [0, 1, 1, 3, 6, 0],
                 [1, 1, 0, 7, 7, 1]
             ], dtype=int)
-            data.build_dataset(array)
-            data.set_fmtypes(3, fmtypes.DENSE)
-            data.set_fmtypes(4, fmtypes.DENSE)
-            self.assertItemsEqual(data.fmtypes[:], 
-                [fmtypes.BOOLEAN.id, fmtypes.NANBOOLEAN.id, fmtypes.NANBOOLEAN.id, 
-                fmtypes.DENSE.id, fmtypes.DENSE.id, fmtypes.BOOLEAN.id])
+            data.from_data(array)
+            #data.set_fmtypes(3, fmtypes.DENSE)
+            #data.set_fmtypes(4, fmtypes.DENSE)
+            #self.assertItemsEqual(data.fmtypes[:], 
+            #    [fmtypes.BOOLEAN.id, fmtypes.NANBOOLEAN.id, fmtypes.NANBOOLEAN.id, 
+            #    fmtypes.DENSE.id, fmtypes.DENSE.id, fmtypes.BOOLEAN.id])
             data.destroy()
 
     def test_rewrite_data(self):
         with Data(name="test", dataset_path="/tmp/") as data:
             array = np.zeros((10, 2))
-            data.build_dataset(array)
+            data.from_data(array)
             data.data[:, 1] = np.ones((10))
             self.assertItemsEqual(data.data[:, 1], np.ones((10)))
             self.assertItemsEqual(data.data[:, 0], np.zeros((10)))
@@ -474,7 +495,7 @@ class TestDataset(unittest.TestCase):
     def test_cv_ds(self):
         dl = DataLabel(name="test", dataset_path="/tmp/")
         with dl:
-            dl.build_dataset(self.X, self.Y)
+            dl.from_data(self.X, self.Y)
             train_ds, validation_ds, test_ds = dl.cv_ds(train_size=.6, valid_size=.2)
         with train_ds:            
             self.assertEqual(train_ds.shape, (6, 10))
@@ -496,7 +517,7 @@ class TestDataset(unittest.TestCase):
         Y_0 = np.random.randint(1, 10, size=(10, 1))
         Y = transforms.apply(Y_0, chunks_size=0).to_narray()
         with dl:
-            dl.build_dataset(X, Y)
+            dl.from_data(X, Y)
             self.assertEqual(dl.labels[0], np.log1p(Y_0[0]))
         dl.destroy()
 
@@ -533,7 +554,7 @@ class TestDataSetFold(unittest.TestCase):
             dataset_path="/tmp/",
             rewrite=True)
         with self.dataset:
-            self.dataset.build_dataset(self.X, self.Y)
+            self.dataset.from_data(self.X, self.Y)
 
     def tearDown(self):
         self.dataset.destroy()
@@ -541,7 +562,7 @@ class TestDataSetFold(unittest.TestCase):
     def test_fold(self):
         n_splits = 5
         dsbf = DataLabelFold(n_splits=n_splits, dataset_path="/tmp")
-        dsbf.build_dataset(self.dataset)
+        dsbf.from_data(self.dataset)
         for dsb in dsbf.get_splits():
             with dsb:
                 self.assertEqual(dsb.shape[0], 8)

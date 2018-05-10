@@ -32,6 +32,7 @@ class ClassifModel(SupervicedModel):
         with self.load_original_ds() as ds:
             if isinstance(ds, DataLabel):
                 self.labels_encode(ds.labels)
+        self.load_model()
 
     def scores(self, measures=None):
         if measures is None or isinstance(measures, str):
@@ -123,19 +124,19 @@ class ClassifModel(SupervicedModel):
             dl_train = DataLabel(
                 dataset_path=settings["dataset_model_path"],
                 apply_transforms=not dataset._applied_transforms,
-                compression_level=9,
+                compression_level=3,
                 transforms=dataset.transforms,
                 rewrite=True)
             dl_test = DataLabel(
                 dataset_path=settings["dataset_model_path"],
                 apply_transforms=not dataset._applied_transforms,
-                compression_level=9,
+                compression_level=3,
                 transforms=dataset.transforms,
                 rewrite=True)
             dl_validation = DataLabel(
                 dataset_path=settings["dataset_model_path"],
                 apply_transforms=not dataset._applied_transforms,
-                compression_level=9,
+                compression_level=3,
                 transforms=dataset.transforms,
                 rewrite=True)
 
@@ -146,15 +147,18 @@ class ClassifModel(SupervicedModel):
             validation_labels = self.reformat_labels(self.le.transform(validation_labels))
             test_labels = self.reformat_labels(self.le.transform(test_labels))
             with dl_train:
-                dl_train.build_dataset(train_data, train_labels, chunks_size=30000)
+                dl_train.from_data(train_data, train_labels, chunks_size=30000)
+                dl_train.columns = dataset.columns
                 dl_train.apply_transforms = True
                 dl_train._applied_transforms = dataset._applied_transforms
             with dl_test:
-                dl_test.build_dataset(test_data, test_labels, chunks_size=30000)
+                dl_test.from_data(test_data, test_labels, chunks_size=30000)
+                dl_test.columns = dataset.columns
                 dl_test.apply_transforms = True
                 dl_test._applied_transforms = dataset._applied_transforms
             with dl_validation:
-                dl_validation.build_dataset(validation_data, validation_labels, chunks_size=30000)
+                dl_validation.from_data(validation_data, validation_labels, chunks_size=30000)
+                dl_validation.columns = dataset.columns
                 dl_validation.apply_transforms = True
                 dl_validation._applied_transforms = dataset._applied_transforms
 
@@ -205,18 +209,19 @@ class SKLP(ClassifModel):
 
 
 class XGB(ClassifModel):
-    def ml_model(self, model, model_2=None):
+    def ml_model(self, model, bst=None):
+        self.bst = bst
         return MLModel(fit_fn=model.train, 
-                            predictors=[model_2.predict],
+                            predictors=[self.bst.predict],
                             load_fn=self.load_fn,
-                            save_fn=model_2.save_model,
+                            save_fn=self.bst.save_model,
                             transform_data=self.array2dmatrix)
 
     def load_fn(self, path):
         import xgboost as xgb
-        booster = xgb.Booster()
-        booster.load_model(path)
-        self.model = self.ml_model(xgb, model_2=booster)
+        bst = xgb.Booster()
+        bst.load_model(path)
+        self.model = self.ml_model(xgb, bst=bst)
 
     def array2dmatrix(self, data):
         import xgboost as xgb
@@ -224,16 +229,17 @@ class XGB(ClassifModel):
 
 
 class LGB(ClassifModel):
-    def ml_model(self, model, model_2=None):
+    def ml_model(self, model, bst=None):
+        self.bst = bst
         return MLModel(fit_fn=model.train, 
-                            predictors=[model_2.predict],
+                            predictors=[self.bst.predict],
                             load_fn=self.load_fn,
-                            save_fn=model_2.save_model)
+                            save_fn=self.bst.save_model)
 
     def load_fn(self, path):
         import lightgbm as lgb
         bst = lgb.Booster(model_file=path)
-        self.model = self.ml_model(lgb, model_2=bst)
+        self.model = self.ml_model(lgb, bst=bst)
 
     def array2dmatrix(self, data):
         import lightgbm as lgb

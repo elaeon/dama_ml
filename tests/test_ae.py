@@ -13,7 +13,7 @@ class TestUnsupervicedModel(unittest.TestCase):
         X = np.random.rand(100, 10)
         Y = np.sin(6*X)
         with dataset:
-            dataset.build_dataset(Y)
+            dataset.from_data(Y)
         classif = PTsne(model_name="tsne", 
             check_point_path="/tmp/", latent_dim=2)
         classif.set_dataset(dataset)
@@ -42,7 +42,7 @@ class TestAE(unittest.TestCase):
         X = X.astype(int)
         dataset = Data(name="test", dataset_path="/tmp/", rewrite=True)
         with dataset:
-            dataset.build_dataset(X)
+            dataset.from_data(X)
 
         vae = VAE( 
             model_name="test", 
@@ -70,7 +70,7 @@ class TestAE(unittest.TestCase):
         X = X.astype(int)
         dataset = Data(name="test", dataset_path="/tmp/", rewrite=True)
         with dataset:
-            dataset.build_dataset(X)
+            dataset.from_data(X)
 
         dae = DAE( 
             model_name="test", 

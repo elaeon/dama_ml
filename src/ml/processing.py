@@ -140,6 +140,8 @@ class TransformsFn(object):
         elif isinstance(data, IterLayer):
             has_chunks = data.has_chunks
             chunks_size = data.chunks_size
+        else:
+            raise Exception("Type {} is not supported".format(type(data)))
         
         return IterLayer(self.reduce(data), shape=data.shape, chunks_size=chunks_size, 
                     has_chunks=has_chunks)
@@ -313,7 +315,7 @@ class Process(object):
         from ml.ds import Data
         if rewrite is True:
             with Data(name=self.name, dataset_path=self.dataset_path, rewrite=rewrite) as ds:
-                ds.build_dataset(data)
+                ds.from_data(data)
         else:
             ds = Data.original_ds(name=self.name, dataset_path=self.dataset_path)
         self.ds = ds
@@ -409,7 +411,7 @@ class FitTsne(Fit):
         if not tsne.exist():
             dataset = Data(dataset_path="/tmp", rewrite=True)
             with dataset:
-                dataset.build_dataset(data)
+                dataset.from_data(data)
             tsne = PTsne(model_name=self.name, latent_dim=2)
             tsne.set_dataset(dataset)
             tsne.train(batch_size=50, num_steps=4)

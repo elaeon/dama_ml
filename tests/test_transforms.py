@@ -219,7 +219,7 @@ class TestTransforms(unittest.TestCase):
         dataset = DataLabel(name="test", dataset_path="/tmp/", 
             transforms=transforms, rewrite=True)
         with dataset:
-            dataset.build_dataset(X, Y)
+            dataset.from_data(X, Y)
         classif = RandomForest( 
             model_name="test", 
             check_point_path="/tmp/")
@@ -240,7 +240,7 @@ class TestTransforms(unittest.TestCase):
         dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
         with dataset:
             try:
-                dataset.build_dataset(X, Y)
+                dataset.from_data(X, Y)
                 self.assertEqual(False, True)
             except Exception:
                 print("OK")
@@ -257,7 +257,7 @@ class TestTransforms(unittest.TestCase):
         dataset = DataLabel(name="test", dataset_path="/tmp/", 
             transforms=transforms, rewrite=True, apply_transforms=True)
         with dataset:
-            dataset.build_dataset(X, Y)
+            dataset.from_data(X, Y)
             shape = dataset.shape
             dataset.info()
         dataset.destroy()
@@ -276,7 +276,7 @@ class TestTransforms(unittest.TestCase):
         dataset = DataLabel(name="test", dataset_path="/tmp/", 
             transforms=transforms, rewrite=True, apply_transforms=True)
         with dataset:
-            dataset.build_dataset(X, Y)
+            dataset.from_data(X, Y)
             dataset.info()
         
         classif = RandomForest(
@@ -301,7 +301,7 @@ class TestTransforms(unittest.TestCase):
         dataset = DataLabel(name="test", dataset_path="/tmp/", 
             transforms=transforms, rewrite=True, apply_transforms=False)
         with dataset:
-            dataset.build_dataset(X, Y)
+            dataset.from_data(X, Y)
             dsb = dataset.convert(name="test2", apply_transforms=True)
         with dsb:
             shape = dsb.shape
@@ -339,7 +339,7 @@ class TestTransforms(unittest.TestCase):
         dataset = DataLabel(name="test", dataset_path="/tmp/", 
             transforms=transforms, rewrite=True, apply_transforms=True)
         with dataset:
-            dataset.build_dataset(X, Y)
+            dataset.from_data(X, Y)
             self.assertEqual(dataset._applied_transforms, True)
         transforms = Transforms()
         transforms.add(FitRobustScaler, name="scaler")
@@ -354,7 +354,7 @@ class TestTransforms(unittest.TestCase):
         dataset = DataLabel(name="test", dataset_path="/tmp/", 
             transforms=transforms, rewrite=True, apply_transforms=False)
         with dataset:
-            dataset.build_dataset(X, Y)
+            dataset.from_data(X, Y)
             self.assertEqual(dataset._applied_transforms, False)
         transforms = Transforms()
         transforms.add(FitRobustScaler, name="scaler")

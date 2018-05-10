@@ -24,7 +24,7 @@ class TestLinearOutLayer(unittest.TestCase):
         dl = DataLabel(name="test", dataset_path="/tmp", transforms=transforms, 
             apply_transforms=True, rewrite=True)
         with dl:
-            dl.build_dataset(df.as_matrix(), np.asarray(self.outlayers))
+            dl.from_data(df.as_matrix(), np.asarray(self.outlayers))
             outlayers = dl.outlayers(type_detector='isolation', n_estimators=25, max_samples=10, 
                 contamination=self.contamination)
         dl.destroy()
@@ -37,7 +37,7 @@ class TestLinearOutLayer(unittest.TestCase):
         ds = DataLabel(name="test", dataset_path="/tmp", transforms=transforms, 
             apply_transforms=True, rewrite=True)
         with ds:
-            ds.build_dataset(df.as_matrix(), np.asarray(self.outlayers))
+            ds.from_data(df.as_matrix(), np.asarray(self.outlayers))
             outlayers = ds.outlayers(type_detector='robust', contamination=self.contamination)
         ds.destroy()
         self.assertItemsEqual(list(outlayers), [0, 8, 13, 15])

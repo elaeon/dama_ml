@@ -175,7 +175,7 @@ class IterLayer(object):
                 else:
                     yield smx_a
         else:
-            cdtype = dict(dtype)
+            #cdtype = dict(dtype)
             columns = [c for c, _ in dtype]
             for smx in grouper_chunk(chunks_size, self):
                 x = np.empty(chunk_shape[0], dtype=dtype)

@@ -44,6 +44,7 @@ class BaseAe(BaseModel):
         self.model_version = model_version
         self.test_ds = self.get_dataset()
         self.train_ds = self.test_ds
+        self.load_model()
 
     #def save(self, model_version="1"):
     #    self.model_version = model_version
@@ -64,7 +65,8 @@ class BaseAe(BaseModel):
                 rewrite=True)
 
             with train_ds:
-                train_ds.build_dataset(dataset.data, chunks_size=1000)
+                train_ds.from_data(dataset.data, chunks_size=1000)
+                train.columns = dataset.columns
                 train_ds.apply_transforms = True
                 train_ds._applied_transforms = dataset._applied_transforms
         else:

@@ -32,7 +32,7 @@ class Xgboost(XGB):
         nrounds = 200
         xgb_model = xgb.train(params, d_train, nrounds, watchlist, early_stopping_rounds=100, 
                           feval=obj_fn, maximize=True, verbose_eval=100)#, tree_method="hist")
-        return self.ml_model(xgb, model_2=xgb_model)
+        return self.ml_model(xgb, bst=xgb_model)
     
     def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2, obj_fn=None, model_params={}):
         from sklearn.model_selection import StratifiedKFold
@@ -50,7 +50,7 @@ class Xgboost(XGB):
             xgb_model = xgb.train(model_params, d_train, nrounds, watchlist, early_stopping_rounds=100, 
                           feval=obj_fn, maximize=True, verbose_eval=100)
             print("fold ", k)
-        return self.ml_model(xgb, model_2=xgb_model)
+        return self.ml_model(xgb, bst=xgb_model)
 
 
 class XgboostSKL(SKLP):

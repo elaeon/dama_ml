@@ -73,7 +73,7 @@ def clean_cache(func):
 class ReadWriteData(object):
 
     def __enter__(self):
-        self.f = h5py.File(self.url(), "a")
+        self.f = h5py.File(self.url(), self.mode)
         return self
 
     def __exit__(self, type, value, traceback):
@@ -96,14 +96,12 @@ class ReadWriteData(object):
         return self.f[key]
 
     def _set_space_fmtypes(self, num_features):
-        self.f.require_group("pp")
-        self.f['pp'].require_dataset("fmtypes", (num_features,), dtype=np.dtype(int), 
-            exact=True, chunks=True, **self.zip_params)        
-
-    def _get_pp(self, name):
-        """ get the preprocesed meta data"""
-        key = '/pp/' + name
-        return self.f.get(key, None)
+        self.f.require_group("fmtypes")
+        self.f['fmtypes'].require_dataset("names", (num_features,), dtype=h5py.special_dtype(vlen=unicode), 
+            exact=True, chunks=True, **self.zip_params)
+        self.f['fmtypes'].require_dataset("types", (num_features,), dtype=np.dtype("|S8"), 
+            exact=True, chunks=True, **self.zip_params)
+        self.columns = map(lambda x: "c"+str(x), range(num_features))
 
     def _set_attr(self, name, value):
         if self.f is None:
@@ -268,12 +266,14 @@ class Data(ReadWriteData):
     """
     def __init__(self, name=None, dataset_path=None, transforms=None,
                 apply_transforms=False, description='', author='', 
-                compression_level=0, rewrite=False):
+                compression_level=0, rewrite=False, mode='a'):
 
         self.name = uuid.uuid4().hex if name is None else name
         self.apply_transforms = apply_transforms
         self.header_map = ["author", "description", "timestamp", "transforms_str"]
         self.f = None
+        self.rewrite = rewrite
+        self.mode = mode
 
         if dataset_path is None:
             self.dataset_path = settings["dataset_path"]
@@ -380,40 +380,35 @@ class Data(ReadWriteData):
     @md5.setter
     def md5(self, value):
         self._set_attr('md5', value)
-                
+
     @property
-    def fmtypes(self):
-        return self._get_pp("fmtypes")
+    def columns(self):
+        return self.f.get("fmtypes/names", None)
 
-    @fmtypes.setter
-    def fmtypes(self, value):
-        data = self._get_pp('fmtypes')
-        data[...] = value
+    @columns.setter
+    def columns(self, value):
+        data = self.f.get("fmtypes/names", None)
+        data[:] = value
 
-    def set_fmtypes(self, column, fmtype):
-        ndata = self.fmtypes[:]
-        ndata[column] = fmtype.id
-        self.fmtypes = ndata
-
-    def build_fmtypes(self, fmtypes=None):
-        from ml.utils.numeric_functions import unique_size, data_type
-        if fmtypes is None:
-            fmtypes = np.empty((self.num_features()), dtype=np.dtype(int))
-            for ci in range(self.num_features()):
-                feature = self.data[:, ci]
-                if feature.dtype != np.object:
-                    usize = unique_size(feature)
-                    data_t = data_type(usize, feature.size)
-                    fmtypes[ci] = data_t.id
-                else:
-                    fmtypes[ci] = Fmtypes.TEXT.id
-        elif not isinstance(fmtypes, np.ndarray):
-            fmtypes = np.asarray(fmtypes, dtype=np.dtype(int))
-        self.fmtypes = fmtypes
+    #def build_fmtypes(self, fmtypes=None):
+    #    from ml.utils.numeric_functions import unique_size, data_type
+    #    if fmtypes is None:
+    #        fmtypes = np.empty((self.num_features()), dtype=np.dtype(int))
+    #        for ci in range(self.num_features()):
+    #            feature = self.data[:, ci]
+    #            if feature.dtype != np.object:
+    #                usize = unique_size(feature)
+    #                data_t = data_type(usize, feature.size)
+    #                fmtypes[ci] = data_t.id
+    #            else:
+    #                fmtypes[ci] = Fmtypes.TEXT.id
+    #    elif not isinstance(fmtypes, np.ndarray):
+    #        fmtypes = np.asarray(fmtypes, dtype=np.dtype(int))
+    #    self.fmtypes = fmtypes
 
     def features_fmtype(self, fmtype):
         from ml.utils.numeric_functions import features_fmtype
-        return features_fmtype(self.fmtypes, fmtype)
+        return features_fmtype(self.columns, fmtype)
 
     @classmethod
     def module_cls_name(cls):
@@ -531,7 +526,7 @@ class Data(ReadWriteData):
                 total += 1
         return float(zero_counter) / total
 
-    def build_dataset(self, data, chunks_size=258):
+    def from_data(self, data, chunks_size=258):
         """
         build a datalabel dataset from data and labels
         """
@@ -540,7 +535,6 @@ class Data(ReadWriteData):
         self._set_space_shape('data', data.shape, dtype=data.global_dtype)
         end = self.chunks_writer("/data/data", data)
         self._set_space_fmtypes(self.num_features())
-        self.build_fmtypes()
         self.md5 = self.calc_md5()
 
     def empty(self, name, dataset_path=None, apply_transforms=False, transforms=None):
@@ -581,7 +575,7 @@ class Data(ReadWriteData):
         data, old_applied_t = self.empty(name, dataset_path=dataset_path, 
             apply_transforms=apply_transforms, transforms=transforms)
         with data:
-            data.build_dataset(calc_nshape(self.data, percentaje), chunks_size=chunks_size)
+            data.from_data(calc_nshape(self.data, percentaje), chunks_size=chunks_size)
             if old_applied_t is not None:
                 transforms = old_applied_t + data.transforms
                 data.transforms = transforms
@@ -783,10 +777,12 @@ class DataLabel(Data):
         self.chunks_writer("/data/data", data)
         self.chunks_writer("/data/labels", labels)
         self._set_space_fmtypes(self.num_features())
-        self.build_fmtypes()
         self.md5 = self.calc_md5()
 
     def from_data(self, data, labels, chunks_size=258):
+        #if self.rewrite is False:
+        #    return
+
         if isinstance(labels, str):
             data = self.processing(data, apply_transforms=self.apply_transforms, 
                 chunks_size=chunks_size)
@@ -837,7 +833,7 @@ class DataLabel(Data):
         dl, old_applied_t = self.empty(name, apply_transforms=apply_transforms, 
                         dataset_path=dataset_path, transforms=transforms)
         with dl:
-            dl.build_dataset(calc_nshape(self.data, percentaje), 
+            dl.from_data(calc_nshape(self.data, percentaje), 
                 calc_nshape(self.labels, percentaje), chunks_size=chunks_size)
             if old_applied_t is not None:
                 transforms = old_applied_t + dl.transforms
@@ -872,7 +868,7 @@ class DataLabel(Data):
         name = self.name + "_data_" + uuid.uuid4().hex
         data, _ = super(DataLabel, self).empty(name, apply_transforms=self.apply_transforms)
         with data:
-            data.build_dataset(self.data)
+            data.from_data(self.data)
         return data
 
     def plot(self, view=None, type_g=None, columns=None):        
@@ -945,7 +941,7 @@ class DataLabel(Data):
                         check_point_path="/tmp/", dataset=ds, latent_dim=2)
                     classif.train(batch_size=50, num_steps=120)
                     data = np.asarray(list(classif.predict(self.data)))
-                    dl.build_dataset(data, self.labels[:])
+                    dl.from_data(data, self.labels[:])
                     ds.destroy()
             else:
                 dl = self
@@ -1053,15 +1049,15 @@ class DataLabel(Data):
         train_ds = DataLabel(dataset_path=dataset_path, transforms=self.transforms, 
                             apply_transforms=apply_transforms)
         with train_ds:
-            train_ds.build_dataset(data[0], data[3])
+            train_ds.from_data(data[0], data[3])
         validation_ds = DataLabel(dataset_path=dataset_path, transforms=self.transforms,
                                 apply_transforms=apply_transforms)
         with validation_ds:
-            validation_ds.build_dataset(data[1], data[4])
+            validation_ds.from_data(data[1], data[4])
         test_ds = DataLabel(dataset_path=dataset_path, transforms=self.transforms,
                         apply_transforms=apply_transforms)
         with test_ds:
-            test_ds.build_dataset(data[2], data[5])
+            test_ds.from_data(data[2], data[5])
         
         return train_ds, validation_ds, test_ds
 
@@ -1137,12 +1133,12 @@ class DataSetBuilderImage(DataLabel):
         import shutil
         shutil.rmtree(path)
 
-    def build_dataset(self):
+    def from_data(self):
         """
         the data is extracted from the training_datar_path, and then saved.
         """
         data, labels = self.images_to_dataset(self.training_data_path)
-        super(DataSetBuilderImage, self).build_dataset(data, labels)
+        super(DataSetBuilderImage, self).from_data(data, labels)
 
     def labels_images(self, urls):
         images_data = []
@@ -1208,7 +1204,7 @@ class DataLabelSetFile(DataLabel):
         labels = df[labels_column].as_matrix()
         return dataset, labels        
 
-    def build_dataset(self, labels_column=None, nrows=None, exclude_columns=None):
+    def from_data(self, labels_column=None, nrows=None, exclude_columns=None):
         """
          :type label_column: string
          :param label_column: column's name where are the labels
@@ -1232,7 +1228,7 @@ class DataLabelSetFile(DataLabel):
             data, labels = self.from_csv(self.training_data_path, labels_column, 
                                         nrows=nrows, 
                                         exclude_columns=exclude_columns)
-        super(DataLabelSetFile, self).build_dataset(data, labels)
+        super(DataLabelSetFile, self).from_data(data, labels)
     
     def get_sep_path(self):
         if isinstance(self.training_data_path, list):
@@ -1298,13 +1294,13 @@ class DataLabelFold(object):
                 data = dl.data[:]
                 labels = dl.labels[:]
                 with dsb:                    
-                    dsb.build_dataset(data[train], labels[train]) 
+                    dsb.from_data(data[train], labels[train]) 
                     #test_data=data[test], 
                     #    test_labels=labels[test], validation_data=data[validation], 
                     #    validation_labels=labels[validation])
                     yield dsb
 
-    def build_dataset(self, dataset=None):
+    def from_data(self, dataset=None):
         """
         :type dataset: DataLabel
         :param dataset: dataset to fold
