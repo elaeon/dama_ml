@@ -411,9 +411,24 @@ class TestIterLayers(unittest.TestCase):
         for i, row in enumerate(it.to_memory()):
             self.assertItemsEqual(row, data[i])
 
+    def test_downsample(self):
+        from ml.utils.numeric_functions import bdownsample
+        size = 5000
+        data = np.random.rand(size, 3)
+        data[:, 2] = data[:, 2] <= .9
+        v = bdownsample(data, {0: 200, 1:240}, 2)
+        true_values = count_true_values(v.to_memory(), 2)
+        self.assertEqual(true_values[0] > 50, True)
+        self.assertEqual(true_values[1], 240)
+
 
 def chunk_sizes(seq):
     return [len(list(row)) for row in seq]
+
+
+def count_true_values(data, y):
+    true_values = len([e for e in data[:, y] == 1 if e])
+    return true_values*100 / float(data.shape[0]), true_values
 
 
 class TestSeq(unittest.TestCase):

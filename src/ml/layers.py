@@ -98,7 +98,7 @@ class IterLayer(object):
                 if hasattr(chunk, '__iter__'):
                     type_e = max_type(chunk)
                     if isinstance(type_e, list) or isinstance(type_e, tuple) or\
-                        type_e == str or type_e == unicode:
+                        type_e == str or type_e == unicode or type(type_e) ==  type(np.ndarray):
                         self.dtype = "|O"
                     else:
                         self.dtype = type_e
@@ -216,17 +216,14 @@ class IterLayer(object):
         else:
             return it
 
-    def sample(self, k, with_chunks=False, col=None, weight_fn=None):
+    def sample(self, k, col=None, weight_fn=None):
         shape = tuple([k] + list(self.shape[1:]))
-        if with_chunks is False:
-            if self.has_chunks:
-                data = self.clean_chunks()
-            else:
-                data = self
-            return IterLayer(wsrj(self.weights_gen(data, col, weight_fn), k), 
-                shape=shape, dtype=self.dtype).to_chunks(chunks_size=self.chunks_size)
+        if self.has_chunks:
+            data = self.clean_chunks()
         else:
-            raise Exception("Not implemented")
+            data = self
+        return IterLayer(wsrj(self.weights_gen(data, col, weight_fn), k), 
+            shape=shape, dtype=self.dtype)
 
     def split(self, i):
         if self.type_elem == pd.DataFrame:
@@ -250,10 +247,10 @@ class IterLayer(object):
         return it0, it1
 
     def weights_gen(self, data, col, weight_fn):
-        if not hasattr(self.type_elem, '__iter__'):
-            for row in data:
-                yield row, weight_fn(row)
-        elif col is not None:
+        if not hasattr(self.type_elem, '__iter__') and weight_fn is not None:
+            for elem in data:
+                yield elem, weight_fn(elem)
+        elif col is not None and weight_fn is not None:
             for row in data:
                 yield row, weight_fn(row[col])
         else:
@@ -376,7 +373,8 @@ class IterLayer(object):
     def concat_n(self, iters):
         if len(iters) > 1:
             base_iter = iters[0]
-            shape = [len(iters) * base_iter.shape[0]] + list(base_iter.shape[1:])
+            size = sum(it.shape[0] for it in iters)
+            shape = [size] + list(base_iter.shape[1:])
             return IterLayer(chain(*iters), shape=shape, has_chunks=base_iter.has_chunks, 
                 chunks_size=base_iter.chunks_size)
         elif len(iters) == 1:

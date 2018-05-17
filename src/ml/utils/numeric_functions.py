@@ -249,3 +249,17 @@ def wsrj(stream, k):
 
     while len(reservoir) > 0:
         yield hq.heappop(reservoir)[1]
+
+
+def filter_sample(stream, label, index):
+    for row in stream:
+        if row[index] == label:
+            yield row
+
+
+def bdownsample(stream, sampling, index):
+    from ml.layers import IterLayer
+    iterators = []
+    for y, k in sampling.items():
+        iterators.append(IterLayer(filter_sample(stream, y, index)).sample(k))
+    return IterLayer.concat_n(iterators)
