@@ -7,6 +7,7 @@ ORDINAL = Fmtype(id=2, name="ordinal", type=int, db_type="INTEGER")
 CATEGORICAL = Fmtype(id=3, name="categorical", type=int, db_type="INTEGER")
 DENSE = Fmtype(id=4, name="dense", type=float, db_type="FLOAT")
 TEXT = Fmtype(id=5, name="text", type=str, db_type="TEXT")
+DATETIME = Fmtype(id=6, name="datetime", type=str, db_type="TIMESTAMP")
 
 fmtypes_map = {
     BOOLEAN.id: BOOLEAN.name,

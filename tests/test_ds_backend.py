@@ -199,5 +199,41 @@ class TestSQL(unittest.TestCase):
             pass
 
 
+class TestSQLDateTime(unittest.TestCase):
+    def setUp(self):
+        self.data = [
+            ["a", "2018-01-01 08:31:28"],
+            ["b", "2018-01-01 09:31:28"],
+            ["c", "2018-01-01 10:31:28"],
+            ["d", "2018-01-01 11:31:28"],
+            ["e", "2018-01-01 12:31:28"],
+            ["f", "2018-01-01 13:31:28"],
+            ["g", "2018-01-01 14:31:28"],
+            ["h", "2018-01-01 15:31:28"]
+        ]
+        try:
+            with SQL(username="alejandro", db_name="ml", table_name="test_dt") as sql:
+                sql.build_schema(columns=[("A", fmtypes.TEXT), ("B", fmtypes.DATETIME)])
+                sql.insert(self.data)
+        except psycopg2.OperationalError:
+            pass
+
+    def tearDown(self):
+        try:
+            with SQL(username="alejandro", db_name="ml", table_name="test_dt") as sql:
+                sql.destroy()
+        except psycopg2.OperationalError:
+            pass
+
+    def test_data_df(self):
+        try:
+            with SQL(username="alejandro", db_name="ml", table_name="test_dt",
+                chunks_size=12, df=True) as sql:
+                df = sql["B"].to_memory()
+                self.assertEqual(str(df.dtypes[0]), "datetime64[ns]")
+        except psycopg2.OperationalError:
+            pass
+
+
 if __name__ == '__main__':
     unittest.main()
