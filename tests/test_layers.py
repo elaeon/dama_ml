@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 import pandas as pd
 from ml.layers import IterLayer
+from ml.utils.numeric_functions import bdownsample
 
 
 class TestIterLayers(unittest.TestCase):
@@ -412,7 +413,6 @@ class TestIterLayers(unittest.TestCase):
             self.assertItemsEqual(row, data[i])
 
     def test_downsample(self):
-        from ml.utils.numeric_functions import bdownsample
         size = 5000
         data = np.random.rand(size, 3)
         data[:, 2] = data[:, 2] <= .9
@@ -420,6 +420,34 @@ class TestIterLayers(unittest.TestCase):
         true_values = count_true_values(v.to_memory(), 2)
         self.assertEqual(true_values[0] > 50, True)
         self.assertEqual(true_values[1], 240)
+
+    def test_downsample(self):
+        size = 5000
+        data = np.random.rand(size, 3)
+        data[:, 2] = data[:, 2] <= .9
+        v = bdownsample(data, {0: 200, 1:240}, 2)
+        true_values = count_true_values(v.to_memory(), 2)
+        self.assertEqual(true_values[0] > 50, True)
+        self.assertEqual(true_values[1], 240)
+
+    def test_downsample(self):
+        size = 10
+        data = np.random.rand(size, 3)
+        data[:, 2] = data[:, 2] <= .9
+        v = bdownsample(data, {0: 0, 1:3}, 2, 10)
+        self.assertItemsEqual(v.to_memory()[:, 2], [1,1,1])
+        #v = bdownsample(data, {0: 20, 1:3}, 2, 10)
+        #self.assertEqual(v.to_memory()
+        size = 5000
+        data = np.random.rand(size, 3)
+        data[:, 2] = data[:, 2] <= .9
+        v = bdownsample(data, {0: 200, 1:240}, 2, 5000)
+        true_values = count_true_values(v.to_memory(), 2)
+        self.assertEqual(true_values[0] > 50, True)
+        self.assertEqual(true_values[1], 240)
+
+    def test_empty(self):
+        self.assertEqual(IterLayer([], shape=(0,)).to_memory().shape, (0,))
 
 
 def chunk_sizes(seq):

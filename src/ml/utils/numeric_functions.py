@@ -203,6 +203,8 @@ def swap_noise(x, y, p=.15, cols=[1]):
 def max_type(items):
     sizeof = [np.dtype(type(e)).num for e in items]
     types = [type(e) for e in items]
+    if len(sizeof) == 0:
+        return None
     v = max(zip(sizeof, types), key=lambda x: x[0])
     return v[1]
 
@@ -231,6 +233,9 @@ def wsrj(stream, k):
         else:
             break
 
+    if len(reservoir) == 0:
+        return
+
     while True:
         T_w = reservoir[0][0]
         r = np.random.uniform(0, 1)
@@ -251,15 +256,22 @@ def wsrj(stream, k):
         yield hq.heappop(reservoir)[1]
 
 
-def filter_sample(stream, label, index):
+def filter_sample(stream, label, col_index):
     for row in stream:
-        if row[index] == label:
+        if row[col_index] == label:
             yield row
 
 
-def bdownsample(stream, sampling, index):
+def bdownsample(stream, sampling, col_index, size):
     from ml.layers import IterLayer
+    for y, k in sampling.items():
+        v = k % size
+        if v == 0 and k != 0:
+            sampling[y] = size
+        else:
+            sampling[y] = v
+
     iterators = []
     for y, k in sampling.items():
-        iterators.append(IterLayer(filter_sample(stream, y, index)).sample(k))
+        iterators.append(IterLayer(filter_sample(stream, y, col_index)).sample(k))
     return IterLayer.concat_n(iterators)

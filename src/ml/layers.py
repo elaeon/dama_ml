@@ -75,13 +75,25 @@ class IterLayer(object):
         self.pushedback.append(val)
 
     def chunk_type_elem(self):
-        chunk = next(self)
-        self.pushback(chunk)
-        return type(chunk)
+        try:
+            chunk = next(self)
+        except StopIteration:
+            return
+        else:
+            self.pushback(chunk)
+            return type(chunk)
 
     def chunk_taste(self, dtypes):
         """Check for the dtype and global dtype in a chunk"""
-        chunk = next(self)
+        try:
+            chunk = next(self)
+        except StopIteration:
+            self.global_dtype = None
+            self.dtype = None
+            self.shape = (0,)            
+            self.type_elem = None
+            return
+
         if dtypes is not None:
             self.dtype = dtypes
             global_dtype = self._get_global_dtype(dtypes)
