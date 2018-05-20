@@ -257,21 +257,26 @@ def wsrj(stream, k):
 
 
 def filter_sample(stream, label, col_index):
-    for row in stream:
-        if row[col_index] == label:
-            yield row
+    if col_index is None:
+        for e in stream:
+            if e == label:
+                yield e
+    else:
+        for row in stream:
+            if row[col_index] == label:
+                yield row
 
 
-def bdownsample(stream, sampling, col_index, size):
+def downsample(stream, sampling, col_index, size):
     from ml.layers import IterLayer
     for y, k in sampling.items():
-        v = k % size
-        if v == 0 and k != 0:
-            sampling[y] = size
+        if k < size:
+            v = k % size
         else:
-            sampling[y] = v
+            v = size % v
+        sampling[y] = int(round(v, 0))
 
     iterators = []
     for y, k in sampling.items():
-        iterators.append(IterLayer(filter_sample(stream, y, col_index)).sample(k))
+        iterators.append(IterLayer(filter_sample(stream[:size], y, col_index)).sample(k))
     return IterLayer.concat_n(iterators)

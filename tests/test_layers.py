@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import pandas as pd
 from ml.layers import IterLayer
-from ml.utils.numeric_functions import bdownsample
+from ml.utils.numeric_functions import downsample
 
 
 class TestIterLayers(unittest.TestCase):
@@ -416,35 +416,30 @@ class TestIterLayers(unittest.TestCase):
         size = 5000
         data = np.random.rand(size, 3)
         data[:, 2] = data[:, 2] <= .9
-        v = bdownsample(data, {0: 200, 1:240}, 2)
+        v = downsample(data, {0: 200, 1:240}, 2, size)
         true_values = count_true_values(v.to_memory(), 2)
         self.assertEqual(true_values[0] > 50, True)
         self.assertEqual(true_values[1], 240)
 
-    def test_downsample(self):
-        size = 5000
-        data = np.random.rand(size, 3)
-        data[:, 2] = data[:, 2] <= .9
-        v = bdownsample(data, {0: 200, 1:240}, 2)
-        true_values = count_true_values(v.to_memory(), 2)
-        self.assertEqual(true_values[0] > 50, True)
-        self.assertEqual(true_values[1], 240)
 
-    def test_downsample(self):
+    def test_downsample_small(self):
         size = 10
         data = np.random.rand(size, 3)
         data[:, 2] = data[:, 2] <= .9
-        v = bdownsample(data, {0: 0, 1:3}, 2, 10)
+        v = downsample(data, {0: 0, 1:3}, 2, size)
         self.assertItemsEqual(v.to_memory()[:, 2], [1,1,1])
-        #v = bdownsample(data, {0: 20, 1:3}, 2, 10)
+        #v = downsample(data, {0: 20, 1:3}, 2, 10)
         #self.assertEqual(v.to_memory()
-        size = 5000
-        data = np.random.rand(size, 3)
-        data[:, 2] = data[:, 2] <= .9
-        v = bdownsample(data, {0: 200, 1:240}, 2, 5000)
-        true_values = count_true_values(v.to_memory(), 2)
-        self.assertEqual(true_values[0] > 50, True)
-        self.assertEqual(true_values[1], 240)
+
+    def test_downsample_static(self):
+        data = [0,0,0,1,1,1,1,1,2,2,2]
+        size = len(data)
+        v = downsample(data, {0: 2, 1: 4}, None, size)
+        self.assertItemsEqual(v.to_memory(), [0,0,1,1,1,1])
+        v = downsample(data, {1: 4}, None, size)
+        self.assertItemsEqual(v.to_memory(), [1,1,1,1])
+        v = downsample(data, {2: 2, 1: 4}, None, size)
+        self.assertItemsEqual(v.to_memory(), [2,2,1,1,1,1])
 
     def test_empty(self):
         self.assertEqual(IterLayer([], shape=(0,)).to_memory().shape, (0,))
