@@ -109,8 +109,8 @@ class IterLayer(object):
             if type(chunk).__module__ == '__builtin__':
                 if hasattr(chunk, '__iter__'):
                     type_e = max_type(chunk)
-                    if isinstance(type_e, list) or isinstance(type_e, tuple) or\
-                        type_e == str or type_e == unicode or type(type_e) ==  type(np.ndarray):
+                    if type_e == list or type_e == tuple or\
+                        type_e == str or type_e == unicode or type_e ==  np.ndarray:
                         self.dtype = "|O"
                     else:
                         self.dtype = type_e
@@ -119,7 +119,7 @@ class IterLayer(object):
             else:
                 self.dtype = chunk.dtype
             global_dtype = self.dtype
-        
+
         try:
             shape = chunk.shape
         except AttributeError:

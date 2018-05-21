@@ -151,12 +151,12 @@ class ReadWriteData(object):
                 self.f[name][init:end] = array
                 init = end
             except TypeError as e:
-                if self.dtype == "|O":
-                    type_ = "string"
+                if type(array) == np.ndarray:
+                    type_ = array.dtype
                 else:
-                    type_ = self.dtype
+                    type_ = type(array[0])
                 raise TypeError("All elements in array must be of type '{}' but found '{}'".format(
-                    type_, self.dtype))
+                    self.dtype, type_))
         return end
 
     def chunks_writer_split(self, data_key, labels_key, data, labels_column):
