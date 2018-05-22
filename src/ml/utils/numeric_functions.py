@@ -273,7 +273,7 @@ def downsample(stream, sampling, col_index, size):
         if k < size:
             v = k % size
         else:
-            v = size % v
+            v = size % k
         sampling[y] = int(round(v, 0))
 
     iterators = []

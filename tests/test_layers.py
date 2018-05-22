@@ -444,6 +444,12 @@ class TestIterLayers(unittest.TestCase):
     def test_empty(self):
         self.assertEqual(IterLayer([], shape=(0,)).to_memory().shape, (0,))
 
+    def test_columns(self):
+        data = np.asarray([[1,2],[3,4],[5,6],[7,8],[9,0]], dtype='int')
+        data = pd.DataFrame(data, columns=['x', 'y'])
+        it = IterLayer(data, shape=data.shape)
+        self.assertItemsEqual(it.columns(), ['x', 'y'])
+
 
 def chunk_sizes(seq):
     return [len(list(row)) for row in seq]

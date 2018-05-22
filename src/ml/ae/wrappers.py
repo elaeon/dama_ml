@@ -46,13 +46,6 @@ class BaseAe(BaseModel):
         self.train_ds = self.test_ds
         self.load_model()
 
-    #def save(self, model_version="1"):
-    #    self.model_version = model_version
-    #    if self.check_point_path is not None:
-    #        path = self.make_model_version_file()
-    #        self.model.save('{}.{}'.format(path, self.ext))
-    #        self.save_meta(keys=["model", "train"])
-
     def reformat_all(self, dataset):
         if dataset.module_cls_name() == DataLabel.module_cls_name() or\
             dataset._applied_transforms is False and not dataset.transforms.is_empty():

@@ -152,11 +152,16 @@ class ReadWriteData(object):
                 init = end
             except TypeError as e:
                 if type(array) == np.ndarray:
-                    type_ = array.dtype
+                    array_type = array.dtype
+                    if array.dtype != self.f[name].dtype:                        
+                        must_type = self.f[name].dtype
+                    else:
+                        must_type = "string"
                 else:
-                    type_ = type(array[0])
+                    array_type = type(array[0])
+                    must_type = self.f[name].dtype
                 raise TypeError("All elements in array must be of type '{}' but found '{}'".format(
-                    self.dtype, type_))
+                    must_type, array_type))
         return end
 
     def chunks_writer_split(self, data_key, labels_key, data, labels_column):
@@ -778,6 +783,9 @@ class DataLabel(Data):
         self.chunks_writer("/data/labels", labels)
         self._set_space_fmtypes(self.num_features())
         self.md5 = self.calc_md5()
+        columns = data.columns()
+        if columns is not None:
+            self.columns = columns
 
     def from_data(self, data, labels, chunks_size=258):
         #if self.rewrite is False:
@@ -790,9 +798,14 @@ class DataLabel(Data):
             self._set_space_shape('data', data_shape, data.global_dtype)
             self._set_space_shape('labels', (data.shape[0],), data.global_dtype)
             self.chunks_writer_split("/data/data", "/data/labels", data, labels)
+            self._set_space_fmtypes(self.num_features())
             self.md5 = self.calc_md5()
+            columns = data.columns()
+            if columns is not None:
+                self.columns = columns
         else:
             self.build_dataset(data, labels, chunks_size=chunks_size)
+
 
     def empty(self, name, apply_transforms=False, dataset_path=None,
                 transforms=None):
@@ -1031,7 +1044,7 @@ class DataLabel(Data):
 
         return tabulate(table, headers)
     
-    def cv(self, train_size=.7, valid_size=.1):
+    def cv(self, train_size=.7, valid_size=.1, unbalanced=None):
         from sklearn.model_selection import train_test_split
         X_train, X_test, y_train, y_test = train_test_split(
             self.data[:], self.labels[:], train_size=round(train_size+valid_size, 2), random_state=0)

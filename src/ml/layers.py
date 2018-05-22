@@ -71,6 +71,12 @@ class IterLayer(object):
             else:
                 self.type_elem = self.chunk_type_elem()
     
+    def columns(self):
+        if hasattr(self.dtype, '__iter__'):
+            return [c for c, _ in self.dtype]
+        else:
+            return None
+
     def pushback(self, val):
         self.pushedback.append(val)
 
@@ -149,7 +155,7 @@ class IterLayer(object):
         self.type_elem = type(chunk)
 
     def _get_global_dtype(self, dtype):
-        sizeof = [(np.dtype(type(cdtype)), cdtype) for _, cdtype in dtype]
+        sizeof = [(np.dtype(cdtype), cdtype) for _, cdtype in dtype]
         return max(sizeof, key=lambda x: x[0])[1]
 
     def to_chunks(self, chunks_size, dtype=None):

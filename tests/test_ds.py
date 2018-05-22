@@ -509,6 +509,25 @@ class TestDataset(unittest.TestCase):
         validation_ds.destroy()
         test_ds.destroy()
 
+    def test_cv_unbalanced(self):
+        from ml.utils.numeric_functions import downsample
+        X = np.random.rand(1000, 2)
+        Y = np.asarray([str(e) for e in (X[:, 1] < .5)], dtype="|O")
+        ds = DataLabel(name="test", dataset_path="/tmp/")
+        with ds:
+            ds.from_data(X, Y)
+            X_train, X_validation, X_test, y_train, y_validation, y_test = ds.cv(train_size=.7, valid_size=0)
+        print(X_train.shape, y_train.shape, X_train.dtype, y_train.dtype)
+        X = np.c_[X_train, y_train]
+        it = downsample(X, {u'True': 200*.7, u'False': 350}, X_train.shape[1], y_train.shape[0])
+        counter = np.unique(y_train, return_counts=True)
+        print(counter[1][0] / float(counter[1][1]))
+        unb = it.to_memory()
+        counter = np.unique(unb[:, 2], return_counts=True)
+        print(counter)
+        print(counter[1][0] / float(counter[1][1]))
+        ds.destroy()
+
     def test_labels_transforms(self):
         transforms = Transforms()
         transforms.add(label_t, o_features=1)
