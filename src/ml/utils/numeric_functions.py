@@ -281,12 +281,13 @@ def downsample(stream, sampling, col_index, size):
 
     sampling_n = {}
     for y, k in sampling.items():
+        unique_v = counter.get(y, 0)
         if 0 <= k <= 1:
-            v = counter[y] * k
-        elif 1 < k < counter[y]:
-             v = k % counter[y]
+            v = unique_v * k
+        elif 1 < k < unique_v:
+             v = k % unique_v
         else:
-            v = counter[y] % k
+            v = unique_v % k
         sampling_n[y] = int(round(v, 0))
 
     iterators = []
