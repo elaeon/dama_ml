@@ -32,12 +32,12 @@ class BaseAe(BaseModel):
             model_name=model_name,
             group_name=group_name)
 
-    def set_dataset(self, dataset):
+    def set_dataset(self, dataset, chunks_size=30000):
         with dataset:
             self.original_dataset_md5 = dataset.md5
             self.original_dataset_path = dataset.dataset_path
             self.original_dataset_name = dataset.name
-            self.train_ds, self.test_ds = self.reformat_all(dataset)
+            self.train_ds, self.test_ds = self.reformat_all(dataset, chunks_size=chunks_size)
         self.save_meta(keys="model")
 
     def load(self, model_version):
@@ -46,7 +46,7 @@ class BaseAe(BaseModel):
         self.train_ds = self.test_ds
         self.load_model()
 
-    def reformat_all(self, dataset):
+    def reformat_all(self, dataset, chunks_size=30000):
         if dataset.module_cls_name() == DataLabel.module_cls_name() or\
             dataset._applied_transforms is False and not dataset.transforms.is_empty():
             log.info("Reformating {}...".format(self.cls_name()))
@@ -58,7 +58,7 @@ class BaseAe(BaseModel):
                 rewrite=True)
 
             with train_ds:
-                train_ds.from_data(dataset.data, chunks_size=1000)
+                train_ds.from_data(dataset.data, chunks_size=chunks_size)
                 train.columns = dataset.columns
                 train_ds.apply_transforms = True
                 train_ds._applied_transforms = dataset._applied_transforms

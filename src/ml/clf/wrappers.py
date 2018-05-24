@@ -115,7 +115,7 @@ class ClassifModel(SupervicedModel):
         else:
             return self.le.inverse_transform(labels.astype('int'))
 
-    def reformat_all(self, dataset):
+    def reformat_all(self, dataset, train_size=.7, valid_size=.1, unbalanced=None, chunks_size=30000):
         if isinstance(dataset, list):
             dl_train, dl_test, dl_validation = dataset
             return dl_train, dl_test, dl_validation
@@ -142,22 +142,23 @@ class ClassifModel(SupervicedModel):
 
             self.labels_encode(dataset.labels)
             log.info("Labels encode finished")
-            train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv()
+            train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv(
+                train_size=train_size, valid_size=valid_size, unbalanced=unbalanced)
             train_labels = self.reformat_labels(self.le.transform(train_labels))
             validation_labels = self.reformat_labels(self.le.transform(validation_labels))
             test_labels = self.reformat_labels(self.le.transform(test_labels))
             with dl_train:
-                dl_train.from_data(train_data, train_labels, chunks_size=30000)
+                dl_train.from_data(train_data, train_labels, chunks_size=chunks_size)
                 dl_train.columns = dataset.columns
                 dl_train.apply_transforms = True
                 dl_train._applied_transforms = dataset._applied_transforms
             with dl_test:
-                dl_test.from_data(test_data, test_labels, chunks_size=30000)
+                dl_test.from_data(test_data, test_labels, chunks_size=chunks_size)
                 dl_test.columns = dataset.columns
                 dl_test.apply_transforms = True
                 dl_test._applied_transforms = dataset._applied_transforms
             with dl_validation:
-                dl_validation.from_data(validation_data, validation_labels, chunks_size=30000)
+                dl_validation.from_data(validation_data, validation_labels, chunks_size=chunks_size)
                 dl_validation.columns = dataset.columns
                 dl_validation.apply_transforms = True
                 dl_validation._applied_transforms = dataset._applied_transforms

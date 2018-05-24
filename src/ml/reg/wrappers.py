@@ -62,7 +62,7 @@ class RegModel(SupervicedModel):
         for chunk in labels:
             yield chunk
 
-    def reformat_all(self, dataset):
+    def reformat_all(self, dataset, train_size=.7, valid_size=.1, unbalanced=None, chunks_size=30000):
         log.info("Reformating {}...".format(self.cls_name()))
         dl_train = DataLabel(
             dataset_path=settings["dataset_model_path"],
@@ -83,19 +83,20 @@ class RegModel(SupervicedModel):
             transforms=dataset.transforms,
             rewrite=True)
 
-        train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv()
+        train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv(
+             train_size=train_size, valid_size=valid_size, unbalanced=unbalanced)
         with dl_train:
-            dl_train.from_data(train_data, train_labels, chunks_size=30000)
+            dl_train.from_data(train_data, train_labels, chunks_size=chunks_size)
             dl_train.columns = dataset.columns
             dl_train.apply_transforms = True
             dl_train._applied_transforms = dataset._applied_transforms
         with dl_test:
-            dl_test.from_data(test_data, test_labels, chunks_size=30000)
+            dl_test.from_data(test_data, test_labels, chunks_size=chunks_size)
             dl_test.columns = dataset.columns
             dl_test.apply_transforms = True
             dl_test._applied_transforms = dataset._applied_transforms
         with dl_validation:
-            dl_validation.from_data(validation_data, validation_labels, chunks_size=30000)
+            dl_validation.from_data(validation_data, validation_labels, chunks_size=chunks_size)
             dl_validation.columns = dataset.columns
             dl_validation.apply_transforms = True
             dl_validation._applied_transforms = dataset._applied_transforms

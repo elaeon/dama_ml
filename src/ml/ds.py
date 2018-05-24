@@ -17,6 +17,7 @@ from ml.processing import Transforms
 from ml.utils.config import get_settings
 from ml.layers import IterLayer
 from ml import fmtypes as Fmtypes
+from ml.utils.numeric_functions import downsample
 
 settings = get_settings("ml")
 
@@ -1046,16 +1047,35 @@ class DataLabel(Data):
     
     def cv(self, train_size=.7, valid_size=.1, unbalanced=None):
         from sklearn.model_selection import train_test_split
+
         X_train, X_test, y_train, y_test = train_test_split(
             self.data[:], self.labels[:], train_size=round(train_size+valid_size, 2), random_state=0)
         size = self.data.shape[0]
 
-        valid_size_index = int(round(size * valid_size))
+        valid_size_index = int(round(size * valid_size, 0))
         X_validation = X_train[:valid_size_index]
         y_validation = y_train[:valid_size_index]
         X_train = X_train[valid_size_index:]
         y_train = y_train[valid_size_index:]
-        return X_train, X_validation, X_test, y_train, y_validation, y_test
+
+        if unbalanced is not None:
+            elems = [(X_train, y_train), (X_validation, y_validation), (X_test, y_test)]
+            X_unb = []
+            y_unb = []
+            for X_, y_ in elems:
+                X = np.c_[X_, y_]
+                y_index = X_.shape[-1]
+                it = downsample(X, unbalanced, y_index, y_.shape[0])
+                v = it.to_memory()
+                if v.shape[0] == 0:
+                    X_unb.append(v)
+                    y_unb.append(v)
+                    continue
+                X_unb.append(v[:, :y_index])
+                y_unb.append(v[:, y_index])
+            return X_unb + y_unb
+        else:
+            return X_train, X_validation, X_test, y_train, y_validation, y_test        
 
     def cv_ds(self, train_size=.7, valid_size=.1, dataset_path=None, apply_transforms=True):
         data = self.cv(train_size=train_size, valid_size=valid_size)

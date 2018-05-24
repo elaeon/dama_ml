@@ -417,10 +417,22 @@ class TestIterLayers(unittest.TestCase):
         data = np.random.rand(size, 3)
         data[:, 2] = data[:, 2] <= .9
         v = downsample(data, {0: 200, 1:240}, 2, size)
-        true_values = count_true_values(v.to_memory(), 2)
+        true_values = count_values(v.to_memory(), 2, 1)
         self.assertEqual(true_values[0] > 50, True)
         self.assertEqual(true_values[1], 240)
 
+    def test_downsample_params(self):
+        size = 5000
+        data = np.random.rand(size, 3)
+        data[:, 2] = data[:, 2] <= .9
+        v = downsample(data, {0: 2000, 1:4840}, 2, size).to_memory()
+        _, counter = np.unique(data[:, 2], return_counts=True)
+        self.assertEqual(count_values(v, 2, 0)[1], counter[0])
+        self.assertEqual(count_values(v, 2, 1)[1], counter[1])
+
+        v = downsample(data, {0: .2, 1:.4}, 2, size).to_memory()
+        self.assertEqual(count_values(v, 2, 0)[1], int(round(counter[0]*.2, 0)))
+        self.assertEqual(count_values(v, 2, 1)[1], int(round(counter[1]*.4, 0)))
 
     def test_downsample_small(self):
         size = 10
@@ -455,8 +467,8 @@ def chunk_sizes(seq):
     return [len(list(row)) for row in seq]
 
 
-def count_true_values(data, y):
-    true_values = len([e for e in data[:, y] == 1 if e])
+def count_values(data, y, v):
+    true_values = len([e for e in data[:, y] == v if e])
     return true_values*100 / float(data.shape[0]), true_values
 
 

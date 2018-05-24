@@ -269,14 +269,27 @@ def filter_sample(stream, label, col_index):
 
 def downsample(stream, sampling, col_index, size):
     from ml.layers import IterLayer
+    import numpy as np
+
+    if col_index is not None:
+        u_values, counter = np.unique(stream[:size, col_index], return_counts=True)
+    else:
+        u_values, counter = np.unique(stream[:size], return_counts=True)
+    counter = dict(zip(u_values, counter))
+    if len(counter) == 0:
+        return IterLayer([], shape=(0,))
+
+    sampling_n = {}
     for y, k in sampling.items():
-        if k < size:
-            v = k % size
+        if 0 <= k <= 1:
+            v = counter[y] * k
+        elif 1 < k < counter[y]:
+             v = k % counter[y]
         else:
-            v = size % k
-        sampling[y] = int(round(v, 0))
+            v = counter[y] % k
+        sampling_n[y] = int(round(v, 0))
 
     iterators = []
-    for y, k in sampling.items():
+    for y, k in sampling_n.items():
         iterators.append(IterLayer(filter_sample(stream[:size], y, col_index)).sample(k))
     return IterLayer.concat_n(iterators)
