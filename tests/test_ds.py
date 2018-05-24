@@ -518,7 +518,7 @@ class TestDataset(unittest.TestCase):
             X_train, X_validation, X_test, y_train, y_validation, y_test = ds.cv(train_size=.7, valid_size=0, unbalanced={u'True': .2, u'False': 350})
         counter = np.unique(Y, return_counts=True)
         un = np.unique(y_test, return_counts=True)
-        self.assertEqual(np.unique(y_train, return_counts=True)[1][1] - 3 <= round(counter[1][1]*.7*.2, 0), True)
+        self.assertEqual(np.unique(y_train, return_counts=True)[1][1] - 4 <= round(counter[1][1]*.7*.2, 0), True)
         ds.destroy()
 
     def test_labels_transforms(self):

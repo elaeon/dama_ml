@@ -36,13 +36,14 @@ class MLModel:
                 for chunk in data:
                     yield self.predictors[0](self.transform_data(chunk))
             else:
-                raise Exception("Data has not chunks")
+                raise Exception("Data does not have chunks")
         else:
             if data.has_chunks:
                 for chunk in data:
                     yield self.predictors[0](chunk)
             else:
-                raise Exception("Data has not chunks")
+                for row in data:
+                    yield self.predictors[0](row)
 
     def load(self, path):
         return self.load_fn(path)
@@ -159,7 +160,7 @@ class BaseModel(DataDrive):
             model_name=model_name,
             group_name=group_name)
 
-    def scores(self, measures=None):
+    def scores(self, measures=None, chunks_size=2000):
         pass
 
     def confusion_matrix(self):

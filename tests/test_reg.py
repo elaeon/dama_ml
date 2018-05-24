@@ -21,7 +21,7 @@ class TestRegSKL(unittest.TestCase):
     def test_load_meta(self):
         dl = DataLabel(name="reg0", dataset_path="/tmp/", rewrite=True)
         with dl:
-            dl.build_dataset(self.X, self.Y)
+            dl.from_data(self.X, self.Y)
         reg = RandomForestRegressor( 
             model_name="test", 
             check_point_path="/tmp/")
@@ -37,7 +37,7 @@ class TestRegSKL(unittest.TestCase):
     def test_empty_load(self):
         dl = DataLabel(name="reg0", dataset_path="/tmp/", rewrite=True)
         with dl:
-            dl.build_dataset(self.X, self.Y)
+            dl.from_data(self.X, self.Y)
         reg = RandomForestRegressor(
             model_name="test",
             check_point_path="/tmp/")
@@ -56,7 +56,7 @@ class TestRegSKL(unittest.TestCase):
     def test_scores(self):
         dl = DataLabel(name="reg0", dataset_path="/tmp/", rewrite=True)
         with dl:
-            dl.build_dataset(self.X, self.Y)
+            dl.from_data(self.X, self.Y)
         reg = RandomForestRegressor(
             model_name="test", 
             check_point_path="/tmp/")
@@ -77,7 +77,7 @@ class TestRegSKL(unittest.TestCase):
         dataset = DataLabel(name="test_0", dataset_path="/tmp/", 
             rewrite=True, transforms=t, apply_transforms=True)
         with dataset:
-            dataset.build_dataset(X, Y)
+            dataset.from_data(X, Y)
         reg = RandomForestRegressor(
             model_name="test", 
             check_point_path="/tmp/")
@@ -95,7 +95,7 @@ class TestRegSKL(unittest.TestCase):
         Y = np.random.rand(100)
         dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
         with dataset:
-            dataset.build_dataset(X, Y)
+            dataset.from_data(X, Y)
         reg = RandomForestRegressor(
             model_name="test", 
             check_point_path="/tmp/")

@@ -133,18 +133,14 @@ class TransformsFn(object):
         """
         if isinstance(data, np.ndarray):
             data = IterLayer(data, shape=data.shape, dtype=data.dtype).to_chunks(chunks_size)
-            has_chunks = True
         elif isinstance(data, pd.DataFrame):
             data = IterLayer(data, shape=data.shape).to_chunks(chunks_size)
-            has_chunks = True
         elif isinstance(data, IterLayer):
-            has_chunks = data.has_chunks
             chunks_size = data.chunks_size
         else:
             raise Exception("Type {} is not supported".format(type(data)))
         
-        return IterLayer(self.reduce(data), shape=data.shape, chunks_size=chunks_size, 
-                    has_chunks=has_chunks)
+        return IterLayer(self.reduce(data), shape=data.shape, chunks_size=chunks_size)
 
 
 class TransformsClass(TransformsFn):
@@ -332,7 +328,7 @@ class Process(object):
     def reduce(self, fn, chunks_size=258, **params):
         it = self.ds.to_iter(self.dtype, chunks_size=chunks_size)
         return IterLayer(fn(it, self.load(), **params), length=self.ds.shape[0],
-                has_chunks=it.has_chunks, chunks_size=it.chunks_size)
+                chunks_size=it.chunks_size)
 
     def load(self):
         pass

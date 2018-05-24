@@ -16,7 +16,7 @@ class TestSKL(unittest.TestCase):
         self.Y = self.X[:,0] > .5
         self.dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
         with self.dataset:
-            self.dataset.build_dataset(self.X, self.Y)
+            self.dataset.from_data(self.X, self.Y)
 
     def tearDown(self):
         self.dataset.destroy()
@@ -87,7 +87,7 @@ class TestSKL(unittest.TestCase):
         dataset = DataLabel(name="test_0", dataset_path="/tmp/", 
             rewrite=True, transforms=t, apply_transforms=True)
         with dataset:
-            dataset.build_dataset(X, Y)
+            dataset.from_data(X, Y)
         classif = RandomForest(
             model_name="test", 
             check_point_path="/tmp/")
@@ -134,7 +134,7 @@ class TestSKL(unittest.TestCase):
 #        Y = (X[:,0] > .5).astype(int)
 #        self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
 #            ltype='int', rewrite=True)
-#        self.dataset.build_dataset(X, Y)
+#        self.dataset.from_data(X, Y)
 #        self.classif = SVGPC(dataset=self.dataset, 
 #            model_name="test", 
 #            model_version="1",
@@ -167,7 +167,7 @@ class TestGrid(unittest.TestCase):
         Y = (X[:,0] > .5).astype(int)
         original_dataset = DataLabel("test", dataset_path="/tmp/", rewrite=True)
         with original_dataset:
-            original_dataset.build_dataset(X, Y)
+            original_dataset.from_data(X, Y)
         self.original_dataset = original_dataset
 
     def tearDown(self):
@@ -179,7 +179,7 @@ class TestGrid(unittest.TestCase):
 
         dataset = DataLabel(name="testdl", dataset_path="/tmp/", rewrite=True)
         with self.original_dataset, dataset:
-            dataset.build_dataset(self.original_dataset.data[:], 
+            dataset.from_data(self.original_dataset.data[:], 
                                 self.original_dataset.labels[:])
 
         rf = RandomForest(model_name="test_rf")
@@ -332,7 +332,7 @@ class TestGrid(unittest.TestCase):
 #        X = np.asarray([1, 0]*1000)
 #        Y = X*1
 #        self.dataset = DataSetBuilder("test", dataset_path="/tmp/", rewrite=False)
-#        self.dataset.build_dataset(X, Y)
+#        self.dataset.from_data(X, Y)
 
 #        classif = Boosting([
 #            ExtraTrees,
@@ -373,7 +373,7 @@ class TestXgboost(unittest.TestCase):
         Y = (X[:,0] > .5).astype(int)
         self.dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
         with self.dataset:
-            self.dataset.build_dataset(X, Y)
+            self.dataset.from_data(X, Y)
         try:
             from ml.clf.extended.w_xgboost import Xgboost
             classif = Xgboost(
@@ -413,7 +413,7 @@ class TestLightGBM(unittest.TestCase):
         Y = (X[:,0] > .5).astype(int)
         self.dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
         with self.dataset:
-            self.dataset.build_dataset(X, Y)
+            self.dataset.from_data(X, Y)
         try:
             from ml.clf.extended.w_lgb import LightGBM
             classif = LightGBM(
@@ -478,7 +478,7 @@ class TestKFold(unittest.TestCase):
     def test_predict(self):
         dataset = DataLabel(dataset_path="/tmp/", rewrite=True)
         with dataset:
-            dataset.build_dataset(self.X, self.Y)
+            dataset.from_data(self.X, self.Y)
         classif = RandomForest(
             model_name="test",
             check_point_path="/tmp/")

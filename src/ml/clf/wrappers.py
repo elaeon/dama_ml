@@ -34,7 +34,7 @@ class ClassifModel(SupervicedModel):
                 self.labels_encode(ds.labels)
         self.load_model()
 
-    def scores(self, measures=None):
+    def scores(self, measures=None, chunks_size=2000):
         if measures is None or isinstance(measures, str):
             measures = metrics.Measure.make_metrics(measures, name=self.model_name)
         with self.test_ds:
@@ -43,7 +43,7 @@ class ClassifModel(SupervicedModel):
 
         for output in measures.outputs():
             predictions = self.predict(test_data, output=output, 
-                transform=False, chunks_size=0).to_memory()
+                transform=False, chunks_size=chunks_size).to_memory()
             measures.set_data(predictions, test_labels, output=output)
         return measures.to_list()
 

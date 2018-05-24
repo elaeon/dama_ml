@@ -542,6 +542,9 @@ class Data(ReadWriteData):
         end = self.chunks_writer("/data/data", data)
         self._set_space_fmtypes(self.num_features())
         self.md5 = self.calc_md5()
+        columns = data.columns()
+        if columns is not None:
+            self.columns = columns
 
     def empty(self, name, dataset_path=None, apply_transforms=False, transforms=None):
         """
@@ -770,43 +773,27 @@ class DataLabel(Data):
             items_p = [0, 0]
             print(order_table(headers, items, "# items"))
 
-    def build_dataset(self, data, labels, chunks_size=258):
-        """
-        build a datalabel dataset from data and labels
-        """
+    def from_data(self, data, labels, chunks_size=258):
         data = self.processing(data, apply_transforms=self.apply_transforms, 
-                            chunks_size=chunks_size)
-        if not isinstance(labels, IterLayer):
-            labels = IterLayer(labels, shape=labels.shape, dtype=labels.dtype).to_chunks(chunks_size)
-        self._set_space_shape('data', data.shape, data.global_dtype)
-        self._set_space_shape('labels', labels.shape, labels.dtype)
-        self.chunks_writer("/data/data", data)
-        self.chunks_writer("/data/labels", labels)
+            chunks_size=chunks_size)
+        if isinstance(labels, str):
+            data_shape = list(data.shape[:-1]) + [data.shape[-1] - 1]
+            self._set_space_shape('data', data_shape, data.global_dtype)
+            self._set_space_shape('labels', (data.shape[0],), data.global_dtype)
+            self.chunks_writer_split("/data/data", "/data/labels", data, labels)
+        else:
+            if not isinstance(labels, IterLayer):
+                labels = IterLayer(labels, shape=labels.shape, dtype=labels.dtype).to_chunks(chunks_size)
+            self._set_space_shape('data', data.shape, data.global_dtype)
+            self._set_space_shape('labels', labels.shape, labels.dtype)
+            self.chunks_writer("/data/data", data)
+            self.chunks_writer("/data/labels", labels)
+
         self._set_space_fmtypes(self.num_features())
         self.md5 = self.calc_md5()
         columns = data.columns()
         if columns is not None:
             self.columns = columns
-
-    def from_data(self, data, labels, chunks_size=258):
-        #if self.rewrite is False:
-        #    return
-
-        if isinstance(labels, str):
-            data = self.processing(data, apply_transforms=self.apply_transforms, 
-                chunks_size=chunks_size)
-            data_shape = list(data.shape[:-1]) + [data.shape[-1] - 1]
-            self._set_space_shape('data', data_shape, data.global_dtype)
-            self._set_space_shape('labels', (data.shape[0],), data.global_dtype)
-            self.chunks_writer_split("/data/data", "/data/labels", data, labels)
-            self._set_space_fmtypes(self.num_features())
-            self.md5 = self.calc_md5()
-            columns = data.columns()
-            if columns is not None:
-                self.columns = columns
-        else:
-            self.build_dataset(data, labels, chunks_size=chunks_size)
-
 
     def empty(self, name, apply_transforms=False, dataset_path=None,
                 transforms=None):
