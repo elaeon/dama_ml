@@ -1046,9 +1046,10 @@ class DataLabel(Data):
         y_train = y_train[valid_size_index:]
 
         if unbalanced is not None:
-            elems = [(X_train, y_train), (X_validation, y_validation), (X_test, y_test)]
+            elems = [(X_train, y_train), (X_validation, y_validation)]#, (X_test, y_test)]
             X_unb = []
             y_unb = []
+            log.debug("Unbalancing data")
             for X_, y_ in elems:
                 X = np.c_[X_, y_]
                 y_index = X_.shape[-1]
@@ -1060,6 +1061,8 @@ class DataLabel(Data):
                     continue
                 X_unb.append(v[:, :y_index])
                 y_unb.append(v[:, y_index])
+            X_unb.append(X_test)
+            y_unb.append(y_test)
             return X_unb + y_unb
         else:
             return X_train, X_validation, X_test, y_train, y_validation, y_test        
