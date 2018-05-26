@@ -192,7 +192,8 @@ class BaseModel(DataDrive):
                 return self.test_ds.processing(x, apply_transforms=t, chunks_size=chunks_size)
 
         output_shape = tuple([data.shape[0], self.labels_dim])
-        return IterLayer(self._predict(fn(data, t=transform), output=output), shape=output_shape)
+        return IterLayer(self._predict(fn(data, t=transform), output=output), 
+            shape=output_shape, chunks_size=chunks_size)
 
     def metadata_model(self):
         with self.test_ds:
