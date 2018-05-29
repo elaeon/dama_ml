@@ -4,6 +4,8 @@ import zipfile
 #import bz2
 #import gzip
 import StringIO
+from ml.utils.files import rm
+import pandas as pd
 
 
 def get_compressed_file_manager(filepath):
@@ -39,7 +41,7 @@ class File(object):
         return True
 
     def reader(self, header=True, limit=None, filename=None, delimiter=","):
-        with open(self.filepath, 'r') as f:
+        with open(self.filepath, 'rb') as f:
             csv_reader = csv.reader(f, delimiter=delimiter)
             if header is False:
                 next(csv_reader)
@@ -129,8 +131,9 @@ class CSV(object):
         return file_manager.writer(iterator, filename=filename, 
             delimiter=delimiter)
 
-    #def __iter__(self):
-    #    return self
-
-    #def next(self):
-    #    pass
+    def destroy(self):
+        rm(self.filepath)
+    
+    def to_iter(self, dtype=None):
+        from ml.layers import IterLayer
+        return IterLayer(self.reader(header=False), dtype=dtype)

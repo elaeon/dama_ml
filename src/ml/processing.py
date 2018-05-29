@@ -136,7 +136,8 @@ class TransformsFn(object):
         elif isinstance(data, pd.DataFrame):
             data = IterLayer(data, shape=data.shape).to_chunks(chunks_size)
         elif isinstance(data, IterLayer):
-            chunks_size = data.chunks_size
+            if data.chunks_size == 0:
+                data = data.to_chunks(chunks_size)
         else:
             raise Exception("Type {} is not supported".format(type(data)))
         

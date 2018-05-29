@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import psycopg2
 import logging
+import datetime
 
 from ml.utils.config import get_settings
 from ml.utils.seq import grouper_chunk
@@ -36,7 +37,6 @@ def choice(operator):
 class IterLayer(object):
     def __init__(self, fn_iter, shape=None, dtype=None, type_elem=None,
                 chunks_size=0, length=None):
-        dtypes = None
         if isinstance(fn_iter, types.GeneratorType) or isinstance(fn_iter, psycopg2.extensions.cursor):
             self.it = fn_iter
         elif isinstance(fn_iter, IterLayer):
@@ -56,9 +56,9 @@ class IterLayer(object):
         else:
             self.length = length
 
-        if dtype is None:
+        if dtype is None or shape is None:
             #obtain dtype, shape, global_dtype and type_elem
-            self.chunk_taste(dtypes)
+            self.chunk_taste(dtype)
         else:
             if hasattr(dtype, '__iter__'):
                 self.global_dtype = self._get_global_dtype(dtype)
@@ -193,13 +193,13 @@ class IterLayer(object):
                 else:
                     yield smx_a
         else:
-            #cdtype = dict(dtype)
             columns = [c for c, _ in dtype]
+            dt_cols = self.check_datatime(dtype)
             for smx in grouper_chunk(chunks_size, self):
                 x = np.empty(chunk_shape[0], dtype=dtype)
                 for i, row in enumerate(smx):
                     try:
-                        x[i] = tuple(row)
+                        x[i] = self.to_tuple(row, dt_cols)
                     except TypeError:
                         x[i] = row
                 smx_a = pd.DataFrame(x,
@@ -209,7 +209,19 @@ class IterLayer(object):
                     yield smx_a.iloc[:i+1]
                 else:
                     yield smx_a
-                
+    
+    def check_datatime(self, dtype):
+        cols = []
+        for col_i, (_, type_) in enumerate(dtype):
+            if type_ == datetime.datetime:
+                cols.append(col_i)
+        return cols
+
+    def to_tuple(self, row, dt_cols):
+        for col_i in dt_cols:
+            row[col_i] = datetime.datetime.strptime(row[col_i], "%Y-%m-%d %H:%M:%S")
+        return tuple(row)
+
     def flat(self):
         def _iter():
             if self.type_elem == np.ndarray:

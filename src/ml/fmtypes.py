@@ -1,4 +1,6 @@
 from collections import namedtuple
+from datetime import datetime
+
 Fmtype = namedtuple('Fmtype', 'id name type db_type')
 
 BOOLEAN = Fmtype(id=0, name="boolean", type=bool, db_type="BOOLEAN")
@@ -7,7 +9,7 @@ ORDINAL = Fmtype(id=2, name="ordinal", type=int, db_type="INTEGER")
 CATEGORICAL = Fmtype(id=3, name="categorical", type=int, db_type="INTEGER")
 DENSE = Fmtype(id=4, name="dense", type=float, db_type="FLOAT")
 TEXT = Fmtype(id=5, name="text", type=str, db_type="TEXT")
-DATETIME = Fmtype(id=6, name="datetime", type=str, db_type="TIMESTAMP")
+DATETIME = Fmtype(id=6, name="datetime", type=datetime, db_type="TIMESTAMP")
 
 fmtypes_map = {
     BOOLEAN.id: BOOLEAN.name,
