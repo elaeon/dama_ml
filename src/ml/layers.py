@@ -487,7 +487,18 @@ class IterLayer(object):
             return pd.concat((chunk for chunk in self), axis=0, copy=False, ignore_index=True)
         else:
             if hasattr(self.dtype, '__iter__'):
-                return pd.DataFrame((e for e in self), columns=[c for c, _ in self.dtype])
+                columns = [c for c, _ in self.dtype]
+                dt_cols = self.check_datatime(self.dtype)
+                x = np.empty(self.shape[0], dtype=self.dtype)
+                for i, row in enumerate(self):
+                    try:
+                        x[i] = self.to_tuple(row, dt_cols)
+                    except TypeError:
+                        x[i] = row
+                return pd.DataFrame(x,
+                    index=np.arange(0, self.shape[0]), 
+                    columns=columns)
+               # return pd.DataFrame((e for e in self), columns=[c for c, _ in self.dtype])
             else:
                 return pd.DataFrame((e for e in self))
 
