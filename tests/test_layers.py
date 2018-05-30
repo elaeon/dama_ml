@@ -440,8 +440,6 @@ class TestIterLayers(unittest.TestCase):
         data[:, 2] = data[:, 2] <= .9
         v = downsample(data, {0: 0, 1:3}, 2, size)
         self.assertItemsEqual(v.to_memory()[:, 2], [1,1,1])
-        #v = downsample(data, {0: 20, 1:3}, 2, 10)
-        #self.assertEqual(v.to_memory()
 
     def test_downsample_static(self):
         data = [0,0,0,1,1,1,1,1,2,2,2]

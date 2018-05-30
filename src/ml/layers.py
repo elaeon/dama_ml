@@ -43,7 +43,7 @@ class IterLayer(object):
             self.it = fn_iter
         elif isinstance(fn_iter, pd.DataFrame):
             self.it = fn_iter.itertuples(index=False)
-            dtypes = zip(fn_iter.columns.values, fn_iter.dtypes.values)
+            dtype = zip(fn_iter.columns.values, fn_iter.dtypes.values)
         else:
             self.it = (e for e in fn_iter)
 
@@ -64,7 +64,7 @@ class IterLayer(object):
                 self.global_dtype = self._get_global_dtype(dtype)
             else:
                 self.global_dtype = dtype
-            self.dtype = dtype
+            self.dtype = self.replace_str_type_to_obj(dtype)
             self.shape = shape
             if self.has_chunks:
                 self.type_elem = np.ndarray if not isinstance(self.dtype, list) else pd.DataFrame
@@ -100,7 +100,7 @@ class IterLayer(object):
             self.type_elem = None
             return
 
-        if dtypes is not None:
+        if dtypes is not None and hasattr(dtypes, '__iter__'):
             self.dtype = dtypes
             global_dtype = self._get_global_dtype(dtypes)
         elif isinstance(chunk, pd.DataFrame):
@@ -136,8 +136,6 @@ class IterLayer(object):
 
         if self.has_chunks:
             shape = list(shape[1:])
-            #if len(shape) == 0:
-            #    shape = [0]
             self.shape = [self.length] + list(shape)
         else:
             if len(shape) == 1:
@@ -153,6 +151,21 @@ class IterLayer(object):
         self.global_dtype = global_dtype
         self.pushback(chunk)
         self.type_elem = type(chunk)
+
+    def replace_str_type_to_obj(self, dtype):
+        if hasattr(dtype, '__iter__'):
+            dtype_tmp = []
+            for c, dtp in dtype:
+                if dtp == "str" or dtp == str:
+                    dtype_tmp.append((c, "|O"))
+                else:
+                    dtype_tmp.append((c, dtp))
+        else:
+            if dtype == "str" or dtype == str:
+                dtype_tmp = "|O"
+            else:
+                dtype_tmp = dtype
+        return dtype_tmp
 
     def _get_global_dtype(self, dtype):
         sizeof = [(np.dtype(cdtype), cdtype) for _, cdtype in dtype]
@@ -196,28 +209,20 @@ class IterLayer(object):
             columns = [c for c, _ in dtype]
             dt_cols = self.check_datatime(dtype)
             for smx in grouper_chunk(chunks_size, self):
-                x = np.empty(chunk_shape[0], dtype=dtype)
-                for i, row in enumerate(smx):
-                    try:
-                        x[i] = self.to_tuple(row, dt_cols)
-                    except TypeError:
-                        x[i] = row
-                smx_a = pd.DataFrame(x,
-                    index=np.arange(0, chunk_shape[0]), 
-                    columns=columns)
-                if i + 1 < chunks_size:
-                    yield smx_a.iloc[:i+1]
-                else:
-                    yield smx_a
+                yield self._assign_struct_array2df(smx, chunk_shape[0], dtype, 
+                    dt_cols, columns, chunks_size=chunks_size)
     
     def check_datatime(self, dtype):
         cols = []
         for col_i, (_, type_) in enumerate(dtype):
-            if type_ == datetime.datetime:
+            if isinstance(type_, datetime.datetime):
                 cols.append(col_i)
         return cols
 
     def to_tuple(self, row, dt_cols):
+        if isinstance(row, tuple):
+            row = list(row)
+
         for col_i in dt_cols:
             row[col_i] = datetime.datetime.strptime(row[col_i], "%Y-%m-%d %H:%M:%S")
         return tuple(row)
@@ -489,18 +494,29 @@ class IterLayer(object):
             if hasattr(self.dtype, '__iter__'):
                 columns = [c for c, _ in self.dtype]
                 dt_cols = self.check_datatime(self.dtype)
-                x = np.empty(self.shape[0], dtype=self.dtype)
-                for i, row in enumerate(self):
-                    try:
-                        x[i] = self.to_tuple(row, dt_cols)
-                    except TypeError:
-                        x[i] = row
-                return pd.DataFrame(x,
-                    index=np.arange(0, self.shape[0]), 
-                    columns=columns)
-               # return pd.DataFrame((e for e in self), columns=[c for c, _ in self.dtype])
+                return self._assign_struct_array2df(self, self.shape[0], self.dtype, 
+                    dt_cols, columns)
             else:
                 return pd.DataFrame((e for e in self))
+
+    def _assign_struct_array2df(self, it, length, dtype, dt_cols, columns, chunks_size=0):
+        stc_arr = np.empty(length, dtype=dtype)
+        i = 0
+        for i, row in enumerate(it):
+            try:
+                stc_arr[i] = self.to_tuple(row, dt_cols)
+            except TypeError:
+                stc_arr[i] = row
+
+        smx = pd.DataFrame(stc_arr,
+            index=np.arange(0, length), 
+            columns=columns)
+
+        if i + 1 < chunks_size:
+            return smx.iloc[:i+1]
+        else:
+            return smx
+
 
     def to_memory(self):   
         if hasattr(self.dtype, '__iter__'):
