@@ -277,7 +277,7 @@ def downsample(stream, sampling, col_index, size):
         u_values, counter = np.unique(stream[:size], return_counts=True)
     counter = dict(zip(u_values, counter))
     if len(counter) == 0:
-        return IterLayer([], shape=(0,))
+        return IterLayer([])
 
     sampling_n = {}
     for y, k in sampling.items():

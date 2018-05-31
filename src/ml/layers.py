@@ -35,7 +35,7 @@ def choice(operator):
 
 
 class IterLayer(object):
-    def __init__(self, fn_iter, shape=None, dtype=None, chunks_size=0):
+    def __init__(self, fn_iter, dtype=None, chunks_size=0, length=None):
         if isinstance(fn_iter, types.GeneratorType) or isinstance(fn_iter, psycopg2.extensions.cursor):
             self.it = fn_iter
         elif isinstance(fn_iter, IterLayer):
@@ -49,24 +49,10 @@ class IterLayer(object):
         self.pushedback = []
         self.chunks_size = chunks_size
         self.has_chunks = True if chunks_size > 0 else False
-        self.o_shape = shape
         self.features_dim = None
-        #self.length = None
-
-        if dtype is None or shape is None:
-            #obtain dtype, shape, global_dtype and type_elem
-            self.chunk_taste(dtype)
-        else:
-            if hasattr(dtype, '__iter__'):
-                self.global_dtype = self._get_global_dtype(dtype)
-            else:
-                self.global_dtype = dtype
-            self.dtype = self.replace_str_type_to_obj(dtype)
-            self.shape = shape
-            if self.has_chunks:
-                self.type_elem = np.ndarray if not isinstance(self.dtype, list) else pd.DataFrame
-            else:
-                self.type_elem = self.chunk_type_elem()
+        self.length = length
+        #to obtain dtype, shape, global_dtype and type_elem
+        self.chunk_taste(dtype)
     
     def columns(self):
         if hasattr(self.dtype, '__iter__'):
@@ -98,8 +84,8 @@ class IterLayer(object):
             return
 
         if dtypes is not None and hasattr(dtypes, '__iter__'):
-            self.dtype = dtypes
-            global_dtype = self._get_global_dtype(dtypes)
+            self.dtype = self.replace_str_type_to_obj(dtypes)
+            global_dtype = self._get_global_dtype(self.dtype)
         elif isinstance(chunk, pd.DataFrame):
             self.dtype = []
             for c, cdtype in zip(chunk.columns.values, chunk.dtypes.values):
@@ -134,20 +120,6 @@ class IterLayer(object):
             else:
                 shape = (1,)
 
-        #if self.has_chunks:
-        #    shape = list(shape[1:])
-        #    self.shape = [self.length] +list(shape)
-        #else:
-            #if len(shape) == 1:
-            #    if shape[0] == 1:
-            #        self.shape = [self.length]
-            #    elif self.o_shape is not None and self.o_shape[-1] == 1:
-            #        self.shape = [self.length]
-            #    else:
-            #        self.shape = [self.length, shape[0]]
-            #else:
-            #    self.shape = [self.length] + list(shape[1:])
-
         self.shape = shape
         self.global_dtype = global_dtype
         self.pushback(chunk)
@@ -173,10 +145,10 @@ class IterLayer(object):
         return max(sizeof, key=lambda x: x[0])[1]
 
     def to_chunks(self, chunks_size, dtype=None):
-        if self.has_chunks is False:
+        if self.has_chunks is False and chunks_size > 0:
             if dtype is None:
                 dtype = self.dtype
-            return IterLayer(self.chunks_gen(chunks_size, dtype), shape=self.shape, 
+            return IterLayer(self.chunks_gen(chunks_size, dtype),
                 chunks_size=chunks_size, dtype=dtype)
         else:
             return self
@@ -245,21 +217,19 @@ class IterLayer(object):
                 for e in chain.from_iterable(self):
                     yield e
         
-        shape = (reduce(operator.mul, self.shape),)
-        it = IterLayer(_iter(), shape=shape, dtype=self.dtype)
+        it = IterLayer(_iter(), dtype=self.dtype)
         if self.has_chunks:            
             return it.to_chunks(self.chunks_size, dtype=self.global_dtype)
         else:
             return it
 
     def sample(self, k, col=None, weight_fn=None):
-        shape = tuple([k] + list(self.shape[1:]))
         if self.has_chunks:
             data = self.clean_chunks()
         else:
             data = self
         return IterLayer(wsrj(self.weights_gen(data, col, weight_fn), k), 
-            shape=shape, dtype=self.dtype)
+            length=k, dtype=self.dtype)
 
     def split(self, i):
         if self.type_elem == pd.DataFrame:
@@ -274,8 +244,6 @@ class IterLayer(object):
             dtype_0 = self.dtype
             dtype_1 = self.dtype
 
-        #shape_0 = tuple([self.shape[0], i])
-        #shape_1 = tuple([self.shape[0], self.shape[1] - i])
         it0 = IterLayer((item for item, _ in a), dtype=dtype_0, 
                 chunks_size=self.chunks_size)
         it1 = IterLayer((item for _, item in b), dtype=dtype_1, 
@@ -299,8 +267,7 @@ class IterLayer(object):
                 for chunk in self:
                     for row in chunk:
                         yield row
-            return IterLayer(cleaner(), shape=self.shape, chunks_size=0, 
-                dtype=None)
+            return IterLayer(cleaner(), chunks_size=0, dtype=None)
         return self
 
     @property
@@ -312,37 +279,25 @@ class IterLayer(object):
         if hasattr(v, '__iter__'):
             if len(v) == 1:
                 self._shape = tuple(v)
-                if v[0] == 0:
-                    self.features_dim = ()
-                else:
-                    self.features_dim = (1,)
-            else:
-                self._shape = tuple(v)
-                self.features_dim = v[1:]
-        else:
-            self._shape = (v,)
-            if v == 0:
                 self.features_dim = ()
             else:
-                self.features_dim = (1,)
-
-    @property
-    def shape_w_chunks(self):
-        r = self.shape[0] % float(self.chunks_size)
-        size = self.shape[0] / self.chunks_size
-        r = self.shape[0] % self.chunks_size
-        if r > 0:
-            size += 1
-        return tuple([self.chunks_size, size] + list(self.shape[1:]))
+                self._shape = tuple(v)
+                if self.has_chunks:
+                    self.features_dim = tuple(v[2:])
+                else:
+                    self.features_dim = tuple(v[1:])
+        else:
+            self._shape = (v,)
+            self.features_dim = ()
 
     def scalar_operation(self, operator, scalar):
         iter_ = imap(lambda x: operator(x, scalar), self)
-        return IterLayer(iter_, shape=self.shape, dtype=self.dtype, 
+        return IterLayer(iter_, dtype=self.dtype, 
             chunks_size=self.chunks_size)
 
     def stream_operation(self, operator, stream):
         iter_ = imap(lambda x: operator(x[0], x[1]), izip(self, stream))
-        return IterLayer(iter_, shape=self.shape, dtype=self.dtype, 
+        return IterLayer(iter_, dtype=self.dtype, 
             chunks_size=self.chunks_size)
 
     @choice(operator.add)
@@ -395,8 +350,8 @@ class IterLayer(object):
         if method == "arithmetic":
             iter_ = (sum(x) / float(size) for x in izip(base_iter, *iters))
         else:
-            iter_ = (reduce(operator.mul, x)**(1. / size) for x in izip(base_iter, *iters)) 
-        return IterLayer(iter_, shape=base_iter.shape, dtype=base_iter.dtype, 
+            iter_ = (reduce(operator.mul, x)**(1. / size) for x in izip(base_iter, *iters))
+        return IterLayer(iter_, dtype=base_iter.dtype, 
             chunks_size=base_iter.chunks_size)
 
     @classmethod
@@ -414,27 +369,26 @@ class IterLayer(object):
         iters = iter(iters_b)
         base_iter = next(iters)
         iter_ = (max(merge(x, weights), key=lambda x: x[1])[0] for x in izip(base_iter, *iters))
-        return IterLayer(iter_, shape=base_iter.shape, dtype=base_iter.dtype, 
+        return IterLayer(iter_, dtype=base_iter.dtype, 
             chunks_size=base_iter.chunks_size)
 
     @classmethod
     def concat_n(self, iters):
         if len(iters) > 1:
             base_iter = iters[0]
-            size = sum(it.shape[0] for it in iters)
-            shape = [size] + list(base_iter.shape[1:])
-            return IterLayer(chain(*iters), shape=shape, chunks_size=base_iter.chunks_size)
+            length = sum([it.length for it in iters if it.length is not None])
+            return IterLayer(chain(*iters), chunks_size=base_iter.chunks_size, 
+                length=length)
         elif len(iters) == 1:
             return iters[0]
 
     def concat_elems(self, data):
         iter_ = (list(chain(x0, x1)) for x0, x1 in izip(self, data))
-        return IterLayer(iter_, shape=None, dtype=self.dtype, 
-            chunks_size=self.chunks_size)
+        return IterLayer(iter_, dtype=self.dtype, chunks_size=self.chunks_size)
 
     def compose(self, fn, *args, **kwargs):
         iter_ = (fn(x, *args, **kwargs) for x in self)
-        return IterLayer(iter_, shape=self.shape, dtype=self.dtype, 
+        return IterLayer(iter_, dtype=self.dtype, 
             chunks_size=self.chunks_size)
 
     def concat(self, iterlayer):
@@ -489,7 +443,10 @@ class IterLayer(object):
         return smx_a
 
     def _to_narray_raw(self, it, length, dtype):
-        shape = [length] + list(self.features_dim)
+        if len(self.shape) == 1:
+            shape = [length]
+        else:
+            shape = [length] + list(self.features_dim)
         smx_a = np.empty(shape, dtype=dtype)
         init = 0
         end = 0
@@ -543,7 +500,9 @@ class IterLayer(object):
         else:
             return smx
 
-    def to_memory(self, length):   
+    def to_memory(self, length=None):
+        if length is None and self.length is not None:
+            length = self.length
         if hasattr(self.dtype, '__iter__'):
             return self.to_df(length)
         else:
