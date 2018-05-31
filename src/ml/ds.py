@@ -441,7 +441,7 @@ class Data(ReadWriteData):
                 end += chunks_size
                 c += 1
 
-        return IterLayer(iter_(self.data), shape=self.shape, dtype=dtype).to_chunks(chunks_size=chunks_size)
+        return IterLayer(iter_(self.data), dtype=dtype).to_chunks(chunks_size=chunks_size)
 
     def num_features(self):
         """
@@ -606,7 +606,7 @@ class Data(ReadWriteData):
             return self.transforms.apply(data, chunks_size=chunks_size)
         else:
             if not isinstance(data, IterLayer):
-                return IterLayer(data, shape=data.shape, dtype=data.dtype).to_chunks(chunks_size)
+                return IterLayer(data, dtype=data.dtype).to_chunks(chunks_size)
             return data
 
     @classmethod
@@ -773,7 +773,7 @@ class DataLabel(Data):
             items_p = [0, 0]
             print(order_table(headers, items, "# items"))
 
-    def from_data(self, data, labels, chunks_size=258):
+    def from_data(self, data, labels, length, chunks_size=258):
         data = self.processing(data, apply_transforms=self.apply_transforms, 
             chunks_size=chunks_size)
         if isinstance(labels, str):
@@ -783,9 +783,11 @@ class DataLabel(Data):
             self.chunks_writer_split("/data/data", "/data/labels", data, labels)
         else:
             if not isinstance(labels, IterLayer):
-                labels = IterLayer(labels, shape=labels.shape, dtype=labels.dtype).to_chunks(chunks_size)
-            self._set_space_shape('data', data.shape, data.global_dtype)
-            self._set_space_shape('labels', labels.shape, labels.dtype)
+                labels = IterLayer(labels, dtype=labels.dtype).to_chunks(chunks_size)
+            data_shape = [length] + list(data.features_dim)
+            labels_shape = [length] + list(labels.features_dim)
+            self._set_space_shape('data', data_shape, data.global_dtype)
+            self._set_space_shape('labels', labels_shape, labels.dtype)
             self.chunks_writer("/data/data", data)
             self.chunks_writer("/data/labels", labels)
 

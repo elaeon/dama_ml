@@ -110,10 +110,10 @@ class IterLayer(object):
             global_dtype = self.dtype
 
         try:
-            if self.has_chunks:
-                shape = [self.chunks_size] + list(chunk.shape)
-            else:
-                shape = [None] + list(chunk.shape)
+            #if self.has_chunks:
+            #    shape = [self.chunks_size] + list(chunk.shape)
+            #else:
+            shape = [None] + list(chunk.shape)
         except AttributeError:
             if hasattr(chunk, '__iter__'):
                 shape = (1, len(chunk))
@@ -407,10 +407,9 @@ class IterLayer(object):
             data[i] = y
             label_m[i] = labels[row_c]
         
-        #fixme: add a dataset chunk writer
         dataset = DataLabel(dataset_path=settings["dataset_model_path"])
         with dataset:
-            dataset.build_dataset(data, label_m)
+            dataset.from_data(data, label_m)
         return dataset
 
     def to_narray(self, length, dtype=None):
@@ -443,10 +442,10 @@ class IterLayer(object):
         return smx_a
 
     def _to_narray_raw(self, it, length, dtype):
-        if len(self.shape) == 1:
-            shape = [length]
-        else:
-            shape = [length] + list(self.features_dim)
+        #if len(self.shape) == 1:
+        #    shape = [length]
+        #else:
+        shape = [length] + list(self.features_dim)
         smx_a = np.empty(shape, dtype=dtype)
         init = 0
         end = 0

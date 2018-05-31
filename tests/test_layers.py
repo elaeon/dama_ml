@@ -184,6 +184,21 @@ class TestIterLayers(unittest.TestCase):
         self.assertEqual(it.shape, (None, 3, 3))
         self.assertEqual(it.features_dim, (3, 3))
 
+        data = np.random.rand(10)
+        it = IterLayer(data).to_chunks(2)
+        self.assertEqual(it.shape, (None, 2))
+        self.assertEqual(it.features_dim, ())
+
+        data = np.random.rand(10, 3)
+        it = IterLayer(data).to_chunks(2)
+        self.assertEqual(it.shape, (None, 2, 3))
+        self.assertEqual(it.features_dim, (3,))
+
+        data = np.random.rand(10, 3, 3)
+        it = IterLayer(data).to_chunks(2)
+        self.assertEqual(it.shape, (None, 2, 3, 3))
+        self.assertEqual(it.features_dim, (3, 3))
+
     def test_chunks(self):
         chunks_size = 3
         data = np.random.rand(10, 1)
