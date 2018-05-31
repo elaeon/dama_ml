@@ -294,3 +294,14 @@ def downsample(stream, sampling, col_index, size):
     for y, k in sampling_n.items():
         iterators.append(IterLayer(filter_sample(stream[:size], y, col_index)).sample(k))
     return IterLayer.concat_n(iterators)
+
+
+def num_splits(length, chunks_size):
+    if 0 < chunks_size <= length:
+        if length % chunks_size > 0:
+            r = 1
+        else:
+            r = 0
+        return int(round(length/chunks_size, 0)) + r
+    else:
+        return 1
