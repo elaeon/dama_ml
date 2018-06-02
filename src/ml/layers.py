@@ -34,6 +34,15 @@ def choice(operator):
     return inner
 
 
+def cut(fn):
+    def check_params(*args, **kwargs):
+        smx, end, length = fn(*args, **kwargs)
+        if end < length:
+            return smx[:end]
+        return smx
+    return check_params
+
+
 class IterLayer(object):
     def __init__(self, fn_iter, dtype=None, chunks_size=0, length=None):
         if isinstance(fn_iter, types.GeneratorType) or isinstance(fn_iter, psycopg2.extensions.cursor):
@@ -51,6 +60,7 @@ class IterLayer(object):
         self.has_chunks = True if chunks_size > 0 else False
         self.features_dim = None
         self.length = length
+        self.iter_init = True
         #to obtain dtype, shape, global_dtype and type_elem
         self.chunk_taste(dtype)
     
@@ -382,7 +392,7 @@ class IterLayer(object):
             base_iter = iters[0]
             length = sum([it.length for it in iters if it.length is not None])
             return IterLayer(chain(*iters), chunks_size=base_iter.chunks_size, 
-                length=length)
+                length=None if length == 0 else length)
         elif len(iters) == 1:
             return iters[0]
 
@@ -417,21 +427,19 @@ class IterLayer(object):
         return dataset
 
     def to_narray(self, dtype=None):
-        if self.shape is None:
-            raise Exception("Data shape is None, IterLayer can't be converted to array")
         if dtype is None:
             dtype = self.global_dtype
-        
         if self.has_chunks:
             return self._to_narray_chunks(self, dtype)
         else:
             return self._to_narray_raw(self, dtype)
 
+    @cut
     def _to_narray_chunks(self, it, dtype):
         smx_a = np.empty(self.shape, dtype=dtype)
         init = 0
         end = 0
-        for smx in islice(it, num_splits(self.length, self.chunks_size)):
+        for smx in self:
             if isinstance(smx, IterLayer):
                 smx = smx.to_narray(self.chunks_size)
                 end += smx.shape[0]
@@ -442,13 +450,14 @@ class IterLayer(object):
                 end = self.length
             smx_a[init:end] = smx
             init = end
-        return smx_a
+        return smx_a, end, self.length
 
+    @cut
     def _to_narray_raw(self, it, dtype):
         smx_a = np.empty(self.shape, dtype=dtype)
         init = 0
         end = 0
-        for smx in islice(it, self.length):
+        for smx in self:
             if isinstance(smx, IterLayer):
                 smx = smx.to_narray(1)
                 end += smx.shape[0]
@@ -458,13 +467,13 @@ class IterLayer(object):
                 end += 1
             smx_a[init:end] = smx
             init = end
-        return smx_a
+        return smx_a, end, self.length
 
     def to_df(self):
         if self.has_chunks:
             def iter_():
                 end = 0
-                for chunk in islice(self, num_splits(self.length, self.chunks_size)):
+                for chunk in self:
                     end += chunk.shape[0]
                     if end > self.length:
                         chunk = chunk.iloc[:end-self.length+1]                    
@@ -477,12 +486,13 @@ class IterLayer(object):
                 return self._assign_struct_array2df(self, self.length, self.dtype, 
                     dt_cols, columns)
             else:
-                return pd.DataFrame((e for e in islice(self, self.length)))
+                return pd.DataFrame(self)
 
+    @cut
     def _assign_struct_array2df(self, it, length, dtype, dt_cols, columns, chunks_size=0):
         stc_arr = np.empty(length, dtype=dtype)
         i = 0
-        for row in islice(it, length):
+        for row in it:
             try:
                 stc_arr[i] = self.to_tuple(row, dt_cols)
             except TypeError:
@@ -492,11 +502,7 @@ class IterLayer(object):
         smx = pd.DataFrame(stc_arr,
             index=np.arange(0, length), 
             columns=columns)
-
-        if i < chunks_size:
-            return smx.iloc[:i]
-        else:
-            return smx
+        return smx, i, chunks_size
 
     def to_memory(self, length=None):
         self.length_shape(length)
@@ -512,12 +518,12 @@ class IterLayer(object):
         else:
             return self.length
 
-    def tee(self):
-        it0, it1 = tee(self)
-        return IterLayer(it0), IterLayer(it1)
-
     def __iter__(self):
-        return self
+        if self.length is None or self.iter_init is False:
+            return self
+        else:
+            self.iter_init = False
+            return islice(self, self.num_splits())
 
     def next(self):
         if len(self.pushedback) > 0:

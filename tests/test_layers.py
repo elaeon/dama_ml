@@ -206,7 +206,6 @@ class TestIterLayers(unittest.TestCase):
         it_0 = it.to_chunks(chunks_size)
         self.assertEqual(it_0.chunks_size, chunks_size)
         self.assertEqual(it_0.has_chunks, True)
-        #self.assertEqual(it_0.shape_w_chunks, (chunks_size, (10/3)+1, 1))
         for smx in it_0:
             self.assertEqual(smx.shape[0] <= 3, True)
 
@@ -218,7 +217,6 @@ class TestIterLayers(unittest.TestCase):
         it_0 = it.to_chunks(chunks_size)
         self.assertEqual(it_0.chunks_size, chunks_size)
         self.assertEqual(it_0.has_chunks, True)
-        #self.assertEqual(it_0.shape_w_chunks, (chunks_size, 1, 2))
         for i, smx in enumerate(it_0):
             for i, row in enumerate(smx.values):
                 self.assertItemsEqual(row, m[i])
@@ -503,8 +501,7 @@ class TestIterLayers(unittest.TestCase):
         self.assertItemsEqual(it.to_memory(10), data[:])
 
         it = IterLayer(data)
-        #print(it.to_memory(12))
-        #self.assertItemsEqual(it.to_memory(12), data[:])
+        self.assertItemsEqual(it.to_memory(12), data[:])
 
         it = IterLayer(data)
         self.assertItemsEqual(it.to_memory(3), data[:3])
@@ -515,8 +512,7 @@ class TestIterLayers(unittest.TestCase):
         self.assertItemsEqual(it.to_chunks(3).to_memory(10), data[:])
 
         it = IterLayer(data)
-        #print(it.to_chunks(3).to_memory(12))
-        #self.assertItemsEqual(it.to_memory(12), data[:])
+        self.assertItemsEqual(it.to_memory(12), data[:])
 
         it = IterLayer(data)
         self.assertItemsEqual(it.to_chunks(3).to_memory(3), data[:3])

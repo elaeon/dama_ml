@@ -50,7 +50,7 @@ class TestDataset(unittest.TestCase):
             dataset_path="/tmp/",
             rewrite=True)
         with dataset:
-            dataset.from_data(self.X, self.Y)
+            dataset.from_data(self.X, self.Y, self.X.shape[0])
             X_train, X_validation, X_test, y_train, y_validation, y_test = dataset.cv()
             self.assertEqual(y_train.shape, (7,))
             self.assertEqual(y_validation.shape, (1,))
@@ -63,7 +63,7 @@ class TestDataset(unittest.TestCase):
             dataset_path="/tmp/",
             rewrite=True)
         with dataset:
-            dataset.from_data(self.X, self.Y)
+            dataset.from_data(self.X, self.Y, self.X.shape[0])
             X_train, X_validation, X_test, y_train, y_validation, y_test = dataset.cv(train_size=.5, valid_size=.2)
             self.assertEqual(y_train.shape, (5,))
             self.assertEqual(y_validation.shape, (2,))
@@ -76,7 +76,7 @@ class TestDataset(unittest.TestCase):
             dataset_path="/tmp/",
             rewrite=True)
         with dataset:
-            dataset.from_data(self.X, self.Y)
+            dataset.from_data(self.X, self.Y, self.X.shape[0])
             dataset0, label0 = dataset.only_labels([0])
             self.assertItemsEqual(label0, np.zeros(5))
             dataset1, label1 = dataset.only_labels([1])
@@ -89,7 +89,7 @@ class TestDataset(unittest.TestCase):
             dataset_path="/tmp/",
             rewrite=True)
         with dataset:
-            dataset.from_data(self.X, self.Y)
+            dataset.from_data(self.X, self.Y, self.X.shape[0])
             labels_counter = dataset.labels_info()
             self.assertEqual(labels_counter[0]+labels_counter[1], 10)
         dataset.destroy()
@@ -100,7 +100,7 @@ class TestDataset(unittest.TestCase):
             dataset_path="/tmp/",
             rewrite=True)
         with dataset:
-            dataset.from_data(self.X, self.Y)
+            dataset.from_data(self.X, self.Y, self.X.shape[0])
             self.assertEqual(dataset.distinct_data() > 0, True)
         dataset.destroy()
 
@@ -110,7 +110,7 @@ class TestDataset(unittest.TestCase):
             dataset_path="/tmp/",
             rewrite=True)
         with dataset:
-            dataset.from_data(self.X, self.Y)
+            dataset.from_data(self.X, self.Y, self.X.shape[0])
             self.assertEqual(dataset.sparcity() > .3, True)
         dataset.destroy()
 
@@ -120,7 +120,7 @@ class TestDataset(unittest.TestCase):
             dataset_path="/tmp/",
             rewrite=True)
         with dataset:
-            dataset.from_data(self.X, self.Y)
+            dataset.from_data(self.X, self.Y, self.X.shape[0])
             ds = dataset.convert("test_convert", percentaje=.5, dataset_path="/tmp")
 
         with ds:

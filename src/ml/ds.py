@@ -763,8 +763,8 @@ class DataLabel(Data):
         else:
             if not isinstance(labels, IterLayer):
                 labels = IterLayer(labels, dtype=labels.dtype).to_chunks(chunks_size)
-            data_shape = data.length_shape(length)
-            labels_shape = labels.length_shape(length)
+            data.length_shape(length)
+            labels.length_shape(length)
             self._set_space_shape('data', data.shape, data.global_dtype)
             self._set_space_shape('labels', labels.shape, labels.dtype)
             self.chunks_writer("/data/data", data)
