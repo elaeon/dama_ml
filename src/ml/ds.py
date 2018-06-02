@@ -49,8 +49,7 @@ def load_metadata(path):
 def calc_nshape(data, value):
     if value is None or not (0 < value <= 1) or data is None:
         value = 1
-    limit = int(round(data.shape[0] * value, 0))
-    return data[:limit]
+    return int(round(data.shape[0] * value, 0))
 
 
 def cache(func):
@@ -129,13 +128,7 @@ class ReadWriteData(object):
         from tqdm import tqdm
         log.info("Writing with chunks size {}".format(data.chunks_size))
         end = init
-        if data.chunks_size != 0 and data.chunks_size < data.shape[0]:
-            total_data = int(round(data.shape[0] / float(data.chunks_size), 0))
-        elif data.chunks_size > data.shape[0]:
-            total_data = 1
-        else:
-            total_data = int(data.shape[0])
-        for smx in tqdm(data, total=total_data):
+        for smx in tqdm(data, total=data.num_splits()):
             if hasattr(smx, 'shape') and len(smx.shape) >= 1 and data.has_chunks:
                 end += smx.shape[0]
             else:
@@ -157,7 +150,7 @@ class ReadWriteData(object):
                     if array.dtype != self.f[name].dtype:                        
                         must_type = self.f[name].dtype
                     else:
-                        must_type = "string"
+                        raise TypeError(e)
                 else:
                     array_type = type(array[0])
                     must_type = self.f[name].dtype
@@ -396,22 +389,6 @@ class Data(ReadWriteData):
         data = self.f.get("fmtypes/names", None)
         data[:] = value
 
-    #def build_fmtypes(self, fmtypes=None):
-    #    from ml.utils.numeric_functions import unique_size, data_type
-    #    if fmtypes is None:
-    #        fmtypes = np.empty((self.num_features()), dtype=np.dtype(int))
-    #        for ci in range(self.num_features()):
-    #            feature = self.data[:, ci]
-    #            if feature.dtype != np.object:
-    #                usize = unique_size(feature)
-    #                data_t = data_type(usize, feature.size)
-    #                fmtypes[ci] = data_t.id
-    #            else:
-    #                fmtypes[ci] = Fmtypes.TEXT.id
-    #    elif not isinstance(fmtypes, np.ndarray):
-    #        fmtypes = np.asarray(fmtypes, dtype=np.dtype(int))
-    #    self.fmtypes = fmtypes
-
     def features_fmtype(self, fmtype):
         from ml.utils.numeric_functions import features_fmtype
         return features_fmtype(self.columns, fmtype)
@@ -532,12 +509,13 @@ class Data(ReadWriteData):
                 total += 1
         return float(zero_counter) / total
 
-    def from_data(self, data, chunks_size=258):
+    def from_data(self, data, length, chunks_size=258):
         """
         build a datalabel dataset from data and labels
         """
         data = self.processing(data, apply_transforms=self.apply_transforms,
                             chunks_size=chunks_size)
+        data_shape = data.length_shape(length)
         self._set_space_shape('data', data.shape, dtype=data.global_dtype)
         end = self.chunks_writer("/data/data", data)
         self._set_space_fmtypes(self.num_features())
@@ -584,7 +562,8 @@ class Data(ReadWriteData):
         data, old_applied_t = self.empty(name, dataset_path=dataset_path, 
             apply_transforms=apply_transforms, transforms=transforms)
         with data:
-            data.from_data(calc_nshape(self.data, percentaje), chunks_size=chunks_size)
+            data.from_data(self.data[:], calc_nshape(self.data, percentaje), 
+                chunks_size=chunks_size)
             if old_applied_t is not None:
                 transforms = old_applied_t + data.transforms
                 data.transforms = transforms
@@ -784,10 +763,10 @@ class DataLabel(Data):
         else:
             if not isinstance(labels, IterLayer):
                 labels = IterLayer(labels, dtype=labels.dtype).to_chunks(chunks_size)
-            data_shape = [length] + list(data.features_dim)
-            labels_shape = [length] + list(labels.features_dim)
-            self._set_space_shape('data', data_shape, data.global_dtype)
-            self._set_space_shape('labels', labels_shape, labels.dtype)
+            data_shape = data.length_shape(length)
+            labels_shape = labels.length_shape(length)
+            self._set_space_shape('data', data.shape, data.global_dtype)
+            self._set_space_shape('labels', labels.shape, labels.dtype)
             self.chunks_writer("/data/data", data)
             self.chunks_writer("/data/labels", labels)
 
@@ -836,8 +815,8 @@ class DataLabel(Data):
         dl, old_applied_t = self.empty(name, apply_transforms=apply_transforms, 
                         dataset_path=dataset_path, transforms=transforms)
         with dl:
-            dl.from_data(calc_nshape(self.data, percentaje), 
-                calc_nshape(self.labels, percentaje), chunks_size=chunks_size)
+            dl.from_data(self.data[:], self.labels[:], calc_nshape(self.data, percentaje), 
+                chunks_size=chunks_size)
             if old_applied_t is not None:
                 transforms = old_applied_t + dl.transforms
                 dl.transforms = transforms

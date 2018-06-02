@@ -506,6 +506,21 @@ class TestIterLayers(unittest.TestCase):
         #print(it.to_memory(12))
         #self.assertItemsEqual(it.to_memory(12), data[:])
 
+        it = IterLayer(data)
+        self.assertItemsEqual(it.to_memory(3), data[:3])
+
+    def test_chunks_to_memory(self):
+        data = np.random.rand(10)
+        it = IterLayer(data)
+        self.assertItemsEqual(it.to_chunks(3).to_memory(10), data[:])
+
+        it = IterLayer(data)
+        #print(it.to_chunks(3).to_memory(12))
+        #self.assertItemsEqual(it.to_memory(12), data[:])
+
+        it = IterLayer(data)
+        self.assertItemsEqual(it.to_chunks(3).to_memory(3), data[:3])
+
 
 def chunk_sizes(seq):
     return [len(list(row)) for row in seq]

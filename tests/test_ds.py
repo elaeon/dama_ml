@@ -148,24 +148,24 @@ class TestDataset(unittest.TestCase):
             name="test_ds",
             dataset_path="/tmp/",
             rewrite=True) as dataset:
-            dataset.from_data(self.X, self.Y)
+            dataset.from_data(self.X, self.Y, self.X.shape[0])
             dsb = dataset.convert("convert_test", dataset_path="/tmp/", percentaje=.5)
         with dsb:
             self.assertEqual(round(self.X.shape[0]/2,0), dsb.data.shape[0])
             self.assertEqual(round(self.Y.shape[0]/2,0), dsb.labels.shape[0])
         dsb.destroy()
+        dataset.destroy()
 
     def test_convert_transforms_true(self):
-        o_features = self.X.shape[1]
         transforms = Transforms()
-        transforms.add(linear, b=1, o_features=o_features)
+        transforms.add(linear, b=1)
         dataset = DataLabel(name="test_ds", dataset_path="/tmp/",
             rewrite=True, transforms=transforms, apply_transforms=True)
         
         with dataset:
-            dataset.from_data(self.X, self.Y)
+            dataset.from_data(self.X, self.Y, self.X.shape[0])
             transforms = Transforms()
-            transforms.add(parabole, o_features=o_features)
+            transforms.add(parabole)
             dsb = dataset.convert("convert_test", dataset_path="/tmp/",
                                 transforms=transforms, apply_transforms=True)
 
@@ -177,16 +177,15 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
 
     def test_convert_data_transforms_true(self):
-        o_features = self.X.shape[1]
         transforms = Transforms()
-        transforms.add(linear, b=1, o_features=o_features)
+        transforms.add(linear, b=1)
         dataset = Data(name="test_ds", dataset_path="/tmp/",
             rewrite=True, transforms=transforms, apply_transforms=True)
         
         with dataset:
-            dataset.from_data(self.X)
+            dataset.from_data(self.X, self.X.shape[0])
             transforms = Transforms()
-            transforms.add(parabole, o_features=o_features)
+            transforms.add(parabole)
             dsb = dataset.convert("convert_test", dataset_path="/tmp/",
                                 transforms=transforms, apply_transforms=True)
 
@@ -207,7 +206,7 @@ class TestDataset(unittest.TestCase):
         transforms = Transforms()
         transforms.add(parabole, o_features=o_features)
         with dataset:
-            dataset.from_data(self.X, self.Y)
+            dataset.from_data(self.X, self.Y, self.X.shape[0])
             dsb = dataset.convert("convert_test", dataset_path="/tmp/",
                                 transforms=transforms, apply_transforms=False)
 
@@ -227,7 +226,7 @@ class TestDataset(unittest.TestCase):
             rewrite=True,
             apply_transforms=False,
             transforms=transforms) as dataset:
-            dataset.from_data(self.X, self.Y)
+            dataset.from_data(self.X, self.Y, self.X.shape[0])
             transforms = Transforms()
             transforms.add(linear, b=2, o_features=self.X.shape[1])
             dsb = dataset.convert("add_transform", transforms=transforms, 
@@ -247,14 +246,14 @@ class TestDataset(unittest.TestCase):
             df = dataset.to_df()
         self.assertEqual(list(df.columns), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'target'])
         dataset.destroy()
-        #with Data(
-        #    name="test_ds",
-        #    dataset_path="/tmp/",
-        #    rewrite=True) as dataset:
-        #    dataset.from_data(self.X)
-        #    df = dataset.to_df()
-        #self.assertEqual(list(df.columns), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'])
-        #dataset.destroy()
+        with Data(
+            name="test_ds",
+            dataset_path="/tmp/",
+            rewrite=True) as dataset:
+            dataset.from_data(self.X, 10)
+            df = dataset.to_df()
+        self.assertEqual(list(df.columns), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'])
+        dataset.destroy()
 
     def test_ds_build(self):
         X = np.asarray([

@@ -132,16 +132,16 @@ class TransformsFn(object):
         :param data: apply the transforms to the data
         """
         if isinstance(data, np.ndarray):
-            data = IterLayer(data, shape=data.shape, dtype=data.dtype).to_chunks(chunks_size)
+            data = IterLayer(data, dtype=data.dtype).to_chunks(chunks_size)
         elif isinstance(data, pd.DataFrame):
-            data = IterLayer(data, shape=data.shape).to_chunks(chunks_size)
+            data = IterLayer(data).to_chunks(chunks_size)
         elif isinstance(data, IterLayer):
             if data.chunks_size == 0:
                 data = data.to_chunks(chunks_size)
         else:
             raise Exception("Type {} is not supported".format(type(data)))
         
-        return IterLayer(self.reduce(data), shape=data.shape, chunks_size=chunks_size)
+        return IterLayer(self.reduce(data), chunks_size=chunks_size)
 
 
 class TransformsClass(TransformsFn):

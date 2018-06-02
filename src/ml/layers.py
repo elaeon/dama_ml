@@ -110,9 +110,6 @@ class IterLayer(object):
             global_dtype = self.dtype
 
         try:
-            #if self.has_chunks:
-            #    shape = [self.chunks_size] + list(chunk.shape)
-            #else:
             shape = [None] + list(chunk.shape)
         except AttributeError:
             if hasattr(chunk, '__iter__'):
@@ -290,6 +287,13 @@ class IterLayer(object):
             self._shape = (v,)
             self.features_dim = ()
 
+    def length_shape(self, length):
+        if length is None and self.length is not None:
+            length = self.length
+        else:
+            self.length = length
+        self.shape = [length] + list(self.features_dim)
+
     def scalar_operation(self, operator, scalar):
         iter_ = imap(lambda x: operator(x, scalar), self)
         return IterLayer(iter_, dtype=self.dtype, 
@@ -412,48 +416,43 @@ class IterLayer(object):
             dataset.from_data(data, label_m)
         return dataset
 
-    def to_narray(self, length, dtype=None):
+    def to_narray(self, dtype=None):
         if self.shape is None:
             raise Exception("Data shape is None, IterLayer can't be converted to array")
         if dtype is None:
             dtype = self.global_dtype
         
         if self.has_chunks:
-            return self._to_narray_chunks(self, length, dtype)
+            return self._to_narray_chunks(self, dtype)
         else:
-            return self._to_narray_raw(self, length, dtype)
+            return self._to_narray_raw(self, dtype)
 
-    def _to_narray_chunks(self, it, length, dtype):
-        shape = [length] + list(self.features_dim)
-        smx_a = np.empty(shape, dtype=dtype)
+    def _to_narray_chunks(self, it, dtype):
+        smx_a = np.empty(self.shape, dtype=dtype)
         init = 0
         end = 0
-        for smx in islice(it, num_splits(length, self.chunks_size)):
+        for smx in islice(it, num_splits(self.length, self.chunks_size)):
             if isinstance(smx, IterLayer):
                 smx = smx.to_narray(self.chunks_size)
                 end += smx.shape[0]
             elif hasattr(smx, 'shape'):
                 end += smx.shape[0]
-            if end > length:
-                smx = smx[:end-length+1]
-                end = length
+            if end > self.length:
+                smx = smx[:end-self.length+1]
+                end = self.length
             smx_a[init:end] = smx
             init = end
         return smx_a
 
-    def _to_narray_raw(self, it, length, dtype):
-        #if len(self.shape) == 1:
-        #    shape = [length]
-        #else:
-        shape = [length] + list(self.features_dim)
-        smx_a = np.empty(shape, dtype=dtype)
+    def _to_narray_raw(self, it, dtype):
+        smx_a = np.empty(self.shape, dtype=dtype)
         init = 0
         end = 0
-        for smx in islice(it, length):
+        for smx in islice(it, self.length):
             if isinstance(smx, IterLayer):
                 smx = smx.to_narray(1)
                 end += smx.shape[0]
-            elif hasattr(smx, 'shape') and smx.shape == shape:
+            elif hasattr(smx, 'shape') and smx.shape == self.shape:
                 end += smx.shape[0]
             else:
                 end += 1
@@ -461,24 +460,24 @@ class IterLayer(object):
             init = end
         return smx_a
 
-    def to_df(self, length):
+    def to_df(self):
         if self.has_chunks:
             def iter_():
                 end = 0
-                for chunk in islice(self, num_splits(length, self.chunks_size)):
+                for chunk in islice(self, num_splits(self.length, self.chunks_size)):
                     end += chunk.shape[0]
-                    if end > length:
-                        chunk = chunk.iloc[:end-length+1]                    
+                    if end > self.length:
+                        chunk = chunk.iloc[:end-self.length+1]                    
                     yield chunk
             return pd.concat(iter_(), axis=0, copy=False, ignore_index=True)
         else:
             if hasattr(self.dtype, '__iter__'):
                 columns = [c for c, _ in self.dtype]
                 dt_cols = self.check_datatime(self.dtype)
-                return self._assign_struct_array2df(self, length, self.dtype, 
+                return self._assign_struct_array2df(self, self.length, self.dtype, 
                     dt_cols, columns)
             else:
-                return pd.DataFrame((e for e in islice(self, length)))
+                return pd.DataFrame((e for e in islice(self, self.length)))
 
     def _assign_struct_array2df(self, it, length, dtype, dt_cols, columns, chunks_size=0):
         stc_arr = np.empty(length, dtype=dtype)
@@ -500,12 +499,18 @@ class IterLayer(object):
             return smx
 
     def to_memory(self, length=None):
-        if length is None and self.length is not None:
-            length = self.length
+        self.length_shape(length)
         if hasattr(self.dtype, '__iter__'):
-            return self.to_df(length)
+            return self.to_df()
         else:
-            return self.to_narray(length)
+            return self.to_narray()
+
+    def num_splits(self):        
+        from ml.utils.numeric_functions import num_splits
+        if self.has_chunks:
+            return num_splits(self.length, self.chunks_size)
+        else:
+            return self.length
 
     def tee(self):
         it0, it1 = tee(self)
