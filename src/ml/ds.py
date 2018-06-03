@@ -515,7 +515,7 @@ class Data(ReadWriteData):
         """
         data = self.processing(data, apply_transforms=self.apply_transforms,
                             chunks_size=chunks_size)
-        data_shape = data.length_shape(length)
+        data = data.it_length(length)
         self._set_space_shape('data', data.shape, dtype=data.global_dtype)
         end = self.chunks_writer("/data/data", data)
         self._set_space_fmtypes(self.num_features())
@@ -763,8 +763,8 @@ class DataLabel(Data):
         else:
             if not isinstance(labels, IterLayer):
                 labels = IterLayer(labels, dtype=labels.dtype).to_chunks(chunks_size)
-            data.length_shape(length)
-            labels.length_shape(length)
+            data = data.it_length(length)
+            labels = labels.it_length(length)
             self._set_space_shape('data', data.shape, data.global_dtype)
             self._set_space_shape('labels', labels.shape, labels.dtype)
             self.chunks_writer("/data/data", data)
@@ -1157,110 +1157,110 @@ class DataSetBuilderImage(DataLabel):
         return images_data, labels
 
 
-class DataLabelSetFile(DataLabel):
-    """
-    Class for csv dataset build. Get the data from a csv's file.
+#class DataLabelSetFile(DataLabel):
+#    """
+#    Class for csv dataset build. Get the data from a csv's file.
+#    
+#    :type training_data_path: list
+#    :param training_data_path: list of files paths
+#
+#    :type sep: list
+#    :param sep: list of strings separators for each file
+#
+#    kwargs are the same that DataSetBuilder's options
+#    """
+
+#    def __init__(self, name=None, training_data_path=None,
+#                sep=None, merge_field="id", na_values=None, **kwargs):
+#        super(DataLabelSetFile, self).__init__(name, **kwargs)
+#        self.training_data_path = training_data_path
+#        self.sep = sep
+#        self.merge_field = merge_field
+#        self.na_values = na_values
+
+#    def from_csv(self, folder_path, label_column, nrows=None, exclude_columns=None):
+#        """
+#        :type folder_path: string
+#        :param folder_path: path to the csv.
+#
+#        :type label_column: string
+#        :param label_column: column's name where are the labels
+#        """
+#        df = pd.read_csv(folder_path, nrows=nrows, na_values=self.na_values)
+#        data, labels = self.df2dataset_label(df, label_column, 
+#                                            exclude_columns=exclude_columns)
+#        return data, labels
+
+#    @classmethod
+#    def df2dataset_label(self, df, labels_column, ids=None, exclude_columns=None):
+#        if ids is not None:
+#            drops = ids + [labels_column]
+#        else:
+#            drops = [labels_column]
+
+#        if exclude_columns is not None:
+#            if isinstance(exclude_columns, list):
+#                drops.extend(exclude_columns)
+#            else:
+#                drops.extend([exclude_columns])
+
+#        dataset = df.drop(drops, axis=1).as_matrix()
+#        labels = df[labels_column].as_matrix()
+#        return dataset, labels        
+
+#    def from_data(self, labels_column=None, nrows=None, exclude_columns=None):
+#        """
+#         :type label_column: string
+#         :param label_column: column's name where are the labels
+#        """
+#        if isinstance(self.training_data_path, list):
+#            if not isinstance(self.sep, list):
+#                sep_l = [self.sep for _ in self.training_data_path]
+#            else:
+#                sep_l = self.sep
+#            old_df = None
+#            for sep, path in zip(sep_l, self.training_data_path):
+#                data_df = pd.read_csv(path, sep=sep, nrows=nrows)
+#                if old_df is not None:
+#                    old_df = pd.merge(old_df, data_df, on=self.merge_field)
+#                else:
+#                    old_df = data_df
+#            data, labels = self.df2dataset_label(old_df, 
+#                labels_column=labels_column, ids=[self.merge_field],
+#                exclude_columns=exclude_columns)
+#        else:
+#            data, labels = self.from_csv(self.training_data_path, labels_column, 
+#                                        nrows=nrows, 
+#                                        exclude_columns=exclude_columns)
+#        super(DataLabelSetFile, self).from_data(data, labels)
     
-    :type training_data_path: list
-    :param training_data_path: list of files paths
+#    def get_sep_path(self):
+#        if isinstance(self.training_data_path, list):
+#            if not isinstance(self.sep, list):
+#                delimiters = [self.sep for _ in self.training_data_path]
+#            else:
+#                delimiters = [self.sep]
+#            return self.training_data_path, delimiters
+#        else:
+#            return [self.training_data_path], [self.sep]
 
-    :type sep: list
-    :param sep: list of strings separators for each file
+#    def to_db(self):
+#        from ml.db.utils import build_schema, insert_rows
+#        import csv
+#        from ml.utils.files import filename_n_ext_from_path
 
-    kwargs are the same that DataSetBuilder's options
-    """
-
-    def __init__(self, name=None, training_data_path=None,
-                sep=None, merge_field="id", na_values=None, **kwargs):
-        super(DataLabelSetFile, self).__init__(name, **kwargs)
-        self.training_data_path = training_data_path
-        self.sep = sep
-        self.merge_field = merge_field
-        self.na_values = na_values
-
-    def from_csv(self, folder_path, label_column, nrows=None, exclude_columns=None):
-        """
-        :type folder_path: string
-        :param folder_path: path to the csv.
-
-        :type label_column: string
-        :param label_column: column's name where are the labels
-        """
-        df = pd.read_csv(folder_path, nrows=nrows, na_values=self.na_values)
-        data, labels = self.df2dataset_label(df, label_column, 
-                                            exclude_columns=exclude_columns)
-        return data, labels
-
-    @classmethod
-    def df2dataset_label(self, df, labels_column, ids=None, exclude_columns=None):
-        if ids is not None:
-            drops = ids + [labels_column]
-        else:
-            drops = [labels_column]
-
-        if exclude_columns is not None:
-            if isinstance(exclude_columns, list):
-                drops.extend(exclude_columns)
-            else:
-                drops.extend([exclude_columns])
-
-        dataset = df.drop(drops, axis=1).as_matrix()
-        labels = df[labels_column].as_matrix()
-        return dataset, labels        
-
-    def from_data(self, labels_column=None, nrows=None, exclude_columns=None):
-        """
-         :type label_column: string
-         :param label_column: column's name where are the labels
-        """
-        if isinstance(self.training_data_path, list):
-            if not isinstance(self.sep, list):
-                sep_l = [self.sep for _ in self.training_data_path]
-            else:
-                sep_l = self.sep
-            old_df = None
-            for sep, path in zip(sep_l, self.training_data_path):
-                data_df = pd.read_csv(path, sep=sep, nrows=nrows)
-                if old_df is not None:
-                    old_df = pd.merge(old_df, data_df, on=self.merge_field)
-                else:
-                    old_df = data_df
-            data, labels = self.df2dataset_label(old_df, 
-                labels_column=labels_column, ids=[self.merge_field],
-                exclude_columns=exclude_columns)
-        else:
-            data, labels = self.from_csv(self.training_data_path, labels_column, 
-                                        nrows=nrows, 
-                                        exclude_columns=exclude_columns)
-        super(DataLabelSetFile, self).from_data(data, labels)
-    
-    def get_sep_path(self):
-        if isinstance(self.training_data_path, list):
-            if not isinstance(self.sep, list):
-                delimiters = [self.sep for _ in self.training_data_path]
-            else:
-                delimiters = [self.sep]
-            return self.training_data_path, delimiters
-        else:
-            return [self.training_data_path], [self.sep]
-
-    def to_db(self):
-        from ml.db.utils import build_schema, insert_rows
-        import csv
-        from ml.utils.files import filename_n_ext_from_path
-
-        training_data_path, delimiters = self.get_sep_path()
-        for data_path, delimiter in zip(training_data_path, delimiters):
-            table_name = filename_n_ext_from_path(data_path)
-            with open(data_path, "r") as csv_file:
-                csv_reader = csv.reader(csv_file, delimiter=delimiter)
-                for row in csv_reader:
-                    header = row
-                    break
-                build_schema(table_name, header, 
-                    [Fmtypes.TEXT]*len(header),
-                    self.merge_field)
-                insert_rows(csv_reader, table_name, header)
+#        training_data_path, delimiters = self.get_sep_path()
+#        for data_path, delimiter in zip(training_data_path, delimiters):
+#            table_name = filename_n_ext_from_path(data_path)
+#            with open(data_path, "r") as csv_file:
+#                csv_reader = csv.reader(csv_file, delimiter=delimiter)
+#                for row in csv_reader:
+#                    header = row
+#                    break
+#                build_schema(table_name, header, 
+#                    [Fmtypes.TEXT]*len(header),
+#                    self.merge_field)
+#                insert_rows(csv_reader, table_name, header)
 
 
 class DataLabelFold(object):

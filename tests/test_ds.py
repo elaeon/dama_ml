@@ -2,36 +2,36 @@ import unittest
 import numpy as np
 import csv
 
-from ml.ds import DataLabelSetFile, DataLabelFold, DataLabel
+from ml.ds import DataLabelFold, DataLabel#,DataLabelSetFile
 from ml.ds import Data
 from ml.processing import Transforms
 
 
-def build_csv_file(path, vector, sep=","):
-    with open(path, 'w') as f:
-        header = ["id"] + map(str, list(range(vector.shape[-1])))
-        f.write(sep.join(header))
-        f.write("\n")
-        for i, row in enumerate(vector):
-            f.write(str(i)+sep)
-            f.write(sep.join(map(str, row)))
-            f.write("\n")
+#def build_csv_file(path, vector, sep=","):
+#    with open(path, 'w') as f:
+#        header = ["id"] + map(str, list(range(vector.shape[-1])))
+#        f.write(sep.join(header))
+#        f.write("\n")
+#        for i, row in enumerate(vector):
+#            f.write(str(i)+sep)
+#            f.write(sep.join(map(str, row)))
+#            f.write("\n")
 
 
-def linear(x, o_features=None, b=0):
+def linear(x, b=0):
     return x + b
 
 
-def parabole(x, o_features=None, b=0):
+def parabole(x, b=0):
     return x**2 + b
 
 
-def to_int(x, col=None, o_features=None):
+def to_int(x, col=None):
     x[:, col] = x[:, col].astype(np.int)
     return x
 
 
-def label_t(x, o_features=None):
+def label_t(x):
     return np.log1p(x)
 
 
@@ -135,7 +135,7 @@ class TestDataset(unittest.TestCase):
             dataset_path="/tmp/",
             rewrite=True)
         with dataset:
-            dataset.from_data(self.X, self.Y)
+            dataset.from_data(self.X, self.Y, self.X.shape[0])
             dataset.apply_transforms = True
             copy = dataset.convert("test_2", apply_transforms=False, dataset_path="/tmp/")
         with copy:
@@ -197,14 +197,13 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
 
     def test_convert_transforms_false(self):
-        o_features = self.X.shape[1]
         transforms = Transforms()
-        transforms.add(linear, b=1, o_features=o_features)
+        transforms.add(linear, b=1)
         dataset = DataLabel(name="test_ds", dataset_path="/tmp/",
             rewrite=True, transforms=transforms, apply_transforms=False)
         
         transforms = Transforms()
-        transforms.add(parabole, o_features=o_features)
+        transforms.add(parabole)
         with dataset:
             dataset.from_data(self.X, self.Y, self.X.shape[0])
             dsb = dataset.convert("convert_test", dataset_path="/tmp/",
@@ -219,7 +218,7 @@ class TestDataset(unittest.TestCase):
 
     def test_add_transform(self):
         transforms = Transforms()
-        transforms.add(linear, b=1, o_features=self.X.shape[1])
+        transforms.add(linear, b=1)
         with DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
@@ -228,7 +227,7 @@ class TestDataset(unittest.TestCase):
             transforms=transforms) as dataset:
             dataset.from_data(self.X, self.Y, self.X.shape[0])
             transforms = Transforms()
-            transforms.add(linear, b=2, o_features=self.X.shape[1])
+            transforms.add(linear, b=2)
             dsb = dataset.convert("add_transform", transforms=transforms, 
                                 apply_transforms=True)
         with dsb:
@@ -263,7 +262,7 @@ class TestDataset(unittest.TestCase):
             [-1,0,-1,0,-1,0]], dtype=np.float)
         dl = Data(name="test", dataset_path="/tmp", rewrite=True)
         with dl:
-            dl.from_data(X)
+            dl.from_data(X, X.shape[0])
             self.assertItemsEqual(dl.data[0], X[0])
             self.assertItemsEqual(dl.data[1], X[1])
             self.assertItemsEqual(dl.data[2], X[2])
@@ -275,7 +274,7 @@ class TestDataset(unittest.TestCase):
         Y = np.asarray(['1','2','3','4','5'], dtype=str)
         dl = DataLabel(name="test", dataset_path="/tmp", rewrite=True)
         with dl:
-            dl.from_data(X, Y)
+            dl.from_data(X, Y, self.X.shape[0])
             self.assertEqual(dl.dtype, X.dtype)
             self.assertEqual(dl.ltype, Y.dtype)
         dl.destroy()
@@ -297,7 +296,7 @@ class TestDataset(unittest.TestCase):
             self.assertEqual(dsb.apply_transforms, False)
             self.assertEqual(dsb.hash_header is not None, True)
 
-            dsb.from_data(self.X.astype('float32'), self.Y)
+            dsb.from_data(self.X.astype('float32'), self.Y, self.X.shape[0])
             self.assertEqual(dsb.md5 is not None, True)
             dsb.destroy()
 
@@ -321,7 +320,7 @@ class TestDataset(unittest.TestCase):
             name="test_ds_1",
             dataset_path="/tmp/",
             rewrite=True) as dataset:
-            dataset.from_data(X, Y)
+            dataset.from_data(X, Y, self.X.shape[0])
             dataset.to_libsvm(name="test.txt", save_to="/tmp")
             check("/tmp/test.txt")
             dataset.destroy()
@@ -352,7 +351,7 @@ class TestDataset(unittest.TestCase):
             name="test_ds_1",
             dataset_path="/tmp/",
             rewrite=True) as dataset:
-            dataset.from_data(self.X, self.Y)
+            dataset.from_data(self.X, self.Y, self.X.shape[0])
             data = dataset.to_data()
         with data:
             self.assertEqual(data.shape, (10, 10))
@@ -361,7 +360,7 @@ class TestDataset(unittest.TestCase):
 
     def test_datalabel_to_data(self):
         with DataLabel(name="test_ds_1", dataset_path="/tmp/", rewrite=True) as dataset:
-            dataset.from_data(self.X, self.Y)
+            dataset.from_data(self.X, self.Y, self.X.shape[0])
             data = dataset.to_data()
         with data:
             self.assertEqual(data.shape, (10, 10))
@@ -371,26 +370,26 @@ class TestDataset(unittest.TestCase):
     def test_text_ds(self):
         X = np.asarray([(str(line)*10, "1") for line in range(100)], dtype=np.dtype("O"))
         with Data(name="test", dataset_path="/tmp/", rewrite=True) as ds:
-            ds.from_data(X)
+            ds.from_data(X, self.X.shape[0])
             self.assertEqual(ds.shape, (100, 2))
             self.assertEqual(ds.dtype, X.dtype)
             ds.destroy()
 
-    def test_file_merge(self):
-        build_csv_file('/tmp/test_X.csv', self.X, sep=",")
-        build_csv_file('/tmp/test_Y.csv', self.Y.reshape(-1, 1), sep="|")
+    #def test_file_merge(self):
+    #    build_csv_file('/tmp/test_X.csv', self.X, sep=",")
+    #    build_csv_file('/tmp/test_Y.csv', self.Y.reshape(-1, 1), sep="|")
 
-        with DataLabelSetFile(
-            training_data_path=['/tmp/test_X.csv', '/tmp/test_Y.csv'], 
-                sep=[",", "|"], merge_field="id", dataset_path="/tmp/") as dbf:
-            dbf.from_data(labels_column="0_y")
-            self.assertEqual(dbf.shape, self.X.shape)
-            self.assertEqual(dbf.labels.shape, self.Y.shape)
-            dbf.destroy()
+    #    with DataLabelSetFile(
+    #        training_data_path=['/tmp/test_X.csv', '/tmp/test_Y.csv'], 
+    #            sep=[",", "|"], merge_field="id", dataset_path="/tmp/") as dbf:
+    #        dbf.from_data(self.X.shape[0], labels_column="0_y")
+    #        self.assertEqual(dbf.shape, self.X.shape)
+    #        self.assertEqual(dbf.labels.shape, self.Y.shape)
+    #        dbf.destroy()
 
     def test_fmtypes(self):
-        with Data(name="test", dataset_path="/tmp/") as data:
-            data.from_data(self.X)
+        with Data(name="test", dataset_path="/tmp/", rewrite=True) as data:
+            data.from_data(self.X, self.X.shape[0])
             columns = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
             data.columns = columns
             self.assertEqual(data.columns.shape[0], self.X.shape[1])
@@ -398,8 +397,8 @@ class TestDataset(unittest.TestCase):
             data.destroy()
 
     def test_fmtypes_set_columns(self):
-        with Data(name="test", dataset_path="/tmp/") as data:
-            data.from_data(self.X)
+        with Data(name="test", dataset_path="/tmp/", rewrite=True) as data:
+            data.from_data(self.X, self.X.shape[0])
             columns = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
             data.columns = columns
             data.columns[2] = 'X'
@@ -407,8 +406,8 @@ class TestDataset(unittest.TestCase):
             data.destroy()
 
     def test_fmtypes_empty(self):
-        with Data(name="test", dataset_path="/tmp/") as data:
-            data.from_data(self.X)
+        with Data(name="test", dataset_path="/tmp/", rewrite=True) as data:
+            data.from_data(self.X, self.X.shape[0])
             self.assertItemsEqual(data.columns, [u'c0', u'c1', u'c2', u'c3', 
                 u'c4', u'c5', u'c6', u'c7', u'c8', u'c9'])
             data.destroy()
@@ -521,7 +520,7 @@ class TestDataset(unittest.TestCase):
 
     def test_labels_transforms(self):
         transforms = Transforms()
-        transforms.add(label_t, o_features=1)
+        transforms.add(label_t)
         dl = DataLabel(name="test", dataset_path="/tmp/")
         X = np.random.rand(10, 1)
         Y_0 = np.random.randint(1, 10, size=(10, 1))
