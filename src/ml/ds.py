@@ -158,42 +158,36 @@ class ReadWriteData(object):
                     must_type, array_type))
         return end
 
-    def chunks_writer_split(self, data_key, labels_key, data, labels_column):
+    def chunks_writer_split(self, data_key, labels_key, data, labels_column, init=0):
         from tqdm import tqdm
         log.info("Writing with chunks size {}".format(data.chunks_size))
-        if data.chunks_size != 0 and data.chunks_size < data.shape[0]:
-            total_data = int(round(data.shape[0] / float(data.chunks_size), 0))
-        elif data.chunks_size > data.shape[0]:
-            total_data = 1
-        else:
-            total_data = int(data.shape[0])
-        init = 0
         end = init
-        for smx in tqdm(data, total=total_data):
+        for smx in tqdm(data, total=data.num_splits()):
             if hasattr(smx, 'shape') and len(smx.shape) >= 1 and data.has_chunks:
                 end += smx.shape[0]
             else:
                 end += 1
 
+            print(smx)
             if isinstance(smx, pd.DataFrame):
-                #array_data = smx[smx.columns.difference([labels_column])].values
                 array_data = smx.drop([labels_column], axis=1).values
                 array_labels = smx[labels_column].values
             else:
-                array_data = np.delete(smx, labels_column)
+                labels_column = int(labels_column)
+                array_data = np.delete(smx, labels_column, axis=1)
                 array_labels = smx[:, labels_column]
 
-            try:
-                self.f[data_key][init:end] = array_data
-                self.f[labels_key][init:end] = array_labels
-                init = end
-            except TypeError as e:
-                if self.dtype == "|O":
-                    type_ = "string"
-                else:
-                    type_ = self.dtype
-                raise TypeError("All elements in array must be of type '{}' but found '{}'".format(
-                    type_, self.dtype))
+            #try:
+            self.f[data_key][init:end] = array_data
+            self.f[labels_key][init:end] = array_labels
+            init = end
+            #except TypeError as e:
+            #    if self.dtype == "|O":
+            #        type_ = "string"
+            #    else:
+            #        type_ = self.dtype
+            #    raise TypeError("All elements in array must be of type '{}' but found '{}'".format(
+            #        type_, self.dtype))
 
     def create_route(self):
         """
@@ -389,9 +383,9 @@ class Data(ReadWriteData):
         data = self.f.get("fmtypes/names", None)
         data[:] = value
 
-    def features_fmtype(self, fmtype):
-        from ml.utils.numeric_functions import features_fmtype
-        return features_fmtype(self.columns, fmtype)
+    #def features_fmtype(self, fmtype):
+    #    from ml.utils.numeric_functions import features_fmtype
+    #    return features_fmtype(self.columns, fmtype)
 
     @classmethod
     def module_cls_name(cls):
@@ -509,10 +503,12 @@ class Data(ReadWriteData):
                 total += 1
         return float(zero_counter) / total
 
-    def from_data(self, data, length, chunks_size=258):
+    def from_data(self, data, length=None, chunks_size=258):
         """
         build a datalabel dataset from data and labels
         """
+        if length is None and data.shape[0] is not None:
+            length = data.shape[0]
         data = self.processing(data, apply_transforms=self.apply_transforms,
                             chunks_size=chunks_size)
         data = data.it_length(length)
@@ -752,10 +748,13 @@ class DataLabel(Data):
             items_p = [0, 0]
             print(order_table(headers, items, "# items"))
 
-    def from_data(self, data, labels, length, chunks_size=258):
+    def from_data(self, data, labels, length=None, chunks_size=258):
+        if length is None and data.shape[0] is not None:
+            length = data.shape[0]
         data = self.processing(data, apply_transforms=self.apply_transforms, 
             chunks_size=chunks_size)
         if isinstance(labels, str):
+            data = data.it_length(length)
             data_shape = list(data.shape[:-1]) + [data.shape[-1] - 1]
             self._set_space_shape('data', data_shape, data.global_dtype)
             self._set_space_shape('labels', (data.shape[0],), data.global_dtype)
@@ -1019,7 +1018,6 @@ class DataLabel(Data):
         X_train, X_test, y_train, y_test = train_test_split(
             self.data[:], self.labels[:], train_size=round(train_size+valid_size, 2), random_state=0)
         size = self.data.shape[0]
-
         valid_size_index = int(round(size * valid_size, 0))
         X_validation = X_train[:valid_size_index]
         y_validation = y_train[:valid_size_index]
@@ -1053,15 +1051,15 @@ class DataLabel(Data):
         train_ds = DataLabel(dataset_path=dataset_path, transforms=self.transforms, 
                             apply_transforms=apply_transforms)
         with train_ds:
-            train_ds.from_data(data[0], data[3])
+            train_ds.from_data(data[0], data[3], data[0].shape[0])
         validation_ds = DataLabel(dataset_path=dataset_path, transforms=self.transforms,
                                 apply_transforms=apply_transforms)
         with validation_ds:
-            validation_ds.from_data(data[1], data[4])
+            validation_ds.from_data(data[1], data[4], data[1].shape[0])
         test_ds = DataLabel(dataset_path=dataset_path, transforms=self.transforms,
                         apply_transforms=apply_transforms)
         with test_ds:
-            test_ds.from_data(data[2], data[5])
+            test_ds.from_data(data[2], data[5], data[2].shape[0])
         
         return train_ds, validation_ds, test_ds
 
@@ -1297,7 +1295,7 @@ class DataLabelFold(object):
                     rewrite=True)
                 data = dl.data[:]
                 labels = dl.labels[:]
-                with dsb:                    
+                with dsb:
                     dsb.from_data(data[train], labels[train]) 
                     #test_data=data[test], 
                     #    test_labels=labels[test], validation_data=data[validation], 

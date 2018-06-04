@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+import pandas as pd
 import csv
 
 from ml.ds import DataLabelFold, DataLabel#,DataLabelSetFile
@@ -370,7 +371,7 @@ class TestDataset(unittest.TestCase):
     def test_text_ds(self):
         X = np.asarray([(str(line)*10, "1") for line in range(100)], dtype=np.dtype("O"))
         with Data(name="test", dataset_path="/tmp/", rewrite=True) as ds:
-            ds.from_data(X, self.X.shape[0])
+            ds.from_data(X)
             self.assertEqual(ds.shape, (100, 2))
             self.assertEqual(ds.dtype, X.dtype)
             ds.destroy()
@@ -412,75 +413,10 @@ class TestDataset(unittest.TestCase):
                 u'c4', u'c5', u'c6', u'c7', u'c8', u'c9'])
             data.destroy()
 
-    def test_features_fmtype(self):
-        from ml import fmtypes
-        with Data(name="test", dataset_path="/tmp/") as data:
-            array = np.asarray([
-                [0, 1, -1, 3, 4, 0],
-                [1, -1, 0, 2 ,5, 1],
-                [0, 0, 1, 2, 2, 1],
-                [0, 1, 1, 3, 6, 0],
-                [1, 1, 0, 7, 7, 1]
-            ], dtype=int)
-            data.from_data(array)
-            data.columns = ['a', 'b', 'c', 'd', 'e', 'f']
-            #print(data.features_fmtype(fmtypes.BOOLEAN))
-            #self.assertEqual(data.features_fmtype(fmtypes.BOOLEAN), [0, 5])
-            #self.assertEqual(data.features_fmtype(fmtypes.NANBOOLEAN), [1, 2, 3])
-            #self.assertEqual(data.features_fmtype(fmtypes.ORDINAL), [4])
-            data.destroy()
-
-    def test_features_fmtype_set(self):
-        from ml import fmtypes
-        from ml.processing import Transforms
-        from ml.layers import IterLayer
-
-        array = np.asarray([
-            [0, 1, -1, 1, '4', 0],
-            [1, -1, 0, 2, '5', 1],
-            [0, 0, 1, 4, '2', 1],
-            [0, 1, 1, 3, '6', 0],
-            [1, 1, 0, 7, '7', 1]
-        ], dtype=np.dtype("int"))
-        t = Transforms()
-        t.add(to_int, col=4)
-        fmtypes_t = fmtypes.FmtypesT()
-        fmtypes_t.add(0, fmtypes.BOOLEAN)
-        fmtypes_t.add(2, fmtypes.NANBOOLEAN)
-        fmtypes_t.add(1, fmtypes.NANBOOLEAN)
-        fmtypes_t.add(5, fmtypes.BOOLEAN)
-        fmtypes_t.add(4, fmtypes.ORDINAL)
-        fmtypes_t.fmtypes_fill(6)
-        with Data(name="test", dataset_path="/tmp/",
-                    transforms=t, apply_transforms=True, rewrite=True) as data:
-            data.from_data(array, chunks_size=2)
-            #self.assertEqual(data.features_fmtype(fmtypes.BOOLEAN), [0, 5])
-            #self.assertEqual(data.features_fmtype(fmtypes.NANBOOLEAN), [1, 2])
-            #self.assertEqual(data.features_fmtype(fmtypes.ORDINAL), [3, 4])
-        data.destroy()
-
-    def test_features_fmtype_edit(self):
-        from ml import fmtypes
-        with Data(name="test", dataset_path="/tmp/") as data:
-            array = np.asarray([
-                [0, 1, -1, 3, 4, 0],
-                [1, -1, 0, 2 ,5, 1],
-                [0, 0, 1, 2, 2, 1],
-                [0, 1, 1, 3, 6, 0],
-                [1, 1, 0, 7, 7, 1]
-            ], dtype=int)
-            data.from_data(array)
-            #data.set_fmtypes(3, fmtypes.DENSE)
-            #data.set_fmtypes(4, fmtypes.DENSE)
-            #self.assertItemsEqual(data.fmtypes[:], 
-            #    [fmtypes.BOOLEAN.id, fmtypes.NANBOOLEAN.id, fmtypes.NANBOOLEAN.id, 
-            #    fmtypes.DENSE.id, fmtypes.DENSE.id, fmtypes.BOOLEAN.id])
-            data.destroy()
-
     def test_rewrite_data(self):
         with Data(name="test", dataset_path="/tmp/") as data:
             array = np.zeros((10, 2))
-            data.from_data(array)
+            data.from_data(array, array.shape[0])
             data.data[:, 1] = np.ones((10))
             self.assertItemsEqual(data.data[:, 1], np.ones((10)))
             self.assertItemsEqual(data.data[:, 0], np.zeros((10)))
@@ -492,7 +428,7 @@ class TestDataset(unittest.TestCase):
     def test_cv_ds(self):
         dl = DataLabel(name="test", dataset_path="/tmp/")
         with dl:
-            dl.from_data(self.X, self.Y)
+            dl.from_data(self.X, self.Y, self.X.shape[0])
             train_ds, validation_ds, test_ds = dl.cv_ds(train_size=.6, valid_size=.2)
         with train_ds:            
             self.assertEqual(train_ds.shape, (6, 10))
@@ -511,7 +447,7 @@ class TestDataset(unittest.TestCase):
         Y = np.asarray([str(e) for e in (X[:, 1] < .5)], dtype="|O")
         ds = DataLabel(name="test", dataset_path="/tmp/")
         with ds:
-            ds.from_data(X, Y)
+            ds.from_data(X, Y, X.shape[0])
             X_train, X_validation, X_test, y_train, y_validation, y_test = ds.cv(train_size=.7, valid_size=0, unbalanced={u'True': .2, u'False': 350})
         counter = np.unique(Y, return_counts=True)
         un = np.unique(y_test, return_counts=True)
@@ -524,33 +460,52 @@ class TestDataset(unittest.TestCase):
         dl = DataLabel(name="test", dataset_path="/tmp/")
         X = np.random.rand(10, 1)
         Y_0 = np.random.randint(1, 10, size=(10, 1))
-        Y = transforms.apply(Y_0, chunks_size=0).to_narray()
+        Y = transforms.apply(Y_0, chunks_size=0)
         with dl:
-            dl.from_data(X, Y)
+            dl.from_data(X, Y, self.X.shape[0])
             self.assertEqual(dl.labels[0], np.log1p(Y_0[0]))
         dl.destroy()
 
+    def test_label_index(self):
+        X = np.random.rand(10, 2)
+        X[:, 1] = X[:, 1] > .5
+        with DataLabel(name="test", dataset_path="/tmp/", rewrite=True) as ds:
+            ds.from_data(X, "1")
+            self.assertEqual(ds.shape, (10, 1))
+            self.assertItemsEqual(ds.data, X[:, 0])
+            self.assertItemsEqual(ds.labels, X[:, 1])
+            ds.destroy()
 
-class TestDataSetFile(unittest.TestCase):
-    def setUp(self):
-        NUM_FEATURES = 10
-        self.X = np.append(np.zeros((5, NUM_FEATURES)), np.ones((5, NUM_FEATURES)), axis=0)
-        self.Y = (np.sum(self.X, axis=1) / 10).astype(int)
-        dataset = np.c_[self.X, self.Y]
-        with open('/tmp/test.csv', 'wb') as csvfile:
-            csv_writer = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-            csv_writer.writerow(map(str, range(10)) + ['target']) 
-            for row in dataset:
-                csv_writer.writerow(row)
+        #with DataLabel(name="test", dataset_path="/tmp/", rewrite=True) as ds:
+        #    X = pd.DataFrame({"a": [0,1,2,3,4,5,6,7,8,9], "b": [0,1,1,0,1,1,0,0,0,1]})
+        #    print(X.dtypes)
+        #    ds.from_data(X, "b")
+        #    self.assertEqual(ds.shape, (10, 1))
+        #    self.assertItemsEqual(ds.data, X[:, 0])
+        #    self.assertItemsEqual(ds.labels, X[:, 1])
+        #    ds.destroy()
 
-    def test_load(self):
-        dataset = DataLabelSetFile(
-            name="test",
-            dataset_path="/tmp/")
-        with dataset:
-            data, labels = dataset.from_csv('/tmp/test.csv', 'target')
-            self.assertItemsEqual(self.Y, labels.astype(int))
-        dataset.destroy()
+
+#class TestDataSetFile(unittest.TestCase):
+#    def setUp(self):
+#        NUM_FEATURES = 10
+#        self.X = np.append(np.zeros((5, NUM_FEATURES)), np.ones((5, NUM_FEATURES)), axis=0)
+#        self.Y = (np.sum(self.X, axis=1) / 10).astype(int)
+#        dataset = np.c_[self.X, self.Y]
+#        with open('/tmp/test.csv', 'wb') as csvfile:
+#            csv_writer = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+#            csv_writer.writerow(map(str, range(10)) + ['target']) 
+#            for row in dataset:
+#                csv_writer.writerow(row)
+
+#    def test_load(self):
+#        dataset = DataLabelSetFile(
+#            name="test",
+#            dataset_path="/tmp/")
+#        with dataset:
+#            data, labels = dataset.from_csv('/tmp/test.csv', 'target')
+#            self.assertItemsEqual(self.Y, labels.astype(int))
+#        dataset.destroy()
 
 
 class TestDataSetFold(unittest.TestCase):

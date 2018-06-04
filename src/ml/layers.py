@@ -63,6 +63,7 @@ class IterLayer(object):
         self.iter_init = True
         #to obtain dtype, shape, global_dtype and type_elem
         self.chunk_taste(dtype)
+        self.set_length(length)
     
     def columns(self):
         if hasattr(self.dtype, '__iter__'):
@@ -115,6 +116,8 @@ class IterLayer(object):
                         self.dtype = type_e
                 else:
                     self.dtype = type(chunk)
+                    if self.dtype == str:
+                        self.dtype = "|O"
             else:
                 self.dtype = chunk.dtype
             global_dtype = self.dtype
@@ -123,9 +126,9 @@ class IterLayer(object):
             shape = [None] + list(chunk.shape)
         except AttributeError:
             if hasattr(chunk, '__iter__'):
-                shape = (1, len(chunk))
+                shape = (None, len(chunk))
             else:
-                shape = (1,)
+                shape = (None,)
 
         self.shape = shape
         self.global_dtype = global_dtype
@@ -297,18 +300,24 @@ class IterLayer(object):
             self._shape = (v,)
             self.features_dim = ()
 
+    def set_length(self, length):
+        if length is None and self.length is not None:
+            length = self.length
+        else:
+            self.length = length
+
+        if length is not None and self.features_dim is not None:
+            self.shape = [length] + list(self.features_dim)
+
     def it_length(self, length):
         if self.has_chunks:
             it = IterLayer(self.cut_it_chunk(length), dtype=self.dtype, length=length, 
                 chunks_size=self.chunks_size)
-            it.shape = [length] + list(self.features_dim)
+            #it.shape = [length] + list(self.features_dim)
             return it
         else:
-            if length is None and self.length is not None:
-                length = self.length
-            else:
-                self.length = length
-            self.shape = [length] + list(self.features_dim)
+            #self.shape = [length] + list(self.features_dim)
+            self.set_length(length)
             return self
 
     def scalar_operation(self, operator, scalar):
@@ -514,7 +523,6 @@ class IterLayer(object):
         return smx, i, length
 
     def to_memory(self, length=None):
-        #self.length_shape(length)
         it = self.it_length(length)
         if hasattr(it.dtype, '__iter__'):
             return it.to_df()
