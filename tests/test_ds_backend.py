@@ -114,8 +114,7 @@ class TestSQL(unittest.TestCase):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
                 sql.update(3, ("0", 0, 0))
-                print(sql[3].to_memory())
-                #self.assertItemsEqual(sql[3].flat().to_memory(), ["0", 0, 0])
+                self.assertItemsEqual(sql[3].flat().to_memory(), ("0", 0, 0))
         except psycopg2.OperationalError:
             pass
 

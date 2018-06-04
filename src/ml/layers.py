@@ -114,7 +114,11 @@ class IterLayer(object):
                     else:
                         self.dtype = type_e
                 else:
-                    self.dtype = type(chunk)
+                    if dtypes is not None:
+                        self.dtype = dtypes
+                    else:
+                        self.dtype = type(chunk)
+
                     if self.dtype == str:
                         self.dtype = "|O"
             else:
@@ -229,11 +233,11 @@ class IterLayer(object):
                     yield e
         
         it = IterLayer(_iter(), dtype=self.dtype)
-        if self.has_chunks:
+        if self.length is not None:
             it.set_length(self.length*sum(self.features_dim))
-            it = it.to_chunks(self.chunks_size, dtype=self.global_dtype)   
-        else:
-            it.set_length(self.length)       
+
+        if self.has_chunks:
+            it = it.to_chunks(self.chunks_size, dtype=self.global_dtype)  
         return it
 
     def sample(self, k, col=None, weight_fn=None):
