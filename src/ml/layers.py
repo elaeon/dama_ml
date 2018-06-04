@@ -44,7 +44,7 @@ def cut(fn):
 
 
 class IterLayer(object):
-    def __init__(self, fn_iter, dtype=None, chunks_size=0, length=None):
+    def __init__(self, fn_iter, dtype=None, chunks_size=0):
         if isinstance(fn_iter, types.GeneratorType) or isinstance(fn_iter, psycopg2.extensions.cursor):
             self.it = fn_iter
         elif isinstance(fn_iter, IterLayer):
@@ -59,11 +59,10 @@ class IterLayer(object):
         self.chunks_size = chunks_size
         self.has_chunks = True if chunks_size > 0 else False
         self.features_dim = None
-        self.length = length
+        self.length = None
         self.iter_init = True
         #to obtain dtype, shape, global_dtype and type_elem
         self.chunk_taste(dtype)
-        self.set_length(length)
     
     def columns(self):
         if hasattr(self.dtype, '__iter__'):
@@ -158,8 +157,10 @@ class IterLayer(object):
         if self.has_chunks is False and chunks_size > 0:
             if dtype is None:
                 dtype = self.dtype
-            return IterLayer(self.chunks_gen(chunks_size, dtype),
+            it = IterLayer(self.chunks_gen(chunks_size, dtype),
                 chunks_size=chunks_size, dtype=dtype)
+            it.set_length(self.length)
+            return it
         else:
             return self
     
@@ -228,18 +229,21 @@ class IterLayer(object):
                     yield e
         
         it = IterLayer(_iter(), dtype=self.dtype)
-        if self.has_chunks:            
-            return it.to_chunks(self.chunks_size, dtype=self.global_dtype)
+        if self.has_chunks:
+            it.set_length(self.length*sum(self.features_dim))
+            it = it.to_chunks(self.chunks_size, dtype=self.global_dtype)   
         else:
-            return it
+            it.set_length(self.length)       
+        return it
 
     def sample(self, k, col=None, weight_fn=None):
         if self.has_chunks:
             data = self.clean_chunks()
         else:
             data = self
-        return IterLayer(wsrj(self.weights_gen(data, col, weight_fn), k), 
-            length=k, dtype=self.dtype)
+        it = IterLayer(wsrj(self.weights_gen(data, col, weight_fn), k), dtype=self.dtype)
+        it.set_length(k)
+        return it
 
     def split(self, i):
         if self.type_elem == pd.DataFrame:
@@ -291,32 +295,28 @@ class IterLayer(object):
                 self._shape = tuple(v)
                 self.features_dim = ()
             else:
-                self._shape = tuple(v)
                 if self.has_chunks:
-                    self.features_dim = tuple(v[2:])
+                    self._shape = tuple([v[0]] + v[2:])
+                    self.features_dim = tuple(self._shape[1:])
                 else:
+                    self._shape = tuple(v)
                     self.features_dim = tuple(v[1:])
         else:
             self._shape = (v,)
             self.features_dim = ()
 
     def set_length(self, length):
-        if length is None and self.length is not None:
-            length = self.length
-        else:
-            self.length = length
-
+        self.length = length
         if length is not None and self.features_dim is not None:
-            self.shape = [length] + list(self.features_dim)
+            self._shape = tuple([length] + list(self.features_dim))
 
     def it_length(self, length):
         if self.has_chunks:
-            it = IterLayer(self.cut_it_chunk(length), dtype=self.dtype, length=length, 
+            it = IterLayer(self.cut_it_chunk(length), dtype=self.dtype,
                 chunks_size=self.chunks_size)
-            #it.shape = [length] + list(self.features_dim)
+            it.set_length(length)
             return it
         else:
-            #self.shape = [length] + list(self.features_dim)
             self.set_length(length)
             return self
 
@@ -407,8 +407,9 @@ class IterLayer(object):
         if len(iters) > 1:
             base_iter = iters[0]
             length = sum([it.length for it in iters if it.length is not None])
-            return IterLayer(chain(*iters), chunks_size=base_iter.chunks_size, 
-                length=None if length == 0 else length)
+            it = IterLayer(chain(*iters), chunks_size=base_iter.chunks_size)
+            it.set_length(None if length == 0 else length)
+            return it
         elif len(iters) == 1:
             return iters[0]
 
@@ -523,6 +524,8 @@ class IterLayer(object):
         return smx, i, length
 
     def to_memory(self, length=None):
+        if self.length is not None and length is None:
+            length = self.length
         it = self.it_length(length)
         if hasattr(it.dtype, '__iter__'):
             return it.to_df()

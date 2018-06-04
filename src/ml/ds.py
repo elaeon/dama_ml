@@ -168,7 +168,6 @@ class ReadWriteData(object):
             else:
                 end += 1
 
-            print(smx)
             if isinstance(smx, pd.DataFrame):
                 array_data = smx.drop([labels_column], axis=1).values
                 array_labels = smx[labels_column].values
@@ -177,17 +176,18 @@ class ReadWriteData(object):
                 array_data = np.delete(smx, labels_column, axis=1)
                 array_labels = smx[:, labels_column]
 
-            #try:
             self.f[data_key][init:end] = array_data
             self.f[labels_key][init:end] = array_labels
             init = end
-            #except TypeError as e:
-            #    if self.dtype == "|O":
-            #        type_ = "string"
-            #    else:
-            #        type_ = self.dtype
-            #    raise TypeError("All elements in array must be of type '{}' but found '{}'".format(
-            #        type_, self.dtype))
+
+        ndtype = []
+        for i, (col_name, type_e) in enumerate(data.dtype):
+            if col_name == labels_column or i == labels_column:
+                pass
+            else:
+                ndtype.append((col_name, type_e))
+        data.dtype = ndtype
+        return end
 
     def create_route(self):
         """
@@ -418,10 +418,7 @@ class Data(ReadWriteData):
         """
         return the number of features of the dataset
         """
-        if len(self.data.shape) != 2:
-            raise Exception("Bad input shape. The input array must have a shape of (X, Y) and not {}".format(self.data.shape))
-        else:
-            return self.data.shape[1]
+        return self.data.shape[-1]
 
     @property
     def shape(self):
@@ -581,7 +578,7 @@ class Data(ReadWriteData):
             return self.transforms.apply(data, chunks_size=chunks_size)
         else:
             if not isinstance(data, IterLayer):
-                return IterLayer(data, dtype=data.dtype).to_chunks(chunks_size)
+                return IterLayer(data).to_chunks(chunks_size)
             return data
 
     @classmethod

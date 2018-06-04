@@ -376,18 +376,6 @@ class TestDataset(unittest.TestCase):
             self.assertEqual(ds.dtype, X.dtype)
             ds.destroy()
 
-    #def test_file_merge(self):
-    #    build_csv_file('/tmp/test_X.csv', self.X, sep=",")
-    #    build_csv_file('/tmp/test_Y.csv', self.Y.reshape(-1, 1), sep="|")
-
-    #    with DataLabelSetFile(
-    #        training_data_path=['/tmp/test_X.csv', '/tmp/test_Y.csv'], 
-    #            sep=[",", "|"], merge_field="id", dataset_path="/tmp/") as dbf:
-    #        dbf.from_data(self.X.shape[0], labels_column="0_y")
-    #        self.assertEqual(dbf.shape, self.X.shape)
-    #        self.assertEqual(dbf.labels.shape, self.Y.shape)
-    #        dbf.destroy()
-
     def test_fmtypes(self):
         with Data(name="test", dataset_path="/tmp/", rewrite=True) as data:
             data.from_data(self.X, self.X.shape[0])
@@ -469,21 +457,20 @@ class TestDataset(unittest.TestCase):
     def test_label_index(self):
         X = np.random.rand(10, 2)
         X[:, 1] = X[:, 1] > .5
-        with DataLabel(name="test", dataset_path="/tmp/", rewrite=True) as ds:
-            ds.from_data(X, "1")
-            self.assertEqual(ds.shape, (10, 1))
-            self.assertItemsEqual(ds.data, X[:, 0])
-            self.assertItemsEqual(ds.labels, X[:, 1])
-            ds.destroy()
-
         #with DataLabel(name="test", dataset_path="/tmp/", rewrite=True) as ds:
-        #    X = pd.DataFrame({"a": [0,1,2,3,4,5,6,7,8,9], "b": [0,1,1,0,1,1,0,0,0,1]})
-        #    print(X.dtypes)
-        #    ds.from_data(X, "b")
+        #    ds.from_data(X, "1")
         #    self.assertEqual(ds.shape, (10, 1))
         #    self.assertItemsEqual(ds.data, X[:, 0])
         #    self.assertItemsEqual(ds.labels, X[:, 1])
         #    ds.destroy()
+
+        with DataLabel(name="test", dataset_path="/tmp/", rewrite=True) as ds:
+            X = pd.DataFrame({"a": [0,1,2,3,4,5,6,7,8,9], "b": [0,1,1,0,1,1,0,0,0,1]})
+            ds.from_data(X, "b")
+            self.assertEqual(ds.shape, (10, 1))
+            self.assertItemsEqual(ds.data, X["a"])
+            self.assertItemsEqual(ds.labels, X["b"])
+            ds.destroy()
 
 
 #class TestDataSetFile(unittest.TestCase):
