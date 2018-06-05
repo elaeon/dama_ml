@@ -180,13 +180,15 @@ class ReadWriteData(object):
             self.f[labels_key][init:end] = array_labels
             init = end
 
-        ndtype = []
-        for i, (col_name, type_e) in enumerate(data.dtype):
-            if col_name == labels_column or i == labels_column:
-                pass
-            else:
-                ndtype.append((col_name, type_e))
-        data.dtype = ndtype
+        if hasattr(data.dtype, "__iter__"):
+            ndtype = []
+            for col_name, type_e in data.dtype:
+                if col_name == labels_column:
+                    pass
+                else:
+                    ndtype.append((col_name, type_e))
+            data.dtype = ndtype
+
         return end
 
     def create_route(self):

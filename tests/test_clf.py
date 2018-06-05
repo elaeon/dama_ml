@@ -10,6 +10,13 @@ def mulp(row):
     return row * 2
 
 
+def multi_int(X):
+    try:
+        return np.asarray([int(x) for x in X])
+    except TypeError:
+        return X
+
+
 class TestSKL(unittest.TestCase):
     def setUp(self):
         self.X = np.random.rand(100, 10)
@@ -95,9 +102,9 @@ class TestSKL(unittest.TestCase):
         classif.train()
         classif.save(model_version="1")
         values = np.asarray([[1], [2], [.4], [.1], [0], [1]])
-        self.assertItemsEqual(classif.predict(values).to_memory(), [True, True, False, False, False, True])
-        self.assertEqual(len(classif.predict(values).to_memory()), 6)
-        self.assertEqual(len(classif.predict(np.asarray(values), chunks_size=0).to_memory()), 6)
+        self.assertItemsEqual(classif.predict(values).to_memory(6), [True, True, False, False, False, True])
+        self.assertEqual(len(classif.predict(values).to_memory(6)), 6)
+        self.assertEqual(len(classif.predict(np.asarray(values), chunks_size=0).to_memory(6)), 6)
         dataset.destroy()
         classif.destroy()
 
@@ -122,8 +129,30 @@ class TestSKL(unittest.TestCase):
         classif.load(model_version="2")
         with self.dataset:
             values = self.dataset.data[:6]
-        self.assertEqual(len(classif.predict(values).to_memory()), 6)
+        self.assertEqual(len(classif.predict(values).to_memory(6)), 6)
         classif.destroy()
+
+    def test_simple_predict(self):
+        from ml.clf.extended.w_sklearn import RandomForest
+        from ml.utils.numeric_functions import gini_normalized
+        from ml.clf.measures import Measure
+
+        metrics = Measure()
+        metrics.add(gini_normalized, greater_is_better=True, output='uncertain')
+
+        rf = RandomForest(model_name="test_rf", metrics=metrics)
+        rf.set_dataset(self.dataset)
+        rf.train()
+        rf.save(model_version="1")
+        with rf.test_ds as test_ds:
+            predict_shape = rf.predict(test_ds.data[:], transform=False, 
+                output='uncertain', chunks_size=0).shape
+            self.assertEqual(predict_shape, (None, 2))
+        with rf.test_ds as test_ds:
+            predict_shape = rf.predict(test_ds.data[:], transform=False, 
+                output='uncertain', chunks_size=10).shape
+            self.assertEqual(predict_shape, (None, 2))
+        rf.destroy()
 
 #class TestGpy(unittest.TestCase):
 #    def setUp(self):
@@ -176,6 +205,11 @@ class TestGrid(unittest.TestCase):
     def test_load_meta(self):
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
         from ml.clf.ensemble import Grid
+        from ml.utils.numeric_functions import gini_normalized
+        from ml.clf.measures import Measure
+
+        metrics = Measure()
+        metrics.add(gini_normalized, greater_is_better=True, output='uncertain')
 
         dataset = DataLabel(name="testdl", dataset_path="/tmp/", rewrite=True)
         with self.original_dataset, dataset:
@@ -193,7 +227,8 @@ class TestGrid(unittest.TestCase):
 
         classif = Grid([rf, ab], 
             model_name="test_grid", 
-            check_point_path="/tmp/")
+            check_point_path="/tmp/",
+            metrics=metrics)
         classif.output("avg")
         classif.save()
         meta = classif.load_meta()
@@ -233,7 +268,7 @@ class TestGrid(unittest.TestCase):
             model_name="test_grid0", 
             check_point_path="/tmp/",
             metrics=metrics)
-        classif.output(lambda x, y: (x + y) / 2)
+        classif.output(lambda x, y: ((x + y) / 2).compose(multi_int))
         classif.save()
         self.assertEqual(len(classif.scores2table().measures[0]), 8)
         classif.destroy()
@@ -262,13 +297,13 @@ class TestGrid(unittest.TestCase):
         classif = Grid([rf, ab],
             model_name="test_grid0", 
             check_point_path="/tmp/")
-        classif.output(lambda x, y: (x + y) / 2)
+        classif.output(lambda x, y: ((x + y) / 2).compose(multi_int))
         classif.save()   
         with self.original_dataset:
             data = self.original_dataset.data[:1]
 
-        for p in classif.predict(data, output=None, transform=True):
-            self.assertEqual(type(p), np.dtype('int'))
+        for p in classif.predict(data, output=None, transform=True, chunks_size=0):
+            self.assertEqual(type(p[0]), np.dtype('int'))
         dataset.destroy()
         classif.destroy()
 
@@ -401,8 +436,8 @@ class TestXgboost(unittest.TestCase):
             check_point_path="/tmp/")
         classif.load(model_version="1")
         with self.dataset:
-            predict = classif.predict(self.dataset.data, transform=False, output=None)
-            self.assertEqual(predict.to_memory().shape[0], 100)
+            predict = classif.predict(self.dataset.data, transform=False)
+            self.assertEqual(predict.to_memory(100).shape[0], 100)
         classif.destroy()
 
 
@@ -463,7 +498,7 @@ class TestLightGBM(unittest.TestCase):
         classif.load(model_version=self.model_version)
         with self.dataset:
             predict = classif.predict(self.dataset.data, transform=False, output=None)
-            self.assertEqual(predict.to_memory().shape[0], 100)
+            self.assertEqual(predict.to_memory(100).shape[0], 100)
         classif.destroy()
 
 
@@ -492,7 +527,7 @@ class TestKFold(unittest.TestCase):
         classif.load(model_version="1")
         with dataset:
             predict = classif.predict(dataset.data)
-            self.assertEqual(len(list(predict)), 1000)
+            self.assertEqual(predict.to_memory(1000).shape[0], 1000)
         classif.destroy()
         dataset.destroy()
 

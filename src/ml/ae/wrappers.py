@@ -80,8 +80,8 @@ class BaseAe(BaseModel):
             self.load_model()
 
         decoder = model_type == "decoder"
-        output_shape = tuple([data.shape[0], self.latent_dim])
-        return IterLayer(self._predict(fn(data, t=transform), output=output, decoder=decoder), shape=output_shape)
+        #output_shape = tuple([data.shape[0], self.latent_dim])
+        return IterLayer(self._predict(fn(data, t=transform), output=output, decoder=decoder))
 
 
 class Keras(BaseAe):

@@ -40,10 +40,11 @@ class ClassifModel(SupervicedModel):
         with self.test_ds:
             test_data = self.test_ds.data[:]
             test_labels = self.test_ds.labels[:]
+            length = self.test_ds.shape[0]
 
         for output in measures.outputs():
             predictions = self.predict(test_data, output=output, 
-                transform=False, chunks_size=chunks_size).to_memory()
+                transform=False, chunks_size=chunks_size).to_memory(length)
             measures.set_data(predictions, test_labels, output=output)
         return measures.to_list()
 
@@ -101,13 +102,19 @@ class ClassifModel(SupervicedModel):
             return labels
 
     def convert_labels(self, labels, output=None):
-        if output is 'uncertain' or output is 'n_dim':
+        if output == 'uncertain' or output == 'n_dim':
             for chunk in labels:
                 yield chunk
         else:
             for chunk in labels:
-                for label in self.position_index(chunk):
-                    yield self.le.inverse_transform(int(round(label, 0)))
+                if len(chunk.shape) > 1:
+                    nchunk = np.empty(chunk.shape[0], dtype=chunk.dtype)
+                    for i, label in enumerate(self.position_index(chunk)):
+                        nchunk[i] = self.le.inverse_transform(int(round(label, 0)))
+                    yield nchunk
+                else:
+                    yield self.le.inverse_transform(self.position_index(chunk.reshape(1, -1)))
+                
 
     def numerical_labels2classes(self, labels):
         if len(labels.shape) > 1 and labels.shape[1] > 1:

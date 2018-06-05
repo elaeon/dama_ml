@@ -457,12 +457,12 @@ class TestDataset(unittest.TestCase):
     def test_label_index(self):
         X = np.random.rand(10, 2)
         X[:, 1] = X[:, 1] > .5
-        #with DataLabel(name="test", dataset_path="/tmp/", rewrite=True) as ds:
-        #    ds.from_data(X, "1")
-        #    self.assertEqual(ds.shape, (10, 1))
-        #    self.assertItemsEqual(ds.data, X[:, 0])
-        #    self.assertItemsEqual(ds.labels, X[:, 1])
-        #    ds.destroy()
+        with DataLabel(name="test", dataset_path="/tmp/", rewrite=True) as ds:
+            ds.from_data(X, "1")
+            self.assertEqual(ds.shape, (10, 1))
+            self.assertItemsEqual(ds.data, X[:, 0])
+            self.assertItemsEqual(ds.labels, X[:, 1])
+            ds.destroy()
 
         with DataLabel(name="test", dataset_path="/tmp/", rewrite=True) as ds:
             X = pd.DataFrame({"a": [0,1,2,3,4,5,6,7,8,9], "b": [0,1,1,0,1,1,0,0,0,1]})

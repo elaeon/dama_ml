@@ -179,13 +179,13 @@ class TransformsClass(TransformsFn):
         if isinstance(data, IterLayer):
             data = data.to_memory()
         for fn_fit in self.initial_fn(data):
-            data = fn_fit.transform(data).to_memory()
+            data = fn_fit.transform(data).to_memory(data.shape[0])
 
         if not isinstance(data, np.ndarray):
             dtype = [(name, data.columns.dtype.str) for name in data.columns]
         else:
             dtype = data.dtype
-        return IterLayer(data, shape=data.shape, dtype=dtype).to_chunks(chunks_size=chunks_size)
+        return IterLayer(data, dtype=dtype).to_chunks(chunks_size=chunks_size)
 
     def destroy(self):
         for transform in self.initial_fn():
@@ -327,9 +327,10 @@ class Process(object):
             self.save(fn(self.ds.to_iter(self.dtype, chunks_size=chunks_size), **params))
 
     def reduce(self, fn, chunks_size=258, **params):
-        it = self.ds.to_iter(self.dtype, chunks_size=chunks_size)
-        return IterLayer(fn(it, self.load(), **params), length=self.ds.shape[0],
-                chunks_size=it.chunks_size)
+        ds_it = self.ds.to_iter(self.dtype, chunks_size=chunks_size)
+        it = IterLayer(fn(ds_it, self.load(), **params), chunks_size=ds_it.chunks_size)
+        it.set_length(self.ds.shape[0])
+        return it
 
     def load(self):
         pass
@@ -356,7 +357,9 @@ class Fit(object):
 
     def transform(self, data):
         ndata = self.t(data)
-        return IterLayer(ndata, shape=ndata.shape, dtype=ndata.dtype)
+        it = IterLayer(ndata, dtype=ndata.dtype)
+        it.set_length(ndata.shape[0])
+        return it
 
     def read_meta(self):
         from ml.ds import load_metadata
@@ -425,7 +428,8 @@ class FitTsne(Fit):
             for row, predict in izip(data, self.t(self.dim_rule(data), chunks_size=1)):
                 yield np.append(row, list(predict)[0], axis=0)
 
-        return IterLayer(iter_(), shape=(data.shape[0], data.shape[1]+2), dtype=data.dtype)
+        #shape=(data.shape[0], data.shape[1]+2)
+        return IterLayer(iter_(), dtype=data.dtype)
 
     def destroy(self):
         if hasattr(self, 'model'):
@@ -456,7 +460,9 @@ class FitReplaceNan(Fit):
                     for i in indx[0]:
                         row[i] = columns[i]
                     yield row
-            return IterLayer(iter_(), shape=n_data.shape)
+            it = IterLayer(iter_())
+            it.set_length(n_data.shape[0])
+            return it
         
         return transform
 

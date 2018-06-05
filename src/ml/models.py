@@ -36,14 +36,19 @@ class MLModel:
                 for chunk in data:
                     yield self.predictors[0](self.transform_data(chunk))
             else:
-                raise Exception("Data does not have chunks")
+                for row in data:
+                    yield self.predictors[0](self.transform_data(row.reshape(1, -1)))
         else:
             if data.has_chunks:
                 for chunk in data:
                     yield self.predictors[0](chunk)
             else:
                 for row in data:
-                    yield self.predictors[0](row)
+                    predict = self.predictors[0](row.reshape(1, -1))
+                    if len(predict.shape) > 1:
+                        yield predict[0]
+                    else:
+                        yield predict
 
     def load(self, path):
         return self.load_fn(path)
@@ -187,13 +192,13 @@ class BaseModel(DataDrive):
             return self.test_ds.num_features()
 
     def predict(self, data, output=None, transform=True, chunks_size=258):
-        def fn(x, s=None, t=True):
+        def fn(x, t=True):
             with self.test_ds:
                 return self.test_ds.processing(x, apply_transforms=t, chunks_size=chunks_size)
 
-        output_shape = tuple([data.shape[0], self.labels_dim])
+        #output_shape = tuple([data.shape[0], self.labels_dim])
         return IterLayer(self._predict(fn(data, t=transform), output=output), 
-            shape=output_shape, chunks_size=chunks_size)
+            chunks_size=chunks_size)
 
     def metadata_model(self):
         with self.test_ds:

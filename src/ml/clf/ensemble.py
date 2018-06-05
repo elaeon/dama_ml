@@ -85,8 +85,10 @@ class Grid(DataDrive):
 
         with self.classifs[0].test_ds as test_ds:
             test_labels = test_ds.labels[:]
+            length = test_labels.shape[0]
+
         for output in measures.outputs():
-            predictions = self.predict_test(output=output, chunks_size=0).to_memory()
+            predictions = self.predict_test(output=output).to_memory(length)
             measures.set_data(predictions, test_labels, output=output)
         list_measure = measures.to_list()
         if all_clf is True:
@@ -157,7 +159,6 @@ class Grid(DataDrive):
                     test_data = test_ds.data[:]
                 yield classif.predict(test_data, output=output, transform=False, 
                                         chunks_size=chunks_size)
-
         return self.output_layer(iter_)
 
     def predict(self, data, output=None, transform=True, chunks_size=258):

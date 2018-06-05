@@ -21,8 +21,10 @@ class Xgboost(XGB):
                     yield chunk
         else:
             for chunk in labels:
-                for label in self.position_index(chunk):
-                    yield self.le.inverse_transform(int(round(label, 0)))
+                tmp_chunk = []
+                for e in chunk:
+                    tmp_chunk.append(int(round(e, 0)))
+                yield self.le.inverse_transform(tmp_chunk)
 
     def prepare_model(self, obj_fn=None, num_steps=None, **params):
         with self.train_ds, self.validation_ds:
