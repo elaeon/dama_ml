@@ -37,10 +37,11 @@ class RegModel(SupervicedModel):
         with self.test_ds:
             test_data = self.test_ds.data[:]
             test_labels = self.test_ds.labels[:]
+            length = test_labels.shape[0]
 
         for output in measures.outputs():
             predictions = self.predict(test_data, output=output, 
-                transform=False, chunks_size=chunks_size).to_memory()
+                transform=False, chunks_size=chunks_size).to_memory(length)
             measures.set_data(predictions, test_labels, output=output)
         return measures.to_list()
 

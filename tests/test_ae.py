@@ -22,7 +22,7 @@ class TestUnsupervicedModel(unittest.TestCase):
 
         classif = PTsne(model_name="tsne", check_point_path="/tmp/")
         classif.load(model_version="1")
-        self.assertEqual(classif.predict(X[:1]).shape, (1, 2))
+        self.assertEqual(classif.predict(X[:1]).shape, (None, 2))
         classif.destroy()
         dataset.destroy()
 
@@ -58,8 +58,8 @@ class TestAE(unittest.TestCase):
         vae.load(model_version="1")
         encoder = vae.predict(X[0:1], chunks_size=10, model_type="encoder")
         decoder = vae.predict(X[0:1], chunks_size=10, model_type="decoder")
-        self.assertEqual(encoder.shape, (1, 2))
-        self.assertEqual(decoder.shape, (1, 10))
+        self.assertEqual(encoder.shape, (None, 2))
+        self.assertEqual(decoder.shape, (None, 10))
         dataset.destroy()
         vae.destroy()
 
@@ -85,9 +85,9 @@ class TestAE(unittest.TestCase):
             check_point_path="/tmp/")
         dae.load(model_version="1")
         encoder = dae.predict(X[0:1], chunks_size=10, model_type="encoder")
-        self.assertEqual(encoder.shape, (1, 10))
+        self.assertEqual(encoder.shape, (None, 10))
         decoder = dae.predict(X[0:1], chunks_size=10, model_type="decoder")
-        self.assertEqual(decoder.shape, (1, 10))
+        self.assertEqual(decoder.shape, (None, 10))
         dataset.destroy()
         dae.destroy()
 

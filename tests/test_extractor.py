@@ -43,7 +43,7 @@ class TestCSVZip(unittest.TestCase):
         schema = [("A", "int"), ("C", "int")]
         csv = CSV(self.filepath, schema=schema)
         it = csv.to_iter()
-        it.shape = csv.shape()
+        it.set_length(csv.shape()[0])
         data = it.to_memory()
         self.assertItemsEqual(data.values[0], [1, 3])
 

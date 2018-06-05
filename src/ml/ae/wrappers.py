@@ -76,12 +76,13 @@ class BaseAe(BaseModel):
             with self.test_ds:
                 return self.test_ds.processing(x, apply_transforms=t, chunks_size=chunks_size)
 
-        if self.model is None:
-            self.load_model()
+        #if self.model is None:
+        #    self.load_model()
 
         decoder = model_type == "decoder"
         #output_shape = tuple([data.shape[0], self.latent_dim])
-        return IterLayer(self._predict(fn(data, t=transform), output=output, decoder=decoder))
+        return IterLayer(self._predict(fn(data, t=transform), output=output, decoder=decoder),
+             chunks_size=chunks_size)
 
 
 class Keras(BaseAe):

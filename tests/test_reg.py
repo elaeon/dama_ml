@@ -85,8 +85,8 @@ class TestRegSKL(unittest.TestCase):
         reg.train()
         reg.save(model_version="1")
         values = np.asarray([[1], [2], [.4], [.1], [0], [1]])
-        self.assertEqual(len(reg.predict(values).to_memory()), 6)
-        self.assertEqual(len(reg.predict(np.asarray(values), chunks_size=0).to_memory()), 6)
+        self.assertEqual(reg.predict(values).to_memory(6).shape[0], 6)
+        self.assertEqual(reg.predict(values, chunks_size=0).to_memory(6).shape[0], 6)
         dataset.destroy()
         reg.destroy()
 
