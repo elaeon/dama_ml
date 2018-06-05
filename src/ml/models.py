@@ -196,7 +196,6 @@ class BaseModel(DataDrive):
             with self.test_ds:
                 return self.test_ds.processing(x, apply_transforms=t, chunks_size=chunks_size)
 
-        #output_shape = tuple([data.shape[0], self.labels_dim])
         return IterLayer(self._predict(fn(data, t=transform), output=output), 
             chunks_size=chunks_size)
 

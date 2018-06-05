@@ -27,7 +27,7 @@ class TestMsssiM(unittest.TestCase):
         transforms.add(rgb2gray)
         transforms.add(merge_offset)
         image = transforms.apply(image)
-        img = img_as_float(image.to_narray()[0])
+        img = img_as_float(image.to_memory(1)[0])
         rows, cols = img.shape
 
         noise = np.ones_like(img) * 0.2 * (img.max() - img.min())
@@ -79,12 +79,12 @@ class TestMsssiM(unittest.TestCase):
         transforms.add(rgb2gray)
         transforms.add(merge_offset)
         image1 = transforms.apply(image1)
-        img1 = img_as_float(image1.to_narray()[0])
+        img1 = img_as_float(image1.to_memory(1)[0])
         rows1, cols1 = img1.shape
 
         image2 = np.expand_dims(io.imread(image_path2), axis=0)
         image2 = transforms.apply(image2)
-        img2 = img_as_float(image2.to_narray()[0])
+        img2 = img_as_float(image2.to_memory(1)[0])
         rows2, cols2 = img2.shape
 
         image1 = tf.placeholder(tf.float32, shape=[rows1, cols1])

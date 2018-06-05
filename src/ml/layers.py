@@ -203,7 +203,7 @@ class IterLayer(object):
     def check_datatime(self, dtype):
         cols = []
         for col_i, (_, type_) in enumerate(dtype):
-            if isinstance(type_, datetime.datetime):
+            if isinstance(type_, datetime.datetime) or type_ == datetime.datetime:
                 cols.append(col_i)
         return cols
 

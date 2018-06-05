@@ -114,7 +114,6 @@ class ClassifModel(SupervicedModel):
                     yield nchunk
                 else:
                     yield self.le.inverse_transform(self.position_index(chunk.reshape(1, -1)))
-                
 
     def numerical_labels2classes(self, labels):
         if len(labels.shape) > 1 and labels.shape[1] > 1:

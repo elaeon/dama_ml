@@ -144,12 +144,11 @@ class TestSKL(unittest.TestCase):
         rf.set_dataset(self.dataset)
         rf.train()
         rf.save(model_version="1")
-        with rf.test_ds as test_ds:
-            predict_shape = rf.predict(test_ds.data[:], transform=False, 
+        with rf.test_ds:
+            predict_shape = rf.predict(rf.test_ds.data[:], transform=False, 
                 output='uncertain', chunks_size=0).shape
             self.assertEqual(predict_shape, (None, 2))
-        with rf.test_ds as test_ds:
-            predict_shape = rf.predict(test_ds.data[:], transform=False, 
+            predict_shape = rf.predict(rf.test_ds.data[:], transform=False, 
                 output='uncertain', chunks_size=10).shape
             self.assertEqual(predict_shape, (None, 2))
         rf.destroy()
