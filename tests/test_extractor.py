@@ -12,6 +12,10 @@ class TestCSVZip(unittest.TestCase):
         csv_writer = CSV(filepath=self.filepath, delimiter=",", filename=self.filename)
         csv_writer.writer(self.iterator)
 
+    def tearDown(self):
+        csv = CSV(filepath=self.filepath)
+        csv.destroy()
+
     def test_csv_ext(self):
         fm = get_compressed_file_manager_ext(self.filepath)
         self.assertEqual(fm.mime_type, ZIPFile.mime_type)
@@ -54,6 +58,10 @@ class TestCSV(unittest.TestCase):
         self.filepath = "/tmp/test.csv"
         csv_writer = CSV(filepath=self.filepath, delimiter=",")
         csv_writer.writer(self.iterator)
+
+    def tearDown(self):
+        csv = CSV(filepath=self.filepath)
+        csv.destroy()
 
     def test_csv_ext(self):
         fm = get_compressed_file_manager_ext(self.filepath)

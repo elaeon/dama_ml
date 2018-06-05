@@ -126,7 +126,7 @@ class CSV(object):
         self.schema = schema
         self.has_header = has_header
         self.delimiter = delimiter
-        self.file_manager = get_compressed_file_manager(self.filepath)
+        self.file_manager = get_compressed_file_manager_ext(self.filepath)#get_compressed_file_manager(self.filepath)
         if filename is None:
             self.filename = self.filepath
         else:
