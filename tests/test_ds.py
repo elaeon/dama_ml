@@ -126,10 +126,10 @@ class TestDataset(unittest.TestCase):
             rewrite=True)
         with dataset:
             dataset.from_data(self.X, self.Y, self.X.shape[0])
-            dataset.apply_transforms = True
-            copy = dataset.convert("test_2", apply_transforms=False, dataset_path="/tmp/")
+            dataset.apply_transforms = False
+            copy = dataset.convert("test_2", apply_transforms=True, dataset_path="/tmp/")
         with copy:
-            self.assertEqual(copy.apply_transforms, False)
+            self.assertEqual(copy.apply_transforms, True)
         copy.destroy()
         dataset.destroy()
 
@@ -190,6 +190,7 @@ class TestDataset(unittest.TestCase):
         transforms.add(linear, b=1)
         dataset = DataLabel(name="test_ds", dataset_path="/tmp/", rewrite=True)
         dataset.transforms = transforms
+        dataset.apply_transforms = False
         transforms = Transforms()
         transforms.add(parabole)
         with dataset:

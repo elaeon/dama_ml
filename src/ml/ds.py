@@ -263,7 +263,6 @@ class Data(ReadWriteData):
                 compression_level=0, rewrite=False, mode='a'):
 
         self.name = uuid.uuid4().hex if name is None else name
-        self.apply_transforms = True
         self.header_map = ["author", "description", "timestamp", "transforms_str"]
         self.f = None
         self.rewrite = rewrite
@@ -273,22 +272,19 @@ class Data(ReadWriteData):
             self.dataset_path = settings["dataset_path"]
         else:
             self.dataset_path = dataset_path
-        
-        #if transforms is None:
-            #transforms = Transforms()
 
         ds_exist = self.exist()
         if not ds_exist or rewrite:
             if ds_exist:
                 self.destroy()
             self.create_route()
+            self.apply_transforms = True
             self.author = author
             self.transforms = Transforms()#transforms
             self.description = description
             self.compression_level = compression_level
             self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
             self.dataset_class = self.module_cls_name()
-            self._applied_transforms = False
             self.hash_header = self.calc_hash_H()
 
         self.zip_params = {"compression": "gzip", "compression_opts": self.compression_level}
@@ -313,7 +309,8 @@ class Data(ReadWriteData):
     @transforms.setter
     @clean_cache
     def transforms(self, value):
-        self._set_attr('transforms', value.to_json())
+        if isinstance(value, Transforms):
+            self._set_attr('transforms', value.to_json())
 
     @property
     def transforms_str(self):
@@ -350,6 +347,15 @@ class Data(ReadWriteData):
     @dataset_class.setter
     def dataset_class(self, value):
         self._set_attr('dataset_class', value)
+
+    @property
+    def apply_transforms(self):
+        return self._apply_transforms
+
+    @apply_transforms.setter
+    def apply_transforms(self, value):
+        self._apply_transforms = value
+        self._applied_transforms = value
 
     @property
     def _applied_transforms(self):
@@ -518,7 +524,7 @@ class Data(ReadWriteData):
         if columns is not None:
             self.columns = columns
 
-    def empty(self, name, dataset_path=None, apply_transforms=False, transforms=None):
+    def empty(self, name, dataset_path=None, apply_transforms=True, transforms=None):
         """
         build an empty Data with the default parameters
         """
@@ -526,7 +532,7 @@ class Data(ReadWriteData):
             new_transforms = transforms
             old_applied_transforms = self.transforms
         elif apply_transforms is False and self._applied_transforms is True:
-            raise Exception("Error")
+            raise Exception("You can't save not transformed data.")
         elif apply_transforms is True and self._applied_transforms is False:
             new_transforms = self.transforms + transforms
             old_applied_transforms = None
@@ -545,7 +551,7 @@ class Data(ReadWriteData):
         data._applied_transforms = apply_transforms
         return data, old_applied_transforms
 
-    def convert(self, name, apply_transforms=False, chunks_size=258,
+    def convert(self, name, apply_transforms=True, chunks_size=258,
                 percentaje=1, dataset_path=None, transforms=None):
         """
         :type dtype: string
@@ -773,7 +779,7 @@ class DataLabel(Data):
         if columns is not None:
             self.columns = columns
 
-    def empty(self, name, apply_transforms=False, dataset_path=None,
+    def empty(self, name, apply_transforms=True, dataset_path=None,
                 transforms=None):
         """
         build an empty DataLabel with the default parameters
@@ -782,7 +788,7 @@ class DataLabel(Data):
             new_transforms = transforms
             old_applied_transforms = self.transforms
         elif apply_transforms is False and self._applied_transforms is True:
-            raise Exception("Error")
+            raise Exception("You can't save not transformed data.")
         elif apply_transforms is True and self._applied_transforms is False:
             new_transforms = self.transforms + transforms
             old_applied_transforms = None
@@ -801,7 +807,7 @@ class DataLabel(Data):
         dl._applied_transforms = apply_transforms
         return dl, old_applied_transforms
 
-    def convert(self, name, apply_transforms=False, percentaje=1, 
+    def convert(self, name, apply_transforms=True, percentaje=1, 
                 dataset_path=None, transforms=None, chunks_size=258):
         """
         :type dtype: string

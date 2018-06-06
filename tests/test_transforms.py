@@ -216,8 +216,8 @@ class TestTransforms(unittest.TestCase):
         #transforms.add(FitStandardScaler)
         X = np.random.rand(100, 2)
         Y = (X[:,0] > .5).astype(float)
-        dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            transforms=transforms, rewrite=True)
+        dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset.transforms = transforms
         with dataset:
             dataset.from_data(X, Y)
         classif = RandomForest( 
@@ -254,8 +254,8 @@ class TestTransforms(unittest.TestCase):
         transforms.add(FitTsne, name="tsne")
         X = np.random.rand(100, 4)
         Y = X[:,0] > .5
-        dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            transforms=transforms, rewrite=True, apply_transforms=True)
+        dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset.transforms = transforms
         with dataset:
             dataset.from_data(X, Y)
             shape = dataset.shape
@@ -273,8 +273,8 @@ class TestTransforms(unittest.TestCase):
         transforms.add(FitTsne, name="tsne")
         X = np.random.rand(1000, 4)
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
-        dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            transforms=transforms, rewrite=True, apply_transforms=True)
+        dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset.transforms = transforms
         with dataset:
             dataset.from_data(X, Y)
             dataset.info()
@@ -298,11 +298,13 @@ class TestTransforms(unittest.TestCase):
         transforms.add(FitTsne, name="tsne")
         X = np.random.rand(1000, 4)
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
-        dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            transforms=transforms, rewrite=True, apply_transforms=False)
+        dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset.transforms = transforms
+        dataset.apply_transforms = False
         with dataset:
             dataset.from_data(X, Y)
             dsb = dataset.convert(name="test2", apply_transforms=True)
+            self.assertEqual(dsb.apply_transforms, True)
         with dsb:
             shape = dsb.shape
         transforms.destroy()
@@ -336,8 +338,8 @@ class TestTransforms(unittest.TestCase):
         transforms.add(FitStandardScaler, name="scaler")
         X = np.random.rand(1000, 4)
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
-        dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            transforms=transforms, rewrite=True, apply_transforms=True)
+        dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset.transforms = transforms
         with dataset:
             dataset.from_data(X, Y)
             self.assertEqual(dataset._applied_transforms, True)
@@ -351,8 +353,9 @@ class TestTransforms(unittest.TestCase):
         dataset.destroy()
         dsb.destroy()
 
-        dataset = DataLabel(name="test", dataset_path="/tmp/", 
-            transforms=transforms, rewrite=True, apply_transforms=False)
+        dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset.transforms = transforms
+        dataset.apply_transforms = False
         with dataset:
             dataset.from_data(X, Y)
             self.assertEqual(dataset._applied_transforms, False)
