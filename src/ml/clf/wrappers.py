@@ -129,22 +129,22 @@ class ClassifModel(SupervicedModel):
             log.info("Reformating {}...".format(self.cls_name()))
             dl_train = DataLabel(
                 dataset_path=settings["dataset_model_path"],
-                apply_transforms=not dataset._applied_transforms,
                 compression_level=3,
-                transforms=dataset.transforms,
                 rewrite=True)
+            dl_train.transforms = dataset.transforms
+            dl_train.apply_transforms = not dataset._applied_transforms
             dl_test = DataLabel(
                 dataset_path=settings["dataset_model_path"],
-                apply_transforms=not dataset._applied_transforms,
                 compression_level=3,
-                transforms=dataset.transforms,
                 rewrite=True)
+            dl_test.transforms = dataset.transforms
+            dl_test.apply_transforms = not dataset._applied_transforms
             dl_validation = DataLabel(
                 dataset_path=settings["dataset_model_path"],
-                apply_transforms=not dataset._applied_transforms,
                 compression_level=3,
-                transforms=dataset.transforms,
                 rewrite=True)
+            dl_validation.transforms = dataset.transforms
+            dl_validation.apply_transforms = not dataset._applied_transforms
 
             self.labels_encode(dataset.labels)
             log.info("Labels encode finished")

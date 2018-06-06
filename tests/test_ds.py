@@ -8,17 +8,6 @@ from ml.ds import Data
 from ml.processing import Transforms
 
 
-#def build_csv_file(path, vector, sep=","):
-#    with open(path, 'w') as f:
-#        header = ["id"] + map(str, list(range(vector.shape[-1])))
-#        f.write(sep.join(header))
-#        f.write("\n")
-#        for i, row in enumerate(vector):
-#            f.write(str(i)+sep)
-#            f.write(sep.join(map(str, row)))
-#            f.write("\n")
-
-
 def linear(x, b=0):
     return x + b
 
@@ -160,10 +149,10 @@ class TestDataset(unittest.TestCase):
     def test_convert_transforms_true(self):
         transforms = Transforms()
         transforms.add(linear, b=1)
-        dataset = DataLabel(name="test_ds", dataset_path="/tmp/",
-            rewrite=True, transforms=transforms, apply_transforms=True)
+        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", rewrite=True)
         
         with dataset:
+            dataset.transforms = transforms
             dataset.from_data(self.X, self.Y, self.X.shape[0])
             transforms = Transforms()
             transforms.add(parabole)
@@ -180,9 +169,8 @@ class TestDataset(unittest.TestCase):
     def test_convert_data_transforms_true(self):
         transforms = Transforms()
         transforms.add(linear, b=1)
-        dataset = Data(name="test_ds", dataset_path="/tmp/",
-            rewrite=True, transforms=transforms, apply_transforms=True)
-        
+        dataset = Data(name="test_ds", dataset_path="/tmp/", rewrite=True)
+        dataset.transforms = transforms
         with dataset:
             dataset.from_data(self.X, self.X.shape[0])
             transforms = Transforms()
@@ -200,9 +188,8 @@ class TestDataset(unittest.TestCase):
     def test_convert_transforms_false(self):
         transforms = Transforms()
         transforms.add(linear, b=1)
-        dataset = DataLabel(name="test_ds", dataset_path="/tmp/",
-            rewrite=True, transforms=transforms, apply_transforms=False)
-        
+        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", rewrite=True)
+        dataset.transforms = transforms
         transforms = Transforms()
         transforms.add(parabole)
         with dataset:
@@ -220,19 +207,15 @@ class TestDataset(unittest.TestCase):
     def test_add_transform(self):
         transforms = Transforms()
         transforms.add(linear, b=1)
-        with DataLabel(
-            name="test_ds",
-            dataset_path="/tmp/",
-            rewrite=True,
-            apply_transforms=False,
-            transforms=transforms) as dataset:
+        with DataLabel(name="test_ds", dataset_path="/tmp/", rewrite=True) as dataset:
+            dataset.apply_transforms=False
+            dataset.transforms.add(linear, b=1)
             dataset.from_data(self.X, self.Y, self.X.shape[0])
             transforms = Transforms()
             transforms.add(linear, b=2)
             dsb = dataset.convert("add_transform", transforms=transforms, 
                                 apply_transforms=True)
         with dsb:
-            #self.assertItemsEqual(self.X[0]+3, dsb.data[0])
             self.assertEqual(dsb.name == "add_transform", True)
         dsb.destroy()
         dataset.destroy()
@@ -285,16 +268,16 @@ class TestDataset(unittest.TestCase):
         transforms = Transforms()
         transforms.add(rgb2gray)
         with DataLabel(name="test", dataset_path="/tmp",
-            author="AGMR", rewrite=True, transforms=transforms,
-            description="description text", compression_level=5, 
-            apply_transforms=False) as dsb:
+            author="AGMR", rewrite=True,
+            description="description text", compression_level=5) as dsb:
+            dsb.transforms.add(rgb2gray)
             self.assertEqual(dsb.author, "AGMR")
             self.assertEqual(dsb.transforms.to_json(), transforms.to_json())
             self.assertEqual(dsb.description, "description text")
             self.assertEqual(dsb.compression_level, 5)
             self.assertEqual(dsb.dataset_class, 'ml.ds.DataLabel')
             self.assertEqual(type(dsb.timestamp), type(''))
-            self.assertEqual(dsb.apply_transforms, False)
+            self.assertEqual(dsb.apply_transforms, True)
             self.assertEqual(dsb.hash_header is not None, True)
 
             dsb.from_data(self.X.astype('float32'), self.Y, self.X.shape[0])
@@ -329,12 +312,10 @@ class TestDataset(unittest.TestCase):
 
     def test_no_data(self):
         from ml.processing import rgb2gray
-        transforms = Transforms()
-        transforms.add(rgb2gray)
         dsb = DataLabel(name="test", dataset_path="/tmp",
-            author="AGMR", rewrite=True, transforms=transforms,
-            description="description text", compression_level=5,
-            apply_transforms=False)
+            author="AGMR", rewrite=True,
+            description="description text", compression_level=5)
+        dsb.transforms.add(rgb2gray)
         dsb.md5 = ""
         timestamp = dsb.timestamp
 
@@ -471,28 +452,6 @@ class TestDataset(unittest.TestCase):
             self.assertItemsEqual(ds.data, X["a"])
             self.assertItemsEqual(ds.labels, X["b"])
             ds.destroy()
-
-
-#class TestDataSetFile(unittest.TestCase):
-#    def setUp(self):
-#        NUM_FEATURES = 10
-#        self.X = np.append(np.zeros((5, NUM_FEATURES)), np.ones((5, NUM_FEATURES)), axis=0)
-#        self.Y = (np.sum(self.X, axis=1) / 10).astype(int)
-#        dataset = np.c_[self.X, self.Y]
-#        with open('/tmp/test.csv', 'wb') as csvfile:
-#            csv_writer = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-#            csv_writer.writerow(map(str, range(10)) + ['target']) 
-#            for row in dataset:
-#                csv_writer.writerow(row)
-
-#    def test_load(self):
-#        dataset = DataLabelSetFile(
-#            name="test",
-#            dataset_path="/tmp/")
-#        with dataset:
-#            data, labels = dataset.from_csv('/tmp/test.csv', 'target')
-#            self.assertItemsEqual(self.Y, labels.astype(int))
-#        dataset.destroy()
 
 
 class TestDataSetFold(unittest.TestCase):

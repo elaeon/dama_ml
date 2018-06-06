@@ -259,12 +259,11 @@ class Data(ReadWriteData):
     :type rewrite: bool
     :param rewrite: if true, you can clean the saved data and add a new dataset.
     """
-    def __init__(self, name=None, dataset_path=None, transforms=None,
-                apply_transforms=False, description='', author='', 
+    def __init__(self, name=None, dataset_path=None, description='', author='', 
                 compression_level=0, rewrite=False, mode='a'):
 
         self.name = uuid.uuid4().hex if name is None else name
-        self.apply_transforms = apply_transforms
+        self.apply_transforms = True
         self.header_map = ["author", "description", "timestamp", "transforms_str"]
         self.f = None
         self.rewrite = rewrite
@@ -275,8 +274,8 @@ class Data(ReadWriteData):
         else:
             self.dataset_path = dataset_path
         
-        if transforms is None:
-            transforms = Transforms()
+        #if transforms is None:
+            #transforms = Transforms()
 
         ds_exist = self.exist()
         if not ds_exist or rewrite:
@@ -284,12 +283,12 @@ class Data(ReadWriteData):
                 self.destroy()
             self.create_route()
             self.author = author
-            self.transforms = transforms
+            self.transforms = Transforms()#transforms
             self.description = description
             self.compression_level = compression_level
             self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
             self.dataset_class = self.module_cls_name()
-            self._applied_transforms = apply_transforms
+            self._applied_transforms = False
             self.hash_header = self.calc_hash_H()
 
         self.zip_params = {"compression": "gzip", "compression_opts": self.compression_level}
@@ -537,12 +536,12 @@ class Data(ReadWriteData):
 
         data = Data(name=name, 
             dataset_path=dataset_path,
-            transforms=new_transforms,
-            apply_transforms=apply_transforms,
             description=self.description,
             author=self.author,
             compression_level=self.compression_level,
             rewrite=True)
+        data.transforms = new_transforms
+        data.apply_transforms = apply_transforms
         data._applied_transforms = apply_transforms
         return data, old_applied_transforms
 
@@ -793,12 +792,12 @@ class DataLabel(Data):
 
         dl = DataLabel(name=name, 
             dataset_path=dataset_path,
-            transforms=new_transforms,
-            apply_transforms=apply_transforms,
             description=self.description,
             author=self.author,
             compression_level=self.compression_level,
             rewrite=True)
+        dl.transforms = new_transforms
+        dl.apply_transforms = apply_transforms
         dl._applied_transforms = apply_transforms
         return dl, old_applied_transforms
 
@@ -910,11 +909,10 @@ class DataLabel(Data):
                 from ml.ae.extended.w_keras import PTsne
                 dl = DataLabel(name=self.name+"_2d_", 
                         dataset_path=self.dataset_path,
-                        transforms=None,
-                        apply_transforms=False,
                         compression_level=9,
                         rewrite=False)
 
+                dl.apply_transforms = False,
                 if not dl.exist():
                     ds = self.to_data()
                     classif = PTsne(model_name="tsne", model_version="1", 
@@ -1047,16 +1045,19 @@ class DataLabel(Data):
 
     def cv_ds(self, train_size=.7, valid_size=.1, dataset_path=None, apply_transforms=True):
         data = self.cv(train_size=train_size, valid_size=valid_size)
-        train_ds = DataLabel(dataset_path=dataset_path, transforms=self.transforms, 
-                            apply_transforms=apply_transforms)
+        train_ds = DataLabel(dataset_path=dataset_path)
+        train_ds.transforms = self.transforms
+        train_ds.apply_transforms = apply_transforms
         with train_ds:
             train_ds.from_data(data[0], data[3], data[0].shape[0])
-        validation_ds = DataLabel(dataset_path=dataset_path, transforms=self.transforms,
-                                apply_transforms=apply_transforms)
+        validation_ds = DataLabel(dataset_path=dataset_path)
+        validation_ds.transforms = self.transforms
+        validation_ds.apply_transforms = apply_transforms
         with validation_ds:
             validation_ds.from_data(data[1], data[4], data[1].shape[0])
-        test_ds = DataLabel(dataset_path=dataset_path, transforms=self.transforms,
-                        apply_transforms=apply_transforms)
+        test_ds = DataLabel(dataset_path=dataset_path)
+        test_ds.transforms = self.transforms
+        test_ds.apply_transforms = apply_transforms
         with test_ds:
             test_ds.from_data(data[2], data[5], data[2].shape[0])
         
@@ -1286,19 +1287,15 @@ class DataLabelFold(object):
             for i, (train, test) in enumerate(skf.split(dl.data, dl.labels)):
                 dsb = DataLabel(name=self.name+"_"+str(i), 
                     dataset_path=self.dataset_path,
-                    transforms=None,
-                    apply_transforms=False,
                     description="",
                     author="",
                     compression_level=9,
                     rewrite=True)
+                dsb.apply_transforms = False
                 data = dl.data[:]
                 labels = dl.labels[:]
                 with dsb:
-                    dsb.from_data(data[train], labels[train]) 
-                    #test_data=data[test], 
-                    #    test_labels=labels[test], validation_data=data[validation], 
-                    #    validation_labels=labels[validation])
+                    dsb.from_data(data[train], labels[train])
                     yield dsb
 
     def from_data(self, dataset=None):

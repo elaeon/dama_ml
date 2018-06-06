@@ -52,10 +52,10 @@ class BaseAe(BaseModel):
             log.info("Reformating {}...".format(self.cls_name()))
             train_ds = Data(
                 dataset_path=settings["dataset_model_path"],
-                apply_transforms=not dataset._applied_transforms,
-                compression_level=9,
-                transforms=dataset.transforms,
+                compression_level=3,
                 rewrite=True)
+            train_ds.apply_transforms = not dataset._applied_transforms
+            train_ds.transforms = dataset.transforms
 
             with train_ds:
                 train_ds.from_data(dataset.data, chunks_size=chunks_size)

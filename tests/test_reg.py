@@ -75,7 +75,9 @@ class TestRegSKL(unittest.TestCase):
         X = np.random.rand(100, 1)
         Y = np.random.rand(100)
         dataset = DataLabel(name="test_0", dataset_path="/tmp/", 
-            rewrite=True, transforms=t, apply_transforms=True)
+            rewrite=True)
+        dataset.transforms = t
+        dataset.apply_transforms = True
         with dataset:
             dataset.from_data(X, Y)
         reg = RandomForestRegressor(

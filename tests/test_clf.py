@@ -92,7 +92,9 @@ class TestSKL(unittest.TestCase):
         X = np.random.rand(100, 1)
         Y = X[:,0] > .5
         dataset = DataLabel(name="test_0", dataset_path="/tmp/", 
-            rewrite=True, transforms=t, apply_transforms=True)
+            rewrite=True)
+        dataset.transforms = t
+        dataset.apply_transforms = True
         with dataset:
             dataset.from_data(X, Y)
         classif = RandomForest(

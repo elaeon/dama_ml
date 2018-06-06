@@ -67,22 +67,22 @@ class RegModel(SupervicedModel):
         log.info("Reformating {}...".format(self.cls_name()))
         dl_train = DataLabel(
             dataset_path=settings["dataset_model_path"],
-            apply_transforms=not dataset._applied_transforms,
-            compression_level=9,
-            transforms=dataset.transforms,
+            compression_level=3,
             rewrite=True)
+        dl_train.apply_transforms = not dataset._applied_transforms
+        dl_train.transforms = dataset.transforms
         dl_test = DataLabel(
             dataset_path=settings["dataset_model_path"],
-            apply_transforms=not dataset._applied_transforms,
-            compression_level=9,
-            transforms=dataset.transforms,
+            compression_level=3,
             rewrite=True)
+        dl_test.transforms = dataset.transforms
+        dl_test.apply_transforms = not dataset._applied_transforms
         dl_validation = DataLabel(
             dataset_path=settings["dataset_model_path"],
-            apply_transforms=not dataset._applied_transforms,
-            compression_level=9,
-            transforms=dataset.transforms,
+            compression_level=3,
             rewrite=True)
+        dl_validation.apply_transforms = not dataset._applied_transforms
+        dl_validation.transforms = dataset.transforms
 
         train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv(
              train_size=train_size, valid_size=valid_size, unbalanced=unbalanced)
