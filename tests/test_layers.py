@@ -1,6 +1,8 @@
 import unittest
 import numpy as np
 import pandas as pd
+import datetime
+
 from ml.layers import IterLayer
 from ml.utils.numeric_functions import downsample
 
@@ -516,6 +518,17 @@ class TestIterLayers(unittest.TestCase):
 
         it = IterLayer(data)
         self.assertItemsEqual(it.to_chunks(3).to_memory(3), data[:3])
+
+    def test_datetime(self):
+        chunks_size = 2
+        m = [[datetime.datetime.today()], [datetime.datetime.today()]]
+        data = pd.DataFrame(m, columns=['A'])
+        it = IterLayer(data)
+        it_0 = it.to_chunks(chunks_size)
+
+        data = np.asarray(m)
+        it = IterLayer(m, dtype=[("A", np.dtype('<M8[ns]'))])
+        it_0 = it.to_chunks(chunks_size)
 
 
 def chunk_sizes(seq):

@@ -195,25 +195,25 @@ class IterLayer(object):
                     yield smx_a
         else:
             columns = [c for c, _ in dtype]
-            dt_cols = self.check_datatime(dtype)
+            #dt_cols = self.check_datatime(dtype)
             for smx in grouper_chunk(chunks_size, self):
                 yield self._assign_struct_array2df(smx, chunk_shape[0], dtype, 
-                    dt_cols, columns, chunks_size=chunks_size)
+                    [], columns, chunks_size=chunks_size)
     
     def check_datatime(self, dtype):
         cols = []
         for col_i, (_, type_) in enumerate(dtype):
-            if isinstance(type_, datetime.datetime) or type_ == datetime.datetime:
+            if type_ == np.dtype('<M8[ns]'):
                 cols.append(col_i)
         return cols
 
-    def to_tuple(self, row, dt_cols):
-        if isinstance(row, tuple):
-            row = list(row)
+    #def to_tuple(self, row, dt_cols):
+    #    if isinstance(row, tuple):
+    #        row = list(row)
 
-        for col_i in dt_cols:
-            row[col_i] = datetime.datetime.strptime(row[col_i], "%Y-%m-%d %H:%M:%S")
-        return tuple(row)
+    #    for col_i in dt_cols:
+    #        row[col_i] = datetime.datetime.strptime(row[col_i], "%Y-%m-%d %H:%M:%S")
+    #    return tuple(row)
 
     def flat(self):
         def _iter():
@@ -494,9 +494,9 @@ class IterLayer(object):
         else:
             if hasattr(self.dtype, '__iter__'):
                 columns = [c for c, _ in self.dtype]
-                dt_cols = self.check_datatime(self.dtype)
+                #dt_cols = self.check_datatime(self.dtype)
                 return self._assign_struct_array2df(self, self.length, self.dtype, 
-                    dt_cols, columns)
+                    [], columns)
             else:
                 return pd.DataFrame(self)
 
@@ -517,7 +517,7 @@ class IterLayer(object):
         i = 0
         for row in it:
             try:
-                stc_arr[i] = self.to_tuple(row, dt_cols)
+                stc_arr[i] = tuple(row)#self.to_tuple(row, dt_cols)
             except TypeError:
                 stc_arr[i] = row
             i += 1

@@ -145,12 +145,14 @@ class TestSKL(unittest.TestCase):
         rf.train()
         rf.save(model_version="1")
         with rf.test_ds:
-            predict_shape = rf.predict(rf.test_ds.data[:], transform=False, 
-                output='uncertain', chunks_size=0).shape
-            self.assertEqual(predict_shape, (None, 2))
-            predict_shape = rf.predict(rf.test_ds.data[:], transform=False, 
-                output='uncertain', chunks_size=10).shape
-            self.assertEqual(predict_shape, (None, 2))
+            data = rf.test_ds.data[:]
+
+        predict_shape = rf.predict(data, transform=False, 
+            output='uncertain', chunks_size=0).shape
+        self.assertEqual(predict_shape, (None, 2))
+        predict_shape = rf.predict(data, transform=False, 
+            output='uncertain', chunks_size=10).shape
+        self.assertEqual(predict_shape, (None, 2))
         rf.destroy()
 
 #class TestGpy(unittest.TestCase):
