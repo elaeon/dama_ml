@@ -27,7 +27,7 @@ def choice(operator):
             if isinstance(x, IterLayer) and isinstance(y, IterLayer):
                 return x.stream_operation(operator, y)
             elif isinstance(y, collections.Iterable):
-                return x.stream_operation(operator, IterLayer(y))#, shape=x.length))
+                return x.stream_operation(operator, IterLayer(y))
             else:
                 return x.scalar_operation(operator, y)
         return view
@@ -53,7 +53,7 @@ class IterLayer(object):
             self.it = fn_iter.itertuples(index=False)
             dtype = zip(fn_iter.columns.values, fn_iter.dtypes.values)
         else:
-            self.it = (e for e in fn_iter)
+            self.it = iter(fn_iter)#(e for e in fn_iter)
 
         self.pushedback = []
         self.chunks_size = chunks_size
@@ -182,23 +182,16 @@ class IterLayer(object):
             for smx in grouper_chunk(chunks_size, self):
                 smx_a = np.empty(chunk_shape, dtype=dtype)
                 for i, row in enumerate(smx):
-                    #try:
                     if hasattr(row, '__iter__') and len(row) == 1:
                         smx_a[i] = row[0]
                     else:
                         smx_a[i] = row
-                    #except ValueError:
-                    #    smx_a[i] = row[0]
-                if i + 1 < chunks_size:
-                    yield smx_a[:i+1]
-                else:
-                    yield smx_a
+                yield smx_a[:i+1]
         else:
             columns = [c for c, _ in dtype]
-            #dt_cols = self.check_datatime(dtype)
             for smx in grouper_chunk(chunks_size, self):
                 yield self._assign_struct_array2df(smx, chunk_shape[0], dtype, 
-                    [], columns, chunks_size=chunks_size)
+                    columns, chunks_size=chunks_size)
     
     def check_datatime(self, dtype):
         cols = []
@@ -206,14 +199,6 @@ class IterLayer(object):
             if type_ == np.dtype('<M8[ns]'):
                 cols.append(col_i)
         return cols
-
-    #def to_tuple(self, row, dt_cols):
-    #    if isinstance(row, tuple):
-    #        row = list(row)
-
-    #    for col_i in dt_cols:
-    #        row[col_i] = datetime.datetime.strptime(row[col_i], "%Y-%m-%d %H:%M:%S")
-    #    return tuple(row)
 
     def flat(self):
         def _iter():
@@ -461,10 +446,6 @@ class IterLayer(object):
         init = 0
         end = 0
         for smx in self:
-            #if isinstance(smx, IterLayer):
-            #    smx = smx.to_narray(self.chunks_size)
-            #    end += smx.shape[0]
-            #if hasattr(smx, 'shape'):
             end += smx.shape[0]
             smx_a[init:end] = smx
             init = end
@@ -477,9 +458,6 @@ class IterLayer(object):
         init = 0
         end = 0
         for smx in self:
-            #if isinstance(smx, IterLayer):
-            #    smx = smx.to_narray(1)
-            #    end += smx.shape[0]
             if hasattr(smx, 'shape') and smx.shape == self.shape:
                 end += smx.shape[0]
             else:
@@ -494,9 +472,8 @@ class IterLayer(object):
         else:
             if hasattr(self.dtype, '__iter__'):
                 columns = [c for c, _ in self.dtype]
-                #dt_cols = self.check_datatime(self.dtype)
                 return self._assign_struct_array2df(self, self.length, self.dtype, 
-                    [], columns)
+                    columns)
             else:
                 return pd.DataFrame(self)
 
@@ -512,20 +489,18 @@ class IterLayer(object):
 
     #cut if length > array size 
     @cut
-    def _assign_struct_array2df(self, it, length, dtype, dt_cols, columns, chunks_size=0):
+    def _assign_struct_array2df(self, it, length, dtype, columns, chunks_size=0):
         stc_arr = np.empty(length, dtype=dtype)
-        i = 0
-        for row in it:
+        for i, row in enumerate(it):
             try:
-                stc_arr[i] = tuple(row)#self.to_tuple(row, dt_cols)
+                stc_arr[i] = tuple(row)
             except TypeError:
                 stc_arr[i] = row
-            i += 1
 
         smx = pd.DataFrame(stc_arr,
             index=np.arange(0, length), 
             columns=columns)
-        return smx, i, length
+        return smx, i+1, length
 
     def to_memory(self, length=None):
         if self.length is not None and length is None:

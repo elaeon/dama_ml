@@ -40,7 +40,7 @@ class TestAE(unittest.TestCase):
         X = np.random.rand(1000, 10)
         X = (X * 10) % 2
         X = X.astype(int)
-        dataset = Data(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset = Data(name="test", dataset_path="/tmp/", clean=True)
         with dataset:
             dataset.from_data(X)
 
@@ -68,7 +68,7 @@ class TestAE(unittest.TestCase):
         X = np.random.rand(1000, 10)
         X = (X * 10) % 2
         X = X.astype(int)
-        dataset = Data(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset = Data(name="test", dataset_path="/tmp/", clean=True)
         with dataset:
             dataset.from_data(X)
 

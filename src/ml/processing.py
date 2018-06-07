@@ -301,17 +301,17 @@ class Transforms(object):
 
 
 class Process(object):
-    def __init__(self, data, name=None, path="/tmp/", rewrite=False):
+    def __init__(self, data, name=None, path="/tmp/", clean=False):
         self.name = name
         self.dataset_path = path
         self.meta_path = path + self.module_cls_name() + "_" + self.name
-        self.save_data(data, rewrite=rewrite)
+        self.save_data(data, clean=clean)
         self.dtype = data.dtype
 
-    def save_data(self, data, rewrite):
+    def save_data(self, data, clean):
         from ml.ds import Data
-        if rewrite is True:
-            with Data(name=self.name, dataset_path=self.dataset_path, rewrite=rewrite) as ds:
+        if clean is True:
+            with Data(name=self.name, dataset_path=self.dataset_path, clean=clean) as ds:
                 ds.from_data(data)
         else:
             ds = Data.original_ds(name=self.name, dataset_path=self.dataset_path)
@@ -409,7 +409,7 @@ class FitTsne(Fit):
 
         tsne = PTsne(model_name=self.name)
         if not tsne.exist():
-            dataset = Data(dataset_path="/tmp", rewrite=True)
+            dataset = Data(dataset_path="/tmp", clean=True)
             with dataset:
                 dataset.from_data(data)
             tsne = PTsne(model_name=self.name, latent_dim=2)

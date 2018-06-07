@@ -37,8 +37,7 @@ class TestDataset(unittest.TestCase):
     def test_from_data_dim_7_1_2(self):
         dataset = DataLabel(
             name="test_ds_0",
-            dataset_path="/tmp/",
-            rewrite=True)
+            dataset_path="/tmp/")
         with dataset:
             dataset.from_data(self.X, self.Y, self.X.shape[0])
             X_train, X_validation, X_test, y_train, y_validation, y_test = dataset.cv()
@@ -51,7 +50,7 @@ class TestDataset(unittest.TestCase):
         dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            rewrite=True)
+            clean=True)
         with dataset:
             dataset.from_data(self.X, self.Y, self.X.shape[0])
             X_train, X_validation, X_test, y_train, y_validation, y_test = dataset.cv(train_size=.5, valid_size=.2)
@@ -64,7 +63,7 @@ class TestDataset(unittest.TestCase):
         dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            rewrite=True)
+            clean=True)
         with dataset:
             dataset.from_data(self.X, self.Y, self.X.shape[0])
             dataset0, label0 = dataset.only_labels([0])
@@ -77,7 +76,7 @@ class TestDataset(unittest.TestCase):
         dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            rewrite=True)
+            clean=True)
         with dataset:
             dataset.from_data(self.X, self.Y, self.X.shape[0])
             labels_counter = dataset.labels_info()
@@ -88,7 +87,7 @@ class TestDataset(unittest.TestCase):
         dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            rewrite=True)
+            clean=True)
         with dataset:
             dataset.from_data(self.X, self.Y, self.X.shape[0])
             self.assertEqual(dataset.distinct_data() > 0, True)
@@ -98,7 +97,7 @@ class TestDataset(unittest.TestCase):
         dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            rewrite=True)
+            clean=True)
         with dataset:
             dataset.from_data(self.X, self.Y, self.X.shape[0])
             self.assertEqual(dataset.sparcity() > .3, True)
@@ -108,7 +107,7 @@ class TestDataset(unittest.TestCase):
         dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            rewrite=True)
+            clean=True)
         with dataset:
             dataset.from_data(self.X, self.Y, self.X.shape[0])
             ds = dataset.convert("test_convert", percentaje=.5, dataset_path="/tmp")
@@ -123,7 +122,7 @@ class TestDataset(unittest.TestCase):
         dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            rewrite=True)
+            clean=True)
         with dataset:
             dataset.from_data(self.X, self.Y, self.X.shape[0])
             dataset.apply_transforms = False
@@ -137,7 +136,7 @@ class TestDataset(unittest.TestCase):
         with DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            rewrite=True) as dataset:
+            clean=True) as dataset:
             dataset.from_data(self.X, self.Y, self.X.shape[0])
             dsb = dataset.convert("convert_test", dataset_path="/tmp/", percentaje=.5)
         with dsb:
@@ -149,7 +148,7 @@ class TestDataset(unittest.TestCase):
     def test_convert_transforms_true(self):
         transforms = Transforms()
         transforms.add(linear, b=1)
-        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", rewrite=True)
+        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", clean=True)
         
         with dataset:
             dataset.transforms = transforms
@@ -169,7 +168,7 @@ class TestDataset(unittest.TestCase):
     def test_convert_data_transforms_true(self):
         transforms = Transforms()
         transforms.add(linear, b=1)
-        dataset = Data(name="test_ds", dataset_path="/tmp/", rewrite=True)
+        dataset = Data(name="test_ds", dataset_path="/tmp/", clean=True)
         dataset.transforms = transforms
         with dataset:
             dataset.from_data(self.X, self.X.shape[0])
@@ -188,7 +187,7 @@ class TestDataset(unittest.TestCase):
     def test_convert_transforms_false(self):
         transforms = Transforms()
         transforms.add(linear, b=1)
-        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", rewrite=True)
+        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", clean=True)
         dataset.transforms = transforms
         dataset.apply_transforms = False
         transforms = Transforms()
@@ -208,7 +207,7 @@ class TestDataset(unittest.TestCase):
     def test_add_transform(self):
         transforms = Transforms()
         transforms.add(linear, b=1)
-        with DataLabel(name="test_ds", dataset_path="/tmp/", rewrite=True) as dataset:
+        with DataLabel(name="test_ds", dataset_path="/tmp/", clean=True) as dataset:
             dataset.apply_transforms=False
             dataset.transforms.add(linear, b=1)
             dataset.from_data(self.X, self.Y, self.X.shape[0])
@@ -225,7 +224,7 @@ class TestDataset(unittest.TestCase):
         with DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            rewrite=True) as dataset:
+            clean=True) as dataset:
             dataset.from_data(self.X, self.Y, 10)
             df = dataset.to_df()
         self.assertEqual(list(df.columns), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'target'])
@@ -233,7 +232,7 @@ class TestDataset(unittest.TestCase):
         with Data(
             name="test_ds",
             dataset_path="/tmp/",
-            rewrite=True) as dataset:
+            clean=True) as dataset:
             dataset.from_data(self.X, 10)
             df = dataset.to_df()
         self.assertEqual(list(df.columns), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'])
@@ -245,7 +244,7 @@ class TestDataset(unittest.TestCase):
             [6,5,4,3,2,1],
             [0,0,0,0,0,0],
             [-1,0,-1,0,-1,0]], dtype=np.float)
-        dl = Data(name="test", dataset_path="/tmp", rewrite=True)
+        dl = Data(name="test", dataset_path="/tmp", clean=True)
         with dl:
             dl.from_data(X, X.shape[0])
             self.assertItemsEqual(dl.data[0], X[0])
@@ -257,7 +256,7 @@ class TestDataset(unittest.TestCase):
     def test_ds_dtype(self):
         X = np.asarray([[1,2,3,4,5]], dtype=np.int)
         Y = np.asarray(['1','2','3','4','5'], dtype=str)
-        dl = DataLabel(name="test", dataset_path="/tmp", rewrite=True)
+        dl = DataLabel(name="test", dataset_path="/tmp", clean=True)
         with dl:
             dl.from_data(X, Y, self.X.shape[0])
             self.assertEqual(dl.dtype, X.dtype)
@@ -269,7 +268,7 @@ class TestDataset(unittest.TestCase):
         transforms = Transforms()
         transforms.add(rgb2gray)
         with DataLabel(name="test", dataset_path="/tmp",
-            author="AGMR", rewrite=True,
+            author="AGMR", clean=True,
             description="description text", compression_level=5) as dsb:
             dsb.transforms.add(rgb2gray)
             self.assertEqual(dsb.author, "AGMR")
@@ -304,7 +303,7 @@ class TestDataset(unittest.TestCase):
         with DataLabel(
             name="test_ds_1",
             dataset_path="/tmp/",
-            rewrite=True) as dataset:
+            clean=True) as dataset:
             dataset.from_data(X, Y, self.X.shape[0])
             dataset.to_libsvm(name="test.txt", save_to="/tmp")
             check("/tmp/test.txt")
@@ -314,13 +313,13 @@ class TestDataset(unittest.TestCase):
     def test_no_data(self):
         from ml.processing import rgb2gray
         dsb = DataLabel(name="test", dataset_path="/tmp",
-            author="AGMR", rewrite=True,
-            description="description text", compression_level=5)
+            author="AGMR", clean=True,
+            description="description text", compression_level=5, mode='w')
         dsb.transforms.add(rgb2gray)
         dsb.md5 = ""
         timestamp = dsb.timestamp
 
-        dsb2 = DataLabel(name="test", dataset_path="/tmp", rewrite=False)
+        dsb2 = DataLabel(name="test", dataset_path="/tmp")
         self.assertEqual(dsb2.author, "AGMR")
         self.assertEqual(dsb2.hash_header is not None, True)
         self.assertEqual(dsb2.description, "description text")
@@ -332,8 +331,7 @@ class TestDataset(unittest.TestCase):
     def test_to_data(self):
         with DataLabel(
             name="test_ds_1",
-            dataset_path="/tmp/",
-            rewrite=True) as dataset:
+            dataset_path="/tmp/", clean=True) as dataset:
             dataset.from_data(self.X, self.Y, self.X.shape[0])
             data = dataset.to_data()
         with data:
@@ -342,7 +340,7 @@ class TestDataset(unittest.TestCase):
         data.destroy()
 
     def test_datalabel_to_data(self):
-        with DataLabel(name="test_ds_1", dataset_path="/tmp/", rewrite=True) as dataset:
+        with DataLabel(name="test_ds_1", dataset_path="/tmp/", clean=True) as dataset:
             dataset.from_data(self.X, self.Y, self.X.shape[0])
             data = dataset.to_data()
         with data:
@@ -352,14 +350,14 @@ class TestDataset(unittest.TestCase):
 
     def test_text_ds(self):
         X = np.asarray([(str(line)*10, "1") for line in range(100)], dtype=np.dtype("O"))
-        with Data(name="test", dataset_path="/tmp/", rewrite=True) as ds:
+        with Data(name="test", dataset_path="/tmp/", clean=True) as ds:
             ds.from_data(X)
             self.assertEqual(ds.shape, (100, 2))
             self.assertEqual(ds.dtype, X.dtype)
             ds.destroy()
 
     def test_fmtypes(self):
-        with Data(name="test", dataset_path="/tmp/", rewrite=True) as data:
+        with Data(name="test", dataset_path="/tmp/", clean=True) as data:
             data.from_data(self.X, self.X.shape[0])
             columns = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
             data.columns = columns
@@ -368,7 +366,7 @@ class TestDataset(unittest.TestCase):
             data.destroy()
 
     def test_fmtypes_set_columns(self):
-        with Data(name="test", dataset_path="/tmp/", rewrite=True) as data:
+        with Data(name="test", dataset_path="/tmp/", clean=True) as data:
             data.from_data(self.X, self.X.shape[0])
             columns = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
             data.columns = columns
@@ -377,21 +375,21 @@ class TestDataset(unittest.TestCase):
             data.destroy()
 
     def test_fmtypes_empty(self):
-        with Data(name="test", dataset_path="/tmp/", rewrite=True) as data:
+        with Data(name="test", dataset_path="/tmp/", clean=True) as data:
             data.from_data(self.X, self.X.shape[0])
             self.assertItemsEqual(data.columns, [u'c0', u'c1', u'c2', u'c3', 
                 u'c4', u'c5', u'c6', u'c7', u'c8', u'c9'])
             data.destroy()
 
     def test_rewrite_data(self):
-        with Data(name="test", dataset_path="/tmp/") as data:
+        with Data(name="test", dataset_path="/tmp/", clean=True) as data:
             array = np.zeros((10, 2))
             data.from_data(array, array.shape[0])
             data.data[:, 1] = np.ones((10))
             self.assertItemsEqual(data.data[:, 1], np.ones((10)))
             self.assertItemsEqual(data.data[:, 0], np.zeros((10)))
 
-        with Data(name="test", dataset_path="/tmp/", rewrite=False) as data:
+        with Data(name="test", dataset_path="/tmp/", mode='r') as data:
             data.info()
             data.destroy()
 
@@ -439,14 +437,14 @@ class TestDataset(unittest.TestCase):
     def test_label_index(self):
         X = np.random.rand(10, 2)
         X[:, 1] = X[:, 1] > .5
-        with DataLabel(name="test", dataset_path="/tmp/", rewrite=True) as ds:
+        with DataLabel(name="test", dataset_path="/tmp/", clean=True) as ds:
             ds.from_data(X, "1")
             self.assertEqual(ds.shape, (10, 1))
             self.assertItemsEqual(ds.data, X[:, 0])
             self.assertItemsEqual(ds.labels, X[:, 1])
             ds.destroy()
 
-        with DataLabel(name="test", dataset_path="/tmp/", rewrite=True) as ds:
+        with DataLabel(name="test", dataset_path="/tmp/", clean=True) as ds:
             X = pd.DataFrame({"a": [0,1,2,3,4,5,6,7,8,9], "b": [0,1,1,0,1,1,0,0,0,1]})
             ds.from_data(X, "b")
             self.assertEqual(ds.shape, (10, 1))
@@ -463,7 +461,7 @@ class TestDataSetFold(unittest.TestCase):
         self.dataset = DataLabel(
             name="test_ds",
             dataset_path="/tmp/",
-            rewrite=True)
+            clean=True)
         with self.dataset:
             self.dataset.from_data(self.X, self.Y)
 

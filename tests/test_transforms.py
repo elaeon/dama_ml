@@ -216,7 +216,7 @@ class TestTransforms(unittest.TestCase):
         #transforms.add(FitStandardScaler)
         X = np.random.rand(100, 2)
         Y = (X[:,0] > .5).astype(float)
-        dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         dataset.transforms = transforms
         with dataset:
             dataset.from_data(X, Y)
@@ -237,7 +237,7 @@ class TestTransforms(unittest.TestCase):
     
         X = np.asarray([1, 0]*10)
         Y = X*1
-        dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         with dataset:
             try:
                 dataset.from_data(X, Y)
@@ -254,7 +254,7 @@ class TestTransforms(unittest.TestCase):
         transforms.add(FitTsne, name="tsne")
         X = np.random.rand(100, 4)
         Y = X[:,0] > .5
-        dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         dataset.transforms = transforms
         with dataset:
             dataset.from_data(X, Y)
@@ -273,7 +273,7 @@ class TestTransforms(unittest.TestCase):
         transforms.add(FitTsne, name="tsne")
         X = np.random.rand(1000, 4)
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
-        dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         dataset.transforms = transforms
         with dataset:
             dataset.from_data(X, Y)
@@ -298,7 +298,7 @@ class TestTransforms(unittest.TestCase):
         transforms.add(FitTsne, name="tsne")
         X = np.random.rand(1000, 4)
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
-        dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         dataset.transforms = transforms
         dataset.apply_transforms = False
         with dataset:
@@ -338,7 +338,7 @@ class TestTransforms(unittest.TestCase):
         transforms.add(FitStandardScaler, name="scaler")
         X = np.random.rand(1000, 4)
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
-        dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         dataset.transforms = transforms
         with dataset:
             dataset.from_data(X, Y)
@@ -353,7 +353,7 @@ class TestTransforms(unittest.TestCase):
         dataset.destroy()
         dsb.destroy()
 
-        dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         dataset.transforms = transforms
         dataset.apply_transforms = False
         with dataset:
@@ -446,7 +446,7 @@ class TestTransforms(unittest.TestCase):
             [1, 2]], dtype=np.dtype("int"))
         it = IterLayer(X)
         it.set_length(X.shape[0])
-        cg = P(it, name="test", path="/tmp", rewrite=True)
+        cg = P(it, name="test", path="/tmp", clean=True)
         cg.map(counter_group)
         with cg.ds:
             self.assertItemsEqual(cg.reduce(add_counter_group, chunks_size=2).to_memory()[0], [1,2,4])

@@ -53,7 +53,7 @@ class BaseAe(BaseModel):
             train_ds = Data(
                 dataset_path=settings["dataset_model_path"],
                 compression_level=3,
-                rewrite=True)
+                clean=True)
             train_ds.apply_transforms = not dataset._applied_transforms
             train_ds.transforms = dataset.transforms
 

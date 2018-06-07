@@ -130,19 +130,19 @@ class ClassifModel(SupervicedModel):
             dl_train = DataLabel(
                 dataset_path=settings["dataset_model_path"],
                 compression_level=3,
-                rewrite=True)
+                clean=True)
             dl_train.transforms = dataset.transforms
             dl_train.apply_transforms = not dataset._applied_transforms
             dl_test = DataLabel(
                 dataset_path=settings["dataset_model_path"],
                 compression_level=3,
-                rewrite=True)
+                clean=True)
             dl_test.transforms = dataset.transforms
             dl_test.apply_transforms = not dataset._applied_transforms
             dl_validation = DataLabel(
                 dataset_path=settings["dataset_model_path"],
                 compression_level=3,
-                rewrite=True)
+                clean=True)
             dl_validation.transforms = dataset.transforms
             dl_validation.apply_transforms = not dataset._applied_transforms
 

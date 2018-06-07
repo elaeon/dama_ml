@@ -222,9 +222,9 @@ class ReadWriteData(object):
     @classmethod
     def original_ds(self, name, dataset_path=None):
         from pydoc import locate
-        meta_dataset = Data(name=name, dataset_path=dataset_path, rewrite=False)
+        meta_dataset = Data(name=name, dataset_path=dataset_path, clean=False)
         DS = locate(meta_dataset.dataset_class)
-        return DS(name=name, dataset_path=dataset_path, rewrite=False)
+        return DS(name=name, dataset_path=dataset_path, clean=False)
     
 
 class Data(ReadWriteData):
@@ -260,12 +260,11 @@ class Data(ReadWriteData):
     :param rewrite: if true, you can clean the saved data and add a new dataset.
     """
     def __init__(self, name=None, dataset_path=None, description='', author='', 
-                compression_level=0, rewrite=False, mode='a'):
+                compression_level=0, clean=False, mode='a'):
 
         self.name = uuid.uuid4().hex if name is None else name
         self.header_map = ["author", "description", "timestamp", "transforms_str"]
         self.f = None
-        self.rewrite = rewrite
         self.mode = mode
 
         if dataset_path is None:
@@ -274,13 +273,15 @@ class Data(ReadWriteData):
             self.dataset_path = dataset_path
 
         ds_exist = self.exist()
-        if not ds_exist or rewrite:
-            if ds_exist:
-                self.destroy()
+        if ds_exist and clean:
+            self.destroy()
+            ds_exist = False
+
+        if not ds_exist and (self.mode == 'w' or self.mode == 'a'):
             self.create_route()
             self.apply_transforms = True
             self.author = author
-            self.transforms = Transforms()#transforms
+            self.transforms = Transforms()
             self.description = description
             self.compression_level = compression_level
             self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
@@ -545,7 +546,7 @@ class Data(ReadWriteData):
             description=self.description,
             author=self.author,
             compression_level=self.compression_level,
-            rewrite=True)
+            clean=True)
         data.transforms = new_transforms
         data.apply_transforms = apply_transforms
         data._applied_transforms = apply_transforms
@@ -801,7 +802,7 @@ class DataLabel(Data):
             description=self.description,
             author=self.author,
             compression_level=self.compression_level,
-            rewrite=True)
+            clean=True)
         dl.transforms = new_transforms
         dl.apply_transforms = apply_transforms
         dl._applied_transforms = apply_transforms
@@ -915,8 +916,7 @@ class DataLabel(Data):
                 from ml.ae.extended.w_keras import PTsne
                 dl = DataLabel(name=self.name+"_2d_", 
                         dataset_path=self.dataset_path,
-                        compression_level=9,
-                        rewrite=False)
+                        compression_level=9)
 
                 dl.apply_transforms = False,
                 if not dl.exist():
@@ -1296,7 +1296,7 @@ class DataLabelFold(object):
                     description="",
                     author="",
                     compression_level=9,
-                    rewrite=True)
+                    clean=True)
                 dsb.apply_transforms = False
                 data = dl.data[:]
                 labels = dl.labels[:]
@@ -1319,7 +1319,7 @@ class DataLabelFold(object):
         return an iterator of datasets with the splits of original data
         """
         for split in self.splits:
-            yield DataLabel(name=split, dataset_path=self.dataset_path, rewrite=False)
+            yield DataLabel(name=split, dataset_path=self.dataset_path)
 
     def destroy(self):
         for split in self.get_splits():

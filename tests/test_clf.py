@@ -21,7 +21,7 @@ class TestSKL(unittest.TestCase):
     def setUp(self):
         self.X = np.random.rand(100, 10)
         self.Y = self.X[:,0] > .5
-        self.dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        self.dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         with self.dataset:
             self.dataset.from_data(self.X, self.Y)
 
@@ -92,7 +92,7 @@ class TestSKL(unittest.TestCase):
         X = np.random.rand(100, 1)
         Y = X[:,0] > .5
         dataset = DataLabel(name="test_0", dataset_path="/tmp/", 
-            rewrite=True)
+            clean=True)
         dataset.transforms = t
         dataset.apply_transforms = True
         with dataset:
@@ -197,7 +197,7 @@ class TestGrid(unittest.TestCase):
 
         X = np.random.rand(100, 10)
         Y = (X[:,0] > .5).astype(int)
-        original_dataset = DataLabel("test", dataset_path="/tmp/", rewrite=True)
+        original_dataset = DataLabel("test", dataset_path="/tmp/", clean=True)
         with original_dataset:
             original_dataset.from_data(X, Y)
         self.original_dataset = original_dataset
@@ -214,7 +214,7 @@ class TestGrid(unittest.TestCase):
         metrics = Measure()
         metrics.add(gini_normalized, greater_is_better=True, output='uncertain')
 
-        dataset = DataLabel(name="testdl", dataset_path="/tmp/", rewrite=True)
+        dataset = DataLabel(name="testdl", dataset_path="/tmp/", clean=True)
         with self.original_dataset, dataset:
             dataset.from_data(self.original_dataset.data[:], 
                                 self.original_dataset.labels[:])
@@ -409,7 +409,7 @@ class TestXgboost(unittest.TestCase):
         from ml.ds import DataLabel
         X = np.random.rand(100, 10)
         Y = (X[:,0] > .5).astype(int)
-        self.dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        self.dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         with self.dataset:
             self.dataset.from_data(X, Y)
         try:
@@ -449,7 +449,7 @@ class TestLightGBM(unittest.TestCase):
         from ml.ds import DataLabel
         X = np.random.rand(100, 10)
         Y = (X[:,0] > .5).astype(int)
-        self.dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        self.dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         with self.dataset:
             self.dataset.from_data(X, Y)
         try:
@@ -514,7 +514,7 @@ class TestKFold(unittest.TestCase):
         pass
 
     def test_predict(self):
-        dataset = DataLabel(dataset_path="/tmp/", rewrite=True)
+        dataset = DataLabel(dataset_path="/tmp/", clean=True)
         with dataset:
             dataset.from_data(self.X, self.Y)
         classif = RandomForest(

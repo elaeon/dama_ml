@@ -19,7 +19,7 @@ class TestRegSKL(unittest.TestCase):
         pass
 
     def test_load_meta(self):
-        dl = DataLabel(name="reg0", dataset_path="/tmp/", rewrite=True)
+        dl = DataLabel(name="reg0", dataset_path="/tmp/", clean=True)
         with dl:
             dl.from_data(self.X, self.Y)
         reg = RandomForestRegressor( 
@@ -35,7 +35,7 @@ class TestRegSKL(unittest.TestCase):
         dl.destroy()
 
     def test_empty_load(self):
-        dl = DataLabel(name="reg0", dataset_path="/tmp/", rewrite=True)
+        dl = DataLabel(name="reg0", dataset_path="/tmp/", clean=True)
         with dl:
             dl.from_data(self.X, self.Y)
         reg = RandomForestRegressor(
@@ -54,7 +54,7 @@ class TestRegSKL(unittest.TestCase):
         dl.destroy()
 
     def test_scores(self):
-        dl = DataLabel(name="reg0", dataset_path="/tmp/", rewrite=True)
+        dl = DataLabel(name="reg0", dataset_path="/tmp/", clean=True)
         with dl:
             dl.from_data(self.X, self.Y)
         reg = RandomForestRegressor(
@@ -75,7 +75,7 @@ class TestRegSKL(unittest.TestCase):
         X = np.random.rand(100, 1)
         Y = np.random.rand(100)
         dataset = DataLabel(name="test_0", dataset_path="/tmp/", 
-            rewrite=True)
+            clean=True)
         dataset.transforms = t
         dataset.apply_transforms = True
         with dataset:
@@ -95,7 +95,7 @@ class TestRegSKL(unittest.TestCase):
     def test_add_version(self):
         X = np.random.rand(100, 1)
         Y = np.random.rand(100)
-        dataset = DataLabel(name="test", dataset_path="/tmp/", rewrite=True)
+        dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         with dataset:
             dataset.from_data(X, Y)
         reg = RandomForestRegressor(
