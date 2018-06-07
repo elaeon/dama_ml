@@ -21,7 +21,7 @@ class TestLinearOutLayer(unittest.TestCase):
         df = pd.DataFrame(data=self.data)
         transforms = Transforms()
         transforms.add(FitStandardScaler)
-        dl = DataLabel(name="test", dataset_path="/tmp", rewrite=True)
+        dl = DataLabel(name="test", dataset_path="/tmp", clean=True)
         dl.transforms = transforms 
         dl.apply_transforms = True 
         with dl:
@@ -35,7 +35,7 @@ class TestLinearOutLayer(unittest.TestCase):
         df = pd.DataFrame(data=self.data)
         transforms = Transforms()
         transforms.add(FitStandardScaler)
-        ds = DataLabel(name="test", dataset_path="/tmp", rewrite=True)
+        ds = DataLabel(name="test", dataset_path="/tmp", clean=True)
         ds.transforms = transforms 
         ds.apply_transforms = True 
         with ds:
