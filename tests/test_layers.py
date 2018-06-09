@@ -4,7 +4,6 @@ import pandas as pd
 import datetime
 
 from ml.layers import IterLayer
-from ml.utils.numeric_functions import downsample
 
 
 class TestIterLayers(unittest.TestCase):
@@ -427,47 +426,6 @@ class TestIterLayers(unittest.TestCase):
         for i, row in enumerate(it.to_memory(len(data))):
             self.assertItemsEqual(row, data[i])
 
-    def test_downsample(self):
-        size = 5000
-        data = np.random.rand(size, 3)
-        data[:, 2] = data[:, 2] <= .9
-        v = downsample(data, {0: 200, 1:240}, 2, size)
-        true_values = count_values(v.to_memory(), 2, 1)
-        self.assertEqual(true_values[0] > 50, True)
-        self.assertEqual(true_values[1], 240)
-
-    def test_downsample_params(self):
-        size = 5000
-        data = np.random.rand(size, 3)
-        data[:, 2] = data[:, 2] <= .9
-        _, counter = np.unique(data[:, 2], return_counts=True)
-        v = downsample(data, {0: 2000, 1:4840}, 2, size).to_memory()
-        self.assertEqual(count_values(v, 2, 0)[1], counter[0])
-        self.assertEqual(count_values(v, 2, 1)[1], counter[1])
-
-        t0 = int(round(counter[0]*.2, 0))
-        t1 = int(round(counter[1]*.4, 0))
-        v = downsample(data, {0: .2, 1:.4}, 2, size).to_memory()
-        self.assertEqual(count_values(v, 2, 0)[1], t0)
-        self.assertEqual(count_values(v, 2, 1)[1], t1)
-
-    def test_downsample_small(self):
-        size = 10
-        data = np.random.rand(size, 3)
-        data[:, 2] = data[:, 2] <= .9
-        v = downsample(data, {0: 0, 1:3}, 2, size)
-        self.assertItemsEqual(v.to_memory()[:, 2], [1,1,1])
-
-    def test_downsample_static(self):
-        data = [0,0,0,1,1,1,1,1,2,2,2]
-        size = len(data)
-        v = downsample(data, {0: 2, 1: 4}, None, size)
-        self.assertItemsEqual(v.to_memory(), [0,0,1,1,1,1])
-        v = downsample(data, {1: 4}, None, size)
-        self.assertItemsEqual(v.to_memory(), [1,1,1,1])
-        v = downsample(data, {2: 2, 1: 4}, None, size)
-        self.assertItemsEqual(v.to_memory(), [2,2,1,1,1,1])
-
     def test_empty(self):
         self.assertItemsEqual(IterLayer([]).to_memory(0), np.asarray([]))
         self.assertEqual(IterLayer([]).to_memory(0).shape, (0,))
@@ -533,11 +491,6 @@ class TestIterLayers(unittest.TestCase):
 
 def chunk_sizes(seq):
     return [len(list(row)) for row in seq]
-
-
-def count_values(data, y, v):
-    true_values = len([e for e in data[:, y] == v if e])
-    return true_values*100 / float(data.shape[0]), true_values
 
 
 class TestSeq(unittest.TestCase):

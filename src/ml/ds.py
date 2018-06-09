@@ -305,7 +305,7 @@ class Data(ReadWriteData):
     @property
     @cache
     def transforms(self):
-        return Transforms.from_json(self._get_attr('transforms'))
+        return Transforms.from_json(self._get_attr('transforms'), add_to=self._set_attr)
 
     @transforms.setter
     @clean_cache
@@ -1017,6 +1017,7 @@ class DataLabel(Data):
     
     def cv(self, train_size=.7, valid_size=.1, unbalanced=None):
         from sklearn.model_selection import train_test_split
+        from ml.utils.numeric_functions import sampling_size
 
         X_train, X_test, y_train, y_test = train_test_split(
             self.data[:], self.labels[:], train_size=round(train_size+valid_size, 2), random_state=0)
@@ -1028,13 +1029,13 @@ class DataLabel(Data):
         y_train = y_train[valid_size_index:]
 
         if unbalanced is not None:
-            elems = [(X_train, y_train), (X_validation, y_validation)]#, (X_test, y_test)]
-            X_unb = []
-            y_unb = []
+            X_unb = [X_train, X_validation]
+            y_unb = [y_train, y_validation]
             log.debug("Unbalancing data")
-            for X_, y_ in elems:
+            for X_, y_ in [(X_test, y_test)]:
                 X = np.c_[X_, y_]
                 y_index = X_.shape[-1]
+                unbalanced = sampling_size(unbalanced, y_)
                 it = downsample(X, unbalanced, y_index, y_.shape[0])
                 v = it.to_memory()
                 if v.shape[0] == 0:
@@ -1043,8 +1044,6 @@ class DataLabel(Data):
                     continue
                 X_unb.append(v[:, :y_index])
                 y_unb.append(v[:, y_index])
-            X_unb.append(X_test)
-            y_unb.append(y_test)
             return X_unb + y_unb
         else:
             return X_train, X_validation, X_test, y_train, y_validation, y_test        

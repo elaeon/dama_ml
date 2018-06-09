@@ -204,20 +204,50 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
 
 
-    def test_add_transform(self):
+    def test_add_transform_convert(self):
         transforms = Transforms()
-        transforms.add(linear, b=1)
         with DataLabel(name="test_ds", dataset_path="/tmp/", clean=True) as dataset:
             dataset.apply_transforms=False
             dataset.transforms.add(linear, b=1)
             dataset.from_data(self.X, self.Y, self.X.shape[0])
-            transforms = Transforms()
-            transforms.add(linear, b=2)
             dsb = dataset.convert("add_transform", transforms=transforms, 
                                 apply_transforms=True)
         with dsb:
-            self.assertEqual(dsb.name == "add_transform", True)
+            print(dsb.transforms.to_json(), dataset.transforms.to_json())
+            self.assertEqual(dsb.transforms.to_json() == dataset.transforms.to_json(), True)
         dsb.destroy()
+        dataset.destroy()
+
+    def test_add_transform(self):
+        transforms = Transforms()
+        transforms.add(linear, b=1)
+        transforms.add(linear, b=2)
+        transforms.add(linear, b=3)
+        with DataLabel(name="test_ds", dataset_path="/tmp/", clean=True) as dataset:
+            dataset.apply_transforms=False
+            dataset.transforms.add(linear, b=1)
+            dataset.transforms.add(linear, b=2)
+            dataset.transforms.add(linear, b=3)
+            dataset.from_data(self.X, self.Y, self.X.shape[0])
+
+        with DataLabel(name="test_ds", dataset_path="/tmp/") as dataset:
+            self.assertEqual(dataset.transforms.to_json(), transforms.to_json())
+        
+        dataset.destroy()
+
+    def test_add_transform_setter(self):
+        transforms = Transforms()
+        transforms.add(linear, b=1)
+        transforms.add(linear, b=2)
+        transforms.add(linear, b=3)
+        with DataLabel(name="test_ds", dataset_path="/tmp/", clean=True) as dataset:
+            dataset.apply_transforms=False
+            dataset.transforms = transforms
+            dataset.from_data(self.X, self.Y, self.X.shape[0])
+
+        with DataLabel(name="test_ds", dataset_path="/tmp/") as dataset:
+            self.assertEqual(dataset.transforms.to_json(), transforms.to_json())
+        
         dataset.destroy()
 
     def test_to_df(self):
@@ -394,7 +424,7 @@ class TestDataset(unittest.TestCase):
             data.destroy()
 
     def test_cv_ds(self):
-        dl = DataLabel(name="test", dataset_path="/tmp/")
+        dl = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         with dl:
             dl.from_data(self.X, self.Y, self.X.shape[0])
             train_ds, validation_ds, test_ds = dl.cv_ds(train_size=.6, valid_size=.2)
@@ -411,21 +441,23 @@ class TestDataset(unittest.TestCase):
         test_ds.destroy()
 
     def test_cv_unbalanced(self):
+        from ml.utils.numeric_functions import sampling_size
         X = np.random.rand(1000, 2)
         Y = np.asarray([str(e) for e in (X[:, 1] < .5)], dtype="|O")
-        ds = DataLabel(name="test", dataset_path="/tmp/")
+        ds = DataLabel(name="test", dataset_path="/tmp/", clean=True)
+        unbalanced = sampling_size({u'True': .2, u'False': 350}, Y)
         with ds:
             ds.from_data(X, Y, X.shape[0])
-            X_train, X_validation, X_test, y_train, y_validation, y_test = ds.cv(train_size=.7, valid_size=0, unbalanced={u'True': .2, u'False': 350})
+            X_train, X_validation, X_test, y_train, y_validation, y_test = ds.cv(train_size=.7, valid_size=0, unbalanced=unbalanced)
         counter = np.unique(Y, return_counts=True)
         un = np.unique(y_test, return_counts=True)
-        self.assertEqual(np.unique(y_train, return_counts=True)[1][1] - 4 <= round(counter[1][1]*.7*.2, 0), True)
+        self.assertEqual(np.unique(y_test, return_counts=True)[1][1] - 4 <= round(counter[1][1]*.2, 0), True)
         ds.destroy()
 
     def test_labels_transforms(self):
         transforms = Transforms()
         transforms.add(label_t)
-        dl = DataLabel(name="test", dataset_path="/tmp/")
+        dl = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         X = np.random.rand(10, 1)
         Y_0 = np.random.randint(1, 10, size=(10, 1))
         Y = transforms.apply(Y_0, chunks_size=0)

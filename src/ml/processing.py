@@ -205,6 +205,7 @@ class Transforms(object):
     """
     def __init__(self):
         self.transforms = []
+        self.add_to = None
 
     @classmethod
     def cls_name(cls):
@@ -237,6 +238,9 @@ class Transforms(object):
             t_obj.add(fn, **params)
             self.transforms.append(t_obj)
 
+        if self.add_to is not None:
+            self.add_to('transforms', self.to_json())
+
     def is_empty(self):
         """
         return True if not transforms was added.
@@ -266,12 +270,13 @@ class Transforms(object):
         return json.dumps([{t.type(): t.info()} for t in self.transforms])
 
     @classmethod
-    def from_json(self, json_transforms):
+    def from_json(self, json_transforms, add_to=None):
         """
         from json format to Transform class.
         """
         transforms_list = json.loads(json_transforms, object_pairs_hook=OrderedDict)
         transforms = Transforms()
+        transforms.add_to = add_to
         for transforms_type in transforms_list:
             for type_, transforms_dict in transforms_type.items():
                 for fn_str, params in transforms_dict["transforms"]:

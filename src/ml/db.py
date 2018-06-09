@@ -39,25 +39,35 @@ class SQL(object):
 
     def __getitem__(self, key):
         self.cur = self.conn.cursor(uuid.uuid4().hex, scrollable=False, withhold=False)
-        columns = self.columns(exclude_id=True)
+        columns = self.columns(exclude_id=True)    
+
+        if isinstance(key, tuple):
+            _columns = [columns.keys()[key[1]]]
+            key = key[0]
+        else:
+            _columns = None
 
         if isinstance(key, str):
-            _columns = [key]
+            if _columns is None:
+                _columns = [key]
             num_features = len(_columns)
             size = self.shape[0]
             start = 0
         elif isinstance(key, list):
-            _columns = key
+            if _columns is None:
+                _columns = key
             num_features = len(_columns)
             size = self.shape[0]
             start = 0
         elif isinstance(key, int):
-            _columns = columns.keys()
+            if _columns is None:
+                _columns = columns.keys()
             num_features = len(_columns)
             size = 1
             start = key
         elif isinstance(key, slice):
-            _columns = columns.keys()
+            if _columns is None:
+                _columns = columns.keys()
             num_features = len(_columns)
             if key.start is None:
                 start = 0

@@ -198,6 +198,14 @@ class TestSQL(unittest.TestCase):
         except psycopg2.OperationalError:
             pass
 
+    def test_slide_col(self):
+        try:
+            with SQL(username="alejandro", db_name="ml", table_name="test", order_by=None) as sql:
+                sql[:, 1]
+                self.assertItemsEqual(sql.query, "SELECT b FROM test  ")
+        except psycopg2.OperationalError:
+            pass
+
 
 class TestSQLDateTime(unittest.TestCase):
     def setUp(self):

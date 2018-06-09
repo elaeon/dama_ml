@@ -2,6 +2,7 @@ from itertools import izip
 from operator import mul
 import heapq as hq
 import numpy as np
+from collections import defaultdict
 
 
 def pearsoncc(X, Y):
@@ -267,17 +268,16 @@ def filter_sample(stream, label, col_index):
                 yield row
 
 
-def downsample(stream, sampling, col_index, size):
+def sampling_size(sampling, stream):
     from ml.layers import IterLayer
-    import numpy as np
-
-    if col_index is not None:
-        u_values, counter = np.unique(stream[:size, col_index], return_counts=True)
+    if isinstance(sampling, IterLayer):
+        counter = chunks_unique(stream)
     else:
-        u_values, counter = np.unique(stream[:size], return_counts=True)
-    counter = dict(zip(u_values, counter))
+        u_values, counter = np.unique(stream, return_counts=True)
+        counter = dict(zip(u_values, counter))
+
     if len(counter) == 0:
-        return IterLayer([])
+        return {}
 
     sampling_n = {}
     for y, k in sampling.items():
@@ -290,8 +290,13 @@ def downsample(stream, sampling, col_index, size):
             v = unique_v % k
         sampling_n[y] = int(round(v, 0))
 
+    return sampling_n
+
+
+def downsample(stream, sampling, col_index, size, exact=False):
+    from ml.layers import IterLayer
     iterators = []
-    for y, k in sampling_n.items():
+    for y, k in sampling.items():
         iterators.append(IterLayer(filter_sample(stream[:size], y, col_index)).sample(k))
     return IterLayer.concat_n(iterators)
 
@@ -305,3 +310,12 @@ def num_splits(length, chunks_size):
         return int(round(length/chunks_size, 0)) + r
     else:
         return 1
+
+
+def chunks_unique(it):
+    values = defaultdict(lambda: 0)
+    for chunk in it:
+        u_values, counter = np.unique(chunk, return_counts=True)
+        for k, v in dict(zip(u_values, counter)).items():
+            values[k] += v
+    return values
