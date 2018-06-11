@@ -169,12 +169,13 @@ class Grid(DataDrive):
         return self.output_layer(iter_)
 
     def output_layer(self, iter_):
+        from ml import ittools
         if self.fn_output == "stack":
-            return IterLayer.concat_n(iter_())
+            return ittools.concat(iter_())
         elif self.fn_output is None or self.fn_output == "avg":
-            return IterLayer.avg(iter_(), len(self.classifs))
+            return ittools.avg(list(iter_()))
         elif self.fn_output == "bagging":
-            return IterLayer.avg(iter_(), len(self.classifs), method="geometric")
+            return ittools.avg(list(iter_()), method="geometric")
         else:
             return self.fn_output(*iter_())
 

@@ -4,7 +4,7 @@ import pandas as pd
 
 from ml.processing import Transforms, FitStandardScaler
 from ml.ds import DataLabel
-from ml.utils.numeric_functions import downsample, sampling_size
+from ml.random import downsample, sampling_size
 
 
 class TestLinearOutLayer(unittest.TestCase):
@@ -133,20 +133,6 @@ class TestNumericFn(unittest.TestCase):
         items = [1, False, 'a', 1.1]
         type_e = max_type(items)
         self.assertEqual(str, type_e)
-
-    def test_chunks_unique(self):
-        from ml.utils.numeric_functions import chunks_unique
-        from ml.layers import IterLayer
-
-        it = IterLayer([1,2,3,4,4,4,5,6,3,8,1])
-        counter = chunks_unique(it.to_chunks(3))
-        self.assertEqual(counter[1], 2)
-        self.assertEqual(counter[2], 1)
-        self.assertEqual(counter[3], 2)
-        self.assertEqual(counter[4], 3)
-        self.assertEqual(counter[5], 1)
-        self.assertEqual(counter[6], 1)
-        self.assertEqual(counter[8], 1)
 
     def test_downsample(self):
         size = 5000

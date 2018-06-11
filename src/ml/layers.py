@@ -1,6 +1,5 @@
 from itertools import izip, imap, chain, tee, islice
 import operator
-import collections
 import types
 import numpy as np
 import pandas as pd
@@ -8,9 +7,11 @@ import psycopg2
 import logging
 import datetime
 
+from collections import defaultdict, Iterable
 from ml.utils.config import get_settings
 from ml.utils.seq import grouper_chunk
-from ml.utils.numeric_functions import max_type, wsrj, wsr, num_splits
+from ml.utils.numeric_functions import max_type, num_splits, filter_sample, wsrj
+
 
 settings = get_settings("ml")
 log = logging.getLogger(__name__)
@@ -26,7 +27,7 @@ def choice(operator):
         def view(x, y):
             if isinstance(x, IterLayer) and isinstance(y, IterLayer):
                 return x.stream_operation(operator, y)
-            elif isinstance(y, collections.Iterable):
+            elif isinstance(y, Iterable):
                 return x.stream_operation(operator, IterLayer(y))
             else:
                 return x.scalar_operation(operator, y)
@@ -362,46 +363,6 @@ class IterLayer(object):
     def __ipow__(self, x):
         return
 
-    @classmethod
-    def avg(self, iters_b, size, method="arithmetic"):
-        iters = iter(iters_b)
-        base_iter = next(iters)
-        if method == "arithmetic":
-            iter_ = (sum(x) / float(size) for x in izip(base_iter, *iters))
-        else:
-            iter_ = (reduce(operator.mul, x)**(1. / size) for x in izip(base_iter, *iters))
-        return IterLayer(iter_, dtype=base_iter.dtype, 
-            chunks_size=base_iter.chunks_size)
-
-    @classmethod
-    def max_counter(self, iters_b, weights=None):
-        def merge(labels, weights):
-            if weights is None:
-                return ((label, 1) for label in labels)
-            else:
-                values = {}
-                for label, w in izip(labels, weights):
-                    values.setdefault(label, 0)
-                    values[label] += w
-                return values.items()
-
-        iters = iter(iters_b)
-        base_iter = next(iters)
-        iter_ = (max(merge(x, weights), key=lambda x: x[1])[0] for x in izip(base_iter, *iters))
-        return IterLayer(iter_, dtype=base_iter.dtype, 
-            chunks_size=base_iter.chunks_size)
-
-    @classmethod
-    def concat_n(self, iters):
-        if len(iters) > 1:
-            base_iter = iters[0]
-            length = sum([it.length for it in iters if it.length is not None])
-            it = IterLayer(chain(*iters), chunks_size=base_iter.chunks_size)
-            it.set_length(None if length == 0 else length)
-            return it
-        elif len(iters) == 1:
-            return iters[0]
-
     def concat_elems(self, data):
         iter_ = (list(chain(x0, x1)) for x0, x1 in izip(self, data))
         return IterLayer(iter_, dtype=self.dtype, chunks_size=self.chunks_size)
@@ -511,12 +472,19 @@ class IterLayer(object):
         else:
             return it.to_narray()
 
-    def num_splits(self):        
-        from ml.utils.numeric_functions import num_splits
+    def num_splits(self):
         if self.has_chunks:
             return num_splits(self.length, self.chunks_size)
         else:
             return self.length
+
+    def unique(self):
+        values = defaultdict(lambda: 0)
+        for chunk in self:
+            u_values, counter = np.unique(chunk, return_counts=True)
+            for k, v in dict(zip(u_values, counter)).items():
+                values[k] += v
+        return values
 
     def __iter__(self):
         if self.length is None or self.iter_init is False:

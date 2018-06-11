@@ -15,9 +15,10 @@ import uuid
 
 from ml.processing import Transforms
 from ml.utils.config import get_settings
-from ml.layers import IterLayer
+from ml.layers import IterLayer 
+from ml.random import downsample
 from ml import fmtypes as Fmtypes
-from ml.utils.numeric_functions import downsample
+from ml.random import sampling_size
 
 settings = get_settings("ml")
 
@@ -1017,7 +1018,6 @@ class DataLabel(Data):
     
     def cv(self, train_size=.7, valid_size=.1, unbalanced=None):
         from sklearn.model_selection import train_test_split
-        from ml.utils.numeric_functions import sampling_size
 
         X_train, X_test, y_train, y_test = train_test_split(
             self.data[:], self.labels[:], train_size=round(train_size+valid_size, 2), random_state=0)

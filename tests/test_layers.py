@@ -4,6 +4,7 @@ import pandas as pd
 import datetime
 
 from ml.layers import IterLayer
+from ml import ittools
 
 
 class TestIterLayers(unittest.TestCase):
@@ -67,14 +68,14 @@ class TestIterLayers(unittest.TestCase):
         predictor_1 = IterLayer(np.zeros((20, 2)) + 2).to_chunks(chunks_size=3)
         predictor_2 = IterLayer(np.zeros((20, 2)) + 3).to_chunks(chunks_size=3)
 
-        predictor_avg = IterLayer.avg([predictor_0, predictor_1, predictor_2], 3)
+        predictor_avg = ittools.avg([predictor_0, predictor_1, predictor_2])
         self.assertItemsEqual(predictor_avg.flat().to_memory(40), np.zeros((40,)) + 2)
 
         predictor_0 = IterLayer(np.zeros((20, 2)) + 1).to_chunks(chunks_size=3)
         predictor_1 = IterLayer(np.zeros((20, 2)) + 2).to_chunks(chunks_size=3)
         predictor_2 = IterLayer(np.zeros((20, 2)) + 3).to_chunks(chunks_size=3)
 
-        predictor_avg = IterLayer.avg([predictor_0, predictor_1, predictor_2], 3, method="geometric")
+        predictor_avg = ittools.avg([predictor_0, predictor_1, predictor_2], method="geometric")
         predictor_avg = predictor_avg.flat().compose(self.multi_round, 2).to_memory(40)
         self.assertItemsEqual(predictor_avg, np.zeros((40,)) + 1.82)
 
@@ -82,15 +83,15 @@ class TestIterLayers(unittest.TestCase):
         predictor_0 = IterLayer(["0", "1", "0", "1", "2", "0", "1", "2"])
         predictor_1 = IterLayer(["1", "2", "2", "1", "2", "0", "0", "0"])
         predictor_2 = IterLayer(["0", "1", "0", "1", "2", "0", "1", "2"])
-        predictor_avg = IterLayer.max_counter([predictor_0, predictor_1, predictor_2])
-        self.assertItemsEqual(predictor_avg.to_memory(8), ['0', '1', '0', '1', '2', '0', '1', '2'])
+        predictor_mc = ittools.max_counter([predictor_0, predictor_1, predictor_2])
+        self.assertItemsEqual(predictor_mc.to_memory(8), ['0', '1', '0', '1', '2', '0', '1', '2'])
 
         weights = [1.5, 2, 1]
         predictor_0 = IterLayer(["0", "1", "0", "1", "2", "0", "1", "2"])
         predictor_1 = IterLayer(["1", "2", "2", "1", "2", "0", "0", "0"])
         predictor_2 = IterLayer(["0", "1", "0", "1", "2", "0", "1", "2"])        
-        predictor_avg = IterLayer.max_counter([predictor_0, predictor_1, predictor_2], weights=weights)
-        self.assertItemsEqual(predictor_avg.to_memory(8), ['0', '1', '0', '1', '2', '0', '1', '2'])
+        predictor_mc = ittools.max_counter([predictor_0, predictor_1, predictor_2], weights=weights)
+        self.assertItemsEqual(predictor_mc.to_memory(8), ['0', '1', '0', '1', '2', '0', '1', '2'])
 
     def test_custom_fn(self):
         predictor = IterLayer(np.zeros((20, 2)) + 1.6).to_chunks(chunks_size=3)
@@ -113,7 +114,7 @@ class TestIterLayers(unittest.TestCase):
         predictor_0 = IterLayer(l0).to_chunks(chunks_size=3)
         predictor_1 = IterLayer(l1).to_chunks(chunks_size=3)
         predictor_2 = IterLayer(l2).to_chunks(chunks_size=3)
-        predictor = IterLayer.concat_n([predictor_0, predictor_1, predictor_2])
+        predictor = ittools.concat([predictor_0, predictor_1, predictor_2])
         self.assertItemsEqual(predictor.flat().to_memory(120), fl)
 
     def test_operations_concat_n_scalar(self):
@@ -123,7 +124,7 @@ class TestIterLayers(unittest.TestCase):
         predictor_0 = IterLayer(data_0).to_chunks(chunks_size=2)
         predictor_1 = IterLayer(data_1).to_chunks(chunks_size=2)
 
-        predictor = IterLayer.concat_n([predictor_0, predictor_1])
+        predictor = ittools.concat([predictor_0, predictor_1])
         predictors = predictor * w
         predictors = predictors.flat().to_memory(80)
         self.assertItemsEqual(predictors.reshape(-1)[:40], np.zeros((40)) - 3)
@@ -487,6 +488,17 @@ class TestIterLayers(unittest.TestCase):
         data = np.asarray(m)
         it = IterLayer(m, dtype=[("A", np.dtype('<M8[ns]'))])
         it_0 = it.to_chunks(chunks_size)
+
+    def test_chunks_unique(self):
+        it = IterLayer([1,2,3,4,4,4,5,6,3,8,1])
+        counter = it.to_chunks(3).unique()
+        self.assertEqual(counter[1], 2)
+        self.assertEqual(counter[2], 1)
+        self.assertEqual(counter[3], 2)
+        self.assertEqual(counter[4], 3)
+        self.assertEqual(counter[5], 1)
+        self.assertEqual(counter[6], 1)
+        self.assertEqual(counter[8], 1)
 
 
 def chunk_sizes(seq):

@@ -1,7 +1,5 @@
-from itertools import izip
-from operator import mul
-import heapq as hq
 import numpy as np
+import heapq as hq
 from collections import defaultdict
 
 
@@ -11,11 +9,14 @@ def pearsoncc(X, Y):
     Y = (Y - Y.mean(0)) / Y.std(0)
     return (X * Y).mean()
 
+
 def le(x, y):
     return x - y
 
+
 def ge(x, y):
     return y - x
+
 
 def logb(x, b):
     """
@@ -28,6 +29,7 @@ def logb(x, b):
     transform natural log to log base b
     """
     return np.log(x) / np.log(b)
+
 
 def humanize_bytesize(size):
     """
@@ -44,6 +46,7 @@ def humanize_bytesize(size):
     p = np.power(1024, i)
     s = round(size / float(p), 2)
     return '{} {}'.format(s, size_name[i])
+
 
 def expand_matrix_row(matrix, max_size, actual_size):
     """
@@ -62,6 +65,7 @@ def expand_matrix_row(matrix, max_size, actual_size):
         matrix, 
         np.zeros((max_size - actual_size, matrix.shape[1]), dtype=matrix.dtype),
         axis=0)
+
 
 def expand_matrix_col(matrix, max_size, actual_size):
     """
@@ -180,7 +184,6 @@ def zeros(column):
 
 
 def features_fmtype(fmtypes, fmtype):
-    from collections import defaultdict
     map_col = defaultdict(list)
     for ci, c_fmtype in enumerate(fmtypes):
         map_col[c_fmtype].append(ci)
@@ -208,6 +211,28 @@ def max_type(items):
         return None
     v = max(zip(sizeof, types), key=lambda x: x[0])
     return v[1]
+
+
+def filter_sample(stream, label, col_index):
+    if col_index is None:
+        for e in stream:
+            if e == label:
+                yield e
+    else:
+        for row in stream:
+            if row[col_index] == label:
+                yield row
+
+
+def num_splits(length, chunks_size):
+    if 0 < chunks_size <= length:
+        if length % chunks_size > 0:
+            r = 1
+        else:
+            r = 0
+        return int(round(length/chunks_size, 0)) + r
+    else:
+        return 1
 
 
 def wsr(stream, k):
@@ -255,67 +280,3 @@ def wsrj(stream, k):
 
     while len(reservoir) > 0:
         yield hq.heappop(reservoir)[1]
-
-
-def filter_sample(stream, label, col_index):
-    if col_index is None:
-        for e in stream:
-            if e == label:
-                yield e
-    else:
-        for row in stream:
-            if row[col_index] == label:
-                yield row
-
-
-def sampling_size(sampling, stream):
-    from ml.layers import IterLayer
-    if isinstance(sampling, IterLayer):
-        counter = chunks_unique(stream)
-    else:
-        u_values, counter = np.unique(stream, return_counts=True)
-        counter = dict(zip(u_values, counter))
-
-    if len(counter) == 0:
-        return {}
-
-    sampling_n = {}
-    for y, k in sampling.items():
-        unique_v = counter.get(y, 0)
-        if 0 <= k <= 1:
-            v = unique_v * k
-        elif 1 < k < unique_v:
-             v = k % unique_v
-        else:
-            v = unique_v % k
-        sampling_n[y] = int(round(v, 0))
-
-    return sampling_n
-
-
-def downsample(stream, sampling, col_index, size, exact=False):
-    from ml.layers import IterLayer
-    iterators = []
-    for y, k in sampling.items():
-        iterators.append(IterLayer(filter_sample(stream[:size], y, col_index)).sample(k))
-    return IterLayer.concat_n(iterators)
-
-
-def num_splits(length, chunks_size):
-    if 0 < chunks_size <= length:
-        if length % chunks_size > 0:
-            r = 1
-        else:
-            r = 0
-        return int(round(length/chunks_size, 0)) + r
-    else:
-        return 1
-
-
-def chunks_unique(it):
-    values = defaultdict(lambda: 0)
-    for chunk in it:
-        u_values, counter = np.unique(chunk, return_counts=True)
-        for k, v in dict(zip(u_values, counter)).items():
-            values[k] += v
-    return values

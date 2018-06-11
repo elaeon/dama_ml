@@ -6,6 +6,7 @@ import csv
 from ml.ds import DataLabelFold, DataLabel#,DataLabelSetFile
 from ml.ds import Data
 from ml.processing import Transforms
+from ml.random import sampling_size
 
 
 def linear(x, b=0):
@@ -441,7 +442,6 @@ class TestDataset(unittest.TestCase):
         test_ds.destroy()
 
     def test_cv_unbalanced(self):
-        from ml.utils.numeric_functions import sampling_size
         X = np.random.rand(1000, 2)
         Y = np.asarray([str(e) for e in (X[:, 1] < .5)], dtype="|O")
         ds = DataLabel(name="test", dataset_path="/tmp/", clean=True)
