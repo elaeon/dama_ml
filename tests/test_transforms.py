@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 
 from ml.processing import Transforms, Fit
-from ml.layers import IterLayer
+from ml.layers import Iterator
 
 
 def linear(x):
@@ -179,7 +179,7 @@ class TestTransforms(unittest.TestCase):
         transforms = Transforms()
         transforms.add(linear)
         transforms.add(linear_p, b=10)
-        numbers = IterLayer((e for e in np.ones((10,))))
+        numbers = Iterator((e for e in np.ones((10,))))
         result = transforms.apply(numbers)
         self.assertItemsEqual(result.flat().to_memory(10), np.ones((10, 1)) + 11) # result [12, ..., 12]
 
@@ -431,7 +431,7 @@ class TestTransforms(unittest.TestCase):
             [1, 1],
             [1, 2],
             [1, 2]], dtype=np.dtype("int"))
-        it = IterLayer(X)
+        it = Iterator(X)
         it.set_length(X.shape[0])
         cg = P(it, name="test", path="/tmp", clean=True)
         cg.map(counter_group)

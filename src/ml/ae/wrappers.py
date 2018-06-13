@@ -5,7 +5,7 @@ import logging
 from ml.utils.config import get_settings
 from ml.models import MLModel, BaseModel
 from ml.ds import Data, DataLabel
-from ml.layers import IterLayer
+from ml.layers import Iterator
 
 settings = get_settings("ml")
 
@@ -47,22 +47,18 @@ class BaseAe(BaseModel):
         self.load_model()
 
     def reformat_all(self, dataset, chunks_size=30000):
-        if dataset.module_cls_name() == DataLabel.module_cls_name():# or\
-            #dataset._applied_transforms is False and not dataset.transforms.is_empty():
+        if dataset.module_cls_name() == DataLabel.module_cls_name():
             log.info("Reformating {}...".format(self.cls_name()))
             train_ds = Data(
                 dataset_path=settings["dataset_model_path"],
                 compression_level=3,
                 clean=True)
-            #train_ds.apply_transforms = not dataset._applied_transforms
             train_ds.transforms = dataset.transforms
 
             with train_ds:
                 train_ds.from_data(dataset.data, chunks_size=chunks_size, 
                     transform=False)
                 train.columns = dataset.columns
-                #train_ds.apply_transforms = True
-                #train_ds._applied_transforms = dataset._applied_transforms
         else:
             train_ds = dataset
 
@@ -77,12 +73,8 @@ class BaseAe(BaseModel):
             with self.test_ds:
                 return self.test_ds.processing(x, apply_transforms=t, chunks_size=chunks_size)
 
-        #if self.model is None:
-        #    self.load_model()
-
         decoder = model_type == "decoder"
-        #output_shape = tuple([data.shape[0], self.latent_dim])
-        return IterLayer(self._predict(fn(data, t=transform), output=output, decoder=decoder),
+        return Iterator(self._predict(fn(data, t=transform), output=output, decoder=decoder),
              chunks_size=chunks_size)
 
 

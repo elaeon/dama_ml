@@ -6,7 +6,7 @@ import zipfile
 import StringIO
 from ml.utils.files import rm
 from operator import itemgetter
-from ml.layers import IterLayer
+from ml.layers import Iterator
 
 
 def get_compressed_file_manager(filepath):
@@ -165,5 +165,5 @@ class CSV(object):
         rm(self.filepath)
     
     def to_iter(self):
-        return IterLayer(self.reader(header=not self.has_header, 
+        return Iterator(self.reader(header=not self.has_header, 
             columns=self.columns_index()), dtype=self.schema)

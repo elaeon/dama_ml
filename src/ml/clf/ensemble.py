@@ -3,7 +3,7 @@ from ml.models import DataDrive
 from ml.clf.measures import ListMeasure, Measure
 from ml.ds import Data
 from ml.utils.config import get_settings
-from ml.layers import IterLayer
+from ml.layers import Iterator
 
 from pydoc import locate
 import inspect
@@ -240,12 +240,12 @@ class Boosting(Grid):
         return {index: w for index, w in enumerate(weights)}
 
     def avg_prediction(self, predictions, weights, uncertain=True):
-        from ml.layers import IterLayer
+        from ml.layers import Iterator
         if uncertain is False:
-            return IterLayer.max_counter(predictions, weights=weights)
+            return Iterator.max_counter(predictions, weights=weights)
         else:
-            predictors = IterLayer(predictions) * weights
-            return IterLayer.avg(predictors, sum(weights))
+            predictors = Iterator(predictions) * weights
+            return Iterator.avg(predictors, sum(weights))
 
     def train(self, batch_size=128, num_steps=1, only_voting=False, calc_score=True):
         self.calc_score = calc_score

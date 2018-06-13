@@ -16,7 +16,7 @@ import sys
 import inspect
 
 from ml.utils.config import get_settings
-from ml.layers import IterLayer
+from ml.layers import Iterator
 
 settings = get_settings("ml")
 
@@ -132,16 +132,16 @@ class TransformsFn(object):
         :param data: apply the transforms to the data
         """
         if isinstance(data, np.ndarray):
-            data = IterLayer(data, dtype=data.dtype).to_chunks(chunks_size)
+            data = Iterator(data, dtype=data.dtype).to_chunks(chunks_size)
         elif isinstance(data, pd.DataFrame):
-            data = IterLayer(data).to_chunks(chunks_size)
-        elif isinstance(data, IterLayer):
+            data = Iterator(data).to_chunks(chunks_size)
+        elif isinstance(data, Iterator):
             if data.chunks_size == 0:
                 data = data.to_chunks(chunks_size)
         else:
             raise Exception("Type {} is not supported".format(type(data)))
         
-        return IterLayer(self.reduce(data), chunks_size=chunks_size)
+        return Iterator(self.reduce(data), chunks_size=chunks_size)
 
 
 class TransformsClass(TransformsFn):
@@ -176,7 +176,7 @@ class TransformsClass(TransformsFn):
         :type data: array
         :param data: apply the transforms added to the data
         """
-        if isinstance(data, IterLayer):
+        if isinstance(data, Iterator):
             data = data.to_memory()
         for fn_fit in self.initial_fn(data):
             data = fn_fit.transform(data).to_memory(data.shape[0])
@@ -185,7 +185,7 @@ class TransformsClass(TransformsFn):
             dtype = [(name, data.columns.dtype.str) for name in data.columns]
         else:
             dtype = data.dtype
-        return IterLayer(data, dtype=dtype).to_chunks(chunks_size=chunks_size)
+        return Iterator(data, dtype=dtype).to_chunks(chunks_size=chunks_size)
 
     def destroy(self):
         for transform in self.initial_fn():
@@ -333,7 +333,7 @@ class Process(object):
 
     def reduce(self, fn, chunks_size=258, **params):
         ds_it = self.ds.to_iter(self.dtype, chunks_size=chunks_size)
-        it = IterLayer(fn(ds_it, self.load(), **params), chunks_size=ds_it.chunks_size)
+        it = Iterator(fn(ds_it, self.load(), **params), chunks_size=ds_it.chunks_size)
         it.set_length(self.ds.shape[0])
         return it
 
@@ -362,7 +362,7 @@ class Fit(object):
 
     def transform(self, data):
         ndata = self.t(data)
-        it = IterLayer(ndata, dtype=ndata.dtype)
+        it = Iterator(ndata, dtype=ndata.dtype)
         it.set_length(ndata.shape[0])
         return it
 
@@ -434,7 +434,7 @@ class FitTsne(Fit):
                 yield np.append(row, list(predict)[0], axis=0)
 
         #shape=(data.shape[0], data.shape[1]+2)
-        return IterLayer(iter_(), dtype=data.dtype)
+        return Iterator(iter_(), dtype=data.dtype)
 
     def destroy(self):
         if hasattr(self, 'model'):
@@ -465,7 +465,7 @@ class FitReplaceNan(Fit):
                     for i in indx[0]:
                         row[i] = columns[i]
                     yield row
-            it = IterLayer(iter_())
+            it = Iterator(iter_())
             it.set_length(n_data.shape[0])
             return it
         

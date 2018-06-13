@@ -15,7 +15,7 @@ import uuid
 
 from ml.processing import Transforms
 from ml.utils.config import get_settings
-from ml.layers import IterLayer 
+from ml.layers import Iterator 
 from ml.random import downsample
 from ml import fmtypes as Fmtypes
 from ml.random import sampling_size
@@ -280,7 +280,6 @@ class Data(ReadWriteData):
 
         if not ds_exist and (self.mode == 'w' or self.mode == 'a'):
             self.create_route()
-            #self.apply_transforms = True
             self.author = author
             self.transforms = Transforms()
             self.description = description
@@ -350,23 +349,6 @@ class Data(ReadWriteData):
     def dataset_class(self, value):
         self._set_attr('dataset_class', value)
 
-    #@property
-    #def apply_transforms(self):
-    #    return self._apply_transforms
-
-    #@apply_transforms.setter
-    #def apply_transforms(self, value):
-    #    self._apply_transforms = value
-    #    self._applied_transforms = value
-
-    #@property
-    #def _applied_transforms(self):
-    #    return bool(self._get_attr('applied_transforms'))
-
-    #@_applied_transforms.setter
-    #def _applied_transforms(self, value):
-    #    self._set_attr('applied_transforms', value)
-
     @property
     def hash_header(self):
         return self._get_attr('hash_H')
@@ -417,7 +399,7 @@ class Data(ReadWriteData):
                 end += chunks_size
                 c += 1
 
-        return IterLayer(iter_(self.data), dtype=dtype).to_chunks(chunks_size=chunks_size)
+        return Iterator(iter_(self.data), dtype=dtype).to_chunks(chunks_size=chunks_size)
 
     def num_features(self):
         """
@@ -445,7 +427,6 @@ class Data(ReadWriteData):
         print('DATASET NAME: {}'.format(self.name))
         print('Author: {}'.format(self.author))
         print('Transforms: {}'.format(self.transforms.to_json()))
-        #print('Applied transforms: {}'.format(self._applied_transforms))
         print('Header Hash: {}'.format(self.hash_header))
         print('Body Hash: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
@@ -567,8 +548,8 @@ class Data(ReadWriteData):
         if apply_transforms and not self.transforms.is_empty():
             return self.transforms.apply(data, chunks_size=chunks_size)
         else:
-            if not isinstance(data, IterLayer):
-                return IterLayer(data).to_chunks(chunks_size)
+            if not isinstance(data, Iterator):
+                return Iterator(data).to_chunks(chunks_size)
             return data
 
     @classmethod
@@ -719,7 +700,6 @@ class DataLabel(Data):
         print('DATASET NAME: {}'.format(self.name))
         print('Author: {}'.format(self.author))
         print('Transforms: {}'.format(self.transforms.to_json()))
-        #print('Applied transforms: {}'.format(self._applied_transforms))
         print('Header Hash: {}'.format(self.hash_header))
         print('Body Hash: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
@@ -747,8 +727,8 @@ class DataLabel(Data):
             self._set_space_shape('labels', (data.shape[0],), data.global_dtype)
             self.chunks_writer_split("/data/data", "/data/labels", data, labels)
         else:
-            if not isinstance(labels, IterLayer):
-                labels = IterLayer(labels, dtype=labels.dtype).to_chunks(chunks_size)
+            if not isinstance(labels, Iterator):
+                labels = Iterator(labels, dtype=labels.dtype).to_chunks(chunks_size)
             data = data.it_length(length)
             labels = labels.it_length(length)
             self._set_space_shape('data', data.shape, data.global_dtype)
@@ -883,8 +863,6 @@ class DataLabel(Data):
                 dl = DataLabel(name=self.name+"_2d_", 
                         dataset_path=self.dataset_path,
                         compression_level=9)
-
-                #dl.apply_transforms = False,
                 if not dl.exist():
                     ds = self.to_data()
                     classif = PTsne(model_name="tsne", model_version="1", 
@@ -1017,218 +995,18 @@ class DataLabel(Data):
         data = self.cv(train_size=train_size, valid_size=valid_size)
         train_ds = DataLabel(dataset_path=dataset_path)
         train_ds.transforms = self.transforms
-        #train_ds.apply_transforms = apply_transforms
         with train_ds:
             train_ds.from_data(data[0], data[3], data[0].shape[0])
         validation_ds = DataLabel(dataset_path=dataset_path)
         validation_ds.transforms = self.transforms
-        #validation_ds.apply_transforms = apply_transforms
         with validation_ds:
             validation_ds.from_data(data[1], data[4], data[1].shape[0])
         test_ds = DataLabel(dataset_path=dataset_path)
         test_ds.transforms = self.transforms
-        #test_ds.apply_transforms = apply_transforms
         with test_ds:
             test_ds.from_data(data[2], data[5], data[2].shape[0])
         
         return train_ds, validation_ds, test_ds
-
-
-class DataSetBuilderImage(DataLabel):
-    """
-    Class for images dataset build. Get the data from a directory where each directory's name is the label.
-    
-    :type image_size: int
-    :param image_size: define the image size to save in the dataset
-
-    kwargs are the same that DataSetBuilder's options
-
-    :type data_folder_path: string
-    :param data_folder_path: path to the data what you want to add to the dataset, split the data in train, test and validation. If you want manualy split the data in train and test, check test_folder_path.
-    """
-    def __init__(self, name=None, image_size=None, training_data_path=None, **kwargs):
-        super(DataSetBuilderImage, self).__init__(name, **kwargs)
-        self.image_size = image_size
-        self.training_data_path = training_data_path
-
-    def images_from_directories(self, directories):
-        if isinstance(directories, str):
-            directories = [directories]
-        elif isinstance(directories, list):
-            pass
-        else:
-            raise Exception
-
-        images = []
-        for root_directory in directories:
-            for directory in os.listdir(root_directory):
-                files = os.path.join(root_directory, directory)
-                if os.path.isdir(files):
-                    number_id = directory
-                    for image_file in os.listdir(files):
-                        images.append((number_id, os.path.join(files, image_file)))
-        return images
-
-    def images_to_dataset(self, folder_base):
-        """
-        :type folder_base: string path
-        :param folder_base: path where live the images to convert
-
-        extract the images from folder_base, where folder_base has the structure folder_base/label/
-        """
-        images = self.images_from_directories(folder_base)
-        labels = np.ndarray(shape=(len(images),), dtype='|S1')
-        data = []
-        for image_index, (number_id, image_file) in enumerate(images):
-            img = io.imread(image_file)
-            data.append(img)
-            labels[image_index] = number_id
-        return data, labels
-
-    @classmethod
-    def save_images(self, url, number_id, images, rewrite=False):
-        if not os.path.exists(url):
-            os.makedirs(url)
-        n_url = os.path.join(url, number_id)
-        if not os.path.exists(n_url):
-             os.makedirs(n_url)
-
-        initial = 0 if rewrite else len(os.listdir(n_url)) 
-        for i, image in enumerate(images, initial):
-            try:
-                image_path = "img-{}-{}.png".format(number_id, i)
-                io.imsave(os.path.join(n_url, image_path), image)
-            except IndexError:
-                print("Index error", n_url, number_id)
-
-    def clean_directory(self, path):
-        import shutil
-        shutil.rmtree(path)
-
-    def from_data(self):
-        """
-        the data is extracted from the training_datar_path, and then saved.
-        """
-        data, labels = self.images_to_dataset(self.training_data_path)
-        super(DataSetBuilderImage, self).from_data(data, labels)
-
-    def labels_images(self, urls):
-        images_data = []
-        labels = []
-        if not isinstance(urls, list):
-            urls = [urls]
-
-        for url in urls:
-            for number_id, path in self.images_from_directories(url):
-                images_data.append(io.imread(path))
-                labels.append(number_id)
-        return images_data, labels
-
-
-#class DataLabelSetFile(DataLabel):
-#    """
-#    Class for csv dataset build. Get the data from a csv's file.
-#    
-#    :type training_data_path: list
-#    :param training_data_path: list of files paths
-#
-#    :type sep: list
-#    :param sep: list of strings separators for each file
-#
-#    kwargs are the same that DataSetBuilder's options
-#    """
-
-#    def __init__(self, name=None, training_data_path=None,
-#                sep=None, merge_field="id", na_values=None, **kwargs):
-#        super(DataLabelSetFile, self).__init__(name, **kwargs)
-#        self.training_data_path = training_data_path
-#        self.sep = sep
-#        self.merge_field = merge_field
-#        self.na_values = na_values
-
-#    def from_csv(self, folder_path, label_column, nrows=None, exclude_columns=None):
-#        """
-#        :type folder_path: string
-#        :param folder_path: path to the csv.
-#
-#        :type label_column: string
-#        :param label_column: column's name where are the labels
-#        """
-#        df = pd.read_csv(folder_path, nrows=nrows, na_values=self.na_values)
-#        data, labels = self.df2dataset_label(df, label_column, 
-#                                            exclude_columns=exclude_columns)
-#        return data, labels
-
-#    @classmethod
-#    def df2dataset_label(self, df, labels_column, ids=None, exclude_columns=None):
-#        if ids is not None:
-#            drops = ids + [labels_column]
-#        else:
-#            drops = [labels_column]
-
-#        if exclude_columns is not None:
-#            if isinstance(exclude_columns, list):
-#                drops.extend(exclude_columns)
-#            else:
-#                drops.extend([exclude_columns])
-
-#        dataset = df.drop(drops, axis=1).as_matrix()
-#        labels = df[labels_column].as_matrix()
-#        return dataset, labels        
-
-#    def from_data(self, labels_column=None, nrows=None, exclude_columns=None):
-#        """
-#         :type label_column: string
-#         :param label_column: column's name where are the labels
-#        """
-#        if isinstance(self.training_data_path, list):
-#            if not isinstance(self.sep, list):
-#                sep_l = [self.sep for _ in self.training_data_path]
-#            else:
-#                sep_l = self.sep
-#            old_df = None
-#            for sep, path in zip(sep_l, self.training_data_path):
-#                data_df = pd.read_csv(path, sep=sep, nrows=nrows)
-#                if old_df is not None:
-#                    old_df = pd.merge(old_df, data_df, on=self.merge_field)
-#                else:
-#                    old_df = data_df
-#            data, labels = self.df2dataset_label(old_df, 
-#                labels_column=labels_column, ids=[self.merge_field],
-#                exclude_columns=exclude_columns)
-#        else:
-#            data, labels = self.from_csv(self.training_data_path, labels_column, 
-#                                        nrows=nrows, 
-#                                        exclude_columns=exclude_columns)
-#        super(DataLabelSetFile, self).from_data(data, labels)
-    
-#    def get_sep_path(self):
-#        if isinstance(self.training_data_path, list):
-#            if not isinstance(self.sep, list):
-#                delimiters = [self.sep for _ in self.training_data_path]
-#            else:
-#                delimiters = [self.sep]
-#            return self.training_data_path, delimiters
-#        else:
-#            return [self.training_data_path], [self.sep]
-
-#    def to_db(self):
-#        from ml.db.utils import build_schema, insert_rows
-#        import csv
-#        from ml.utils.files import filename_n_ext_from_path
-
-#        training_data_path, delimiters = self.get_sep_path()
-#        for data_path, delimiter in zip(training_data_path, delimiters):
-#            table_name = filename_n_ext_from_path(data_path)
-#            with open(data_path, "r") as csv_file:
-#                csv_reader = csv.reader(csv_file, delimiter=delimiter)
-#                for row in csv_reader:
-#                    header = row
-#                    break
-#                build_schema(table_name, header, 
-#                    [Fmtypes.TEXT]*len(header),
-#                    self.merge_field)
-#                insert_rows(csv_reader, table_name, header)
 
 
 class DataLabelFold(object):
@@ -1259,9 +1037,8 @@ class DataLabelFold(object):
                     dataset_path=self.dataset_path,
                     description="",
                     author="",
-                    compression_level=9,
+                    compression_level=3,
                     clean=True)
-                #dsb.apply_transforms = False
                 data = dl.data[:]
                 labels = dl.labels[:]
                 with dsb:

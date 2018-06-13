@@ -25,10 +25,10 @@ log.setLevel(int(settings["loglevel"]))
 def choice(operator):
     def inner(fn):
         def view(x, y):
-            if isinstance(x, IterLayer) and isinstance(y, IterLayer):
+            if isinstance(x, Iterator) and isinstance(y, Iterator):
                 return x.stream_operation(operator, y)
             elif isinstance(y, Iterable):
-                return x.stream_operation(operator, IterLayer(y))
+                return x.stream_operation(operator, Iterator(y))
             else:
                 return x.scalar_operation(operator, y)
         return view
@@ -44,17 +44,17 @@ def cut(fn):
     return check_params
 
 
-class IterLayer(object):
+class Iterator(object):
     def __init__(self, fn_iter, dtype=None, chunks_size=0):
         if isinstance(fn_iter, types.GeneratorType) or isinstance(fn_iter, psycopg2.extensions.cursor):
             self.it = fn_iter
-        elif isinstance(fn_iter, IterLayer):
+        elif isinstance(fn_iter, Iterator):
             self.it = fn_iter
         elif isinstance(fn_iter, pd.DataFrame):
             self.it = fn_iter.itertuples(index=False)
             dtype = zip(fn_iter.columns.values, fn_iter.dtypes.values)
         else:
-            self.it = iter(fn_iter)#(e for e in fn_iter)
+            self.it = iter(fn_iter)
 
         self.pushedback = []
         self.chunks_size = chunks_size
@@ -162,7 +162,7 @@ class IterLayer(object):
         if self.has_chunks is False and chunks_size > 0:
             if dtype is None:
                 dtype = self.dtype
-            it = IterLayer(self.chunks_gen(chunks_size, dtype),
+            it = Iterator(self.chunks_gen(chunks_size, dtype),
                 chunks_size=chunks_size, dtype=dtype)
             it.set_length(self.length)
             return it
@@ -218,7 +218,7 @@ class IterLayer(object):
                 for e in chain.from_iterable(self):
                     yield e
         
-        it = IterLayer(_iter(), dtype=self.dtype)
+        it = Iterator(_iter(), dtype=self.dtype)
         if self.length is not None:
             it.set_length(self.length*sum(self.features_dim))
 
@@ -231,7 +231,7 @@ class IterLayer(object):
             data = self.clean_chunks()
         else:
             data = self
-        it = IterLayer(wsrj(self.weights_gen(data, col, weight_fn), k), dtype=self.dtype)
+        it = Iterator(wsrj(self.weights_gen(data, col, weight_fn), k), dtype=self.dtype)
         it.set_length(k)
         return it
 
@@ -248,9 +248,9 @@ class IterLayer(object):
             dtype_0 = self.dtype
             dtype_1 = self.dtype
 
-        it0 = IterLayer((item for item, _ in a), dtype=dtype_0, 
+        it0 = Iterator((item for item, _ in a), dtype=dtype_0, 
                 chunks_size=self.chunks_size)
-        it1 = IterLayer((item for _, item in b), dtype=dtype_1, 
+        it1 = Iterator((item for _, item in b), dtype=dtype_1, 
                 chunks_size=self.chunks_size)
         return it0, it1
 
@@ -271,7 +271,7 @@ class IterLayer(object):
                 for chunk in self:
                     for row in chunk:
                         yield row
-            return IterLayer(cleaner(), chunks_size=0, dtype=None)
+            return Iterator(cleaner(), chunks_size=0, dtype=None)
         return self
 
     @property
@@ -302,7 +302,7 @@ class IterLayer(object):
 
     def it_length(self, length):
         if self.has_chunks:
-            it = IterLayer(self.cut_it_chunk(length), dtype=self.dtype,
+            it = Iterator(self.cut_it_chunk(length), dtype=self.dtype,
                 chunks_size=self.chunks_size)
             it.set_length(length)
             return it
@@ -312,12 +312,12 @@ class IterLayer(object):
 
     def scalar_operation(self, operator, scalar):
         iter_ = imap(lambda x: operator(x, scalar), self)
-        return IterLayer(iter_, dtype=self.dtype, 
+        return Iterator(iter_, dtype=self.dtype, 
             chunks_size=self.chunks_size)
 
     def stream_operation(self, operator, stream):
         iter_ = imap(lambda x: operator(x[0], x[1]), izip(self, stream))
-        return IterLayer(iter_, dtype=self.dtype, 
+        return Iterator(iter_, dtype=self.dtype, 
             chunks_size=self.chunks_size)
 
     @choice(operator.add)
@@ -365,15 +365,15 @@ class IterLayer(object):
 
     def concat_elems(self, data):
         iter_ = (list(chain(x0, x1)) for x0, x1 in izip(self, data))
-        return IterLayer(iter_, dtype=self.dtype, chunks_size=self.chunks_size)
+        return Iterator(iter_, dtype=self.dtype, chunks_size=self.chunks_size)
 
     def compose(self, fn, *args, **kwargs):
         iter_ = (fn(x, *args, **kwargs) for x in self)
-        return IterLayer(iter_, dtype=self.dtype, 
+        return Iterator(iter_, dtype=self.dtype, 
             chunks_size=self.chunks_size)
 
-    def concat(self, iterlayer):
-        return IterLayer(chain(self, iterlayer))
+    def concat(self, it):
+        return Iterator(chain(self, it))
 
     def to_datamodelset(self, labels, features, size, ltype):
         from ml.ds import DataLabel

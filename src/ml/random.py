@@ -1,11 +1,11 @@
 import numpy as np
-from ml.layers import IterLayer
+from ml.layers import Iterator
 from ml.utils.numeric_functions import filter_sample
 from ml import ittools
 
 
 def sampling_size(sampling, stream):
-    if isinstance(sampling, IterLayer):
+    if isinstance(sampling, Iterator):
         counter = stream.unique()
     else:
         u_values, counter = np.unique(stream, return_counts=True)
@@ -31,5 +31,5 @@ def sampling_size(sampling, stream):
 def downsample(stream, sampling, col_index, size, exact=False):
     iterators = []
     for y, k in sampling.items():
-        iterators.append(IterLayer(filter_sample(stream[:size], y, col_index)).sample(k))
+        iterators.append(Iterator(filter_sample(stream[:size], y, col_index)).sample(k))
     return ittools.concat(iterators)

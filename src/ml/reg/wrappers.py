@@ -7,7 +7,6 @@ from ml.utils.config import get_settings
 from ml.models import SupervicedModel, MLModel
 from ml.ds import DataLabel, Data
 from ml.clf import measures as metrics
-from ml.layers import IterLayer
 from tqdm import tqdm
 
 
@@ -69,19 +68,16 @@ class RegModel(SupervicedModel):
             dataset_path=settings["dataset_model_path"],
             compression_level=3,
             clean=True)
-        #dl_train.apply_transforms = not dataset._applied_transforms
         dl_train.transforms = dataset.transforms
         dl_test = DataLabel(
             dataset_path=settings["dataset_model_path"],
             compression_level=3,
             clean=True)
         dl_test.transforms = dataset.transforms
-        #dl_test.apply_transforms = not dataset._applied_transforms
         dl_validation = DataLabel(
             dataset_path=settings["dataset_model_path"],
             compression_level=3,
             clean=True)
-        #dl_validation.apply_transforms = not dataset._applied_transforms
         dl_validation.transforms = dataset.transforms
 
         train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv(
@@ -90,20 +86,14 @@ class RegModel(SupervicedModel):
             dl_train.from_data(train_data, train_labels, chunks_size=chunks_size,
                 transform=False)
             dl_train.columns = dataset.columns
-            #dl_train.apply_transforms = True
-            #dl_train._applied_transforms = dataset._applied_transforms
         with dl_test:
             dl_test.from_data(test_data, test_labels, chunks_size=chunks_size,
                 transform=False)
             dl_test.columns = dataset.columns
-            #dl_test.apply_transforms = True
-            #dl_test._applied_transforms = dataset._applied_transforms
         with dl_validation:
             dl_validation.from_data(validation_data, validation_labels, 
                 chunks_size=chunks_size, transform=False)
             dl_validation.columns = dataset.columns
-            #dl_validation.apply_transforms = True
-            #dl_validation._applied_transforms = dataset._applied_transforms
 
         return dl_train, dl_test, dl_validation
 

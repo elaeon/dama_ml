@@ -5,7 +5,7 @@ import logging
 import numpy as np
 
 from ml.ds import DataLabel, Data
-from ml.layers import IterLayer
+from ml.layers import Iterator
 from ml.utils.files import check_or_create_path_dir
 
 
@@ -196,7 +196,7 @@ class BaseModel(DataDrive):
             with self.test_ds:
                 return self.test_ds.processing(x, apply_transforms=t, chunks_size=chunks_size)
 
-        return IterLayer(self._predict(fn(data, t=transform), output=output), 
+        return Iterator(self._predict(fn(data, t=transform), output=output), 
             chunks_size=chunks_size)
 
     def metadata_model(self):

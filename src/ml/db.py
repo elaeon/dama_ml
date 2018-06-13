@@ -3,7 +3,7 @@ import uuid
 from tqdm import tqdm
 from collections import OrderedDict
 from ml import fmtypes
-from ml.layers import IterLayer
+from ml.layers import Iterator
 
 
 class SQL(object):
@@ -95,7 +95,7 @@ class SQL(object):
         self.cur.execute(self.query)
         self.cur.itersize = 2000
         self.cur.scroll(start)
-        it = IterLayer(self.cur, dtype=self.dtype)
+        it = Iterator(self.cur, dtype=self.dtype)
         it.set_length(size)
         if self.chunks_size is not None and self.chunks_size > 0:
             return it.to_chunks(self.chunks_size)
