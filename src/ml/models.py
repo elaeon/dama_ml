@@ -4,8 +4,8 @@ import uuid
 import logging
 import numpy as np
 
-from ml.ds import DataLabel, Data
-from ml.layers import Iterator
+from ml.data.ds import DataLabel, Data
+from ml.data.it import Iterator
 from ml.utils.files import check_or_create_path_dir
 
 
@@ -73,7 +73,7 @@ class DataDrive(object):
         pass
 
     def save_meta(self, keys=None):
-        from ml.ds import save_metadata
+        from ml.data.ds import save_metadata
         if self.check_point_path is not None and keys is not None:
             metadata_tmp = self.load_meta()
             if "model" in keys:
@@ -89,7 +89,7 @@ class DataDrive(object):
                 save_metadata(self.path_mv+".xmeta", metadata["train"])
 
     def load_meta(self):
-        from ml.ds import load_metadata
+        from ml.data.ds import load_metadata
         if self.check_point_path is not None:
             metadata = {}
             self.path_m = self.make_model_file()
@@ -233,7 +233,7 @@ class BaseModel(DataDrive):
         return metadata_model_train
 
     def get_dataset(self):
-        from ml.ds import Data
+        from ml.data.ds import Data
         log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name, 
             self.model_version, self.check_point_path))
         meta = self.load_meta()["model"]
@@ -337,7 +337,7 @@ class SupervicedModel(BaseModel):
             }
 
     def get_train_validation_ds(self):
-        from ml.ds import Data
+        from ml.data.ds import Data
         log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name, 
             self.model_version, self.check_point_path))
         meta = self.load_meta()["model"]

@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from ml.ds import DataLabel
+from ml.data.ds import DataLabel
 from ml.reg.extended.w_sklearn import RandomForestRegressor
 np.random.seed(0)
 
@@ -77,7 +77,6 @@ class TestRegSKL(unittest.TestCase):
         dataset = DataLabel(name="test_0", dataset_path="/tmp/", 
             clean=True)
         dataset.transforms = t
-        #dataset.apply_transforms = True
         with dataset:
             dataset.from_data(X, Y)
         reg = RandomForestRegressor(

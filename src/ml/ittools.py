@@ -2,7 +2,7 @@ from itertools import izip, chain
 import operator
 import logging
 
-from ml.layers import Iterator
+from ml.data.it import Iterator
 from ml.utils.config import get_settings
 
 

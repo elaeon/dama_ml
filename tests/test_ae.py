@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from ml.ds import Data
+from ml.data.ds import Data
 
 
 class TestUnsupervicedModel(unittest.TestCase):

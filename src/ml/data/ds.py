@@ -15,7 +15,7 @@ import uuid
 
 from ml.processing import Transforms
 from ml.utils.config import get_settings
-from ml.layers import Iterator 
+from ml.data.it import Iterator 
 from ml.random import downsample
 from ml import fmtypes as Fmtypes
 from ml.random import sampling_size

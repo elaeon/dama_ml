@@ -3,7 +3,7 @@ import uuid
 from tqdm import tqdm
 from collections import OrderedDict
 from ml import fmtypes
-from ml.layers import Iterator
+from ml.data.it import Iterator
 
 
 class SQL(object):

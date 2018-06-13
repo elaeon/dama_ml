@@ -3,8 +3,8 @@ import numpy as np
 import pandas as pd
 import csv
 
-from ml.ds import DataLabelFold, DataLabel#,DataLabelSetFile
-from ml.ds import Data
+from ml.data.ds import DataLabelFold
+from ml.data.ds import Data, DataLabel
 from ml.processing import Transforms
 from ml.random import sampling_size
 
@@ -118,20 +118,6 @@ class TestDataset(unittest.TestCase):
 
         ds.destroy()
         dataset.destroy()
-
-    #def test_apply_transforms_flag(self):
-    #    dataset = DataLabel(
-    #        name="test_ds",
-    #        dataset_path="/tmp/",
-    #        clean=True)
-    #    with dataset:
-    #        dataset.from_data(self.X, self.Y, self.X.shape[0])
-    #        dataset.apply_transforms = False
-    #        copy = dataset.convert("test_2", apply_transforms=True, dataset_path="/tmp/")
-    #    with copy:
-    #        self.assertEqual(copy.apply_transforms, True)
-    #    copy.destroy()
-    #    dataset.destroy()
 
     def test_convert_percentaje(self):
         with DataLabel(
@@ -305,7 +291,7 @@ class TestDataset(unittest.TestCase):
             self.assertEqual(dsb.transforms.to_json(), transforms.to_json())
             self.assertEqual(dsb.description, "description text")
             self.assertEqual(dsb.compression_level, 5)
-            self.assertEqual(dsb.dataset_class, 'ml.ds.DataLabel')
+            self.assertEqual(dsb.dataset_class, 'ml.data.ds.DataLabel')
             self.assertEqual(type(dsb.timestamp), type(''))
             #self.assertEqual(dsb.apply_transforms, True)
             self.assertEqual(dsb.hash_header is not None, True)
@@ -355,7 +341,7 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(dsb2.description, "description text")
         self.assertEqual(dsb2.timestamp, timestamp)
         self.assertEqual(dsb2.compression_level, 5)
-        self.assertEqual(dsb2.dataset_class, "ml.ds.DataLabel")
+        self.assertEqual(dsb2.dataset_class, "ml.data.ds.DataLabel")
         dsb.destroy()
 
     def test_to_data(self):

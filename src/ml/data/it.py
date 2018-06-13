@@ -376,7 +376,7 @@ class Iterator(object):
         return Iterator(chain(self, it))
 
     def to_datamodelset(self, labels, features, size, ltype):
-        from ml.ds import DataLabel
+        from ml.data.ds import DataLabel
         from ml.utils.config import get_settings
 
         settings = get_settings("ml")

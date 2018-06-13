@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 from ml.processing import Transforms, FitStandardScaler
-from ml.ds import DataLabel
+from ml.data.ds import DataLabel
 from ml.random import downsample, sampling_size
 
 

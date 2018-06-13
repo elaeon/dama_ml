@@ -6,7 +6,7 @@ import zipfile
 import StringIO
 from ml.utils.files import rm
 from operator import itemgetter
-from ml.layers import Iterator
+from ml.data.it import Iterator
 
 
 def get_compressed_file_manager(filepath):

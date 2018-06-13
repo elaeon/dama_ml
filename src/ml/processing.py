@@ -16,7 +16,7 @@ import sys
 import inspect
 
 from ml.utils.config import get_settings
-from ml.layers import Iterator
+from ml.data.it import Iterator
 
 settings = get_settings("ml")
 
@@ -314,7 +314,7 @@ class Process(object):
         self.dtype = data.dtype
 
     def save_data(self, data, clean):
-        from ml.ds import Data
+        from ml.data.ds import Data
         if clean is True:
             with Data(name=self.name, dataset_path=self.dataset_path, clean=clean) as ds:
                 ds.from_data(data)
@@ -327,7 +327,7 @@ class Process(object):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
     def map(self, fn, chunks_size=258, **params):
-        from ml.ds import Data
+        from ml.data.ds import Data
         with self.ds:
             self.save(fn(self.ds.to_iter(self.dtype, chunks_size=chunks_size), **params))
 
@@ -367,11 +367,11 @@ class Fit(object):
         return it
 
     def read_meta(self):
-        from ml.ds import load_metadata
+        from ml.data.ds import load_metadata
         return load_metadata(self.meta_path)
 
     def write_meta(self, data):
-        from ml.ds import save_metadata
+        from ml.data.ds import save_metadata
         save_metadata(self.meta_path, data)
 
 
@@ -410,7 +410,7 @@ class FitTsne(Fit):
 
     def fit(self, data, **params):
         from ml.ae.extended.w_keras import PTsne
-        from ml.ds import Data
+        from ml.data.ds import Data
 
         tsne = PTsne(model_name=self.name)
         if not tsne.exist():

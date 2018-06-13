@@ -1,7 +1,8 @@
 import unittest
 import numpy as np
 
-from ml.ds import DataLabel
+from ml.data.ds import DataLabel
+from ml.clf.ensemble import Grid
 from ml.clf.extended.w_sklearn import RandomForest
 np.random.seed(0)
 
@@ -192,9 +193,6 @@ class TestSKL(unittest.TestCase):
 
 class TestGrid(unittest.TestCase):
     def setUp(self):
-        from ml.ds import DataLabel
-        from ml.clf.ensemble import Grid
-
         X = np.random.rand(100, 10)
         Y = (X[:,0] > .5).astype(int)
         original_dataset = DataLabel("test", dataset_path="/tmp/", clean=True)
@@ -406,7 +404,6 @@ class TestGrid(unittest.TestCase):
 
 class TestXgboost(unittest.TestCase):
     def setUp(self):
-        from ml.ds import DataLabel
         X = np.random.rand(100, 10)
         Y = (X[:,0] > .5).astype(int)
         self.dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
@@ -446,7 +443,6 @@ class TestXgboost(unittest.TestCase):
 
 class TestLightGBM(unittest.TestCase):
     def setUp(self):
-        from ml.ds import DataLabel
         X = np.random.rand(100, 10)
         Y = (X[:,0] > .5).astype(int)
         self.dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)

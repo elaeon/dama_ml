@@ -1,5 +1,5 @@
 import numpy as np
-from ml.layers import Iterator
+from ml.data.it import Iterator
 from ml.utils.numeric_functions import filter_sample
 from ml import ittools
 

@@ -4,8 +4,8 @@ import logging
 
 from ml.utils.config import get_settings
 from ml.models import MLModel, BaseModel
-from ml.ds import Data, DataLabel
-from ml.layers import Iterator
+from ml.data.ds import Data, DataLabel
+from ml.data.it import Iterator
 
 settings = get_settings("ml")
 

@@ -1,9 +1,10 @@
 import numpy as np
 from ml.models import DataDrive
 from ml.clf.measures import ListMeasure, Measure
-from ml.ds import Data
+from ml.data.ds import Data
 from ml.utils.config import get_settings
-from ml.layers import Iterator
+from ml.data.it import Iterator
+from ml.data.ds import load_metadata, save_metadata
 
 from pydoc import locate
 import inspect
@@ -38,7 +39,6 @@ class Grid(DataDrive):
 
     @classmethod
     def read_meta(self, path):        
-        from ml.ds import load_metadata
         return load_metadata(path+".xmeta")
 
     def classifs_to_string(self, classifs):
@@ -191,20 +191,17 @@ class Grid(DataDrive):
         return models
 
     def load_meta(self):
-        from ml.ds import load_metadata
         if self.check_point_path is not None:
             metadata = {}
             self.path_m = self.make_model_file()
             return load_metadata(self.path_m+".xmeta")
 
     def save_meta(self):
-        from ml.ds import save_metadata
         metadata = self._metadata()
         self.path_m = self.make_model_file()
         save_metadata(self.path_m+".xmeta", metadata)
 
     def load(self):
-        from ml.ds import load_metadata
         metadata = self.load_meta()
         self.fn_output = metadata["output"]
         self.classifs = self.transform_clfs(metadata.get('models', {}), fn=locate)
