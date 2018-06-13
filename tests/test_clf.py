@@ -94,7 +94,7 @@ class TestSKL(unittest.TestCase):
         dataset = DataLabel(name="test_0", dataset_path="/tmp/", 
             clean=True)
         dataset.transforms = t
-        dataset.apply_transforms = True
+        #dataset.apply_transforms = True
         with dataset:
             dataset.from_data(X, Y)
         classif = RandomForest(
@@ -286,7 +286,7 @@ class TestGrid(unittest.TestCase):
             transforms = Transforms()
             transforms.add(mulp)
             dataset = self.original_dataset.convert(name="test_dataset",
-                transforms=transforms, apply_transforms=True, dataset_path="/tmp/")
+                transforms=transforms, dataset_path="/tmp/")
         
         rf = RandomForest(model_name="test_rf")
         rf.set_dataset(dataset)

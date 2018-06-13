@@ -47,21 +47,22 @@ class BaseAe(BaseModel):
         self.load_model()
 
     def reformat_all(self, dataset, chunks_size=30000):
-        if dataset.module_cls_name() == DataLabel.module_cls_name() or\
-            dataset._applied_transforms is False and not dataset.transforms.is_empty():
+        if dataset.module_cls_name() == DataLabel.module_cls_name():# or\
+            #dataset._applied_transforms is False and not dataset.transforms.is_empty():
             log.info("Reformating {}...".format(self.cls_name()))
             train_ds = Data(
                 dataset_path=settings["dataset_model_path"],
                 compression_level=3,
                 clean=True)
-            train_ds.apply_transforms = not dataset._applied_transforms
+            #train_ds.apply_transforms = not dataset._applied_transforms
             train_ds.transforms = dataset.transforms
 
             with train_ds:
-                train_ds.from_data(dataset.data, chunks_size=chunks_size)
+                train_ds.from_data(dataset.data, chunks_size=chunks_size, 
+                    transform=False)
                 train.columns = dataset.columns
-                train_ds.apply_transforms = True
-                train_ds._applied_transforms = dataset._applied_transforms
+                #train_ds.apply_transforms = True
+                #train_ds._applied_transforms = dataset._applied_transforms
         else:
             train_ds = dataset
 

@@ -77,7 +77,7 @@ class TestRegSKL(unittest.TestCase):
         dataset = DataLabel(name="test_0", dataset_path="/tmp/", 
             clean=True)
         dataset.transforms = t
-        dataset.apply_transforms = True
+        #dataset.apply_transforms = True
         with dataset:
             dataset.from_data(X, Y)
         reg = RandomForestRegressor(

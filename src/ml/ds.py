@@ -280,7 +280,7 @@ class Data(ReadWriteData):
 
         if not ds_exist and (self.mode == 'w' or self.mode == 'a'):
             self.create_route()
-            self.apply_transforms = True
+            #self.apply_transforms = True
             self.author = author
             self.transforms = Transforms()
             self.description = description
@@ -350,22 +350,22 @@ class Data(ReadWriteData):
     def dataset_class(self, value):
         self._set_attr('dataset_class', value)
 
-    @property
-    def apply_transforms(self):
-        return self._apply_transforms
+    #@property
+    #def apply_transforms(self):
+    #    return self._apply_transforms
 
-    @apply_transforms.setter
-    def apply_transforms(self, value):
-        self._apply_transforms = value
-        self._applied_transforms = value
+    #@apply_transforms.setter
+    #def apply_transforms(self, value):
+    #    self._apply_transforms = value
+    #    self._applied_transforms = value
 
-    @property
-    def _applied_transforms(self):
-        return bool(self._get_attr('applied_transforms'))
+    #@property
+    #def _applied_transforms(self):
+    #    return bool(self._get_attr('applied_transforms'))
 
-    @_applied_transforms.setter
-    def _applied_transforms(self, value):
-        self._set_attr('applied_transforms', value)
+    #@_applied_transforms.setter
+    #def _applied_transforms(self, value):
+    #    self._set_attr('applied_transforms', value)
 
     @property
     def hash_header(self):
@@ -391,10 +391,6 @@ class Data(ReadWriteData):
     def columns(self, value):
         data = self.f.get("fmtypes/names", None)
         data[:] = value
-
-    #def features_fmtype(self, fmtype):
-    #    from ml.utils.numeric_functions import features_fmtype
-    #    return features_fmtype(self.columns, fmtype)
 
     @classmethod
     def module_cls_name(cls):
@@ -449,7 +445,7 @@ class Data(ReadWriteData):
         print('DATASET NAME: {}'.format(self.name))
         print('Author: {}'.format(self.author))
         print('Transforms: {}'.format(self.transforms.to_json()))
-        print('Applied transforms: {}'.format(self._applied_transforms))
+        #print('Applied transforms: {}'.format(self._applied_transforms))
         print('Header Hash: {}'.format(self.hash_header))
         print('Body Hash: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
@@ -509,13 +505,13 @@ class Data(ReadWriteData):
                 total += 1
         return float(zero_counter) / total
 
-    def from_data(self, data, length=None, chunks_size=258):
+    def from_data(self, data, length=None, chunks_size=258, transform=True):
         """
         build a datalabel dataset from data and labels
         """
         if length is None and data.shape[0] is not None:
             length = data.shape[0]
-        data = self.processing(data, apply_transforms=self.apply_transforms,
+        data = self.processing(data, apply_transforms=transform,
                             chunks_size=chunks_size)
         data = data.it_length(length)
         self._set_space_shape('data', data.shape, dtype=data.global_dtype)
@@ -526,49 +522,34 @@ class Data(ReadWriteData):
         if columns is not None:
             self.columns = columns
 
-    def empty(self, name, dataset_path=None, apply_transforms=True, transforms=None):
+    def empty(self, name, dataset_path=None):
         """
         build an empty Data with the default parameters
         """
-        if apply_transforms and self._applied_transforms:
-            new_transforms = transforms
-            old_applied_transforms = self.transforms
-        elif apply_transforms is False and self._applied_transforms is True:
-            raise Exception("You can't save not transformed data.")
-        elif apply_transforms is True and self._applied_transforms is False:
-            new_transforms = self.transforms + transforms
-            old_applied_transforms = None
-        else:
-            new_transforms = self.transforms + transforms
-            old_applied_transforms = None
-
         data = Data(name=name, 
             dataset_path=dataset_path,
             description=self.description,
             author=self.author,
             compression_level=self.compression_level,
             clean=True)
-        data.transforms = new_transforms
-        data.apply_transforms = apply_transforms
-        data._applied_transforms = apply_transforms
-        return data, old_applied_transforms
+        return data
 
-    def convert(self, name, apply_transforms=True, chunks_size=258,
-                percentaje=1, dataset_path=None, transforms=None):
+    def convert(self, name, chunks_size=258, percentaje=1, dataset_path=None, 
+        transforms=None):
         """
         :type dtype: string
         :param dtype: cast the data to the defined type
 
         dataset_path is not necesary to especify, this info is obtained from settings.cfg
         """
-        data, old_applied_t = self.empty(name, dataset_path=dataset_path, 
-            apply_transforms=apply_transforms, transforms=transforms)
+        data = self.empty(name, dataset_path=dataset_path)
         with data:
             data.from_data(self.data[:], calc_nshape(self.data, percentaje), 
                 chunks_size=chunks_size)
-            if old_applied_t is not None:
-                transforms = old_applied_t + data.transforms
-                data.transforms = transforms
+            if transforms is not None:
+                data.transforms = self.transforms + transforms
+            else:
+                data.transforms = self.transforms
         return data
 
     def processing(self, data, apply_transforms=True, chunks_size=258):
@@ -738,7 +719,7 @@ class DataLabel(Data):
         print('DATASET NAME: {}'.format(self.name))
         print('Author: {}'.format(self.author))
         print('Transforms: {}'.format(self.transforms.to_json()))
-        print('Applied transforms: {}'.format(self._applied_transforms))
+        #print('Applied transforms: {}'.format(self._applied_transforms))
         print('Header Hash: {}'.format(self.hash_header))
         print('Body Hash: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
@@ -754,10 +735,10 @@ class DataLabel(Data):
             items_p = [0, 0]
             print(order_table(headers, items, "# items"))
 
-    def from_data(self, data, labels, length=None, chunks_size=258):
+    def from_data(self, data, labels, length=None, chunks_size=258, transform=True):
         if length is None and data.shape[0] is not None:
             length = data.shape[0]
-        data = self.processing(data, apply_transforms=self.apply_transforms, 
+        data = self.processing(data, apply_transforms=transform, 
             chunks_size=chunks_size)
         if isinstance(labels, str):
             data = data.it_length(length)
@@ -781,50 +762,34 @@ class DataLabel(Data):
         if columns is not None:
             self.columns = columns
 
-    def empty(self, name, apply_transforms=True, dataset_path=None,
-                transforms=None):
+    def empty(self, name, dataset_path=None):
         """
         build an empty DataLabel with the default parameters
         """
-        if apply_transforms and self._applied_transforms:
-            new_transforms = transforms
-            old_applied_transforms = self.transforms
-        elif apply_transforms is False and self._applied_transforms is True:
-            raise Exception("You can't save not transformed data.")
-        elif apply_transforms is True and self._applied_transforms is False:
-            new_transforms = self.transforms + transforms
-            old_applied_transforms = None
-        else:
-            new_transforms = self.transforms + transforms
-            old_applied_transforms = None
-
         dl = DataLabel(name=name, 
             dataset_path=dataset_path,
             description=self.description,
             author=self.author,
             compression_level=self.compression_level,
             clean=True)
-        dl.transforms = new_transforms
-        dl.apply_transforms = apply_transforms
-        dl._applied_transforms = apply_transforms
-        return dl, old_applied_transforms
+        return dl
 
-    def convert(self, name, apply_transforms=True, percentaje=1, 
-                dataset_path=None, transforms=None, chunks_size=258):
+    def convert(self, name, percentaje=1, dataset_path=None, transforms=None, 
+        chunks_size=258):
         """
         :type dtype: string
         :param dtype: cast the data to the defined type
 
         dataset_path is not necesary to especify, this info is obtained from settings.cfg
         """
-        dl, old_applied_t = self.empty(name, apply_transforms=apply_transforms, 
-                        dataset_path=dataset_path, transforms=transforms)
+        dl = self.empty(name, dataset_path=dataset_path)
         with dl:
             dl.from_data(self.data[:], self.labels[:], calc_nshape(self.data, percentaje), 
-                chunks_size=chunks_size)
-            if old_applied_t is not None:
-                transforms = old_applied_t + dl.transforms
-                dl.transforms = transforms
+                chunks_size=chunks_size, transform=transforms is not None)
+            if transforms is not None:
+                dl.transforms = self.transforms + transforms
+            else:
+                dl.transforms = self.transforms
         return dl
 
     @classmethod
@@ -853,7 +818,7 @@ class DataLabel(Data):
 
     def to_data(self):
         name = self.name + "_data_" + uuid.uuid4().hex
-        data, _ = super(DataLabel, self).empty(name, apply_transforms=self.apply_transforms)
+        data = super(DataLabel, self).empty(name)
         with data:
             data.from_data(self.data)
         return data
@@ -919,7 +884,7 @@ class DataLabel(Data):
                         dataset_path=self.dataset_path,
                         compression_level=9)
 
-                dl.apply_transforms = False,
+                #dl.apply_transforms = False,
                 if not dl.exist():
                     ds = self.to_data()
                     classif = PTsne(model_name="tsne", model_version="1", 
@@ -1052,17 +1017,17 @@ class DataLabel(Data):
         data = self.cv(train_size=train_size, valid_size=valid_size)
         train_ds = DataLabel(dataset_path=dataset_path)
         train_ds.transforms = self.transforms
-        train_ds.apply_transforms = apply_transforms
+        #train_ds.apply_transforms = apply_transforms
         with train_ds:
             train_ds.from_data(data[0], data[3], data[0].shape[0])
         validation_ds = DataLabel(dataset_path=dataset_path)
         validation_ds.transforms = self.transforms
-        validation_ds.apply_transforms = apply_transforms
+        #validation_ds.apply_transforms = apply_transforms
         with validation_ds:
             validation_ds.from_data(data[1], data[4], data[1].shape[0])
         test_ds = DataLabel(dataset_path=dataset_path)
         test_ds.transforms = self.transforms
-        test_ds.apply_transforms = apply_transforms
+        #test_ds.apply_transforms = apply_transforms
         with test_ds:
             test_ds.from_data(data[2], data[5], data[2].shape[0])
         
@@ -1296,7 +1261,7 @@ class DataLabelFold(object):
                     author="",
                     compression_level=9,
                     clean=True)
-                dsb.apply_transforms = False
+                #dsb.apply_transforms = False
                 data = dl.data[:]
                 labels = dl.labels[:]
                 with dsb:

@@ -119,19 +119,19 @@ class TestDataset(unittest.TestCase):
         ds.destroy()
         dataset.destroy()
 
-    def test_apply_transforms_flag(self):
-        dataset = DataLabel(
-            name="test_ds",
-            dataset_path="/tmp/",
-            clean=True)
-        with dataset:
-            dataset.from_data(self.X, self.Y, self.X.shape[0])
-            dataset.apply_transforms = False
-            copy = dataset.convert("test_2", apply_transforms=True, dataset_path="/tmp/")
-        with copy:
-            self.assertEqual(copy.apply_transforms, True)
-        copy.destroy()
-        dataset.destroy()
+    #def test_apply_transforms_flag(self):
+    #    dataset = DataLabel(
+    #        name="test_ds",
+    #        dataset_path="/tmp/",
+    #        clean=True)
+    #    with dataset:
+    #        dataset.from_data(self.X, self.Y, self.X.shape[0])
+    #        dataset.apply_transforms = False
+    #        copy = dataset.convert("test_2", apply_transforms=True, dataset_path="/tmp/")
+    #    with copy:
+    #        self.assertEqual(copy.apply_transforms, True)
+    #    copy.destroy()
+    #    dataset.destroy()
 
     def test_convert_percentaje(self):
         with DataLabel(
@@ -157,7 +157,7 @@ class TestDataset(unittest.TestCase):
             transforms = Transforms()
             transforms.add(parabole)
             dsb = dataset.convert("convert_test", dataset_path="/tmp/",
-                                transforms=transforms, apply_transforms=True)
+                                transforms=transforms)
 
         with dsb:
             self.assertEqual(len(dsb.transforms.transforms), 1)
@@ -176,7 +176,7 @@ class TestDataset(unittest.TestCase):
             transforms = Transforms()
             transforms.add(parabole)
             dsb = dataset.convert("convert_test", dataset_path="/tmp/",
-                                transforms=transforms, apply_transforms=True)
+                                transforms=transforms)
 
         with dsb:
             self.assertEqual(len(dsb.transforms.transforms), 1)
@@ -196,7 +196,7 @@ class TestDataset(unittest.TestCase):
         with dataset:
             dataset.from_data(self.X, self.Y, self.X.shape[0])
             dsb = dataset.convert("convert_test", dataset_path="/tmp/",
-                                transforms=transforms, apply_transforms=False)
+                                transforms=transforms)
 
         with dsb:
             self.assertEqual(len(dsb.transforms.transforms), 1)
@@ -211,8 +211,7 @@ class TestDataset(unittest.TestCase):
             dataset.apply_transforms=False
             dataset.transforms.add(linear, b=1)
             dataset.from_data(self.X, self.Y, self.X.shape[0])
-            dsb = dataset.convert("add_transform", transforms=transforms, 
-                                apply_transforms=True)
+            dsb = dataset.convert("add_transform", transforms=transforms)
         with dsb:
             print(dsb.transforms.to_json(), dataset.transforms.to_json())
             self.assertEqual(dsb.transforms.to_json() == dataset.transforms.to_json(), True)
@@ -308,7 +307,7 @@ class TestDataset(unittest.TestCase):
             self.assertEqual(dsb.compression_level, 5)
             self.assertEqual(dsb.dataset_class, 'ml.ds.DataLabel')
             self.assertEqual(type(dsb.timestamp), type(''))
-            self.assertEqual(dsb.apply_transforms, True)
+            #self.assertEqual(dsb.apply_transforms, True)
             self.assertEqual(dsb.hash_header is not None, True)
 
             dsb.from_data(self.X.astype('float32'), self.Y, self.X.shape[0])

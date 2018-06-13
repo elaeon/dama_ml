@@ -226,8 +226,6 @@ class TestTransforms(unittest.TestCase):
         classif.set_dataset(dataset)
         classif.train(num_steps=1)
         classif.save(model_version="1")
-        with classif.test_ds:
-            self.assertEqual(classif.test_ds.apply_transforms, True)
         dataset.destroy()
         classif.destroy()
 
@@ -300,11 +298,9 @@ class TestTransforms(unittest.TestCase):
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
         dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         dataset.transforms = transforms
-        dataset.apply_transforms = False
         with dataset:
             dataset.from_data(X, Y)
-            dsb = dataset.convert(name="test2", apply_transforms=True)
-            self.assertEqual(dsb.apply_transforms, True)
+            dsb = dataset.convert(name="test2")
         with dsb:
             shape = dsb.shape
         transforms.destroy()
@@ -341,31 +337,22 @@ class TestTransforms(unittest.TestCase):
         dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         dataset.transforms = transforms
         with dataset:
-            dataset.from_data(X, Y)
-            self.assertEqual(dataset._applied_transforms, True)
+            dataset.from_data(X, Y, transform=False)
         transforms = Transforms()
         transforms.add(FitRobustScaler, name="scaler")
         with dataset:
-            dsb = dataset.convert(name="test2", apply_transforms=True, 
-                transforms=transforms, dataset_path="/tmp")
-        with dsb:
-            self.assertEqual(dsb._applied_transforms, True)
+            dsb = dataset.convert(name="test2", transforms=transforms, dataset_path="/tmp")
         dataset.destroy()
         dsb.destroy()
 
         dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         dataset.transforms = transforms
-        dataset.apply_transforms = False
         with dataset:
             dataset.from_data(X, Y)
-            self.assertEqual(dataset._applied_transforms, False)
         transforms = Transforms()
         transforms.add(FitRobustScaler, name="scaler")
         with dataset:
-            dsb = dataset.convert(name="test2", apply_transforms=True, 
-                transforms=transforms, dataset_path="/tmp")
-        with dsb:
-            self.assertEqual(dsb._applied_transforms, True)
+            dsb = dataset.convert(name="test2", transforms=transforms, dataset_path="/tmp")
         dataset.destroy()
         dsb.destroy()
 
