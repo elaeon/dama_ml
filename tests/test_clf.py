@@ -71,7 +71,7 @@ class TestSKL(unittest.TestCase):
 
     def test_new_scores(self):
         from ml.utils.numeric_functions import gini_normalized
-        from ml.clf.measures import Measure
+        from ml.measures import Measure
         metrics = Measure.make_metrics(None)
         metrics.add(gini_normalized, greater_is_better=True, output='uncertain')
         classif = RandomForest(
@@ -138,7 +138,7 @@ class TestSKL(unittest.TestCase):
     def test_simple_predict(self):
         from ml.clf.extended.w_sklearn import RandomForest
         from ml.utils.numeric_functions import gini_normalized
-        from ml.clf.measures import Measure
+        from ml.measures import Measure
 
         metrics = Measure()
         metrics.add(gini_normalized, greater_is_better=True, output='uncertain')
@@ -207,7 +207,7 @@ class TestGrid(unittest.TestCase):
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
         from ml.clf.ensemble import Grid
         from ml.utils.numeric_functions import gini_normalized
-        from ml.clf.measures import Measure
+        from ml.measures import Measure
 
         metrics = Measure()
         metrics.add(gini_normalized, greater_is_better=True, output='uncertain')
@@ -251,7 +251,7 @@ class TestGrid(unittest.TestCase):
         from ml.clf.ensemble import Grid
         from ml.clf.extended.w_sklearn import RandomForest, AdaBoost
         from ml.utils.numeric_functions import gini_normalized
-        from ml.clf.measures import Measure
+        from ml.measures import Measure
 
         metrics = Measure.make_metrics(None)
         metrics.add(gini_normalized, greater_is_better=True, output='uncertain')
