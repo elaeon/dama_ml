@@ -2,7 +2,7 @@ import os
 
 from ml.utils.config import get_settings
 from ml.models import DataDrive
-from ml.clf.measures import ListMeasure
+from ml.measures import ListMeasure
 from ml.utils.files import get_models_path, get_models_from_dataset, rm
 from ml.ds import Data
 from ml.ds import load_metadata

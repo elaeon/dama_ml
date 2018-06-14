@@ -3,7 +3,7 @@ import os
 from ml.utils.config import get_settings
 from ml.utils.numeric_functions import humanize_bytesize
 from ml.models import DataDrive
-from ml.clf.measures import ListMeasure
+from ml.measures import ListMeasure
 from ml.ds import DataLabel, Data
 from ml.utils.files import rm, get_models_path
 from ml.utils.files import get_date_from_file, get_models_from_dataset

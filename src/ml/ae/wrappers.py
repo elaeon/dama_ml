@@ -6,6 +6,7 @@ from ml.utils.config import get_settings
 from ml.models import MLModel, BaseModel
 from ml.data.ds import Data, DataLabel
 from ml.data.it import Iterator
+from ml.measures import ListMeasure
 
 settings = get_settings("ml")
 
@@ -65,7 +66,6 @@ class BaseAe(BaseModel):
         return train_ds, train_ds
         
     def scores(self, measures=None):
-        from ml.clf.measures import ListMeasure
         return ListMeasure()
 
     def predict(self, data, output=None, transform=True, chunks_size=258, model_type="decoder"):

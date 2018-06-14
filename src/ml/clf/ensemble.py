@@ -1,6 +1,6 @@
 import numpy as np
 from ml.models import DataDrive
-from ml.clf.measures import ListMeasure, Measure
+from ml.measures import ListMeasure, Measure
 from ml.data.ds import Data
 from ml.utils.config import get_settings
 from ml.data.it import Iterator
@@ -215,7 +215,6 @@ class Grid(DataDrive):
         self.fn_output = fn
 
     def scores2table(self):
-        from ml.clf.measures import ListMeasure
         return ListMeasure.dict_to_measures(self.load_meta().get("score", None))
 
 

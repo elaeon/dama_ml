@@ -6,7 +6,7 @@ from sklearn.preprocessing import LabelEncoder
 from ml.utils.config import get_settings
 from ml.models import SupervicedModel, MLModel
 from ml.data.ds import DataLabel, Data
-from ml.clf import measures as metrics
+from ml import measures as metrics
 from tqdm import tqdm
 
 

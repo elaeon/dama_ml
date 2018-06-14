@@ -7,6 +7,7 @@ import numpy as np
 from ml.data.ds import DataLabel, Data
 from ml.data.it import Iterator
 from ml.utils.files import check_or_create_path_dir
+from ml.measures import ListMeasure
 
 
 settings = get_settings("ml")
@@ -280,7 +281,6 @@ class BaseModel(DataDrive):
         self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, **model_params)
 
     def scores2table(self):
-        from ml.clf.measures import ListMeasure
         meta = self.load_meta()
         try:
             scores = meta["train"]["score"]
