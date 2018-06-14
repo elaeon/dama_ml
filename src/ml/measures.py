@@ -75,7 +75,7 @@ class Measure(object):
             measure.add(logloss, greater_is_better=False, output='n_dim')
         elif isinstance(measures, str):
             import sys
-            m = sys.modules['ml.clf.measures']
+            m = sys.modules['ml.measures']
             if hasattr(m, measures) and measures != 'logloss':
                 measure.add(getattr(m, measures), greater_is_better=True, 
                             output='discrete')
