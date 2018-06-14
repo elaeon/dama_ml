@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 
 from ml.processing import Transforms, Fit
-from ml.layers import Iterator
+from ml.data.it import Iterator
 
 
 def linear(x):
@@ -206,7 +206,7 @@ class TestTransforms(unittest.TestCase):
     #    self.assertEqual(-0.1 <= result.mean() <= 0.1, True)
 
     def test_apply_to_clf(self):
-        from ml.ds import DataLabel
+        from ml.data.ds import DataLabel
         from ml.clf.extended.w_sklearn import RandomForest
         from ml.processing import FitStandardScaler
 
@@ -230,7 +230,7 @@ class TestTransforms(unittest.TestCase):
         classif.destroy()
 
     def test_bad_input_array(self):
-        from ml.ds import DataLabel
+        from ml.data.ds import DataLabel
         from ml.clf.extended.w_sklearn import RandomForest
     
         X = np.asarray([1, 0]*10)
@@ -245,7 +245,7 @@ class TestTransforms(unittest.TestCase):
             dataset.destroy()
 
     def test_transform_col_model(self):
-        from ml.ds import DataLabel
+        from ml.data.ds import DataLabel
         from ml.processing import FitTsne
 
         transforms = Transforms()
@@ -263,7 +263,7 @@ class TestTransforms(unittest.TestCase):
         self.assertEqual(shape, (100, 6))
 
     def test_transforms_clf(self):
-        from ml.ds import DataLabel
+        from ml.data.ds import DataLabel
         from ml.processing import FitTsne
         from ml.clf.extended.w_sklearn import RandomForest
 
@@ -289,7 +289,7 @@ class TestTransforms(unittest.TestCase):
         dataset.destroy()
 
     def test_transforms_convert(self):
-        from ml.ds import DataLabel
+        from ml.data.ds import DataLabel
         from ml.processing import FitTsne
 
         transforms = Transforms()
@@ -327,7 +327,7 @@ class TestTransforms(unittest.TestCase):
         ft.destroy()
 
     def test_transforms_convert_apply(self):
-        from ml.ds import DataLabel
+        from ml.data.ds import DataLabel
         from ml.processing import FitStandardScaler, FitRobustScaler
 
         transforms = Transforms()

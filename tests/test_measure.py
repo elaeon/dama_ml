@@ -1,7 +1,9 @@
 import unittest
 import numpy as np
 
-from ml.clf.measures import ListMeasure, Measure
+from ml.measures import ListMeasure, Measure
+from ml.measures import accuracy, precision, f1
+from ml.utils.numeric_functions import gini_normalized
 
 
 class TestListMeasure(unittest.TestCase):
@@ -47,7 +49,6 @@ class TestMeasure(unittest.TestCase):
         self.labels = np.asarray([0,0,0,1,1,1,0,0,1,1,1,1,0,0,1,1,0,1,1,1,1,1,1,0,1,0,1,0,1,0,1])
 
     def test_metrics(self):
-        from ml.clf.measures import accuracy, precision, f1
         measure = Measure(self.pred_l, self.labels, name="test")
         measure.add(accuracy)
         measure.add(precision)
@@ -56,7 +57,6 @@ class TestMeasure(unittest.TestCase):
         self.assertEqual(metrics, [0.84, 0.83, 0.83])
 
     def test_tolist(self):
-        from ml.clf.measures import accuracy, precision, f1
         measure0 = Measure(self.pred_l, self.labels, name="test0")
         measure0.add(accuracy)
         measure0.add(precision)
@@ -78,15 +78,12 @@ class TestMeasure(unittest.TestCase):
             ['test2', 0.83870967741935487, 0.829059829059829, 0.83243243243243248])
 
     def test_gini(self):
-        from ml.utils.numeric_functions import gini_normalized
         measure = Measure(self.pred_l, self.labels, name="test")
         measure.add(gini_normalized)
         metrics = [round(v, 2) for v in list(measure.scores())]
         self.assertEqual(metrics, [0.59])
 
     def test_output(self):
-        from ml.clf.measures import accuracy, precision, f1
-        from ml.utils.numeric_functions import gini_normalized
         measure = Measure(self.pred_l, self.labels, name="test0")
         measure.add(accuracy, output="discrete")
         measure.add(precision, output="discrete")
