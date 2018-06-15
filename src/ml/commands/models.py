@@ -4,8 +4,7 @@ from ml.utils.config import get_settings
 from ml.models import DataDrive
 from ml.measures import ListMeasure
 from ml.utils.files import get_models_path, get_models_from_dataset, rm
-from ml.ds import Data
-from ml.ds import load_metadata
+from ml.data.ds import Data, load_metadata
 
 settings = get_settings("ml")
 

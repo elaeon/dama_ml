@@ -145,7 +145,7 @@ class ReadWriteData(object):
             try:
                 self.f[name][init:end] = array
                 init = end
-            except TypeError as e:
+            except (TypeError, IOError) as e:
                 if type(array) == np.ndarray:
                     array_type = array.dtype
                     if array.dtype != self.f[name].dtype:                        

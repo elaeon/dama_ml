@@ -1,7 +1,7 @@
 import os
 
 from ml.utils.config import get_settings
-from ml.ds import Data
+from ml.data.ds import Data
 settings = get_settings("ml")
 
 
