@@ -1,4 +1,4 @@
-from itertools import izip, imap, chain, tee, islice
+from itertools import chain, tee, islice
 import operator
 import types
 import numpy as np
@@ -52,7 +52,7 @@ class Iterator(object):
             self.it = fn_iter
         elif isinstance(fn_iter, pd.DataFrame):
             self.it = fn_iter.itertuples(index=False)
-            dtype = zip(fn_iter.columns.values, fn_iter.dtypes.values)
+            dtype = list(zip(fn_iter.columns.values, fn_iter.dtypes.values))
         else:
             self.it = iter(fn_iter)
 
@@ -94,7 +94,7 @@ class Iterator(object):
             self.type_elem = None
             return
 
-        if dtypes is not None and hasattr(dtypes, '__iter__'):
+        if isinstance(dtypes, list):
             self.dtype = self.replace_str_type_to_obj(dtypes)
             global_dtype = self._get_global_dtype(self.dtype)
         elif isinstance(chunk, pd.DataFrame):
@@ -106,11 +106,11 @@ class Iterator(object):
             self.dtype = chunk.dtype
             global_dtype = self.dtype
         else:#scalars
-            if type(chunk).__module__ == '__builtin__':
-                if hasattr(chunk, '__iter__'):
+            if type(chunk).__module__ == 'builtins':
+                if isinstance(chunk, Iterable):
                     type_e = max_type(chunk)
                     if type_e == list or type_e == tuple or\
-                        type_e == str or type_e == unicode or type_e ==  np.ndarray:
+                        type_e == str or type_e ==  np.ndarray:
                         self.dtype = "|O"
                     else:
                         self.dtype = type_e
@@ -183,7 +183,7 @@ class Iterator(object):
             for smx in grouper_chunk(chunks_size, self):
                 smx_a = np.empty(chunk_shape, dtype=dtype)
                 for i, row in enumerate(smx):
-                    if hasattr(row, '__iter__') and len(row) == 1:
+                    if isinstance(row, Iterable) and len(row) == 1:
                         smx_a[i] = row[0]
                     else:
                         smx_a[i] = row
@@ -206,7 +206,7 @@ class Iterator(object):
             if self.type_elem == np.ndarray:
                 for chunk in self:
                     for e in chunk.reshape(-1):
-                        if hasattr(e, '__iter__') and len(e) == 1:
+                        if isinstance(e, Iterable) and len(e) == 1:
                             yield e[0]
                         else:
                             yield e
@@ -241,7 +241,7 @@ class Iterator(object):
         else:
             a, b = tee((row[:i], row[i:]) for row in self)
 
-        if hasattr(self.dtype, '__iter__'):
+        if isinstance(self.dtype, list):
             dtype_0 = self.dtype[:i]
             dtype_1 = self.dtype[i:]
         else:
@@ -311,12 +311,12 @@ class Iterator(object):
             return self
 
     def scalar_operation(self, operator, scalar):
-        iter_ = imap(lambda x: operator(x, scalar), self)
+        iter_ = map(lambda x: operator(x, scalar), self)
         return Iterator(iter_, dtype=self.dtype, 
             chunks_size=self.chunks_size)
 
     def stream_operation(self, operator, stream):
-        iter_ = imap(lambda x: operator(x[0], x[1]), izip(self, stream))
+        iter_ = map(lambda x: operator(x[0], x[1]), zip(self, stream))
         return Iterator(iter_, dtype=self.dtype, 
             chunks_size=self.chunks_size)
 
@@ -332,8 +332,8 @@ class Iterator(object):
     def __mul__(self, x):
         return
 
-    @choice(operator.div)
-    def __div__(self, x):
+    @choice(operator.truediv)
+    def __truediv__(self, x):
         return
 
     @choice(pow)
@@ -355,8 +355,8 @@ class Iterator(object):
     def __imul__(self, x):
         return
 
-    @choice(operator.idiv)
-    def __idiv__(self, x):
+    @choice(operator.itruediv)
+    def __itruediv__(self, x):
         return
 
     @choice(operator.ipow)
@@ -364,7 +364,7 @@ class Iterator(object):
         return
 
     def concat_elems(self, data):
-        iter_ = (list(chain(x0, x1)) for x0, x1 in izip(self, data))
+        iter_ = (list(chain(x0, x1)) for x0, x1 in zip(self, data))
         return Iterator(iter_, dtype=self.dtype, chunks_size=self.chunks_size)
 
     def compose(self, fn, *args, **kwargs):
@@ -431,12 +431,15 @@ class Iterator(object):
         if self.has_chunks:
             return pd.concat(self, axis=0, copy=False, ignore_index=True)
         else:
-            if hasattr(self.dtype, '__iter__'):
+            if isinstance(self.dtype, list):
                 columns = [c for c, _ in self.dtype]
-                return self._assign_struct_array2df(self, self.length, self.dtype, 
-                    columns)
             else:
-                return pd.DataFrame(self)
+                columns = None
+
+            return self._assign_struct_array2df(self, self.length, self.dtype, 
+                columns)
+            #else:
+            #    return pd.DataFrame(self)
 
     def cut_it_chunk(self, length):
         end = 0
@@ -452,6 +455,7 @@ class Iterator(object):
     @cut
     def _assign_struct_array2df(self, it, length, dtype, columns, chunks_size=0):
         stc_arr = np.empty(length, dtype=dtype)
+        i = 0
         for i, row in enumerate(it):
             try:
                 stc_arr[i] = tuple(row)
@@ -467,7 +471,7 @@ class Iterator(object):
         if self.length is not None and length is None:
             length = self.length
         it = self.it_length(length)
-        if hasattr(it.dtype, '__iter__'):
+        if isinstance(it.dtype, list):
             return it.to_df()
         else:
             return it.to_narray()
@@ -493,11 +497,11 @@ class Iterator(object):
             self.iter_init = False
             return islice(self, self.num_splits())
 
-    def next(self):
+    def __next__(self):
         if len(self.pushedback) > 0:
             return self.pushedback.pop()
         try:
-            return self.it.next()
+            return next(self.it)
         except StopIteration:
             if hasattr(self.it, 'close'):
                 self.it.close()

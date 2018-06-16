@@ -1,12 +1,14 @@
-Metadata-Version: 1.1
+Metadata-Version: 2.1
 Name: ml
-Version: 0.2.0
-Summary: A modern machine learning framework
+Version: 1.0.0
+Summary: A framework for machine learning pipeline
 Home-page: https://github.com/elaeon/ML
 Author: Alejandro G. Martínez Romero
 Author-email: mara80@gmail.com
 License: Apache
-Description: 
+Description: .. image:: https://travis-ci.org/elaeon/ML.svg?branch=master
+            :target: https://travis-ci.org/elaeon/ML
+        
         Welcome to mlPyp's documentation!
         =====================================
         
@@ -27,7 +29,7 @@ Description:
         
         .. _docs: https://elaeon.github.io/ML/
         
-        Instalation
+        Installation
         =====================
         
         .. code-block:: bash
@@ -130,3 +132,5 @@ Platform: UNKNOWN
 Classifier: Development Status :: 3 - Alpha
 Classifier: License :: OSI Approved :: Apache 2 License
 Classifier: Programming Language :: Python :: 2.7
+Provides-Extra: docs
+Provides-Extra: test

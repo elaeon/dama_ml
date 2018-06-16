@@ -59,7 +59,7 @@ def rm(path):
     import shutil
     try:
         shutil.rmtree(path)
-    except OSError, e:
+    except OSError as e:
         if e.errno == 20:
             os.remove(path)
         else:

@@ -3,28 +3,9 @@
 from setuptools import find_packages, setup
 from os.path import abspath, dirname, join
 
-install_requires = [
-    'matplotlib==1.5.1',
-    'networkx==1.11',
-    'numpy==1.12',
-    'pandas==0.19.2',
-    'Pillow==3.4.2',
-    'scikit-image==0.12.3',
-    'scikit-learn==0.18',
-    'scipy==0.18.1',
-    'tabulate==0.7.5',
-    'tensorflow==1.0.1',
-    'tflearn==0.2.1',
-    'tqdm==4.11.2',
-    'h5py==2.6.0',
-    'GPy==1.5.6',
-    'climin==0.1a1',
-    'xmltodict==0.10.2',
-    'dill==0.2.6.',
-    'keras==2.0.2',
-    'seaborn==0.7.1',
-    'psycopg2==2.7.3.2'
-]
+with open("requirements.txt") as f:
+    req = f.read()
+    install_requires = req.split(",")
 
 this_dir = abspath(dirname(__file__))
 with open(join(this_dir, 'README.rst')) as f:
@@ -40,8 +21,8 @@ tests_require = [
 
 setup(
     name='ml',
-    version='0.5.0',
-    description='A modern machine learning framework',
+    version='1.0.0',
+    description='A framework for machine learning pipeline',
     long_description=long_description,
     author="Alejandro G. Martínez Romero",
     author_email="mara80@gmail.com",
