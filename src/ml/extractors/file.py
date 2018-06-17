@@ -3,14 +3,14 @@ import csv
 import zipfile
 #import bz2
 #import gzip
-import StringIO
+from io import StringIO, TextIOWrapper
 from ml.utils.files import rm
 from operator import itemgetter
 from ml.data.it import Iterator
 
 
 def get_compressed_file_manager(filepath):
-    with file(filepath, 'rb') as f:
+    with file(filepath, 'r') as f:
         start_of_file = f.read(1024)
         f.seek(0)
         for cls in (ZIPFile,):
@@ -42,7 +42,7 @@ class File(object):
         return True
 
     def reader(self, header=True, limit=None, filename=None, delimiter=",", columns=None):
-        with open(self.filepath, 'rb') as f:
+        with open(self.filepath, 'r') as f:
             csv_reader = csv.reader(f, delimiter=delimiter)
             if header is False:
                 next(csv_reader)
@@ -77,7 +77,7 @@ class ZIPFile(File):
                 filename = files[0]
 
             with zf.open(filename, 'r') as f:
-                csv_reader = csv.reader(f, delimiter=delimiter)
+                csv_reader = csv.reader(TextIOWrapper(f, encoding="utf8"), delimiter=delimiter)
                 if header is False:
                     next(csv_reader)
                 if columns is None:
@@ -93,7 +93,7 @@ class ZIPFile(File):
 
     def writer(self, iterator, filename=None, delimiter=","):
         with zipfile.ZipFile(self.filepath, "w", zipfile.ZIP_DEFLATED) as zf:
-            output = StringIO.StringIO()
+            output = StringIO()
             csv_writer = csv.writer(output, delimiter=delimiter)
             for row in iterator:
                 csv_writer.writerow(row)

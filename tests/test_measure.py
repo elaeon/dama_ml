@@ -89,7 +89,7 @@ class TestMeasure(unittest.TestCase):
         measure.add(precision, output="discrete")
         measure.add(gini_normalized, output="uncertain")
         measure.add(f1, output=None)
-        self.assertItemsEqual(measure.outputs(), ['discrete', None, 'uncertain'])
+        self.assertCountEqual(measure.outputs(), ['discrete', None, 'uncertain'])
 
 
 if __name__ == '__main__':

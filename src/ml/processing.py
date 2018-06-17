@@ -431,7 +431,6 @@ class FitTsne(Fit):
             for row, predict in zip(data, self.t(self.dim_rule(data), chunks_size=1)):
                 yield np.append(row, list(predict)[0], axis=0)
 
-        #shape=(data.shape[0], data.shape[1]+2)
         return Iterator(iter_(), dtype=data.dtype)
 
     def destroy(self):

@@ -129,7 +129,7 @@ class Iterator(object):
         try:
             shape = [None] + list(chunk.shape)
         except AttributeError:
-            if hasattr(chunk, '__iter__'):
+            if hasattr(chunk, '__iter__') and not isinstance(chunk, str):
                 shape = (None, len(chunk))
             else:
                 shape = (None,)
@@ -184,7 +184,7 @@ class Iterator(object):
                 for smx in grouper_chunk(chunks_size, self):
                     smx_a = np.empty(chunk_shape, dtype=dtype)
                     for i, row in enumerate(smx):
-                            smx_a[i] = row[0]
+                        smx_a[i] = row[0]
                     yield smx_a[:i+1]
             else:
                 for smx in grouper_chunk(chunks_size, self):

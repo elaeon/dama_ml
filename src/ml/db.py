@@ -42,7 +42,7 @@ class SQL(object):
         columns = self.columns(exclude_id=True)    
 
         if isinstance(key, tuple):
-            _columns = [columns.keys()[key[1]]]
+            _columns = [list(columns.keys())[key[1]]]
             key = key[0]
         else:
             _columns = None

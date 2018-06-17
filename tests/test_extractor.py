@@ -23,25 +23,25 @@ class TestCSVZip(unittest.TestCase):
     def test_csv(self):
         csv = CSV(self.filepath)
         for r0, r1 in zip(self.iterator, csv.reader(limit=1)):
-            self.assertItemsEqual(map(str, r0), r1)
+            self.assertCountEqual(map(str, r0), r1)
 
     def test_header(self):
         csv = CSV(self.filepath)
-        self.assertItemsEqual(csv.header(), ["A", "B", "C", "D", "F"])
+        self.assertCountEqual(csv.header(), ["A", "B", "C", "D", "F"])
 
     def test_shape(self):
         csv = CSV(self.filepath)
-        self.assertItemsEqual(csv.shape(), (1, 5))
+        self.assertCountEqual(csv.shape(), (1, 5))
         csv = CSV(self.filepath, has_header=False)
-        self.assertItemsEqual(csv.shape(), (2, 5))
+        self.assertCountEqual(csv.shape(), (2, 5))
 
     def test_columns(self):
         schema = [("A", "int"), ("C", "int")]
         csv = CSV(self.filepath, schema=schema)
-        self.assertItemsEqual(csv.columns(), ["A", "C"])
-        self.assertItemsEqual(csv.columns_index(), [0, 2])
+        self.assertCountEqual(csv.columns(), ["A", "C"])
+        self.assertCountEqual(csv.columns_index(), [0, 2])
         data = list(csv.reader(columns=csv.columns_index()))
-        self.assertItemsEqual(data, [('A', 'C'), ('1', '3')])
+        self.assertCountEqual(data, [('A', 'C'), ('1', '3')])
 
     def test_to_iter(self):
         schema = [("A", "int"), ("C", "int")]
@@ -49,7 +49,7 @@ class TestCSVZip(unittest.TestCase):
         it = csv.to_iter()
         it.set_length(csv.shape()[0])
         data = it.to_memory()
-        self.assertItemsEqual(data.values[0], [1, 3])
+        self.assertCountEqual(data.values[0], [1, 3])
 
 
 class TestCSV(unittest.TestCase):
@@ -70,17 +70,17 @@ class TestCSV(unittest.TestCase):
     def test_csv(self):
         csv = CSV(self.filepath)
         for r0, r1 in zip(self.iterator, csv.reader(limit=1)):
-            self.assertItemsEqual(map(str, r0), r1)
+            self.assertCountEqual(map(str, r0), r1)
 
     def test_header(self):
         csv = CSV(self.filepath)
-        self.assertItemsEqual(csv.header(), ["A", "B", "C", "D", "F"])
+        self.assertCountEqual(csv.header(), ["A", "B", "C", "D", "F"])
 
     def test_shape(self):
         csv = CSV(self.filepath)
-        self.assertItemsEqual(csv.shape(), (1, 5))
+        self.assertCountEqual(csv.shape(), (1, 5))
         csv = CSV(self.filepath, has_header=False)
-        self.assertItemsEqual(csv.shape(), (2, 5))
+        self.assertCountEqual(csv.shape(), (2, 5))
 
 
 if __name__ == '__main__':

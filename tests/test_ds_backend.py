@@ -48,29 +48,29 @@ class TestSQL(unittest.TestCase):
     def test_index(self):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                self.assertItemsEqual(sql[1].to_memory()[0], self.data[1])
-                self.assertItemsEqual(sql[5].to_memory()[0], self.data[5])
-                self.assertItemsEqual(sql[1:].to_memory()[2], self.data[1:][2])
-                self.assertItemsEqual(sql[:10].to_memory()[5], self.data[:10][5])
-                self.assertItemsEqual(sql[3:8].to_memory()[1], self.data[3:8][1])
+                self.assertCountEqual(sql[1].to_memory()[0], self.data[1])
+                self.assertCountEqual(sql[5].to_memory()[0], self.data[5])
+                self.assertCountEqual(sql[1:].to_memory()[2], self.data[1:][2])
+                self.assertCountEqual(sql[:10].to_memory()[5], self.data[:10][5])
+                self.assertCountEqual(sql[3:8].to_memory()[1], self.data[3:8][1])
         except psycopg2.OperationalError:
             pass
  
     def test_key(self):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test", chunks_size=2) as sql:
-                self.assertItemsEqual(sql["A"].flat().to_memory(), get_column(self.data, 0))
-                self.assertItemsEqual(sql["B"].flat().to_memory(), get_column(self.data, 1))
-                self.assertItemsEqual(sql["C"].flat().to_memory(), get_column(self.data, 2))
+                self.assertCountEqual(sql["A"].flat().to_memory(), get_column(self.data, 0))
+                self.assertCountEqual(sql["B"].flat().to_memory(), get_column(self.data, 1))
+                self.assertCountEqual(sql["C"].flat().to_memory(), get_column(self.data, 2))
         except psycopg2.OperationalError:
             pass
 
     def test_multikey(self):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                self.assertItemsEqual(sql[["A", "B"]].to_memory()[0], ['a', 1])
-                self.assertItemsEqual(sql[["B", "C"]].to_memory()[0], [1, 0.1])
-                self.assertItemsEqual(sql[["A", "C"]].to_memory()[0], ['a', 0.1])
+                self.assertCountEqual(sql[["A", "B"]].to_memory()[0], ['a', 1])
+                self.assertCountEqual(sql[["B", "C"]].to_memory()[0], [1, 0.1])
+                self.assertCountEqual(sql[["A", "C"]].to_memory()[0], ['a', 0.1])
         except psycopg2.OperationalError:
             pass
 
@@ -86,7 +86,7 @@ class TestSQL(unittest.TestCase):
         try:
             with SQL(username="alejandro", db_name="ml", order_by=['id'],
                 table_name="test", chunks_size=2, df=False) as sql:
-                self.assertItemsEqual(sql[2:6].flat().to_memory(), np.asarray(self.data[2:6]).reshape(-1))
+                self.assertCountEqual(sql[2:6].flat().to_memory(), np.asarray(self.data[2:6]).reshape(-1))
         except psycopg2.OperationalError:
             pass
 
@@ -95,8 +95,8 @@ class TestSQL(unittest.TestCase):
             with SQL(username="alejandro", db_name="ml",
                 table_name="test", chunks_size=12, df=True) as sql:
                 columns = sql.columns()
-                self.assertEqual(columns.keys(), ['id', 'a', 'b', 'c'])
-                self.assertEqual(columns.values(), ['int', '|O', 'int', 'float'])
+                self.assertEqual(list(columns.keys()), ['id', 'a', 'b', 'c'])
+                self.assertEqual(list(columns.values()), ['int', '|O', 'int', 'float'])
         except psycopg2.OperationalError:
             pass
 
@@ -114,7 +114,7 @@ class TestSQL(unittest.TestCase):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
                 sql.update(3, ("0", 0, 0))
-                self.assertItemsEqual(sql[3].flat().to_memory(), ("0", 0, 0))
+                self.assertCountEqual(sql[3].flat().to_memory(), ("0", 0, 0))
         except psycopg2.OperationalError:
             pass
 
@@ -122,40 +122,40 @@ class TestSQL(unittest.TestCase):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
                 sql[12] = ["0", 0, 0]
-                self.assertItemsEqual(sql[12].to_memory()[0], ["0", 0, 0])
+                self.assertCountEqual(sql[12].to_memory()[0], ["0", 0, 0])
                 sql[10] = ["0", 0, 0]
-                self.assertItemsEqual(sql[10].to_memory()[0], ["0", 0, 0])
+                self.assertCountEqual(sql[10].to_memory()[0], ["0", 0, 0])
                 values = [["k", 11, 1.1], ["l", 12, 1.2], ["m", 13, 1.3]]
                 sql[10:] = values
                 sql_values = sql[10:].to_memory()
-                self.assertItemsEqual(sql_values[0], values[0])
-                self.assertItemsEqual(sql_values[1], values[1])
-                self.assertItemsEqual(sql_values[2], values[2])
+                self.assertCountEqual(sql_values[0], values[0])
+                self.assertCountEqual(sql_values[1], values[1])
+                self.assertCountEqual(sql_values[2], values[2])
 
                 values = [["A", 1, 1], ["B", 2, 2], ["C", 3, 3]]
                 sql[:3] = values
                 sql_values = sql[:3].to_memory()
-                self.assertItemsEqual(sql_values[0], values[0])
-                self.assertItemsEqual(sql_values[1], values[1])
-                self.assertItemsEqual(sql_values[2], values[2])
+                self.assertCountEqual(sql_values[0], values[0])
+                self.assertCountEqual(sql_values[1], values[1])
+                self.assertCountEqual(sql_values[2], values[2])
 
                 values = [["M", 13, 13], ["N", 14, 1.4], ["O", 15, 1.5]]
                 sql[12:14] = values
                 sql_values = sql[12:15].to_memory()
-                self.assertItemsEqual(sql_values[0], values[0])
-                self.assertItemsEqual(sql_values[1], values[1])
-                self.assertItemsEqual(sql_values[2], values[2])
+                self.assertCountEqual(sql_values[0], values[0])
+                self.assertCountEqual(sql_values[1], values[1])
+                self.assertCountEqual(sql_values[2], values[2])
         except psycopg2.OperationalError:
             pass
 
     def test_index_limit(self):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test", only=["A"]) as sql:
-                self.assertItemsEqual(sql[:3].flat().to_memory(), ["a", "b", "c"])
+                self.assertCountEqual(sql[:3].flat().to_memory(), ["a", "b", "c"])
             with SQL(username="alejandro", db_name="ml", table_name="test", only=["B", "C"]) as sql:
-                self.assertItemsEqual(sql[:3].flat().to_memory(), [1, 0.1, 2, 0.2, 3, 0.3])
+                self.assertCountEqual(sql[:3].flat().to_memory(), [1, 0.1, 2, 0.2, 3, 0.3])
             with SQL(username="alejandro", db_name="ml", table_name="test", only=["A", "B", "C"]) as sql:
-                self.assertItemsEqual(sql[:3].flat().to_memory(), ["a", 1, 0.1, "b", 2, 0.2, "c", 3, 0.3])
+                self.assertCountEqual(sql[:3].flat().to_memory(), ["a", 1, 0.1, "b", 2, 0.2, "c", 3, 0.3])
         except psycopg2.OperationalError:
             pass
 
@@ -163,7 +163,7 @@ class TestSQL(unittest.TestCase):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test", only=["A"], order_by="rand") as sql:
                 sql[:10].to_memory()
-                self.assertItemsEqual(sql.query, "SELECT a FROM test ORDER BY random() LIMIT 10")
+                self.assertCountEqual(sql.query, "SELECT a FROM test ORDER BY random() LIMIT 10")
         except psycopg2.OperationalError:
             pass
 
@@ -178,7 +178,7 @@ class TestSQL(unittest.TestCase):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test", only=["A"]) as sql:
                 sql[:10].to_memory()
-                self.assertItemsEqual(sql.query, "SELECT a FROM test ORDER BY id LIMIT 10")
+                self.assertCountEqual(sql.query, "SELECT a FROM test ORDER BY id LIMIT 10")
         except psycopg2.OperationalError:
             pass
 
@@ -186,7 +186,7 @@ class TestSQL(unittest.TestCase):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test", only=["A"], order_by=None) as sql:
                 sql[:10].to_memory()
-                self.assertItemsEqual(sql.query, "SELECT a FROM test  LIMIT 10")
+                self.assertCountEqual(sql.query, "SELECT a FROM test  LIMIT 10")
         except psycopg2.OperationalError:
             pass
 
@@ -194,7 +194,7 @@ class TestSQL(unittest.TestCase):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test", only=["A"], order_by=None) as sql:
                 sql[:].to_memory()
-                self.assertItemsEqual(sql.query, "SELECT a FROM test  ")
+                self.assertCountEqual(sql.query, "SELECT a FROM test  ")
         except psycopg2.OperationalError:
             pass
 
@@ -202,7 +202,7 @@ class TestSQL(unittest.TestCase):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test", order_by=None) as sql:
                 sql[:, 1]
-                self.assertItemsEqual(sql.query, "SELECT b FROM test  ")
+                self.assertCountEqual(sql.query, "SELECT b FROM test  ")
         except psycopg2.OperationalError:
             pass
 
