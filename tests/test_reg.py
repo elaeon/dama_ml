@@ -66,7 +66,7 @@ class TestRegSKL(unittest.TestCase):
         scores_table = reg.scores2table()
         reg.destroy()
         dl.destroy()
-        self.assertEqual(scores_table.headers, ['', 'msle'])
+        self.assertEqual(list(scores_table.headers), ['', 'msle'])
 
     def test_predict(self):
         from ml.processing import Transforms
@@ -106,7 +106,7 @@ class TestRegSKL(unittest.TestCase):
         reg.save(model_version="2")
         reg.save(model_version="3")
         metadata = reg.load_meta()
-        self.assertItemsEqual(metadata["model"]["versions"], ["1", "2", "3"])
+        self.assertCountEqual(metadata["model"]["versions"], ["1", "2", "3"])
         dataset.destroy()
         reg.destroy()
 

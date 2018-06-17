@@ -160,7 +160,7 @@ class TSNe:
         while 1:
             n = X.shape[0]
             #P = np.zeros([n, self.batch_size])
-            for i in xrange(0, n, self.batch_size):
+            for i in range(0, n, self.batch_size):
                 P_batch = self.x2p(X[i:i + self.batch_size])
                 P_batch[np.isnan(P_batch)] = 0
                 P_batch = (P_batch + P_batch.T) / 2.

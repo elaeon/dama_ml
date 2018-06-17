@@ -19,7 +19,7 @@ log.addHandler(console)
 
 from keras import backend
 if backend._BACKEND == "theano":
-    raise Exception, "Theano does not support the autoencoders wrappers, change it with export KERAS_BACKEND=tensorflow"
+    raise Exception("Theano does not support the autoencoders wrappers, change it with export KERAS_BACKEND=tensorflow")
 
 
 class BaseAe(BaseModel):

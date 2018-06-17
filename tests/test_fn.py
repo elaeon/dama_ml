@@ -30,7 +30,7 @@ class TestLinearOutLayer(unittest.TestCase):
             outlayers = dl.outlayers(type_detector='isolation', n_estimators=25, max_samples=10, 
                 contamination=self.contamination)
         dl.destroy()
-        self.assertItemsEqual(list(outlayers), [0, 1, 13, 15])
+        self.assertCountEqual(list(outlayers), [0, 1, 13, 15])
 
     def test_linear_outlayer2(self):
         df = pd.DataFrame(data=self.data)
@@ -43,7 +43,7 @@ class TestLinearOutLayer(unittest.TestCase):
             ds.from_data(df.as_matrix(), np.asarray(self.outlayers))
             outlayers = ds.outlayers(type_detector='robust', contamination=self.contamination)
         ds.destroy()
-        self.assertItemsEqual(list(outlayers), [0, 8, 13, 15])
+        self.assertCountEqual(list(outlayers), [0, 8, 13, 15])
 
 
 class TestNumericFn(unittest.TestCase):
@@ -96,12 +96,12 @@ class TestNumericFn(unittest.TestCase):
         from ml.utils.numeric_functions import features2rows
         data = np.asarray([['a', 'b'], ['c', 'd'], ['e', 'f']])
         f2r = features2rows(data)
-        self.assertItemsEqual(f2r[0], ['0', 'a'])
-        self.assertItemsEqual(f2r[1], ['0', 'c']) 
-        self.assertItemsEqual(f2r[2], ['0', 'e']) 
-        self.assertItemsEqual(f2r[3], ['1', 'b']) 
-        self.assertItemsEqual(f2r[4], ['1', 'd']) 
-        self.assertItemsEqual(f2r[5], ['1', 'f'])
+        self.assertCountEqual(f2r[0], ['0', 'a'])
+        self.assertCountEqual(f2r[1], ['0', 'c']) 
+        self.assertCountEqual(f2r[2], ['0', 'e']) 
+        self.assertCountEqual(f2r[3], ['1', 'b']) 
+        self.assertCountEqual(f2r[4], ['1', 'd']) 
+        self.assertCountEqual(f2r[5], ['1', 'f'])
 
     def test_data_type(self):
         from ml.utils.numeric_functions import data_type, unique_size
@@ -165,17 +165,17 @@ class TestNumericFn(unittest.TestCase):
         data = np.random.rand(size, 3)
         data[:, 2] = data[:, 2] <= .9
         v = downsample(data, {0: 0, 1:3}, 2, size)
-        self.assertItemsEqual(v.to_memory()[:, 2], [1,1,1])
+        self.assertCountEqual(v.to_memory()[:, 2], [1,1,1])
 
     def test_downsample_static(self):
         data = [0,0,0,1,1,1,1,1,2,2,2]
         size = len(data)
         v = downsample(data, {0: 2, 1: 4}, None, size)
-        self.assertItemsEqual(v.to_memory(), [0,0,1,1,1,1])
+        self.assertCountEqual(v.to_memory(), [0,0,1,1,1,1])
         v = downsample(data, {1: 4}, None, size)
-        self.assertItemsEqual(v.to_memory(), [1,1,1,1])
+        self.assertCountEqual(v.to_memory(), [1,1,1,1])
         v = downsample(data, {2: 2, 1: 4}, None, size)
-        self.assertItemsEqual(v.to_memory(), [2,2,1,1,1,1])
+        self.assertCountEqual(v.to_memory(), [2,2,1,1,1,1])
 
 
 def count_values(data, y, v):

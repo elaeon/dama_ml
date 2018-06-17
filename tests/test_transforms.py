@@ -163,7 +163,7 @@ class TestTransforms(unittest.TestCase):
         transforms.add(linear_p, b=10)
         numbers = np.ones((10, 1))
         result = transforms.apply(numbers)
-        self.assertItemsEqual(result.flat().to_memory(10), np.ones((10, 1)) + 11) # result [12, ..., 12]
+        self.assertCountEqual(result.flat().to_memory(10), np.ones((10, 1)) + 11) # result [12, ..., 12]
 
     def test_apply_many_dim(self):
         transforms = Transforms()
@@ -173,7 +173,7 @@ class TestTransforms(unittest.TestCase):
         transforms.add(linear_1)
         numbers = np.ones((10, 1))
         result = transforms.apply(numbers)
-        self.assertItemsEqual(result.flat().to_memory(10), np.zeros((10, 1)) + 5)
+        self.assertCountEqual(result.flat().to_memory(10), np.zeros((10, 1)) + 5)
 
     def test_apply_row_iterlayer(self):
         transforms = Transforms()
@@ -181,7 +181,7 @@ class TestTransforms(unittest.TestCase):
         transforms.add(linear_p, b=10)
         numbers = Iterator((e for e in np.ones((10,))))
         result = transforms.apply(numbers)
-        self.assertItemsEqual(result.flat().to_memory(10), np.ones((10, 1)) + 11) # result [12, ..., 12]
+        self.assertCountEqual(result.flat().to_memory(10), np.ones((10, 1)) + 11) # result [12, ..., 12]
 
     def test_apply_col(self):
         from ml.processing import FitStandardScaler, FitTruncatedSVD
@@ -319,11 +319,11 @@ class TestTransforms(unittest.TestCase):
         data = np.array(data, dtype=float)
         ft = FitReplaceNan(data, name="test_nan_fit", path='/tmp/')
         data_nonan = ft.transform(data).to_memory()
-        self.assertItemsEqual(data_nonan[:,0], [1,0,0,-1])
-        self.assertItemsEqual(data_nonan[:,1], [2,2,2.5,2])
-        self.assertItemsEqual(data_nonan[:,2], [3,3,3,3])
-        self.assertItemsEqual(data_nonan[:,3], [5,5,-1,5])
-        self.assertItemsEqual(data_nonan[:,4], [-1,9,9,-1])
+        self.assertCountEqual(data_nonan[:,0], [1,0,0,-1])
+        self.assertCountEqual(data_nonan[:,1], [2,2,2.5,2])
+        self.assertCountEqual(data_nonan[:,2], [3,3,3,3])
+        self.assertCountEqual(data_nonan[:,3], [5,5,-1,5])
+        self.assertCountEqual(data_nonan[:,4], [-1,9,9,-1])
         ft.destroy()
 
     def test_transforms_convert_apply(self):
@@ -410,7 +410,7 @@ class TestTransforms(unittest.TestCase):
         transforms.add(parabole)
         result = transforms.apply(X, chunks_size=10)
         data = result.to_memory(2)
-        self.assertItemsEqual(data[0], [121, 144, 169, 196])
+        self.assertCountEqual(data[0], [121, 144, 169, 196])
 
     def test_transforms_apply(self):
         from ml.processing import Process
@@ -436,7 +436,7 @@ class TestTransforms(unittest.TestCase):
         cg = P(it, name="test", path="/tmp", clean=True)
         cg.map(counter_group)
         with cg.ds:
-            self.assertItemsEqual(cg.reduce(add_counter_group, chunks_size=2).to_memory()[0], [1,2,4])
+            self.assertCountEqual(cg.reduce(add_counter_group, chunks_size=2).to_memory()[0], [1,2,4])
 
 
 if __name__ == '__main__':

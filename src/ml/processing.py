@@ -427,10 +427,8 @@ class FitTsne(Fit):
         return tsne.predict
 
     def transform(self, data):
-        from itertools import izip
-
         def iter_():
-            for row, predict in izip(data, self.t(self.dim_rule(data), chunks_size=1)):
+            for row, predict in zip(data, self.t(self.dim_rule(data), chunks_size=1)):
                 yield np.append(row, list(predict)[0], axis=0)
 
         #shape=(data.shape[0], data.shape[1]+2)
@@ -675,10 +673,10 @@ def pixelate(data, pixel_width=None, pixel_height=None, mode='mean'):
         for h in range(0, height, pixel_height):
             miny, maxy = h, min(height, h + pixel_height)
             color = tuple(modefunc([data[x][y]
-                    for x in xrange(minx, maxx)
-                    for y in xrange(miny, maxy)]))
-            for x in xrange(minx, maxx):
-                for y in xrange(miny, maxy):
+                    for x in range(minx, maxx)
+                    for y in range(miny, maxy)]))
+            for x in range(minx, maxx):
+                for y in range(miny, maxy):
                     data[x][y] = color
     #print("--- %s seconds ---" % (time.time() - start_time))
     return data
@@ -688,6 +686,6 @@ def drop_columns(row, exclude_cols=None, include_cols=None):
     if include_cols is not None:
         return row[:, include_cols]
     elif exclude_cols is not None:
-        features = set(x for x in xrange(row.shape[1]))
+        features = set(x for x in range(row.shape[1]))
         to_keep = list(features.difference(set(exclude_cols)))
         return row[:, to_keep]

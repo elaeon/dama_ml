@@ -44,7 +44,7 @@ def load_metadata(path):
         log.info(e)
         return {}
     except Exception as e:
-        print(e.message, path)
+        log.error("{} {}".format(e, path))
 
 
 def calc_nshape(data, value):

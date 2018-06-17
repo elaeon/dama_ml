@@ -65,9 +65,9 @@ class TestSKL(unittest.TestCase):
         classif.save(model_version="1")
         scores_table = classif.scores2table()
         classif.destroy()
-        self.assertEqual(scores_table.headers, ['', 'f1', 'auc', 'recall', 'precision', 
+        self.assertCountEqual(list(scores_table.headers), ['', 'f1', 'auc', 'recall', 'precision', 
             'logloss', 'accuracy'])
-        self.assertEqual(scores_table.measures[0][5] < 1, True)
+        self.assertEqual(scores_table.measures[0][5] <= 1, True)
 
     def test_new_scores(self):
         from ml.utils.numeric_functions import gini_normalized
@@ -82,7 +82,7 @@ class TestSKL(unittest.TestCase):
         classif.train(num_steps=1)
         classif.save(model_version="1")
         scores_table = classif.scores2table()
-        self.assertEqual(scores_table.headers, ['', 'f1', 'auc', 'recall', 'precision', 
+        self.assertCountEqual(list(scores_table.headers), ['', 'f1', 'auc', 'recall', 'precision', 
             'logloss', 'gini_normalized', 'accuracy'])
         classif.destroy()
 
@@ -105,7 +105,7 @@ class TestSKL(unittest.TestCase):
         classif.train()
         classif.save(model_version="1")
         values = np.asarray([[1], [2], [.4], [.1], [0], [1]])
-        self.assertItemsEqual(classif.predict(values).to_memory(6), [True, True, False, False, False, True])
+        self.assertCountEqual(classif.predict(values).to_memory(6), [True, True, False, False, False, True])
         self.assertEqual(len(classif.predict(values).to_memory(6)), 6)
         self.assertEqual(len(classif.predict(np.asarray(values), chunks_size=0).to_memory(6)), 6)
         dataset.destroy()
@@ -233,7 +233,7 @@ class TestGrid(unittest.TestCase):
         classif.output("avg")
         classif.save()
         meta = classif.load_meta()
-        self.assertItemsEqual(meta.keys(), classif._metadata(calc_scores=False).keys())
+        self.assertCountEqual(meta.keys(), classif._metadata(calc_scores=False).keys())
 
         classif = Grid( 
             model_name="test_grid", 
@@ -481,7 +481,7 @@ class TestLightGBM(unittest.TestCase):
             check_point_path="/tmp/")
         classif.load(model_version=self.model_version)
         meta = classif.load_meta()
-        self.assertItemsEqual(meta["train"]["params"].keys(), self.params.keys())
+        self.assertCountEqual(meta["train"]["params"].keys(), self.params.keys())
         self.assertEqual(meta["train"]["model_version"], self.model_version)
         self.assertEqual(meta["train"]["num_steps"], self.num_steps)
         self.assertEqual(len(meta["train"]["score"].keys()) > 0, True)
