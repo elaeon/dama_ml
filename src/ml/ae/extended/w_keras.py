@@ -134,7 +134,7 @@ class VAE(Keras):
         print("Computing batches...")
         while 1:
             n = X.shape[0]
-            for i in xrange(0, n, batch_size):
+            for i in range(0, n, batch_size):
                 yield (X[i:i + batch_size], X[i:i + batch_size])
 
     def train(self, batch_size=100, num_steps=50):
@@ -217,7 +217,7 @@ class DAE(Keras):
         print("Computing batches...")
         while 1:
             n = X.shape[0]
-            for i in xrange(0, n, batch_size):
+            for i in range(0, n, batch_size):
                 yield (X[i:i + batch_size], X[i:i + batch_size])
 
     def train(self, batch_size=100, num_steps=50):

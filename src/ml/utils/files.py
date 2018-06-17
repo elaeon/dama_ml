@@ -30,7 +30,7 @@ def set_up_cfg(filepath):
     base = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
     home = os.path.expanduser("~")
     #setting_expl = os.path.join(base, "settings.cfg.example")
-    with open(setting_expl, 'rb') as f:
+    with open(setting_expl, 'r') as f:
         cfg = f.read()
         cfg = cfg.format(home=home, base=base)
     with open(filepath, 'wb') as f:
