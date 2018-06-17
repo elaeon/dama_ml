@@ -7,7 +7,7 @@ import psycopg2
 import logging
 import datetime
 
-from collections import defaultdict, Iterable
+from collections import defaultdict
 from ml.utils.config import get_settings
 from ml.utils.seq import grouper_chunk
 from ml.utils.numeric_functions import max_type, num_splits, filter_sample, wsrj
@@ -27,7 +27,7 @@ def choice(operator):
         def view(x, y):
             if isinstance(x, Iterator) and isinstance(y, Iterator):
                 return x.stream_operation(operator, y)
-            elif isinstance(y, Iterable):
+            elif hasattr(y, "__iter__"):
                 return x.stream_operation(operator, Iterator(y))
             else:
                 return x.scalar_operation(operator, y)
@@ -107,7 +107,7 @@ class Iterator(object):
             global_dtype = self.dtype
         else:#scalars
             if type(chunk).__module__ == 'builtins':
-                if isinstance(chunk, Iterable):
+                if hasattr(chunk, "__iter__"):
                     type_e = max_type(chunk)
                     if type_e == list or type_e == tuple or\
                         type_e == str or type_e ==  np.ndarray:
@@ -180,14 +180,18 @@ class Iterator(object):
             chunk_shape = [chunks_size] + list(i_features)
 
         if not isinstance(dtype, list):
-            for smx in grouper_chunk(chunks_size, self):
-                smx_a = np.empty(chunk_shape, dtype=dtype)
-                for i, row in enumerate(smx):
-                    if isinstance(row, Iterable) and len(row) == 1:
-                        smx_a[i] = row[0]
-                    else:
-                        smx_a[i] = row
-                yield smx_a[:i+1]
+            if len(self.shape) == 2 and self.shape[1] == 1:
+                for smx in grouper_chunk(chunks_size, self):
+                    smx_a = np.empty(chunk_shape, dtype=dtype)
+                    for i, row in enumerate(smx):
+                            smx_a[i] = row[0]
+                    yield smx_a[:i+1]
+            else:
+                for smx in grouper_chunk(chunks_size, self):
+                    smx_a = np.empty(chunk_shape, dtype=dtype)
+                    for i, row in enumerate(smx):
+                            smx_a[i] = row
+                    yield smx_a[:i+1]
         else:
             columns = [c for c, _ in dtype]
             for smx in grouper_chunk(chunks_size, self):
@@ -206,7 +210,7 @@ class Iterator(object):
             if self.type_elem == np.ndarray:
                 for chunk in self:
                     for e in chunk.reshape(-1):
-                        if isinstance(e, Iterable) and len(e) == 1:
+                        if hasattr(e, "__iter__") and len(e) == 1:
                             yield e[0]
                         else:
                             yield e
@@ -214,9 +218,11 @@ class Iterator(object):
                 for chunk in self:
                     for e in chunk.values.reshape(-1):
                         yield e
-            elif self.type_elem.__module__ == '__builtin__':
+            elif self.type_elem.__module__ == 'builtins':
                 for e in chain.from_iterable(self):
                     yield e
+            else:
+                raise Exception("Type of elem {} does not supported".format(self.type_elem))
         
         it = Iterator(_iter(), dtype=self.dtype)
         if self.length is not None:
@@ -438,8 +444,6 @@ class Iterator(object):
 
             return self._assign_struct_array2df(self, self.length, self.dtype, 
                 columns)
-            #else:
-            #    return pd.DataFrame(self)
 
     def cut_it_chunk(self, length):
         end = 0
@@ -448,7 +452,9 @@ class Iterator(object):
             if end > length:
                 mod = length % self.chunks_size
                 if mod > 0:
-                    chunk = chunk[:mod]                  
+                    chunk = chunk[:mod]
+                yield chunk
+                break     
             yield chunk
 
     #cut if length > array size 
@@ -456,10 +462,11 @@ class Iterator(object):
     def _assign_struct_array2df(self, it, length, dtype, columns, chunks_size=0):
         stc_arr = np.empty(length, dtype=dtype)
         i = 0
-        for i, row in enumerate(it):
-            try:
+        if hasattr(self.type_elem, "__iter__"):
+            for i, row in enumerate(it):
                 stc_arr[i] = tuple(row)
-            except TypeError:
+        else:
+            for i, row in enumerate(it):
                 stc_arr[i] = row
 
         smx = pd.DataFrame(stc_arr,

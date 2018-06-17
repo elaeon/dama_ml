@@ -68,9 +68,9 @@ class TestDataset(unittest.TestCase):
         with dataset:
             dataset.from_data(self.X, self.Y, self.X.shape[0])
             dataset0, label0 = dataset.only_labels([0])
-            self.assertItemsEqual(label0, np.zeros(5))
+            self.assertCountEqual(label0, np.zeros(5))
             dataset1, label1 = dataset.only_labels([1])
-            self.assertItemsEqual(label1, np.ones(5))
+            self.assertCountEqual(label1, np.ones(5))
         dataset.destroy()
 
     def test_labels_info(self):
@@ -263,15 +263,15 @@ class TestDataset(unittest.TestCase):
         dl = Data(name="test", dataset_path="/tmp", clean=True)
         with dl:
             dl.from_data(X, X.shape[0])
-            self.assertItemsEqual(dl.data[0], X[0])
-            self.assertItemsEqual(dl.data[1], X[1])
-            self.assertItemsEqual(dl.data[2], X[2])
-            self.assertItemsEqual(dl.data[3], X[3])
+            self.assertCountEqual(dl.data[0], X[0])
+            self.assertCountEqual(dl.data[1], X[1])
+            self.assertCountEqual(dl.data[2], X[2])
+            self.assertCountEqual(dl.data[3], X[3])
         dl.destroy()
 
     def test_ds_dtype(self):
         X = np.asarray([[1,2,3,4,5]], dtype=np.int)
-        Y = np.asarray(['1','2','3','4','5'], dtype=str)
+        Y = np.asarray(['1','2','3','4','5'], dtype=object)
         dl = DataLabel(name="test", dataset_path="/tmp", clean=True)
         with dl:
             dl.from_data(X, Y, self.X.shape[0])
@@ -378,7 +378,7 @@ class TestDataset(unittest.TestCase):
             columns = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
             data.columns = columns
             self.assertEqual(data.columns.shape[0], self.X.shape[1])
-            self.assertItemsEqual(data.columns[:], columns)
+            self.assertCountEqual(data.columns[:], columns)
             data.destroy()
 
     def test_fmtypes_set_columns(self):
@@ -393,7 +393,7 @@ class TestDataset(unittest.TestCase):
     def test_fmtypes_empty(self):
         with Data(name="test", dataset_path="/tmp/", clean=True) as data:
             data.from_data(self.X, self.X.shape[0])
-            self.assertItemsEqual(data.columns, [u'c0', u'c1', u'c2', u'c3', 
+            self.assertCountEqual(data.columns, [u'c0', u'c1', u'c2', u'c3', 
                 u'c4', u'c5', u'c6', u'c7', u'c8', u'c9'])
             data.destroy()
 
@@ -402,8 +402,8 @@ class TestDataset(unittest.TestCase):
             array = np.zeros((10, 2))
             data.from_data(array, array.shape[0])
             data.data[:, 1] = np.ones((10))
-            self.assertItemsEqual(data.data[:, 1], np.ones((10)))
-            self.assertItemsEqual(data.data[:, 0], np.zeros((10)))
+            self.assertCountEqual(data.data[:, 1], np.ones((10)))
+            self.assertCountEqual(data.data[:, 0], np.zeros((10)))
 
         with Data(name="test", dataset_path="/tmp/", mode='r') as data:
             data.info()
@@ -457,16 +457,16 @@ class TestDataset(unittest.TestCase):
         with DataLabel(name="test", dataset_path="/tmp/", clean=True) as ds:
             ds.from_data(X, "1")
             self.assertEqual(ds.shape, (10, 1))
-            self.assertItemsEqual(ds.data, X[:, 0])
-            self.assertItemsEqual(ds.labels, X[:, 1])
+            self.assertCountEqual(ds.data, X[:, 0])
+            self.assertCountEqual(ds.labels, X[:, 1])
             ds.destroy()
 
         with DataLabel(name="test", dataset_path="/tmp/", clean=True) as ds:
             X = pd.DataFrame({"a": [0,1,2,3,4,5,6,7,8,9], "b": [0,1,1,0,1,1,0,0,0,1]})
             ds.from_data(X, "b")
             self.assertEqual(ds.shape, (10, 1))
-            self.assertItemsEqual(ds.data, X["a"])
-            self.assertItemsEqual(ds.labels, X["b"])
+            self.assertCountEqual(ds.data, X["a"])
+            self.assertCountEqual(ds.labels, X["b"])
             ds.destroy()
 
 

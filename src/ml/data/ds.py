@@ -43,7 +43,7 @@ def load_metadata(path):
     except IOError as e:
         log.info(e)
         return {}
-    except Exception, e:
+    except Exception as e:
         print(e.message, path)
 
 
@@ -81,8 +81,8 @@ class ReadWriteData(object):
         self.f.close()
 
     def auto_dtype(self, ttype):
-        if ttype == np.dtype("O"):
-            return h5py.special_dtype(vlen=unicode)
+        if ttype == np.dtype("O") or ttype.kind == "U":
+            return h5py.special_dtype(vlen=str)
         else:
             return ttype
 
@@ -98,11 +98,11 @@ class ReadWriteData(object):
 
     def _set_space_fmtypes(self, num_features):
         self.f.require_group("fmtypes")
-        self.f['fmtypes'].require_dataset("names", (num_features,), dtype=h5py.special_dtype(vlen=unicode), 
+        self.f['fmtypes'].require_dataset("names", (num_features,), dtype=h5py.special_dtype(vlen=str), 
             exact=True, chunks=True, **self.zip_params)
         self.f['fmtypes'].require_dataset("types", (num_features,), dtype=np.dtype("|S8"), 
             exact=True, chunks=True, **self.zip_params)
-        self.columns = map(lambda x: "c"+str(x), range(num_features))
+        self.columns = list(map(lambda x: "c"+str(x), range(num_features)))
 
     def _set_attr(self, name, value):
         if self.f is None:
@@ -450,7 +450,7 @@ class Data(ReadWriteData):
         """
         import hashlib
         header = [getattr(self, attr) for attr in self.header_map]
-        h = hashlib.md5("".join(header))
+        h = hashlib.md5("".join(header).encode("utf-8"))
         return h.hexdigest()
 
     def distinct_data(self):
@@ -776,7 +776,7 @@ class DataLabel(Data):
     def to_DF(self, dataset, labels):
         if len(dataset.shape) > 2:
             dataset = dataset.reshape(dataset.shape[0], -1)
-        columns_name = map(lambda x: "c"+str(x), range(dataset.shape[-1])) + ["target"]
+        columns_name = list(map(lambda x: "c"+str(x), range(dataset.shape[-1]))) + ["target"]
         return pd.DataFrame(data=np.column_stack((dataset, labels)), columns=columns_name)
 
     def to_df(self, labels2numbers=False):
@@ -962,8 +962,9 @@ class DataLabel(Data):
     def cv(self, train_size=.7, valid_size=.1, unbalanced=None):
         from sklearn.model_selection import train_test_split
 
+        train_size = round(train_size+valid_size, 2)
         X_train, X_test, y_train, y_test = train_test_split(
-            self.data[:], self.labels[:], train_size=round(train_size+valid_size, 2), random_state=0)
+            self.data[:], self.labels[:], train_size=train_size, random_state=0)
         size = self.data.shape[0]
         valid_size_index = int(round(size * valid_size, 0))
         X_validation = X_train[:valid_size_index]
