@@ -33,7 +33,7 @@ def set_up_cfg(filepath):
     with open(setting_expl, 'r') as f:
         cfg = f.read()
         cfg = cfg.format(home=home, base=base)
-    with open(filepath, 'wb') as f:
+    with open(filepath, 'w') as f:
         f.write(cfg)
     return True
 
