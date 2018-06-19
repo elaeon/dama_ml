@@ -310,17 +310,8 @@ class Process(object):
         self.name = name
         self.dataset_path = path
         self.meta_path = path + self.module_cls_name() + "_" + self.name
-        self.save_data(data, clean=clean)
         self.dtype = data.dtype
-
-    def save_data(self, data, clean):
-        from ml.data.ds import Data
-        if clean is True:
-            with Data(name=self.name, dataset_path=self.dataset_path, clean=clean) as ds:
-                ds.from_data(data)
-        else:
-            ds = Data.original_ds(name=self.name, dataset_path=self.dataset_path)
-        self.ds = ds
+        self.data = data
 
     @classmethod
     def module_cls_name(cls):
@@ -328,8 +319,7 @@ class Process(object):
 
     def map(self, fn, chunks_size=258, **params):
         from ml.data.ds import Data
-        with self.ds:
-            self.save(fn(self.ds.to_iter(self.dtype, chunks_size=chunks_size), **params))
+        fn(self.data, **params)
 
     def reduce(self, fn, chunks_size=258, **params):
         ds_it = self.ds.to_iter(self.dtype, chunks_size=chunks_size)

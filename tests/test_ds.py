@@ -468,6 +468,16 @@ class TestDataset(unittest.TestCase):
             self.assertCountEqual(ds.data, X["a"])
             self.assertCountEqual(ds.labels, X["b"])
             ds.destroy()
+    
+    def from_it(self):
+        from ml.data.it import Iterator
+        it = Iterator([1,2,3,4,4,4,5,6,3,8,1])
+        it.set_length(10)
+        data = Data(name="test", dataset_path="/tmp", clean=True)
+        with data:
+            data.from_data(it, chunks_size=20)
+            self.assertCountEqual(data.columns[:], ["c0"])
+        data.destroy()
 
 
 class TestDataSetFold(unittest.TestCase):

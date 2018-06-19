@@ -405,7 +405,10 @@ class Data(ReadWriteData):
         """
         return the number of features of the dataset
         """
-        return self.data.shape[-1]
+        if len(self.data.shape) > 1:
+            return self.data.shape[-1]
+        else:
+            return 1
 
     @property
     def shape(self):

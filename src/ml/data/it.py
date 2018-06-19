@@ -45,7 +45,7 @@ def cut(fn):
 
 
 class Iterator(object):
-    def __init__(self, fn_iter, dtype=None, chunks_size=0):
+    def __init__(self, fn_iter, dtype=None, chunks_size=0) -> None:
         if isinstance(fn_iter, types.GeneratorType) or isinstance(fn_iter, psycopg2.extensions.cursor):
             self.it = fn_iter
         elif isinstance(fn_iter, Iterator):
@@ -66,12 +66,12 @@ class Iterator(object):
         self.chunk_taste(dtype)
     
     def columns(self):
-        if hasattr(self.dtype, '__iter__'):
+        if isinstance(self.dtype, list):
             return [c for c, _ in self.dtype]
         else:
             return None
 
-    def pushback(self, val):
+    def pushback(self, val) -> None:
         self.pushedback.append(val)
 
     def chunk_type_elem(self):
@@ -83,7 +83,7 @@ class Iterator(object):
             self.pushback(chunk)
             return type(chunk)
 
-    def chunk_taste(self, dtypes):
+    def chunk_taste(self, dtypes) -> None:
         """Check for the dtype and global dtype in a chunk"""
         try:
             chunk = next(self)
@@ -111,7 +111,7 @@ class Iterator(object):
                     type_e = max_type(chunk)
                     if type_e == list or type_e == tuple or\
                         type_e == str or type_e ==  np.ndarray:
-                        self.dtype = "|O"
+                        self.dtype = np.dtype("|O")
                     else:
                         self.dtype = type_e
                 else:
@@ -121,10 +121,10 @@ class Iterator(object):
                         self.dtype = type(chunk)
 
                     if self.dtype == str:
-                        self.dtype = "|O"
+                        self.dtype = np.dtype("|O")
             else:
                 self.dtype = chunk.dtype
-            global_dtype = self.dtype
+            global_dtype = np.dtype(self.dtype)
 
         try:
             shape = [None] + list(chunk.shape)
@@ -154,11 +154,11 @@ class Iterator(object):
                 dtype_tmp = dtype
         return dtype_tmp
 
-    def _get_global_dtype(self, dtype):
+    def _get_global_dtype(self, dtype: list) -> float:
         sizeof = [(np.dtype(cdtype), cdtype) for _, cdtype in dtype]
         return max(sizeof, key=lambda x: x[0])[1]
 
-    def to_chunks(self, chunks_size, dtype=None):
+    def to_chunks(self, chunks_size: int, dtype=None):
         if self.has_chunks is False and chunks_size > 0:
             if dtype is None:
                 dtype = self.dtype
@@ -169,7 +169,7 @@ class Iterator(object):
         else:
             return self
     
-    def chunks_gen(self, chunks_size, dtype):
+    def chunks_gen(self, chunks_size: int, dtype):
         if chunks_size < 1:
             chunks_size = self.shape[0]
 
@@ -198,7 +198,7 @@ class Iterator(object):
                 yield self._assign_struct_array2df(smx, chunk_shape[0], dtype, 
                     columns, chunks_size=chunks_size)
     
-    def check_datatime(self, dtype):
+    def check_datatime(self, dtype: list):
         cols = []
         for col_i, (_, type_) in enumerate(dtype):
             if type_ == np.dtype('<M8[ns]'):
@@ -232,7 +232,7 @@ class Iterator(object):
             it = it.to_chunks(self.chunks_size, dtype=self.global_dtype)  
         return it
 
-    def sample(self, k, col=None, weight_fn=None):
+    def sample(self, k: int, col=None, weight_fn=None):
         if self.has_chunks:
             data = self.clean_chunks()
         else:
@@ -241,7 +241,7 @@ class Iterator(object):
         it.set_length(k)
         return it
 
-    def split(self, i):
+    def split(self, i: int):
         if self.type_elem == pd.DataFrame:
             a, b = tee((row.iloc[:, :i], row.iloc[:, i:]) for row in self)
         else:
@@ -260,7 +260,7 @@ class Iterator(object):
                 chunks_size=self.chunks_size)
         return it0, it1
 
-    def weights_gen(self, data, col, weight_fn):
+    def weights_gen(self, data, col: int, weight_fn):
         if not hasattr(self.type_elem, '__iter__') and weight_fn is not None:
             for elem in data:
                 yield elem, weight_fn(elem)
@@ -301,12 +301,12 @@ class Iterator(object):
             self._shape = (v,)
             self.features_dim = ()
 
-    def set_length(self, length):
+    def set_length(self, length: int):
         self.length = length
         if length is not None and self.features_dim is not None:
             self._shape = tuple([length] + list(self.features_dim))
 
-    def it_length(self, length):
+    def it_length(self, length: int):
         if self.has_chunks:
             it = Iterator(self.cut_it_chunk(length), dtype=self.dtype,
                 chunks_size=self.chunks_size)
@@ -316,7 +316,7 @@ class Iterator(object):
             self.set_length(length)
             return self
 
-    def scalar_operation(self, operator, scalar):
+    def scalar_operation(self, operator, scalar: float):
         iter_ = map(lambda x: operator(x, scalar), self)
         return Iterator(iter_, dtype=self.dtype, 
             chunks_size=self.chunks_size)
