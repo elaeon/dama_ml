@@ -227,7 +227,8 @@ class ListMeasure(object):
         """
         from ml.utils.order import order_table
         self.drop_empty_columns()
-        return order_table(self.headers, self.measures, order_column, natural_order=self.order)
+        return order_table(self.headers, self.measures, order_column, 
+            natural_order=self.order)
 
     def __str__(self):
         return self.to_tabulate()
@@ -267,27 +268,41 @@ class ListMeasure(object):
     def __add__(self, other):
         for hs, ho in zip(self.headers, other.headers):
             if hs != ho:
-                raise Exception
+                raise Exception("Could not add new headers to the table")
 
-        diff_len = abs(len(self.headers) - len(other.headers)) + 1
-        if len(self.headers) < len(other.headers):
+        if len(self.headers) == 0:
             headers = other.headers
-            this_measures = [m +  ([None] * diff_len) for m in self.measures]
+            this_measures = []
             other_measures = other.measures
             order = other.order
-        elif len(self.headers) > len(other.headers):
+        elif len(other.headers) == 0:
             headers = self.headers
             this_measures = self.measures
-            other_measures = [m + ([None] * diff_len) for m in other.measures]
+            other_measures = []
             order = self.order
         else:
-            headers = self.headers
-            this_measures = self.measures
-            other_measures = other.measures
-            order = self.order
+            diff_len = abs(len(self.headers) - len(other.headers))
+            if len(self.headers) < len(other.headers):
+                headers = other.headers
+                this_measures = [m + ([""] * diff_len) for m in self.measures]
+                other_measures = other.measures
+                order = other.order
+            elif len(self.headers) > len(other.headers):
+                headers = self.headers
+                this_measures = self.measures
+                other_measures = [m + ([""] * diff_len) for m in other.measures]
+                order = self.order
+            else:
+                headers = self.headers
+                this_measures = self.measures
+                other_measures = other.measures
+                order = self.order
 
         list_measure = ListMeasure(
             headers=headers, 
             measures=this_measures+other_measures,
             order=order)
         return list_measure
+
+    #def __iadd__(self, other):
+    #    return self.__add__(other)

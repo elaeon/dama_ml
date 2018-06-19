@@ -40,7 +40,34 @@ class TestListMeasure(unittest.TestCase):
         self.assertEqual(list_measure.empty_columns(), set([1, 3]))
         list_measure.drop_empty_columns()
         self.assertEqual(list_measure.headers, ["Name", "M2"])
-        self.assertEqual(list_measure.measures, [["Row1", 0], ["Row2", None]]) 
+        self.assertEqual(list_measure.measures, [["Row1", 0], ["Row2", None]])
+
+    def test_add_list_empty(self):
+        pred = np.asarray([0,0,0,1,0,0,1,1,1,1,1,1,0,0,1,1,0,0,1,1,1,1,1,0,1,0,1,0,1,0,1])
+        labels = np.asarray([0,0,0,1,1,1,0,0,1,1,1,1,0,0,1,1,0,1,1,1,1,1,1,0,1,0,1,0,1,0,1])
+        measure = Measure(name="test")
+        measure.add(accuracy)
+        list_measure = ListMeasure()
+        measure.set_data(pred, labels, output=None)
+        list_measure += measure.to_list()
+        self.assertCountEqual(list_measure.headers, ['', 'accuracy'])
+        self.assertEqual(len(list_measure.measures) == 1, True)
+        self.assertEqual(list_measure.measures[0][0], "test")
+
+    def test_add_list(self):
+        pred = [0,0,0,1,0,0,1,1,1,1,1,1,0,0,1,1,0,0,1,1,1,1,1,0,1,0,1,0,1,0,1]
+        labels = [0,0,0,1,1,1,0,0,1,1,1,1,0,0,1,1,0,1,1,1,1,1,1,0,1,0,1,0,1,0,1]
+        measure0 = Measure(name="test0")
+        measure0.add(accuracy)
+        measure1 = Measure(name="test1")
+        measure1.add(accuracy)
+        measure0.set_data(pred, labels, output=None)
+        measure1.set_data(pred, labels, output=None)
+        list_measure = measure0.to_list()
+        list_measure += measure1.to_list()
+        self.assertCountEqual(list_measure.headers, ['', 'accuracy'])
+        self.assertEqual(len(list_measure.measures) == 2, True)
+        self.assertEqual(list_measure.measures[0][0], "test0")
 
 
 class TestMeasure(unittest.TestCase):
