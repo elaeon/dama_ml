@@ -13,10 +13,10 @@ def run(args):
         table = []
         headers = []
         for row in reader:
-            headers = [unicode(e, 'utf-8') for e in row]
+            headers = [e for e in row]
             break
         for row in reader:
-            table.append([unicode(e, 'utf-8') for e in row])
+            table.append([e for e in row])
 
         print("FILE", filepath)
         print(tabulate(table, headers))

@@ -4,8 +4,8 @@ from ml.utils.config import get_settings
 from ml.models import DataDrive
 from ml.measures import ListMeasure
 from ml.utils.files import get_models_path, get_models_from_dataset, rm
-from ml.ds import Data
-from ml.ds import load_metadata
+from ml.data.ds import Data
+from ml.data.ds import load_metadata
 
 settings = get_settings("ml")
 
@@ -21,6 +21,8 @@ def run(args):
                 model_path = os.path.join(
                     settings["checkpoints_path"], clf, model_name, "meta.xmeta")
                 meta = load_metadata(model_path)
+                if meta is None:
+                    continue
                 if args.info == meta.get("model_name", None) or\
                     args.info == meta.get("group_name", None):
                     for version in meta.get("versions", ["1"]):

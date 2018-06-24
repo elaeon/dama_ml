@@ -48,12 +48,12 @@ class File(object):
                 next(csv_reader)
             if columns is None:
                 for i, row in enumerate(csv_reader):
-                    if limit is not None and i > limit:
+                    if limit is not None and i >= limit:
                         break
                     yield row
             else:
                 for i, row in enumerate(csv_reader):
-                    if limit is not None and i > limit:
+                    if limit is not None and i >= limit:
                         break
                     yield itemgetter(*columns)(row)
 
@@ -82,12 +82,12 @@ class ZIPFile(File):
                     next(csv_reader)
                 if columns is None:
                     for i, row in enumerate(csv_reader):
-                        if limit is not None and i > limit:
+                        if limit is not None and i >= limit:
                             break
                         yield row
                 else:
                     for i, row in enumerate(csv_reader):
-                        if limit is not None and i > limit:
+                        if limit is not None and i >= limit:
                             break
                         yield itemgetter(*columns)(row)
 
@@ -126,17 +126,18 @@ class CSV(object):
         self.schema = schema
         self.has_header = has_header
         self.delimiter = delimiter
-        self.file_manager = get_compressed_file_manager_ext(self.filepath)#get_compressed_file_manager(self.filepath)
+        self.file_manager = get_compressed_file_manager_ext(self.filepath)
+
         if filename is None:
             self.filename = self.filepath
         else:
             self.filename = filename
 
     def header(self):
-        return list(self.reader(header=True, limit=0, columns=None))[0]
+        return list(self.reader(header=True, limit=1, columns=None))[0]
 
     def columns_index(self):
-        if self.schema is not None and self.has_header:
+        if self.schema is not None and self.has_header and hasattr(self.schema, "__iter__"):
             header = self.header()
             index = []
             for c, _ in self.schema:
@@ -144,7 +145,7 @@ class CSV(object):
             return index
 
     def columns(self):
-         if self.schema is not None:
+         if self.schema is not None and hasattr(self.schema, "__iter__"):
             return [c for c, _ in self.schema]
          else:
             return self.header()

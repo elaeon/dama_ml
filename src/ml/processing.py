@@ -143,6 +143,15 @@ class TransformsFn(object):
         
         return Iterator(self.reduce(data), chunks_size=chunks_size)
 
+    def napply(self, data):
+        fns = []
+        for fn_, params in self.transforms:
+            fns.append((locate(fn_), params))
+        
+        for fn, params in fns:
+            smx = fn(data, **params)
+        return data
+
 
 class TransformsClass(TransformsFn):
     
@@ -297,6 +306,14 @@ class Transforms(object):
                 log.debug("APPLY TRANSFORMS:" + str(t_obj.transforms))
                 log.debug("Transform type:" + t_obj.type())
                 data = t_obj.apply(data, chunks_size=chunks_size)
+        return data
+
+    def napply(self, data):
+        if not self.is_empty():
+            for t_obj in self.transforms:
+                log.debug("APPLY TRANSFORMS:" + str(t_obj.transforms))
+                log.debug("Transform type:" + t_obj.type())
+                data = t_obj.napply(data)
         return data
 
     def destroy(self):

@@ -412,31 +412,71 @@ class TestTransforms(unittest.TestCase):
         data = result.to_memory(2)
         self.assertCountEqual(data[0], [121, 144, 169, 196])
 
-    def test_transforms_apply(self):
-        from ml.processing import Process
-        class P(Process):
-            def load(self):
-                return self.counter
+    #def test_transforms_apply(self):
+    #    from ml.processing import Process
+    #    class P(Process):
+    #        def load(self):
+    #            return self.counter
 
-            def save(self, result):
-                self.counter = result
+    #        def save(self, result):
+    #            self.counter = result
 
-        X = np.asarray([
-            [1, 2], 
-            [2, 3],
-            [3, 4],
-            [5, 6],
-            [1, 2],
-            [2, 3],
-            [1, 1],
-            [1, 2],
-            [1, 2]], dtype=np.dtype("int"))
-        it = Iterator(X)
-        it.set_length(X.shape[0])
-        cg = P(it, name="test", path="/tmp", clean=True)
-        cg.map(counter_group)
-        with cg.ds:
-            self.assertCountEqual(cg.reduce(add_counter_group, chunks_size=2).to_memory()[0], [1,2,4])
+    #    X = np.asarray([
+    #        [1, 2], 
+    #        [2, 3],
+    #        [3, 4],
+    #        [5, 6],
+    #        [1, 2],
+    #        [2, 3],
+    #        [1, 1],
+    #        [1, 2],
+    #        [1, 2]], dtype=np.dtype("int"))
+    #    it = Iterator(X)
+    #    it.set_length(X.shape[0])
+    #    cg = P(it, name="test", path="/tmp", clean=True)
+    #    cg.map(counter_group)
+    #    with cg.ds:
+    #        self.assertCountEqual(cg.reduce(add_counter_group, chunks_size=2).to_memory()[0], [1,2,4])
+
+
+def add_1(smx):
+    print("add_1")
+    smx["c0"] = smx["c0"] * 0
+    return smx
+
+
+def add_2(smx):
+    print("add_2")
+    smx["c0"] = smx["c0"] + 1.5
+    return smx
+
+
+class TestProcessing(unittest.TestCase):
+    def setUp(self):
+        data = zip(np.arange(1000), np.arange(1000))
+        self.it = Iterator(data).to_chunks(10)
+        self.it.set_length(1000)
+
+    def test_map(self):
+        from ml.data.ds import Data
+        import dask.dataframe as ddf
+        import dask.array as ndf
+
+        data = Data(name="test", dataset_path="/tmp", clean=True)
+        with data:
+            data.from_data(self.it, chunks_size=20)
+            df = ddf.from_array(data.data, chunksize=data.data.chunks[0], columns=data.columns[:])
+            #df = ndf.from_array(data.data, chunks=data.data.chunks)
+            transforms = Transforms()
+            transforms.add(add_1)
+            transforms.add(add_2)
+            tdf = transforms.napply(df).compute()
+            print(tdf.iloc[0])
+        data.destroy()
+        #from ml.processing import Process
+        #self.cg.map(counter_group, chunks_size=3)
+        #cg.map(counter_column, chunks_size=chunks_size)
+        #cg.map(var_group, chunks_size=chunks_size)
 
 
 if __name__ == '__main__':

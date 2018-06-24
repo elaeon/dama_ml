@@ -224,7 +224,9 @@ class ReadWriteData(object):
     def original_ds(self, name, dataset_path=None):
         from pydoc import locate
         meta_dataset = Data(name=name, dataset_path=dataset_path, clean=False)
-        DS = locate(meta_dataset.dataset_class)
+        DS = locate(str(meta_dataset.dataset_class))
+        if DS is None:
+            return
         return DS(name=name, dataset_path=dataset_path, clean=False)
     
 
@@ -501,7 +503,7 @@ class Data(ReadWriteData):
         self._set_space_shape('data', data.shape, dtype=data.global_dtype)
         end = self.chunks_writer("/data/data", data)
         self._set_space_fmtypes(self.num_features())
-        self.md5 = self.calc_md5()
+        #self.md5 = self.calc_md5()
         columns = data.columns()
         if columns is not None:
             self.columns = columns
@@ -727,7 +729,11 @@ class DataLabel(Data):
             data = data.it_length(length)
             data_shape = list(data.shape[:-1]) + [data.shape[-1] - 1]
             self._set_space_shape('data', data_shape, data.global_dtype)
-            self._set_space_shape('labels', (data.shape[0],), data.global_dtype)
+            if isinstance(data.dtype, list):
+                dtype_dict = dict(data.dtype)
+                self._set_space_shape('labels', (data.shape[0],), dtype_dict[labels])
+            else:
+                self._set_space_shape('labels', (data.shape[0],), data.global_dtype)
             self.chunks_writer_split("/data/data", "/data/labels", data, labels)
         else:
             if not isinstance(labels, Iterator):
@@ -740,7 +746,7 @@ class DataLabel(Data):
             self.chunks_writer("/data/labels", labels)
 
         self._set_space_fmtypes(self.num_features())
-        self.md5 = self.calc_md5()
+        #self.md5 = self.calc_md5()
         columns = data.columns()
         if columns is not None:
             self.columns = columns
@@ -776,23 +782,24 @@ class DataLabel(Data):
         return dl
 
     @classmethod
-    def to_DF(self, dataset, labels):
+    def to_DF(self, dataset, labels=None):
         if len(dataset.shape) > 2:
             dataset = dataset.reshape(dataset.shape[0], -1)
-        columns_name = list(map(lambda x: "c"+str(x), range(dataset.shape[-1]))) + ["target"]
-        return pd.DataFrame(data=np.column_stack((dataset, labels)), columns=columns_name)
+        if labels is not None:
+            columns_name = list(map(lambda x: "c"+str(x), range(dataset.shape[-1]))) + ["target"]
+            return pd.DataFrame(data=np.column_stack((dataset, labels)), columns=columns_name)
+        else:
+            columns_name = list(map(lambda x: "c"+str(x), range(dataset.shape[-1])))
+            return pd.DataFrame(data=dataset, columns=columns_name)        
 
-    def to_df(self, labels2numbers=False):
+    def to_df(self, include_target=True):
         """
         convert the dataset to a dataframe
         """
-        if labels2numbers == False:
+        if include_target == True:
             df = self.to_DF(self.data[:], self.labels[:])
         else:
-            from sklearn.preprocessing import LabelEncoder
-            le = LabelEncoder()
-            le.fit(self.labels[:])
-            df = self.to_DF(self.data[:], le.transform(self.labels[:]))
+            df = self.to_DF(self.data[:])
         return df
 
     @classmethod
@@ -856,7 +863,7 @@ class DataLabel(Data):
             corr = df.corr()
             mask = np.zeros_like(corr, dtype=np.bool)
             mask[np.triu_indices_from(mask)] = True
-            cmap = sns.diverging_palette(220, 10, as_cmap=True)
+            cmap = sns.diverging_palette(10, 240, n=6, as_cmap=True)
             sns.heatmap(corr, mask=mask, cmap=cmap, vmax=.3,
                 square=True, xticklabels=5, yticklabels=5,
                 linewidths=.5, cbar_kws={"shrink": .5})

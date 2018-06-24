@@ -4,7 +4,7 @@ from ml.utils.config import get_settings
 from ml.utils.numeric_functions import humanize_bytesize
 from ml.models import DataDrive
 from ml.measures import ListMeasure
-from ml.ds import DataLabel, Data
+from ml.data.ds import DataLabel, Data
 from ml.utils.files import rm, get_models_path
 from ml.utils.files import get_date_from_file, get_models_from_dataset
 
@@ -50,10 +50,11 @@ def run(args):
             for filename in files:
                 size = os.stat(path+filename).st_size
                 dl = Data.original_ds(filename)
-                with dl:
-                    date = dl._get_attr("timestamp")
-                table.append([filename, humanize_bytesize(size), date])
-                total_size += size
+                if dl is not None:
+                    with dl:
+                        date = dl._get_attr("timestamp")
+                    table.append([filename, humanize_bytesize(size), date])
+                    total_size += size
         print("Total size: {}".format(humanize_bytesize(total_size)))
         list_measure = ListMeasure(headers=headers, measures=table)
         print(list_measure.to_tabulate(order_column="dataset"))

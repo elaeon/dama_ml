@@ -120,16 +120,17 @@ class SKLP(RegModel):
 
 
 class LGB(RegModel):
-    def ml_model(self, model, model_2=None):
+    def ml_model(self, model, bst=None):
+        self.bst = bst
         return MLModel(fit_fn=model.train, 
-                            predictors=[model_2.predict],
+                            predictors=[self.bst.predict],
                             load_fn=self.load_fn,
-                            save_fn=model_2.save_model)
+                            save_fn=self.bst.save_model)
 
     def load_fn(self, path):
         import lightgbm as lgb
         bst = lgb.Booster(model_file=path)
-        self.model = self.ml_model(lgb, model_2=bst)
+        self.model = self.ml_model(lgb, bst=bst)
 
     def array2dmatrix(self, data):
         import lightgbm as lgb
