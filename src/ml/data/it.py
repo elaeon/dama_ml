@@ -57,6 +57,8 @@ class Iterator(object):
             self.it = iter(fn_iter)
 
         self.pushedback = []
+        if chunks_size is None:
+            chunks_size = 0
         self.chunks_size = chunks_size
         self.has_chunks = True if chunks_size > 0 else False
         self.features_dim = None

@@ -32,8 +32,27 @@ class File(object):
     mime_type = 'text/plain'
     proper_extension = 'csv'
 
-    def __init__(self, filepath):
+    def __init__(self, filepath, mode='r'):
         self.filepath = filepath
+
+    def read(self, header=True, nrows=None, delimiter=",", columns=None, 
+            exclude=False, chunksize=None) -> Iterator:
+        import pandas as pd
+        if exclude is True:
+            cols = lambda col: col not in columns
+        elif exclude is False and columns:
+            cols = lambda col: col in columns
+        else:
+            cols = None
+        df = pd.read_csv(self.filepath, chunksize=chunksize, nrows=nrows, 
+            usecols=cols, delimiter=delimiter)
+        return Iterator(df, chunks_size=chunksize)
+
+    def write(self, iterator: Iterator, delimiter=",") -> None:
+        with open(self.filepath, 'w') as f:
+            csv_writer = csv.writer(f, delimiter=delimiter)
+            for row in iterator:
+                csv_writer.writerow(row)
 
     @classmethod
     def is_magic(self, data):
@@ -41,62 +60,54 @@ class File(object):
             return data.startswith(self.magic)
         return True
 
-    def reader(self, header=True, limit=None, filename=None, delimiter=",", columns=None):
-        with open(self.filepath, 'r') as f:
-            csv_reader = csv.reader(f, delimiter=delimiter)
-            if header is False:
-                next(csv_reader)
-            if columns is None:
-                for i, row in enumerate(csv_reader):
-                    if limit is not None and i >= limit:
-                        break
-                    yield row
-            else:
-                for i, row in enumerate(csv_reader):
-                    if limit is not None and i >= limit:
-                        break
-                    yield itemgetter(*columns)(row)
-
-    def writer(self, iterator, filename=None, delimiter=","):
-        with open(self.filepath, 'w') as f:
-            csv_writer = csv.writer(f, delimiter=delimiter)
-            for row in iterator:
-                csv_writer.writerow(row)
-
-
+    
 class ZIPFile(File):
     magic = '\x50\x4b\x03\x04'
     file_type = 'zip'
     mime_type = 'compressed/zip'
     proper_extension = 'zip'
 
-    def reader(self, header=True, limit=None, filename=None, delimiter=",", columns=None):
+    def read(self, header=True, nrows=None, filename=None, delimiter=",", 
+        columns=None, exclude=False, chunksize=None) -> Iterator:
+        import pandas as pd
+        if filename is None:
+            return super(ZIPFile, self).read(header=header, nrows=nrows, delimiter=delimiter,
+            columns=columns, exclude=exclude, chunksize=chunksize)
+        else:
+            iter_ = self._read_another_file(filename, columns, delimiter)
+            dtype = [(col, object) for col in next(iter_)] 
+            it = Iterator(iter_, 
+                chunks_size=chunksize, dtype=dtype)
+            if nrows is not None:
+                it.set_length(nrows)
+            return it
+
+    def _read_another_file(self, filename, columns, delimiter, dtype=None):
         with zipfile.ZipFile(self.filepath, 'r') as zf:
             files = zf.namelist()
-            if len(files) == 1:
-                filename = files[0]
-
             with zf.open(filename, 'r') as f:
                 csv_reader = csv.reader(TextIOWrapper(f, encoding="utf8"), delimiter=delimiter)
-                if header is False:
-                    next(csv_reader)
+                yield next(csv_reader)
                 if columns is None:
-                    for i, row in enumerate(csv_reader):
-                        if limit is not None and i >= limit:
-                            break
+                    for row in csv_reader:
                         yield row
                 else:
-                    for i, row in enumerate(csv_reader):
-                        if limit is not None and i >= limit:
-                            break
+                    for row in csv_reader:
                         yield itemgetter(*columns)(row)
 
-    def writer(self, iterator, filename=None, delimiter=","):
+    def write(self, iterator, filename=None, delimiter=","):
         with zipfile.ZipFile(self.filepath, "w", zipfile.ZIP_DEFLATED) as zf:
             output = StringIO()
             csv_writer = csv.writer(output, delimiter=delimiter)
             for row in iterator:
                 csv_writer.writerow(row)
+            if filename is None:
+                filename = self.filepath.split("/")[-1]
+                filename = filename.split(".")[:-1]
+                if len(filename) == 1:
+                    filename = "{}.csv".format(filename[0])
+                else:
+                    filename = ".".join(filename)
             zf.writestr(filename, output.getvalue())
             output.close()
 
@@ -120,51 +131,25 @@ class ZIPFile(File):
 
 
 class CSV(object):
-    def __init__(self, filepath, schema=None, has_header=True, delimiter=",", 
-            filename=None):
+    def __init__(self, filepath, delimiter=","):
         self.filepath = filepath
-        self.schema = schema
-        self.has_header = has_header
-        self.delimiter = delimiter
         self.file_manager = get_compressed_file_manager_ext(self.filepath)
-
-        if filename is None:
-            self.filename = self.filepath
-        else:
-            self.filename = filename
-
-    def header(self):
-        return list(self.reader(header=True, limit=1, columns=None))[0]
-
-    def columns_index(self):
-        if self.schema is not None and self.has_header and hasattr(self.schema, "__iter__"):
-            header = self.header()
-            index = []
-            for c, _ in self.schema:
-                index.append(header.index(c))
-            return index
+        self.delimiter = delimiter
 
     def columns(self):
-         if self.schema is not None and hasattr(self.schema, "__iter__"):
-            return [c for c, _ in self.schema]
-         else:
-            return self.header()
+        return self.reader(nrows=1).columns()
 
-    def shape(self, filename=None):
-        size = sum(1 for _ in self.reader(limit=None, header=not self.has_header))
+    @property
+    def shape(self):
+        size = sum(1 for _ in self.reader(nrows=None, delimiter=self.delimiter))
         return size, len(self.columns())
 
-    def reader(self, header=True, limit=None, columns=None):
-        return self.file_manager.reader(header=header, limit=limit, 
-            filename=self.filename, delimiter=self.delimiter, columns=columns)
+    def reader(self, *args, **kwargs):
+        kwargs["delimiter"] = self.delimiter
+        return self.file_manager.read(*args, **kwargs)
     
-    def writer(self, iterator):
-        return self.file_manager.writer(iterator, filename=self.filename,
-            delimiter=self.delimiter)
+    def writer(self, *args, **kwargs):
+        return self.file_manager.write(*args, **kwargs)
 
     def destroy(self):
         rm(self.filepath)
-    
-    def to_iter(self):
-        return Iterator(self.reader(header=not self.has_header, 
-            columns=self.columns_index()), dtype=self.schema)

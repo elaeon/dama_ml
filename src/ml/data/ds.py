@@ -779,28 +779,21 @@ class DataLabel(Data):
                 dl.transforms = self.transforms + transforms
             else:
                 dl.transforms = self.transforms
-        return dl
-
-    @classmethod
-    def to_DF(self, dataset, labels=None):
-        if len(dataset.shape) > 2:
-            dataset = dataset.reshape(dataset.shape[0], -1)
-        if labels is not None:
-            columns_name = list(map(lambda x: "c"+str(x), range(dataset.shape[-1]))) + ["target"]
-            return pd.DataFrame(data=np.column_stack((dataset, labels)), columns=columns_name)
-        else:
-            columns_name = list(map(lambda x: "c"+str(x), range(dataset.shape[-1])))
-            return pd.DataFrame(data=dataset, columns=columns_name)        
+        return dl      
 
     def to_df(self, include_target=True):
         """
         convert the dataset to a dataframe
         """
+        if len(self.shape) > 2:
+            raise Exception("I could don't convert a multiarray to tabular")
+
         if include_target == True:
-            df = self.to_DF(self.data[:], self.labels[:])
+            columns_name = list(self.columns) + ["target"]
+            return pd.DataFrame(data=np.column_stack((self.data[:], self.labels[:])), columns=columns_name)
         else:
-            df = self.to_DF(self.data[:])
-        return df
+            columns_name = list(self.columns)
+            return pd.DataFrame(data=self.data[:], columns=columns_name)
 
     @classmethod
     def from_DF(self, name, df, transforms=None, apply_transforms=None, path=None):
