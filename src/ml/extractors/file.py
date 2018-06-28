@@ -35,7 +35,7 @@ class File(object):
     def __init__(self, filepath, mode='r'):
         self.filepath = filepath
 
-    def read(self, header=True, nrows=None, delimiter=",", columns=None, 
+    def read(self, nrows=None, delimiter=",", columns=None, 
             exclude=False, chunksize=None) -> Iterator:
         import pandas as pd
         if exclude is True:
@@ -48,10 +48,13 @@ class File(object):
             usecols=cols, delimiter=delimiter)
         return Iterator(df, chunks_size=chunksize)
 
-    def write(self, iterator: Iterator, delimiter=",") -> None:
+    def write(self, iterator, header=None, delimiter=",") -> None:
+        from tqdm import tqdm
         with open(self.filepath, 'w') as f:
             csv_writer = csv.writer(f, delimiter=delimiter)
-            for row in iterator:
+            if header is not None:
+                csv_writer.writerow(header)
+            for row in tqdm(iterator):
                 csv_writer.writerow(row)
 
     @classmethod
@@ -67,11 +70,11 @@ class ZIPFile(File):
     mime_type = 'compressed/zip'
     proper_extension = 'zip'
 
-    def read(self, header=True, nrows=None, filename=None, delimiter=",", 
+    def read(self, nrows=None, filename=None, delimiter=",", 
         columns=None, exclude=False, chunksize=None) -> Iterator:
         import pandas as pd
         if filename is None:
-            return super(ZIPFile, self).read(header=header, nrows=nrows, delimiter=delimiter,
+            return super(ZIPFile, self).read(nrows=nrows, delimiter=delimiter,
             columns=columns, exclude=exclude, chunksize=chunksize)
         else:
             iter_ = self._read_another_file(filename, columns, delimiter)
@@ -95,11 +98,14 @@ class ZIPFile(File):
                     for row in csv_reader:
                         yield itemgetter(*columns)(row)
 
-    def write(self, iterator, filename=None, delimiter=","):
+    def write(self, iterator, header=None, filename=None, delimiter=",") -> None:
+        from tqdm import tqdm
         with zipfile.ZipFile(self.filepath, "w", zipfile.ZIP_DEFLATED) as zf:
             output = StringIO()
             csv_writer = csv.writer(output, delimiter=delimiter)
-            for row in iterator:
+            if header is not None:
+                csv_writer.writerow(header)
+            for row in tqdm(iterator):
                 csv_writer.writerow(row)
             if filename is None:
                 filename = self.filepath.split("/")[-1]

@@ -6,15 +6,14 @@ from ml.extractors.file import CSV, ZIPFile, File, get_compressed_file_manager_e
 
 class TestCSVZip(unittest.TestCase):
     def setUp(self):
-        self.iterator = [
-            ["A", "B", "C", "D", "F"], 
+        self.iterator = [ 
             [1, 2, 3, 4, 5],
             [6, 7, 8, 9, 0],
             [0, 9, 8, 7, 6]]
         self.filepath = "/tmp/test.zip"
         self.filename = "test.csv"
         csv_writer = CSV(filepath=self.filepath, delimiter=",")
-        csv_writer.writer(self.iterator)
+        csv_writer.writer(self.iterator, header=["A", "B", "C", "D", "F"])
 
     def tearDown(self):
         csv = CSV(filepath=self.filepath)
@@ -26,10 +25,10 @@ class TestCSVZip(unittest.TestCase):
 
     def test_reader(self):
         csv = CSV(self.filepath)
-        for r0, r1 in zip(self.iterator[1:], csv.reader(nrows=2)):
+        for r0, r1 in zip(self.iterator, csv.reader(nrows=2)):
             self.assertCountEqual(r0, r1)
 
-        step = 1
+        step = 0
         for r1 in csv.reader(nrows=None, chunksize=2):
             for base_r, r1r in zip(self.iterator[step:step+2], r1.values):
                 self.assertCountEqual(base_r, r1r)
@@ -38,8 +37,7 @@ class TestCSVZip(unittest.TestCase):
     def test_reader_another_file(self):
         csv = CSV(self.filepath)
         it = csv.reader(nrows=2, filename="test.csv")
-        print(it.to_memory(3))
-        print(it.columns())
+        self.assertCountEqual(it.columns(), ["A", "B", "C", "D", "F"])
 
     def test_columns(self):
         csv = CSV(self.filepath)
