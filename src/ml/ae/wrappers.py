@@ -3,7 +3,7 @@ import tensorflow as tf
 import logging
 
 from ml.utils.config import get_settings
-from ml.models import MLModel, Unsupervised
+from ml.models import MLModel, UnsupervisedModel
 from ml.data.ds import Data, DataLabel
 from ml.data.it import Iterator
 from ml.measures import ListMeasure
@@ -22,7 +22,7 @@ if backend._BACKEND == "theano":
     raise Exception("Theano does not support the autoencoders wrappers, change it with export KERAS_BACKEND=tensorflow")
 
 
-class BaseAe(Unsupervised):
+class BaseAe(UnsupervisedModel):
     def __init__(self, model_name=None, check_point_path=None, 
                 group_name=None, latent_dim=2):
         self.model_encoder = None
@@ -80,7 +80,7 @@ class BaseAe(Unsupervised):
         def fn(x, t=True):
             with self.test_ds:
                 return self.test_ds.processing(x, apply_transforms=t, chunks_size=chunks_size)
-        return Iterator(self.encoder_m.predict(fn(data, t=transform)),
+        return Iterator(self.intermedian_layer_model().predict(fn(data, t=transform)),
              chunks_size=chunks_size)
 
     def save(self, model_version="1"):
@@ -88,64 +88,41 @@ class BaseAe(Unsupervised):
         if self.check_point_path is not None:
             self.path_mv = self.make_model_version_file()
             self.model.save('{}.{}'.format(self.path_mv, self.ext))
-            self.encoder_m.save('{}_encoder.{}'.format(self.path_mv, self.ext))
             self.save_meta(keys=["model", "train"])
 
 
 class Keras(BaseAe):
     def default_model(self, model, load_fn):
         return MLModel(fit_fn=model.fit_generator, 
-                predictors=[model.predict],
+                predictors=model.predict,
                 load_fn=load_fn,
-                save_fn=model.save)
+                save_fn=model.save,
+                model=model)
+
+    def intermedian_layer_model(self):
+        from keras.models import Model
+        model =  Model(inputs=self.model.model.input,
+            outputs=self.model.model.get_layer('intermedian_layer').output)
+        return self.default_model(model, self.load_fn)
 
     def load_fn(self, path):
         from keras.models import load_model
         model = load_model(path, custom_objects=self.custom_objects())
         self.model = self.default_model(model, self.load_fn)
 
-    #def load_d_fn(self, path):
-    #    from keras.models import load_model
-    #    model = load_model(path, custom_objects=self.custom_objects())
-    #    self.decoder_m = self.default_model(model, self.load_d_fn)
-
-    def load_e_fn(self, path):
-        from keras.models import load_model
-        model = load_model(path, custom_objects=self.custom_objects())
-        self.encoder_m = self.default_model(model, self.load_e_fn)
-
     def preload_model(self):
         self.model = MLModel(fit_fn=None, 
                             predictors=None,
                             load_fn=self.load_fn,
                             save_fn=None)
-        self.encoder_m = MLModel(fit_fn=None, 
-                            predictors=None,
-                            load_fn=self.load_e_fn,
-                            save_fn=None)
-        #self.decoder_m = MLModel(fit_fn=None, 
-        #                    predictors=None,
-        #                    load_fn=self.load_d_fn,
-        #                    save_fn=None)
-
-        return {"base": self.model, "encoder": self.encoder_m}#, self.decoder_m]
 
     def load_model(self):
-        models = self.preload_model()
+        self.preload_model()
         if self.check_point_path is not None:
             path = self.make_model_version_file()
-            models["base"].load('{}.{}'.format(path, self.ext))
-            models["encoder"].load('{}_encoder.{}'.format(path, self.ext))
+            self.model.load('{}.{}'.format(path, self.ext))
 
     def load(self, model_version):
         self.model_version = model_version
         self.test_ds = self.get_dataset()
         self.load_model()
-
-    #def _predict(self, data, output=None, decoder=True):
-    #    if decoder is True:
-    #        model = self.model if not hasattr(self, 'decoder_m') else self.decoder_m
-    #    else:
-    #        model = self.encoder_m
-
-    #    return model.predict(data)

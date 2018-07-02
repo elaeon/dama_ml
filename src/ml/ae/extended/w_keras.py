@@ -2,6 +2,11 @@ from ml.ae.wrappers import Keras
 from ml.models import MLModel
 import tensorflow as tf
 from keras import regularizers
+from keras.layers import Input, Dense
+from keras.models import Model
+from keras import backend as K
+from keras.layers import Lambda
+from keras.losses import binary_crossentropy
 
 
 class PTsne(Keras):
@@ -29,9 +34,8 @@ class PTsne(Keras):
         model.add(Dense(2))
         model.compile(optimizer='sgd', loss=KLdivergence)
         self.model = self.default_model(model, self.load_fn)
-        self.decoder_m = self.model
 
-    def train(self, batch_size=258, num_steps=50):
+    def train(self, batch_size=258, num_steps=50, num_epochs=50):
         from ml.utils.tf_functions import TSNe
         import numpy as np
         self.tsne = TSNe(batch_size=batch_size, perplexity=self.perplexity, dim=self.latent_dim)
@@ -43,32 +47,26 @@ class PTsne(Keras):
         z = self.tsne.calculate_P(Z)
         self.prepare_model()
         self.model.fit(x,
-            batch_size,
-            num_steps,
+            steps_per_epoch=num_steps,#batch_size,
+            epochs=num_epochs,
             validation_data=z,
-            nb_val_samples=batch_size)
+            nb_val_samples=num_steps)
 
 
-def sampling(args, **kwargs):
-    from keras import backend as K
+def sampling(args):
     z_mean, z_log_var = args
-    batch_size = kwargs.get("batch_size", 1)
-    latent_dim = kwargs.get("latent_dim", 2)
-    epsilon_std = kwargs.get("epsilon_std", 1.0)
-    epsilon = K.random_normal(shape=(batch_size, latent_dim), 
-        mean=0., stddev=epsilon_std)
+    batch_size = K.shape(z_mean)[0]
+    latent_dim = K.int_shape(z_mean)[1]
+    epsilon = K.random_normal(shape=(batch_size, latent_dim))
     return z_mean + K.exp(z_log_var / 2) * epsilon
 
 
 def vae_loss(num_features=None, z_log_var=None, z_mean=None):
-    from keras import objectives
-    from keras import backend as K
-
-    def vae_loss(x, x_decoded_mean):
-        xent_loss = num_features * objectives.binary_crossentropy(x, x_decoded_mean)
-        kl_loss = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
-        return xent_loss + kl_loss 
-
+    def vae_loss(x, outputs):
+        reconstruction_loss = binary_crossentropy(x, outputs)# * num_features
+        kl_loss = 1 + z_log_var - K.square(z_mean) - K.exp(z_log_var)
+        kl_loss = K.sum(kl_loss, axis=-1) * -0.5
+        return K.mean(reconstruction_loss + kl_loss)
     return vae_loss
 
 
@@ -79,57 +77,38 @@ class VAE(Keras):
         super(VAE, self).__init__(**kwargs)
 
     def custom_objects(self):
-        x, z_mean, z_log_var = self.encoder()
-        self.batch_size = 1
-        self.decoder(z_mean, z_log_var)
+        _, z_mean, z_log_var, _ = self.encoder()
         return {
-            'sampling': sampling, 
-            'vae_loss': vae_loss(num_features=self.num_features, 
-                                z_log_var=z_log_var, z_mean=z_mean)
+            'sampling': sampling,
+            'vae_loss': vae_loss(self.num_features, z_log_var, z_mean)
         }
 
     def encoder(self):
-        from keras.layers import Input, Dense
-        from keras.models import Model
-        #x = Input(batch_shape=(self.batch_size, self.num_features))
         x = Input(shape=(self.num_features,))
-        h = Dense(self.intermediate_dim, activation='relu')(x)
-        
-        z_mean = Dense(self.latent_dim)(h)
-        z_log_var = Dense(self.latent_dim)(h)
-
-        model = Model(x, z_mean)
-        self.encoder_m = self.default_model(model, self.load_e_fn)
-        return x, z_mean, z_log_var
+        h = Dense(self.intermediate_dim, activation='relu', name="intermedian_layer")(x)
+        z_mean = Dense(self.latent_dim, name="z_mean")(h)
+        z_log_var = Dense(self.latent_dim, name="z_log_var")(h)
+        z = Lambda(sampling)([z_mean, z_log_var])
+        return x, z_mean, z_log_var, Model(x, z, name='encoder')
  
-    def decoder(self, z_mean, z_log_var):
-        from keras.layers import Dense, Input, Lambda
-        from keras.models import Model
+    def decoder(self):
+        x = Input(shape=(self.latent_dim,), name='z_sampling')
+        h = Dense(self.intermediate_dim, activation='relu')(x)
+        outputs = Dense(self.num_features, activation='sigmoid')(x)
+        decoder = Model(x, outputs, name='decoder')
+        return decoder
 
-        z = Lambda(sampling, arguments={"latent_dim": self.latent_dim, 
-            "epsilon_std": self.epsilon_std, "batch_size": self.batch_size})([z_mean, z_log_var])
-        decoder_h = Dense(self.intermediate_dim, activation='relu')
-        decoder_mean = Dense(self.num_features, activation='sigmoid')
-
-        h_decoded = decoder_h(z)
-        x_decoded_mean = decoder_mean(h_decoded)
-
-        decoder_input = Input(shape=(self.latent_dim,))
-        _h_decoded = decoder_h(decoder_input)
-        _x_decoded_mean = decoder_mean(_h_decoded)
-        model = Model(decoder_input, _x_decoded_mean)
-        self.decoder_m = self.default_model(model, self.load_d_fn)
-        return x_decoded_mean
+    def intermedian_layer_model(self):
+        model = self.model.model.get_layer('encoder')
+        return self.default_model(model, self.load_fn)
 
     def prepare_model(self):
-        from keras.models import Model
+        x, z_mean, z_log_var, encoder = self.encoder()
+        decoder = self.decoder()        
 
-        x, z_mean, z_log_var = self.encoder()
-        x_decoded_mean = self.decoder(z_mean, z_log_var)        
-
-        model = Model(x, x_decoded_mean)
-        model.compile(optimizer='rmsprop', 
-            loss=vae_loss(num_features=self.num_features, z_log_var=z_log_var, z_mean=z_mean))
+        outputs = decoder(encoder(x))
+        model = Model(x, outputs, name='vae_mlp')
+        model.compile(optimizer='adam', loss=vae_loss(self.num_features, z_log_var, z_mean))
         self.model = self.default_model(model, self.load_fn)
 
     def calculate_batch(self, X, batch_size=1):
@@ -176,43 +155,24 @@ class SAE(Keras):
         return {}
 
     def encoder(self):
-        from keras.layers import Input, Dense
-        from keras.models import Model
-
         input_ = Input(shape=(self.num_features,))
         encoder = Dense(self.latent_dim, activation='relu', 
-                activity_regularizer=regularizers.l1(10e-5))(input_)
+                activity_regularizer=regularizers.l1(10e-5), name='intermedian_layer')(input_)
 
-        model = Model(input_, encoder)
-        self.encoder_m = self.default_model(model, self.load_e_fn)
         return input_, encoder
  
     def decoder(self, encoded):
-        from keras.layers import Dense, Input
-        from keras.models import Model
-
-        #decoder_input = Input(shape=(self.latent_dim,))
-        #decoder_h = Dense(self.latent_dim, activation='relu')
         decoder = Dense(self.num_features, activation='sigmoid')(encoded)
-
-        #x_decoded_mean = decoder_mean(h)
-
-        #_h_decoded = decoder_h(decoder_input)
-        #_x_decoded_mean = decoder_mean(_h_decoded)
-
-        #model = Model(decoder_input, _x_decoded_mean)
-        #self.decoder_m = self.default_model(model, self.load_d_fn)
         return decoder
 
     def prepare_model(self):
-        from keras.models import Model
-
         input_, encoded = self.encoder()
-        decoded = self.decoder(encoded)        
+        decoded = self.decoder(encoded)
 
         model = Model(input_, decoded)
-        model.compile(optimizer='adadelta', loss='binary_crossentropy')
+        model.compile(optimizer='sgd', loss='binary_crossentropy')
         self.model = self.default_model(model, self.load_fn)
+        self.encoder_m = self.model
 
     def calculate_batch(self, X, batch_size=1):
         while 1:

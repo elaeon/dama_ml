@@ -154,7 +154,7 @@ class TSNe:
         
         return P
 
-    #joint_probabilities
+    #join_probabilities
     def calculate_P(self, X):
         print("Computing pairwise distances...")
         while 1:

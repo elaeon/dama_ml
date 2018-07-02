@@ -294,7 +294,7 @@ class Iterator(object):
                 self.features_dim = ()
             else:
                 if self.has_chunks:
-                    self._shape = tuple([v[0]] + v[2:])
+                    self._shape = tuple([v[0]] + list(v[2:]))
                     self.features_dim = tuple(self._shape[1:])
                 else:
                     self._shape = tuple(v)
