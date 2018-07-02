@@ -368,3 +368,10 @@ class SupervicedModel(BaseModel):
                             n_splits=n_splits, obj_fn=obj_fn, model_params=model_params)
         else:
             self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, **model_params)
+
+
+class Unsupervised(BaseModel):
+    def train(self, batch_size=0, num_steps=0, num_epochs=0, model_params={}):
+        log.info("Training")
+        self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, 
+            num_epochs=num_epochs, **model_params)

@@ -64,7 +64,7 @@ class TestAE(unittest.TestCase):
         vae.destroy()
 
     def test_dae(self):
-        from ml.ae.extended.w_keras import DAE
+        from ml.ae.extended.w_keras import SAE
         X = np.random.rand(1000, 10)
         X = (X * 10) % 2
         X = X.astype(int)
@@ -72,15 +72,15 @@ class TestAE(unittest.TestCase):
         with dataset:
             dataset.from_data(X)
 
-        dae = DAE( 
+        dae = SAE( 
             model_name="test", 
             check_point_path="/tmp/",
-            intermediate_dim=5)
+            latent_dim=5)
         dae.set_dataset(dataset)
-        dae.train(batch_size=1, num_steps=10)
+        dae.train(batch_size=1, num_steps=10, num_epochs=3)
         dae.save(model_version="1")
 
-        dae = DAE( 
+        dae = SAE( 
             model_name="test", 
             check_point_path="/tmp/")
         dae.load(model_version="1")
