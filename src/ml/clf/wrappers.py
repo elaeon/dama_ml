@@ -181,7 +181,7 @@ class SKL(ClassifModel):
     def ml_model(self, model):        
         from sklearn.externals import joblib
         return MLModel(fit_fn=model.fit, 
-                            predictors=[model.predict],
+                            predictors=model.predict,
                             load_fn=self.load_fn,
                             save_fn=lambda path: joblib.dump(model, '{}'.format(path)))
 
@@ -197,7 +197,7 @@ class SKLP(ClassifModel):
     def ml_model(self, model):        
         from sklearn.externals import joblib
         return MLModel(fit_fn=model.fit, 
-                            predictors=[model.predict_proba],
+                            predictors=model.predict_proba,
                             load_fn=self.load_fn,
                             save_fn=lambda path: joblib.dump(model, '{}'.format(path)))
 
@@ -211,7 +211,7 @@ class XGB(ClassifModel):
     def ml_model(self, model, bst=None):
         self.bst = bst
         return MLModel(fit_fn=model.train, 
-                            predictors=[self.bst.predict],
+                            predictors=self.bst.predict,
                             load_fn=self.load_fn,
                             save_fn=self.bst.save_model,
                             transform_data=self.array2dmatrix)
@@ -231,7 +231,7 @@ class LGB(ClassifModel):
     def ml_model(self, model, bst=None):
         self.bst = bst
         return MLModel(fit_fn=model.train, 
-                            predictors=[self.bst.predict],
+                            predictors=self.bst.predict,
                             load_fn=self.load_fn,
                             save_fn=self.bst.save_model)
 
@@ -255,7 +255,7 @@ class TFL(ClassifModel):
     def load_fn(self, path):
         model = self.prepare_model()
         self.model = MLModel(fit_fn=model.fit, 
-                            predictors=[model.predict],
+                            predictors=model.predict,
                             load_fn=self.load_fn,
                             save_fn=model.save)
 
@@ -288,7 +288,7 @@ class Keras(ClassifModel):
 
     def ml_model(self, model):
         return MLModel(fit_fn=model.fit, 
-                        predictors=[model.predict],
+                        predictors=model.predict,
                         load_fn=self.load_fn,
                         save_fn=model.save)
 

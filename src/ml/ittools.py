@@ -47,9 +47,10 @@ def max_counter(iters_b, weights=None):
 def concat(iters):
     if len(iters) > 1:
         base_iter = iters[0]
-        length = sum(it.length for it in iters if it.length is not None)
-        it = Iterator(chain(*iters), chunks_size=base_iter.chunks_size)
-        it.set_length(None if length == 0 else length)
-        return it
+        it_base = Iterator([], chunks_size=base_iter.chunks_size, dtype=base_iter.dtype)
+        it_base.set_length(0)
+        for it in iters:            
+            it_base = it_base.concat(it)
+        return it_base
     elif len(iters) == 1:
         return iters[0]

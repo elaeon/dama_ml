@@ -371,17 +371,16 @@ class Iterator(object):
     def __ipow__(self, x):
         return
 
-    def concat_elems(self, data):
-        iter_ = (list(chain(x0, x1)) for x0, x1 in zip(self, data))
-        return Iterator(iter_, dtype=self.dtype, chunks_size=self.chunks_size)
-
     def compose(self, fn, *args, **kwargs):
         iter_ = (fn(x, *args, **kwargs) for x in self)
         return Iterator(iter_, dtype=self.dtype, 
             chunks_size=self.chunks_size)
 
     def concat(self, it):
-        return Iterator(chain(self, it))
+        it_c = Iterator(chain(self, it), chunks_size=self.chunks_size)
+        if self.length is not None and it.length is not None:
+            it_c.set_length(self.length+it.length)
+        return it_c
 
     def to_datamodelset(self, labels, features, size, ltype):
         from ml.data.ds import DataLabel

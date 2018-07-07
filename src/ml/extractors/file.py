@@ -35,8 +35,7 @@ class File(object):
     def __init__(self, filepath, mode='r'):
         self.filepath = filepath
 
-    def read(self, nrows=None, delimiter=",", columns=None, 
-            exclude=False, chunksize=None) -> Iterator:
+    def read(self, columns=None, exclude=False, **kwargs) -> Iterator:
         import pandas as pd
         if exclude is True:
             cols = lambda col: col not in columns
@@ -44,9 +43,8 @@ class File(object):
             cols = lambda col: col in columns
         else:
             cols = None
-        df = pd.read_csv(self.filepath, chunksize=chunksize, nrows=nrows, 
-            usecols=cols, delimiter=delimiter)
-        return Iterator(df, chunks_size=chunksize)
+        df = pd.read_csv(self.filepath, usecols=cols, **kwargs)
+        return Iterator(df, chunks_size=kwargs.get('chunksize', 0))
 
     def write(self, iterator, header=None, delimiter=",") -> None:
         from tqdm import tqdm
@@ -70,12 +68,10 @@ class ZIPFile(File):
     mime_type = 'compressed/zip'
     proper_extension = 'zip'
 
-    def read(self, nrows=None, filename=None, delimiter=",", 
-        columns=None, exclude=False, chunksize=None) -> Iterator:
+    def read(self, filename=None, columns=None, exclude=False, **kwargs) -> Iterator:
         import pandas as pd
         if filename is None:
-            return super(ZIPFile, self).read(nrows=nrows, delimiter=delimiter,
-            columns=columns, exclude=exclude, chunksize=chunksize)
+            return super(ZIPFile, self).read(columns=columns, exclude=exclude, **kwargs)
         else:
             iter_ = self._read_another_file(filename, columns, delimiter)
             dtype = [(col, object) for col in next(iter_)] 
@@ -147,7 +143,8 @@ class CSV(object):
 
     @property
     def shape(self):
-        size = sum(1 for _ in self.reader(nrows=None, delimiter=self.delimiter))
+        size = sum(df.shape[0] for df in self.reader(nrows=None, 
+            delimiter=self.delimiter, chunksize=1000))
         return size, len(self.columns())
 
     def reader(self, *args, **kwargs):

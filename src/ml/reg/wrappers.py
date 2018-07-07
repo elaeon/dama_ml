@@ -108,10 +108,11 @@ class SKLP(RegModel):
 
     def ml_model(self, model):        
         from sklearn.externals import joblib
-        return MLModel(fit_fn=model.fit, 
-                            predictors=[model.predict],
-                            load_fn=self.load_fn,
-                            save_fn=lambda path: joblib.dump(model, '{}'.format(path)))
+        return MLModel(fit_fn=model.fit,
+                        model=model,
+                        predictors=model.predict,
+                        load_fn=self.load_fn,
+                        save_fn=lambda path: joblib.dump(model, '{}'.format(path)))
 
     def load_fn(self, path):
         from sklearn.externals import joblib
@@ -123,7 +124,8 @@ class LGB(RegModel):
     def ml_model(self, model, bst=None):
         self.bst = bst
         return MLModel(fit_fn=model.train, 
-                            predictors=[self.bst.predict],
+                            model=model,
+                            predictors=self.bst.predict,
                             load_fn=self.load_fn,
                             save_fn=self.bst.save_model)
 

@@ -10,6 +10,15 @@ class RandomForestRegressor(SKLP):
         with self.train_ds:
             reg_model = model.fit(self.train_ds.data, self.train_ds.labels)
         return self.ml_model(reg_model)
+
+    def feature_importance(self):
+        import pandas as pd
+        
+        with self.train_ds:
+            df = pd.DataFrame({'importance': self.model.model.feature_importances_, 
+                'feature': self.train_ds.columns}).sort_values(
+                by=['importance'], ascending=False)
+        return df
     
 
 class GradientBoostingRegressor(SKLP):
