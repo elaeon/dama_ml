@@ -92,6 +92,9 @@ class BaseAe(UnsupervisedModel):
 
 
 class Keras(BaseAe):
+    def custom_objects(self):
+        return None
+
     def default_model(self, model, load_fn):
         return MLModel(fit_fn=model.fit_generator, 
                 predictors=model.predict,
@@ -126,3 +129,26 @@ class Keras(BaseAe):
         self.model_version = model_version
         self.test_ds = self.get_dataset()
         self.load_model()
+
+    def calculate_batch(self, X, batch_size=1):
+        while 1:
+            n = int(round(X.shape[0] / batch_size, 0))
+            for i in range(0, n):
+                yield (X[i:i + batch_size], X[i:i + batch_size])
+
+    def train(self, batch_size=100, num_steps=50, num_epochs=50):
+        with self.train_ds:
+            limit = int(round(self.train_ds.data.shape[0] * .9))
+            X = self.train_ds.data[:limit]
+            Z = self.train_ds.data[limit:]
+        batch_size_x = min(X.shape[0], batch_size)
+        batch_size_z = min(Z.shape[0], batch_size)
+        self.batch_size = min(batch_size_x, batch_size_z)
+        self.prepare_model()
+        x = self.calculate_batch(X, batch_size=self.batch_size)
+        z = self.calculate_batch(Z, batch_size=self.batch_size)
+        self.model.fit(x,
+            steps_per_epoch=num_steps,
+            epochs=num_epochs,
+            validation_data=z,
+            nb_val_samples=num_steps)

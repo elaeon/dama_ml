@@ -108,7 +108,7 @@ class VAE(Keras):
 
         outputs = decoder(encoder(x))
         model = Model(x, outputs, name='vae_mlp')
-        model.compile(optimizer='adam', loss=vae_loss(self.num_features, z_log_var, z_mean))
+        model.compile(optimizer='adamax', loss=vae_loss(self.num_features, z_log_var, z_mean))
         self.model = self.default_model(model, self.load_fn)
 
     def calculate_batch(self, X, batch_size=1):
