@@ -137,3 +137,23 @@ class LGB(RegModel):
     def array2dmatrix(self, data):
         import lightgbm as lgb
         return lgb.Dataset(data)
+
+
+class XGB(RegModel):
+    def ml_model(self, model, bst=None):
+        self.bst = bst
+        return MLModel(fit_fn=model.train, 
+                            predictors=self.bst.predict,
+                            load_fn=self.load_fn,
+                            save_fn=self.bst.save_model,
+                            transform_data=self.array2dmatrix)
+
+    def load_fn(self, path):
+        import xgboost as xgb
+        bst = xgb.Booster()
+        bst.load_model(path)
+        self.model = self.ml_model(xgb, bst=bst)
+
+    def array2dmatrix(self, data):
+        import xgboost as xgb
+        return xgb.DMatrix(data)

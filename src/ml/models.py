@@ -26,27 +26,22 @@ class MLModel:
         self.predictors = predictors
         self.load_fn = load_fn
         self.save_fn = save_fn
-        #self.transform_data = transform_data
+        if transform_data is None:
+            self.transform_data = lambda x: x
+        else:
+            self.transform_data = transform_data
         self.model = model
 
     def fit(self, *args, **kwargs):
         return self.fit_fn(*args, **kwargs)
 
     def predict(self, data):
-        #if self.transform_data is not None:
-        #    if data.has_chunks:
-        #        for chunk in data:
-        #            yield self.predictors[0](self.transform_data(chunk))
-        #    else:
-        #        for row in data:
-        #            yield self.predictors[0](self.transform_data(row.reshape(1, -1)))
-        #else:
         if data.has_chunks:
             for chunk in data:
-                yield self.predictors(chunk)
+                yield self.predictors(self.transform_data(chunk))
         else:
             for row in data:
-                predict = self.predictors(row.reshape(1, -1))
+                predict = self.predictors(self.transform_data(row.reshape(1, -1)))
                 if len(predict.shape) > 1:
                     yield predict[0]
                 else:

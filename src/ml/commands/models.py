@@ -35,11 +35,11 @@ def run(args):
                             if scores is not None:
                                 selected_score = scores[measure]
                                 score = selected_score['values'][0]
-                                order_m = order_m or selected_score['reverse']
+                                order_m = order_m or selected_score.get('reverse', True)
                             else:
-                                score = None
+                                continue
                         except KeyError:
-                            score = None
+                            continue
 
                         table.append([clf, model_name, version, 
                                     meta.get("group_name", None), score])
