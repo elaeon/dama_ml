@@ -56,8 +56,8 @@ class TestAE(unittest.TestCase):
             model_name="test",
             check_point_path="/tmp/")
         vae.load(model_version="1")
-        encoder = vae.predict(X[0:1], chunks_size=10, model_type="encoder")
-        decoder = vae.predict(X[0:1], chunks_size=10, model_type="decoder")
+        encoder = vae.encode(X[0:1], chunks_size=10)
+        decoder = vae.predict(X[0:1], chunks_size=10)
         self.assertEqual(encoder.shape, (None, 2))
         self.assertEqual(decoder.shape, (None, 10))
         dataset.destroy()
@@ -84,9 +84,9 @@ class TestAE(unittest.TestCase):
             model_name="test", 
             check_point_path="/tmp/")
         dae.load(model_version="1")
-        encoder = dae.predict(X[0:1], chunks_size=10, model_type="encoder")
-        self.assertEqual(encoder.shape, (None, 10))
-        decoder = dae.predict(X[0:1], chunks_size=10, model_type="decoder")
+        encoder = dae.encode(X[0:1], chunks_size=10)
+        self.assertEqual(encoder.shape, (None, 5))
+        decoder = dae.predict(X[0:1], chunks_size=10)
         self.assertEqual(decoder.shape, (None, 10))
         dataset.destroy()
         dae.destroy()

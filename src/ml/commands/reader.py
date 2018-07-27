@@ -9,7 +9,7 @@ def run(args):
     filepaths = check_filepaths(args.file)
     for filepath in filepaths:
         csv = CSV(filepath)
-        reader = csv.reader(limit=args.nrows)
+        reader = csv.reader(nrows=args.nrows)
         table = []
         headers = []
         for row in reader:

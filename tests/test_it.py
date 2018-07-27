@@ -151,24 +151,15 @@ class TestIterator(unittest.TestCase):
         self.assertCountEqual(predictors.reshape(-1)[:40], np.zeros((40)) - 3)
         self.assertCountEqual(predictors.reshape(-1)[40:], np.zeros((40)) + 3)
 
-    def test_append_data_to_iter(self):
-        data = [[0, 1, 0], [2, 3, 0], [4, 5, 0], [5, 6, 0]]
-        data_i = [['a', 'b'], ['c', 'd'], ['e', 'f'], ['g', 'h']]
-        iter_layer = Iterator((e for e in data_i))
-        iter_ce = iter_layer.concat_elems(data)
-
-        for i, e in enumerate(iter_ce):
-            self.assertCountEqual(list(e), data_i[i] + data[i])
-
     def test_append_iter_to_iter(self):
-        data_i2 = [[0, 1, 0], [2, 3, 0], [4, 5, 0], [5, 6, 0]]
+        data_i2 = [[0, 1], [2, 3], [4, 5], [6, 7]]
         data_i1 = [['a', 'b'], ['c', 'd'], ['e', 'f'], ['g', 'h']]
         iter_layer_1 = Iterator((e for e in data_i1))
         iter_layer_2 = Iterator((e for e in data_i2))
-        iter_ce = iter_layer_1.concat_elems(iter_layer_2)
+        iter_ce = iter_layer_1.concat(iter_layer_2)
 
-        for i, e in enumerate(iter_ce):
-            self.assertCountEqual(list(e), data_i1[i] + data_i2[i])
+        self.assertCountEqual(iter_ce.flat().to_memory(16), 
+            ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 0, 1, 2, 3, 4, 5, 6, 7])
 
     def test_flat_shape(self):
         data = np.random.rand(10, 1)

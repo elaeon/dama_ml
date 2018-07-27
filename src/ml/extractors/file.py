@@ -73,10 +73,10 @@ class ZIPFile(File):
         if filename is None:
             return super(ZIPFile, self).read(columns=columns, exclude=exclude, **kwargs)
         else:
-            iter_ = self._read_another_file(filename, columns, delimiter)
+            iter_ = self._read_another_file(filename, columns, kwargs.get("delimiter", None))
             dtype = [(col, object) for col in next(iter_)] 
-            it = Iterator(iter_, 
-                chunks_size=chunksize, dtype=dtype)
+            it = Iterator(iter_, chunks_size=kwargs.get("chunksize", 0), dtype=dtype)
+            nrows = kwargs.get("nrows", None)
             if nrows is not None:
                 it.set_length(nrows)
             return it
