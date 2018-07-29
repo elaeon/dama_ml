@@ -185,32 +185,32 @@ class TestIterator(unittest.TestCase):
     def test_shape(self):
         data = np.random.rand(10, 3)
         it = Iterator(data)
-        self.assertEqual(it.shape, (None, 3))
+        self.assertEqual(it.shape, (10, 3))
         self.assertEqual(it.features_dim, (3,))
 
         data = np.random.rand(10)
         it = Iterator(data)
-        self.assertEqual(it.shape, (None,))
+        self.assertEqual(it.shape, (10,))
         self.assertEqual(it.features_dim, ())
 
         data = np.random.rand(10, 3, 3)
         it = Iterator(data)
-        self.assertEqual(it.shape, (None, 3, 3))
+        self.assertEqual(it.shape, (10, 3, 3))
         self.assertEqual(it.features_dim, (3, 3))
 
         data = np.random.rand(10)
         it = Iterator(data).to_chunks(2)
-        self.assertEqual(it.shape, (None,))
+        self.assertEqual(it.shape, (10,))
         self.assertEqual(it.features_dim, ())
 
         data = np.random.rand(10, 3)
         it = Iterator(data).to_chunks(2)
-        self.assertEqual(it.shape, (None, 3))
+        self.assertEqual(it.shape, (10, 3))
         self.assertEqual(it.features_dim, (3,))
 
         data = np.random.rand(10, 3, 3)
         it = Iterator(data).to_chunks(2)
-        self.assertEqual(it.shape, (None, 3, 3))
+        self.assertEqual(it.shape, (10, 3, 3))
         self.assertEqual(it.features_dim, (3, 3))
 
     def test_chunks(self):
@@ -525,6 +525,16 @@ class TestIterator(unittest.TestCase):
         self.assertEqual(counter[5], 1)
         self.assertEqual(counter[6], 1)
         self.assertEqual(counter[8], 1)
+
+    def test_to_df(self):
+        df = pd.DataFrame({"a": [1,2,3,4], "b": [6,7,8,9]})
+        it = Iterator(df)
+        self.assertCountEqual(it.to_memory()["a"], df["a"])
+
+    def test_to_array(self):
+        array = np.random.rand(10)
+        it = Iterator(array)
+        self.assertCountEqual(it.to_memory(), array)
 
 
 def chunk_sizes(seq):

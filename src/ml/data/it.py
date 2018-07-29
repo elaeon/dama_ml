@@ -48,13 +48,20 @@ class Iterator(object):
     def __init__(self, fn_iter, dtype=None, chunks_size=0) -> None:
         if isinstance(fn_iter, types.GeneratorType) or isinstance(fn_iter, psycopg2.extensions.cursor):
             self.it = fn_iter
+            self.length = None
         elif isinstance(fn_iter, Iterator):
             self.it = fn_iter
+            self.length = fn_iter.length
         elif isinstance(fn_iter, pd.DataFrame):
             self.it = fn_iter.itertuples(index=False)
             dtype = list(zip(fn_iter.columns.values, fn_iter.dtypes.values))
+            self.length = fn_iter.shape[0]
+        elif isinstance(fn_iter, np.ndarray):
+            self.it = iter(fn_iter)
+            self.length = fn_iter.shape[0]
         else:
             self.it = iter(fn_iter)
+            self.length = None
 
         self.pushedback = []
         if chunks_size is None:
@@ -62,7 +69,6 @@ class Iterator(object):
         self.chunks_size = chunks_size
         self.has_chunks = True if chunks_size > 0 else False
         self.features_dim = None
-        self.length = None
         self.iter_init = True
         #to obtain dtype, shape, global_dtype and type_elem
         self.chunk_taste(dtype)
@@ -129,12 +135,12 @@ class Iterator(object):
             global_dtype = np.dtype(self.dtype)
 
         try:
-            shape = [None] + list(chunk.shape)
+            shape = [self.length] + list(chunk.shape)
         except AttributeError:
             if hasattr(chunk, '__iter__') and not isinstance(chunk, str):
-                shape = (None, len(chunk))
+                shape = (self.length, len(chunk))
             else:
-                shape = (None,)
+                shape = (self.length,)
 
         self.shape = shape
         self.global_dtype = global_dtype
