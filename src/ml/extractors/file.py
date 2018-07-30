@@ -6,7 +6,7 @@ import zipfile
 from io import StringIO, TextIOWrapper
 from ml.utils.files import rm
 from operator import itemgetter
-from ml.data.it import Iterator
+from ml.data.it import Iterator, DaskIterator
 
 
 def get_compressed_file_manager(filepath):
@@ -19,11 +19,25 @@ def get_compressed_file_manager(filepath):
         return File(filepath)
 
 
-def get_compressed_file_manager_ext(filepath):
+def get_compressed_file_manager_ext(filepath, engine):
     ext = filepath.split(".").pop()
     for cls in (File, ZIPFile):
         if cls.proper_extension == ext:
-            return cls(filepath)
+            return cls(filepath, engine)
+
+
+class PandasEngine:
+    def read_csv(*args, **kwargs):
+        import pandas as pd
+        df = pd.read_csv(*args, **kwargs)
+        return Iterator(df, chunks_size=kwargs.get('chunksize', 0))
+
+
+class DaskEngine:
+    def read_csv(*args, **kwargs):
+        import dask.dataframe as dd
+        df = dd.read_csv(*args, **kwargs)
+        return DaskIterator(df, chunks_size=kwargs.get('chunksize', 0))
 
 
 class File(object):
@@ -32,19 +46,21 @@ class File(object):
     mime_type = 'text/plain'
     proper_extension = 'csv'
 
-    def __init__(self, filepath, mode='r'):
+    def __init__(self, filepath, engine):
         self.filepath = filepath
+        if engine == "default":
+            self.engine = PandasEngine
+        else:
+            self.engine = DaskEngine
 
     def read(self, columns=None, exclude=False, **kwargs) -> Iterator:
-        import pandas as pd
         if exclude is True:
             cols = lambda col: col not in columns
         elif exclude is False and columns:
             cols = lambda col: col in columns
         else:
             cols = None
-        df = pd.read_csv(self.filepath, usecols=cols, **kwargs)
-        return Iterator(df, chunks_size=kwargs.get('chunksize', 0))
+        return self.engine.read_csv(self.filepath, usecols=cols, **kwargs)
 
     def write(self, iterator, header=None, delimiter=",") -> None:
         from tqdm import tqdm
@@ -133,9 +149,9 @@ class ZIPFile(File):
 
 
 class CSV(object):
-    def __init__(self, filepath, delimiter=","):
+    def __init__(self, filepath, delimiter=",", engine='default'):
         self.filepath = filepath
-        self.file_manager = get_compressed_file_manager_ext(self.filepath)
+        self.file_manager = get_compressed_file_manager_ext(self.filepath, engine)
         self.delimiter = delimiter
 
     def columns(self):

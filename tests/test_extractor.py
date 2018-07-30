@@ -2,6 +2,7 @@ import unittest
 import zipfile
 
 from ml.extractors.file import CSV, ZIPFile, File, get_compressed_file_manager_ext
+from ml.extractors.file import DaskEngine
 
 
 class TestCSVZip(unittest.TestCase):
@@ -105,6 +106,13 @@ class TestCSV(unittest.TestCase):
         csv = CSV(self.filepath)
         it = csv.reader(columns=["A", "C"], exclude=True)
         self.assertCountEqual(it.columns(), ["B", "D", "F"])
+
+    def test_engine(self):
+        csv = CSV(self.filepath, engine="dask")
+        it = csv.reader(columns=["A", "C"], exclude=True)
+        self.assertEqual(csv.file_manager.engine, DaskEngine)
+        df = it.to_memory()
+        self.assertCountEqual(df.columns, ["B", "D", "F"])
 
 
 if __name__ == '__main__':

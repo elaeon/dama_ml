@@ -3,6 +3,7 @@ import operator
 import types
 import numpy as np
 import pandas as pd
+import dask.dataframe as dd
 import psycopg2
 import logging
 import datetime
@@ -522,3 +523,15 @@ class Iterator(object):
             raise StopIteration
         except psycopg2.InterfaceError:
             raise StopIteration
+
+
+class DaskIterator(object):
+    def __init__(self, fn_iter, dtype=None, chunks_size=0) -> None:
+        if isinstance(fn_iter, dd.DataFrame):
+            self.it = fn_iter
+
+    def to_memory(self, length=None):
+        df = self.it.compute()
+        self.length = df.shape[0]
+        self.dtype = list(zip(df.columns.values, df.dtypes.values))
+        return df
