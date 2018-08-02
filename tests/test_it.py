@@ -112,15 +112,26 @@ class TestIterator(unittest.TestCase):
         l0 = np.zeros((10, 2)) + 1
         l1 = np.zeros((10, 2)) + 2
         l2 = np.zeros((10, 2)) + 3
-        predictor_0 = Iterator(l0).to_chunks(2)
-        predictor_0.set_length(10)
-        predictor_1 = Iterator(l1).to_chunks(2)
-        predictor_1.set_length(10)
-        predictor_2 = Iterator(l2).to_chunks(2)
-        predictor_2.set_length(10)
+        predictor_0 = Iterator(l0).to_chunks(3)
+        predictor_1 = Iterator(l1).to_chunks(3)
+        predictor_2 = Iterator(l2).to_chunks(3)
         predictor_0 = predictor_0.concat(predictor_1)
         predictor = predictor_0.concat(predictor_2)
-        self.assertEqual(predictor.to_memory().shape, (30, 2))
+        m = predictor.flat().to_memory()
+        self.assertCountEqual(m, np.concatenate([l0, l1, l2]).reshape(-1))
+
+    def test_concat_it_chunks_df(self):
+        l0 = np.zeros((10, 2)) + 1
+        l1 = np.zeros((10, 2)) + 2
+        l2 = np.zeros((10, 2)) + 3
+        dtype = [("a", int), ("b", int)]
+        predictor_0 = Iterator(l0, dtype=dtype).to_chunks(3)
+        predictor_1 = Iterator(l1, dtype=dtype).to_chunks(3)
+        predictor_2 = Iterator(l2, dtype=dtype).to_chunks(3)
+        predictor_0 = predictor_0.concat(predictor_1)
+        predictor = predictor_0.concat(predictor_2)
+        m = predictor.flat().to_memory()
+        self.assertCountEqual(m, np.concatenate([l0, l1, l2]).reshape(-1))
 
     def test_concat_n(self):
         l0 = np.zeros((10, 2)) + 1
@@ -135,21 +146,20 @@ class TestIterator(unittest.TestCase):
         predictor_2.set_length(10)
         predictor = ittools.concat([predictor_0, predictor_1, predictor_2])
         self.assertEqual(predictor.shape, (30, 2))
-        #print(predictor.flat().to_memory().shape)
-        #self.assertCountEqual(predictor.flat().to_memory(), fl)
+        self.assertCountEqual(predictor.flat().to_memory(), fl)
 
     def test_operations_concat_n_scalar(self):
         data_0 = np.zeros((20, 2)) - 1 
         data_1 = np.zeros((20, 2)) + 1
         w = 3
-        predictor_0 = Iterator(data_0).to_chunks(chunks_size=2)
-        predictor_1 = Iterator(data_1).to_chunks(chunks_size=2)
+        predictor_0 = Iterator(data_0).to_chunks(2)
+        predictor_1 = Iterator(data_1).to_chunks(2)
 
         predictor = ittools.concat([predictor_0, predictor_1])
         predictors = predictor * w
-        predictors = predictors.flat().to_memory(80)
-        self.assertCountEqual(predictors.reshape(-1)[:40], np.zeros((40)) - 3)
-        self.assertCountEqual(predictors.reshape(-1)[40:], np.zeros((40)) + 3)
+        predictors = predictors.flat().to_memory()
+        self.assertCountEqual(predictors.reshape(-1)[:40], np.zeros((40))-3)
+        self.assertCountEqual(predictors.reshape(-1)[40:], np.zeros((40))+3)
 
     def test_append_iter_to_iter(self):
         data_i2 = [[0, 1], [2, 3], [4, 5], [6, 7]]

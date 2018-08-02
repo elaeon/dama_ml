@@ -608,6 +608,32 @@ class Data(ReadWriteData):
             y_pred = clf.predict(data)
         return (i for i, v in enumerate(y_pred) if v == -1)
 
+    def reader(self, chunksize:int=0) -> Iterator:
+        dtype = [(col, self.dtype) for col in self.columns]
+        return Iterator(self.data, dtype=dtype).to_chunks(chunksize)
+
+    @staticmethod
+    def concat(datasets, chunksize:int=0, name:str=None):
+        ds0 = datasets.pop(0)
+        i = 0
+        to_destroy = []
+        while len(datasets) > 0:
+            ds1 = datasets.pop(0)
+            if len(datasets) == 0:
+                name_ds = name
+            else:
+                name_ds = "test_"+str(i)
+            data = Data(name=name_ds, dataset_path="/tmp", clean=True)
+            with ds0, ds1, data:
+                it = ds0.reader(chunksize=chunksize).concat(ds1.reader(chunksize=chunksize))
+                data.from_data(it)
+            i += 1
+            ds0 = data
+            to_destroy.append(data)
+        for ds in to_destroy[:-1]:
+            ds.destroy()
+        return ds0
+
 
 class DataLabel(Data):
     """

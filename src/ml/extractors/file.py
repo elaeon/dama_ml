@@ -48,7 +48,7 @@ class File(object):
 
     def __init__(self, filepath, engine):
         self.filepath = filepath
-        if engine == "default":
+        if engine == "pandas":
             self.engine = PandasEngine
         else:
             self.engine = DaskEngine
@@ -149,7 +149,7 @@ class ZIPFile(File):
 
 
 class CSV(object):
-    def __init__(self, filepath, delimiter=",", engine='default'):
+    def __init__(self, filepath, delimiter=",", engine='pandas'):
         self.filepath = filepath
         self.file_manager = get_compressed_file_manager_ext(self.filepath, engine)
         self.delimiter = delimiter

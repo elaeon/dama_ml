@@ -7,6 +7,7 @@ import dask.dataframe as dd
 import psycopg2
 import logging
 import datetime
+import h5py
 
 from collections import defaultdict
 from ml.utils.config import get_settings
@@ -58,6 +59,9 @@ class Iterator(object):
             dtype = list(zip(fn_iter.columns.values, fn_iter.dtypes.values))
             self.length = fn_iter.shape[0]
         elif isinstance(fn_iter, np.ndarray):
+            self.it = iter(fn_iter)
+            self.length = fn_iter.shape[0]
+        elif isinstance(fn_iter, h5py._hl.dataset.Dataset):
             self.it = iter(fn_iter)
             self.length = fn_iter.shape[0]
         else:
@@ -327,13 +331,15 @@ class Iterator(object):
 
     def scalar_operation(self, operator, scalar: float):
         iter_ = map(lambda x: operator(x, scalar), self)
-        return Iterator(iter_, dtype=self.dtype, 
-            chunks_size=self.chunks_size)
+        it = Iterator(iter_, dtype=self.dtype, chunks_size=self.chunks_size)
+        it.set_length(self.length)
+        return it
 
     def stream_operation(self, operator, stream):
         iter_ = map(lambda x: operator(x[0], x[1]), zip(self, stream))
-        return Iterator(iter_, dtype=self.dtype, 
-            chunks_size=self.chunks_size)
+        it = Iterator(iter_, dtype=self.dtype, chunks_size=self.chunks_size)
+        it.set_length(self.length)
+        return it
 
     @choice(operator.add)
     def __add__(self, x):
@@ -380,14 +386,49 @@ class Iterator(object):
 
     def compose(self, fn, *args, **kwargs):
         iter_ = (fn(x, *args, **kwargs) for x in self)
-        return Iterator(iter_, dtype=self.dtype, 
-            chunks_size=self.chunks_size)
+        return Iterator(iter_, dtype=self.dtype, chunks_size=self.chunks_size)
+
+    def _concat_aux(self, it):
+        from collections import deque
+        
+        if self.type_elem == np.ndarray:
+            concat_fn = np.concatenate
+        elif self.type_elem is None:
+            concat_fn = None
+        else:
+            concat_fn = pd.concat
+
+        self_it = deque(self)
+        try:
+            last_chunk = self_it.pop()
+        except IndexError:
+            for chunk in it:
+                yield chunk
+        else:
+            for chunk in self_it:
+                yield chunk
+
+            for chunk in it:
+                r = abs(last_chunk.shape[0] - self.chunks_size)
+                yield concat_fn((last_chunk, chunk[:r]))
+                last_chunk = chunk[r:]
+
+            if last_chunk.shape[0] > 0:
+                yield last_chunk
 
     def concat(self, it):
-        it_c = Iterator(chain(self, it), chunks_size=self.chunks_size)
-        if self.length is not None and it.length is not None:
-            it_c.set_length(self.length+it.length)
-        return it_c
+        if not self.has_chunks and not it.has_chunks:
+            it_c = Iterator(chain(self, it), chunks_size=self.chunks_size)
+            if self.length is not None and it.length is not None:
+                it_c.set_length(self.length+it.length)
+            return it_c
+        elif self.chunks_size == it.chunks_size:
+            it_c = Iterator(self._concat_aux(it), chunks_size=self.chunks_size)
+            if self.length is not None and it.length is not None:
+                it_c.set_length(self.length+it.length)
+            return it_c
+        else:
+            raise Exception("I can't concatenate two iterables with differents chunks size")
 
     def to_datamodelset(self, labels, features, size, ltype):
         from ml.data.ds import DataLabel

@@ -469,7 +469,7 @@ class TestDataset(unittest.TestCase):
             self.assertCountEqual(ds.labels, X["b"])
             ds.destroy()
     
-    def from_it(self):
+    def test_from_it(self):
         from ml.data.it import Iterator
         it = Iterator([1,2,3,4,4,4,5,6,3,8,1])
         it.set_length(10)
@@ -478,6 +478,25 @@ class TestDataset(unittest.TestCase):
             data.from_data(it, chunks_size=20)
             self.assertCountEqual(data.columns[:], ["c0"])
         data.destroy()
+
+    def test_concat(self):
+        data0 = Data(name="test0", dataset_path="/tmp", clean=True)
+        data1 = Data(name="test1", dataset_path="/tmp", clean=True)
+        data2 = Data(name="test2", dataset_path="/tmp", clean=True)
+        with data0, data1, data2:
+            data0.from_data(np.random.rand(10, 2))
+            data1.from_data(np.random.rand(10, 2))
+            data2.from_data(np.random.rand(10, 2))
+
+        dataC = Data.concat([data0, data1, data2], chunksize=10, name="concat")
+        data0.destroy()
+        data1.destroy()
+        data2.destroy()
+
+        with dataC:
+            self.assertEqual(dataC.name, "concat")
+            self.assertEqual(dataC.shape, (30, 2))
+        dataC.destroy()        
 
 
 class TestDataSetFold(unittest.TestCase):
