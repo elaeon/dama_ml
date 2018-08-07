@@ -224,13 +224,15 @@ def filter_sample(stream, label, col_index):
                 yield row
 
 
-def num_splits(length, chunks_size):
-    if 0 < chunks_size <= length:
-        if length % chunks_size > 0:
+def num_splits(length, chunksize):
+    if length is None or chunksize is None:
+        return 0
+    elif 0 < chunksize <= length:
+        if length % chunksize > 0:
             r = 1
         else:
             r = 0
-        return int(round(length/chunks_size, 0)) + r
+        return int(round(length/chunksize, 0)) + r
     else:
         return 1
 

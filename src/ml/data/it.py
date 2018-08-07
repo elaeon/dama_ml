@@ -484,15 +484,13 @@ class Iterator(object):
 
     def to_df(self):
         if self.has_chunks:
-            return pd.concat(self, axis=0, copy=False, ignore_index=True)
-        else:
-            if isinstance(self.dtype, list):
-                columns = [c for c, _ in self.dtype]
+            if self.type_elem == np.ndarray:
+                return pd.DataFrame(self.to_narray(), columns=self.columns())
             else:
-                columns = None
-
+                return pd.concat(self, axis=0, copy=False, ignore_index=True)
+        else:
             return self._assign_struct_array2df(self, self.length, self.dtype, 
-                columns)
+                self.columns())
 
     def cut_it_chunk(self, length):
         end = 0

@@ -84,26 +84,6 @@ class TestDataset(unittest.TestCase):
             self.assertEqual(labels_counter[0]+labels_counter[1], 10)
         dataset.destroy()
 
-    def test_distinct_data(self):
-        dataset = DataLabel(
-            name="test_ds",
-            dataset_path="/tmp/",
-            clean=True)
-        with dataset:
-            dataset.from_data(self.X, self.Y, self.X.shape[0])
-            self.assertEqual(dataset.distinct_data() > 0, True)
-        dataset.destroy()
-
-    def test_sparcity(self):
-        dataset = DataLabel(
-            name="test_ds",
-            dataset_path="/tmp/",
-            clean=True)
-        with dataset:
-            dataset.from_data(self.X, self.Y, self.X.shape[0])
-            self.assertEqual(dataset.sparcity() > .3, True)
-        dataset.destroy()
-
     def test_copy(self):
         dataset = DataLabel(
             name="test_ds",
@@ -496,7 +476,14 @@ class TestDataset(unittest.TestCase):
         with dataC:
             self.assertEqual(dataC.name, "concat")
             self.assertEqual(dataC.shape, (30, 2))
-        dataC.destroy()        
+        dataC.destroy()
+
+    def test_reader(self):
+        data0 = Data(name="test0", dataset_path="/tmp", clean=True)
+        with data0:
+            data0.from_data(np.random.rand(10, 2))
+            self.assertEqual(data0.reader(chunksize=5, df=True).to_memory().shape, (10, 2))
+        data0.destroy()
 
 
 class TestDataSetFold(unittest.TestCase):

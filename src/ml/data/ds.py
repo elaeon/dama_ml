@@ -265,6 +265,9 @@ class Data(ReadWriteData):
     def __init__(self, name=None, dataset_path=None, description='', author='', 
                 compression_level=0, clean=False, mode='a'):
 
+        if name is None:
+            raise Exception("I can't build a dataset without a name, plese add a name to this dataset.")
+
         self.name = uuid.uuid4().hex if name is None else name
         self.header_map = ["author", "description", "timestamp", "transforms_str"]
         self.f = None
@@ -387,22 +390,6 @@ class Data(ReadWriteData):
         """
         return self._get_data('data')
 
-    def to_iter(self, dtype=dtype, chunks_size=258):
-        def iter_(data):
-            c = 0
-            init = 0
-            end = chunks_size
-            max_iter = round(self.data.shape[0] / float(chunks_size), 0)
-            max_iter = 1 if max_iter == 0 else max_iter
-            while c < max_iter:
-                for e in self.data[init:end]:
-                    yield e
-                init = end
-                end += chunks_size
-                c += 1
-
-        return Iterator(iter_(self.data), dtype=dtype).to_chunks(chunks_size=chunks_size)
-
     def num_features(self):
         """
         return the number of features of the dataset
@@ -429,7 +416,7 @@ class Data(ReadWriteData):
         """
         from ml.utils.order import order_table
         print('       ')
-        print('DATASET NAME: {}'.format(self.name))
+        print('Dataset NAME: {}'.format(self.name))
         print('Author: {}'.format(self.author))
         print('Transforms: {}'.format(self.transforms.to_json()))
         print('Header Hash: {}'.format(self.hash_header))
@@ -457,39 +444,6 @@ class Data(ReadWriteData):
         header = [getattr(self, attr) for attr in self.header_map]
         h = hashlib.md5("".join(header).encode("utf-8"))
         return h.hexdigest()
-
-    def distinct_data(self):
-        """
-        return the radio of distincts elements in the training data.
-        i.e 
-        [1,2,3,4,5] return 5/5
-        [2,2,2,2,2] return 1/5        
-        
-        """
-        if not isinstance(self.dtype, object):
-            data = self.data[:].reshape(self.data.shape[0], -1)
-        else:
-            data = np.asarray([row.reshape(1, -1)[0] for row in self.data])
-        y = set((elem for row in data for elem in row))
-        return float(len(y)) / data.size
-
-    def sparcity(self):
-        """
-        return a value between [0, 1]. If is 0 no zeros exists, if is 1 all data is zero.
-        """
-        if not isinstance(self.dtype, object):
-            data = self.data[:].reshape(self.data.shape[0], -1)
-        else:
-            data = np.asarray([row.reshape(1, -1)[0] for row in self.data])
-
-        zero_counter = 0
-        total = 0
-        for row in data:
-            for elem in row:
-                if elem == 0:
-                    zero_counter += 1
-                total += 1
-        return float(zero_counter) / total
 
     def from_data(self, data, length=None, chunks_size=258, transform=True):
         """
@@ -570,47 +524,32 @@ class Data(ReadWriteData):
         """
         return self.to_DF(self.data[:])
 
-    def outlayers(self, type_detector="isolation", n_estimators=25, max_samples=10, contamination=.2):
-        """
-        :type n_estimators: int
-        :params n_estimators: number of estimators for IsolationForest
+    def to_iter(self, dtype:list=None, chunksize:int=258):
+        def iter_():
+            c = 0
+            init = 0
+            end = chunksize
+            max_iter = round(self.data.shape[0] / float(chunksize), 0)
+            max_iter = 1 if max_iter == 0 else max_iter
+            while c <= max_iter:
+                yield self.data[init:end]
+                init = end
+                end += chunksize
+                c += 1
 
-        :type max_samples: float
-        :params max_samples: IsolationForest's max_samples
+        it = Iterator(iter_(), dtype=dtype, chunks_size=chunksize)
+        it.set_length(self.data.shape[0])
+        return it
 
-        :type contamination: float
-        :params contamination: percentaje of expectect outlayers
-
-        return the indexes of the data who are outlayers
-        """
-        if type_detector == "robust":
-            from sklearn.covariance import MinCovDet
-            robust_cov = MinCovDet().fit(self.data[:])
-            robust_mahal = robust_cov.mahalanobis(self.data[:] - robust_cov.location_)
-            limit = int(round(len(robust_mahal)*contamination))
-            threshold = sorted(robust_mahal, reverse=True)[limit]
-            y_pred = (1 if val < threshold else -1 for val in robust_mahal)
+    def reader(self, chunksize:int=0, df=True) -> Iterator:
+        if df is True:
+            dtype = [(col, self.dtype) for col in self.columns]
         else:
-            from sklearn.ensemble import IsolationForest
-            clf = IsolationForest(n_estimators=n_estimators,
-                contamination=contamination,
-                random_state=np.random.RandomState(42),
-                max_samples=max_samples,
-                n_jobs=-1)
-            
-            if len(self.data.shape) > 2:
-                log.debug("outlayers transform shape...")
-                data = self.data[:].reshape(-1, 1)
-            else:
-                data = self.data
-
-            clf.fit(data)
-            y_pred = clf.predict(data)
-        return (i for i, v in enumerate(y_pred) if v == -1)
-
-    def reader(self, chunksize:int=0) -> Iterator:
-        dtype = [(col, self.dtype) for col in self.columns]
-        return Iterator(self.data, dtype=dtype).to_chunks(chunksize)
+            dtype = self.dtype
+        if chunksize == 0:
+            return Iterator(self.data, dtype=dtype)
+        else:
+            return self.to_iter(dtype=dtype, chunksize=chunksize)
 
     @staticmethod
     def concat(datasets, chunksize:int=0, name:str=None):
@@ -821,10 +760,6 @@ class DataLabel(Data):
             columns_name = list(self.columns)
             return pd.DataFrame(data=self.data[:], columns=columns_name)
 
-    @classmethod
-    def from_DF(self, name, df, transforms=None, apply_transforms=None, path=None):
-        pass
-
     def to_data(self):
         name = self.name + "_data_" + uuid.uuid4().hex
         data = super(DataLabel, self).empty(name)
@@ -1023,15 +958,15 @@ class DataLabel(Data):
 
     def cv_ds(self, train_size=.7, valid_size=.1, dataset_path=None, apply_transforms=True):
         data = self.cv(train_size=train_size, valid_size=valid_size)
-        train_ds = DataLabel(dataset_path=dataset_path)
+        train_ds = DataLabel(name="train", dataset_path=dataset_path)
         train_ds.transforms = self.transforms
         with train_ds:
             train_ds.from_data(data[0], data[3], data[0].shape[0])
-        validation_ds = DataLabel(dataset_path=dataset_path)
+        validation_ds = DataLabel(name="validation", dataset_path=dataset_path)
         validation_ds.transforms = self.transforms
         with validation_ds:
             validation_ds.from_data(data[1], data[4], data[1].shape[0])
-        test_ds = DataLabel(dataset_path=dataset_path)
+        test_ds = DataLabel(name="test", dataset_path=dataset_path)
         test_ds.transforms = self.transforms
         with test_ds:
             test_ds.from_data(data[2], data[5], data[2].shape[0])
