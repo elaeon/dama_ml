@@ -21,7 +21,7 @@ class TestCSVZip(unittest.TestCase):
         csv.destroy()
 
     def test_csv_ext(self):
-        fm = get_compressed_file_manager_ext(self.filepath)
+        fm = get_compressed_file_manager_ext(self.filepath, 'pandas')
         self.assertEqual(fm.mime_type, ZIPFile.mime_type)
 
     def test_reader(self):
@@ -75,7 +75,7 @@ class TestCSV(unittest.TestCase):
         csv.destroy()
 
     def test_csv_ext(self):
-        fm = get_compressed_file_manager_ext(self.filepath)
+        fm = get_compressed_file_manager_ext(self.filepath, 'pandas')
         self.assertEqual(fm.mime_type, File.mime_type)
 
     def test_reader(self):

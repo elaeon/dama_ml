@@ -421,7 +421,7 @@ class FitTsne(Fit):
 
         tsne = PTsne(model_name=self.name)
         if not tsne.exist():
-            dataset = Data(dataset_path="/tmp", clean=True)
+            dataset = Data(name="{}_tsne".format(self.name), dataset_path="/tmp", clean=True)
             with dataset:
                 dataset.from_data(data)
             tsne = PTsne(model_name=self.name, latent_dim=2)

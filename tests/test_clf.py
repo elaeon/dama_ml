@@ -510,7 +510,7 @@ class TestKFold(unittest.TestCase):
         pass
 
     def test_predict(self):
-        dataset = DataLabel(dataset_path="/tmp/", clean=True)
+        dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         with dataset:
             dataset.from_data(self.X, self.Y)
         classif = RandomForest(

@@ -17,33 +17,33 @@ class TestLinearOutLayer(unittest.TestCase):
         self.outlayers =  [ -1,   -1,  1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,  -1,   1,  -1]
         self.contamination = .2
 
-    def test_linear_outlayer1(self):
-        from sklearn.ensemble import IsolationForest
-        df = pd.DataFrame(data=self.data)
-        transforms = Transforms()
-        transforms.add(FitStandardScaler)
-        dl = DataLabel(name="test", dataset_path="/tmp", clean=True)
-        dl.transforms = transforms 
-        dl.apply_transforms = True 
-        with dl:
-            dl.from_data(df.as_matrix(), np.asarray(self.outlayers))
-            outlayers = dl.outlayers(type_detector='isolation', n_estimators=25, max_samples=10, 
-                contamination=self.contamination)
-        dl.destroy()
-        self.assertCountEqual(list(outlayers), [0, 1, 13, 15])
+    #def test_linear_outlayer1(self):
+    #    from sklearn.ensemble import IsolationForest
+    #    df = pd.DataFrame(data=self.data)
+    #    transforms = Transforms()
+    #    transforms.add(FitStandardScaler)
+    #    dl = DataLabel(name="test", dataset_path="/tmp", clean=True)
+    #    dl.transforms = transforms 
+    #    dl.apply_transforms = True 
+    #    with dl:
+    #        dl.from_data(df.as_matrix(), np.asarray(self.outlayers))
+    #        outlayers = dl.outlayers(type_detector='isolation', n_estimators=25, max_samples=10, 
+    #            contamination=self.contamination)
+    #    dl.destroy()
+    #    self.assertCountEqual(list(outlayers), [0, 1, 13, 15])
 
-    def test_linear_outlayer2(self):
-        df = pd.DataFrame(data=self.data)
-        transforms = Transforms()
-        transforms.add(FitStandardScaler)
-        ds = DataLabel(name="test", dataset_path="/tmp", clean=True)
-        ds.transforms = transforms 
-        ds.apply_transforms = True 
-        with ds:
-            ds.from_data(df.as_matrix(), np.asarray(self.outlayers))
-            outlayers = ds.outlayers(type_detector='robust', contamination=self.contamination)
-        ds.destroy()
-        self.assertCountEqual(list(outlayers), [0, 8, 13, 15])
+    #def test_linear_outlayer2(self):
+    #    df = pd.DataFrame(data=self.data)
+    #    transforms = Transforms()
+    #    transforms.add(FitStandardScaler)
+    #    ds = DataLabel(name="test", dataset_path="/tmp", clean=True)
+    #    ds.transforms = transforms 
+    #    ds.apply_transforms = True 
+    #    with ds:
+    #        ds.from_data(df.as_matrix(), np.asarray(self.outlayers))
+    #        outlayers = ds.outlayers(type_detector='robust', contamination=self.contamination)
+    #    ds.destroy()
+    #    self.assertCountEqual(list(outlayers), [0, 8, 13, 15])
 
 
 class TestNumericFn(unittest.TestCase):

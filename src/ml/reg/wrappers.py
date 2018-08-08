@@ -65,16 +65,19 @@ class RegModel(SupervicedModel):
     def reformat_all(self, dataset, train_size=.7, valid_size=.1, unbalanced=None, chunks_size=30000):
         log.info("Reformating {}...".format(self.cls_name()))
         dl_train = DataLabel(
+            name="{}.{}.{}".format(self.model_name, self.model_version, "train"),
             dataset_path=settings["dataset_model_path"],
             compression_level=3,
             clean=True)
         dl_train.transforms = dataset.transforms
         dl_test = DataLabel(
+            name="{}.{}.{}".format(self.model_name, self.model_version, "test"),
             dataset_path=settings["dataset_model_path"],
             compression_level=3,
             clean=True)
         dl_test.transforms = dataset.transforms
         dl_validation = DataLabel(
+            name="{}.{}.{}".format(self.model_name, self.model_version, "validation"),
             dataset_path=settings["dataset_model_path"],
             compression_level=3,
             clean=True)
