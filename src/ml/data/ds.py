@@ -71,10 +71,57 @@ def clean_cache(func):
     return fn_wrapper
 
 
+class Memory:
+    def __init__(self):
+        self.spaces = {}
+        self.attrs = {}
+
+    def require_group(self, name):
+        self[name] = Memory()
+
+    def require_dataset(self, name, shape, dtype='float', **kwargs):
+        self[name] = np.empty(shape, dtype=dtype)
+
+    def get(self, name, value):
+        try:
+            return self[name]
+        except KeyError:
+            return value
+
+    def _get_level(self, spaces, levels):
+        if len(levels) == 1:
+            return spaces[levels[0]]
+        elif len(levels) == 0:
+            return None
+        else:
+            return self._get_level(spaces[levels[0]], levels[1:])
+
+    def __getitem__(self, key):
+        levels = [e for e in key.split("/") if e != ""]
+        v =  self._get_level(self.spaces, levels)
+        return v
+
+    def __setitem__(self, key, value):
+        levels = [e for e in key.split("/") if e != ""]
+        v = self._get_level(self.spaces, levels[:-1])
+        if v is None:
+            self.spaces[levels[-1]] = value
+        else:
+            v[levels[-1]] = value
+
+    def close(self):
+        pass
+
+
 class ReadWriteData(object):
 
     def __enter__(self):
-        self.f = h5py.File(self.url(), self.mode)
+        if self.drive == "core":
+            if self.f is None:
+                self.f = Memory()
+        else:
+            if not self.f:
+                self.f = h5py.File(self.url(), mode=self.mode)
         return self
 
     def __exit__(self, type, value, traceback):
@@ -87,36 +134,32 @@ class ReadWriteData(object):
             return ttype
 
     def _set_space_shape(self, name, shape, dtype):
-        self.f.require_group("data")
-        dtype = self.auto_dtype(dtype)
-        self.f['data'].require_dataset(name, shape, dtype=dtype, chunks=True, 
-            exact=True, **self.zip_params)
+        with self:
+            self.f.require_group("data")
+            dtype = self.auto_dtype(dtype)
+            self.f['data'].require_dataset(name, shape, dtype=dtype, chunks=True, 
+                exact=True, **self.zip_params)
 
     def _get_data(self, name):
         key = '/data/' + name
         return self.f[key]
 
     def _set_space_fmtypes(self, num_features):
-        self.f.require_group("fmtypes")
-        self.f['fmtypes'].require_dataset("names", (num_features,), dtype=h5py.special_dtype(vlen=str), 
-            exact=True, chunks=True, **self.zip_params)
-        self.f['fmtypes'].require_dataset("types", (num_features,), dtype=np.dtype("|S8"), 
-            exact=True, chunks=True, **self.zip_params)
-        self.columns = list(map(lambda x: "c"+str(x), range(num_features)))
+        with self:
+            self.f.require_group("fmtypes")
+            self.f['fmtypes'].require_dataset("names", (num_features,), dtype=h5py.special_dtype(vlen=str), 
+                exact=True, chunks=True, **self.zip_params)
+            self.f['fmtypes'].require_dataset("types", (num_features,), dtype=np.dtype("|S8"), 
+                exact=True, chunks=True, **self.zip_params)
+            self.columns = list(map(lambda x: "c"+str(x), range(num_features)))
 
     def _set_attr(self, name, value):
-        if self.f is None:
-            with h5py.File(self.url(), 'a') as f:
-                f.attrs[name] = value
-        else:
+        with self:
             self.f.attrs[name] = value
             
     def _get_attr(self, name):
         try:
-            if self.f is None:
-                with h5py.File(self.url(), 'r') as f:
-                    return f.attrs[name]
-            else:
+            with self:
                 return self.f.attrs[name]
         except KeyError:
             log.debug("Not found attribute {} in file {}".format(name, self.url()))
@@ -129,57 +172,59 @@ class ReadWriteData(object):
         from tqdm import tqdm
         log.info("Writing with chunks size {}".format(data.chunks_size))
         end = init
-        for smx in tqdm(data, total=data.num_splits()):
-            if hasattr(smx, 'shape') and len(smx.shape) >= 1 and data.has_chunks:
-                end += smx.shape[0]
-            else:
-                end += 1
-
-            if isinstance(smx, pd.DataFrame):
-                array = smx.values
-            elif not hasattr(smx, '__iter__'):
-                array = (smx,)
-            else:
-                array = smx
-
-            try:
-                self.f[name][init:end] = array
-                init = end
-            except TypeError as e:
-                if type(array) == np.ndarray:
-                    array_type = array.dtype
-                    if array.dtype != self.f[name].dtype:                        
-                        must_type = self.f[name].dtype
-                    else:
-                        raise TypeError(e)
+        with self:
+            for smx in tqdm(data, total=data.num_splits()):
+                if hasattr(smx, 'shape') and len(smx.shape) >= 1 and data.has_chunks:
+                    end += smx.shape[0]
                 else:
-                    array_type = type(array[0])
-                    must_type = self.f[name].dtype
-                raise TypeError("All elements in array must be of type '{}' but found '{}'".format(
-                    must_type, array_type))
-        return end
+                    end += 1
+
+                if isinstance(smx, pd.DataFrame):
+                    array = smx.values
+                elif not hasattr(smx, '__iter__'):
+                    array = (smx,)
+                else:
+                    array = smx
+
+                try:
+                    self.f[name][init:end] = array
+                    init = end
+                except TypeError as e:
+                    if type(array) == np.ndarray:
+                        array_type = array.dtype
+                        if array.dtype != self.f[name].dtype:                        
+                            must_type = self.f[name].dtype
+                        else:
+                            raise TypeError(e)
+                    else:
+                        array_type = type(array[0])
+                        must_type = self.f[name].dtype
+                    raise TypeError("All elements in array must be of type '{}' but found '{}'".format(
+                        must_type, array_type))
+            return end
 
     def chunks_writer_split(self, data_key, labels_key, data, labels_column, init=0):
         from tqdm import tqdm
         log.info("Writing with chunks size {}".format(data.chunks_size))
         end = init
-        for smx in tqdm(data, total=data.num_splits()):
-            if hasattr(smx, 'shape') and len(smx.shape) >= 1 and data.has_chunks:
-                end += smx.shape[0]
-            else:
-                end += 1
+        with self:
+            for smx in tqdm(data, total=data.num_splits()):
+                if hasattr(smx, 'shape') and len(smx.shape) >= 1 and data.has_chunks:
+                    end += smx.shape[0]
+                else:
+                    end += 1
 
-            if isinstance(smx, pd.DataFrame):
-                array_data = smx.drop([labels_column], axis=1).values
-                array_labels = smx[labels_column].values
-            else:
-                labels_column = int(labels_column)
-                array_data = np.delete(smx, labels_column, axis=1)
-                array_labels = smx[:, labels_column]
+                if isinstance(smx, pd.DataFrame):
+                    array_data = smx.drop([labels_column], axis=1).values
+                    array_labels = smx[labels_column].values
+                else:
+                    labels_column = int(labels_column)
+                    array_data = np.delete(smx, labels_column, axis=1)
+                    array_labels = smx[:, labels_column]
 
-            self.f[data_key][init:end] = array_data
-            self.f[labels_key][init:end] = array_labels
-            init = end
+                self.f[data_key][init:end] = array_data
+                self.f[labels_key][init:end] = array_labels
+                init = end
 
         if hasattr(data.dtype, "__iter__"):
             ndtype = []
@@ -212,6 +257,9 @@ class ReadWriteData(object):
         return the path where is saved the dataset
         """
         return os.path.join(self.dataset_path, self.name)
+
+    def exist(self):
+        return os.path.exists(self.url())
 
     @classmethod
     def url_to_name(self, url):
@@ -263,7 +311,7 @@ class Data(ReadWriteData):
     :param rewrite: if true, you can clean the saved data and add a new dataset.
     """
     def __init__(self, name=None, dataset_path=None, description='', author='', 
-                compression_level=0, clean=False, mode='a'):
+                compression_level=0, clean=False, mode='a', drive='default'):
 
         if name is None:
             raise Exception("I can't build a dataset without a name, plese add a name to this dataset.")
@@ -271,6 +319,7 @@ class Data(ReadWriteData):
         self.name = uuid.uuid4().hex if name is None else name
         self.header_map = ["author", "description", "timestamp", "transforms_str"]
         self.f = None
+        self.drive = drive
         self.mode = mode
 
         if dataset_path is None:
@@ -376,8 +425,9 @@ class Data(ReadWriteData):
 
     @columns.setter
     def columns(self, value):
-        data = self.f.get("fmtypes/names", None)
-        data[:] = value
+        with self:
+            data = self.f.get("fmtypes/names", None)
+            data[:] = value
 
     @classmethod
     def module_cls_name(cls):
@@ -403,9 +453,6 @@ class Data(ReadWriteData):
     def shape(self):
         "return the shape of the dataset"
         return self.data.shape
-
-    def exist(self):
-        return os.path.exists(self.url())
 
     def info(self, classes=False):
         """
@@ -456,7 +503,7 @@ class Data(ReadWriteData):
         data = data.it_length(length)
         self._set_space_shape('data', data.shape, dtype=data.global_dtype)
         end = self.chunks_writer("/data/data", data)
-        self._set_space_fmtypes(self.num_features())
+        self._set_space_fmtypes(data.shape[0])
         #self.md5 = self.calc_md5()
         columns = data.columns()
         if columns is not None:
@@ -543,7 +590,8 @@ class Data(ReadWriteData):
 
     def reader(self, chunksize:int=0, df=True) -> Iterator:
         if df is True:
-            dtype = [(col, self.dtype) for col in self.columns]
+            dtypes = self.dtype
+            dtype = [(col, dtypes) for col in self.columns]
         else:
             dtype = self.dtype
         if chunksize == 0:
@@ -710,7 +758,7 @@ class DataLabel(Data):
             self.chunks_writer("/data/data", data)
             self.chunks_writer("/data/labels", labels)
 
-        self._set_space_fmtypes(self.num_features())
+        self._set_space_fmtypes(data.shape[0])
         #self.md5 = self.calc_md5()
         columns = data.columns()
         if columns is not None:
