@@ -472,7 +472,8 @@ class Data(ReadWriteData):
         print('       ')
         headers = ["Dataset", "Shape", "dType"]
         table = []
-        table.append(["dataset", self.shape, self.dtype])
+        with self:
+            table.append(["dataset", self.shape, self.dtype])
         print(order_table(headers, table, "shape"))
 
     def calc_md5(self):
@@ -503,9 +504,9 @@ class Data(ReadWriteData):
         data = data.it_length(length)
         self._set_space_shape('data', data.shape, dtype=data.global_dtype)
         end = self.chunks_writer("/data/data", data)
-        self._set_space_fmtypes(data.shape[0])
         #self.md5 = self.calc_md5()
         columns = data.columns()
+        self._set_space_fmtypes(len(columns))
         if columns is not None:
             self.columns = columns
 
@@ -530,13 +531,13 @@ class Data(ReadWriteData):
         dataset_path is not necesary to especify, this info is obtained from settings.cfg
         """
         data = self.empty(name, dataset_path=dataset_path)
-        with data:
-            data.from_data(self.data[:], calc_nshape(self.data, percentaje), 
-                chunks_size=chunks_size)
-            if transforms is not None:
-                data.transforms = self.transforms + transforms
-            else:
-                data.transforms = self.transforms
+        with self:
+            data.from_data(self.data, calc_nshape(self.data, percentaje), 
+            chunks_size=chunks_size)
+        if transforms is not None:
+            data.transforms = self.transforms + transforms
+        else:
+            data.transforms = self.transforms
         return data
 
     def processing(self, data, apply_transforms=True, chunks_size=258):
@@ -724,7 +725,8 @@ class DataLabel(Data):
         print('       ')
         headers = ["Dataset", "Shape", "dType", "Labels", "ltype"]
         table = []
-        table.append(["dataset", self.shape, self.dtype, self.labels.size, self.ltype])
+        with self:
+            table.append(["dataset", self.shape, self.dtype, self.labels.size, self.ltype])
         print(order_table(headers, table, "shape"))
         if classes == True:
             headers = ["class", "# items", "%"]
@@ -758,9 +760,9 @@ class DataLabel(Data):
             self.chunks_writer("/data/data", data)
             self.chunks_writer("/data/labels", labels)
 
-        self._set_space_fmtypes(data.shape[0])
         #self.md5 = self.calc_md5()
         columns = data.columns()
+        self._set_space_fmtypes(len(columns))
         if columns is not None:
             self.columns = columns
 
@@ -785,13 +787,13 @@ class DataLabel(Data):
         dataset_path is not necesary to especify, this info is obtained from settings.cfg
         """
         dl = self.empty(name, dataset_path=dataset_path)
-        with dl:
+        with self:
             dl.from_data(self.data[:], self.labels[:], calc_nshape(self.data, percentaje), 
                 chunks_size=chunks_size, transform=transforms is not None)
-            if transforms is not None:
-                dl.transforms = self.transforms + transforms
-            else:
-                dl.transforms = self.transforms
+        if transforms is not None:
+            dl.transforms = self.transforms + transforms
+        else:
+            dl.transforms = self.transforms
         return dl      
 
     def to_df(self, include_target=True):
@@ -811,7 +813,7 @@ class DataLabel(Data):
     def to_data(self):
         name = self.name + "_data_" + uuid.uuid4().hex
         data = super(DataLabel, self).empty(name)
-        with data:
+        with self:
             data.from_data(self.data)
         return data
 

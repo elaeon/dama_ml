@@ -254,10 +254,10 @@ class TestTransforms(unittest.TestCase):
         Y = X[:,0] > .5
         dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         dataset.transforms = transforms
-        with dataset:
-            dataset.from_data(X, Y)
+        dataset.from_data(X, Y)
+        with dataset:            
             shape = dataset.shape
-            dataset.info()
+        dataset.info()
         dataset.destroy()
         transforms.destroy()
         self.assertEqual(shape, (100, 6))
@@ -298,9 +298,8 @@ class TestTransforms(unittest.TestCase):
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
         dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         dataset.transforms = transforms
-        with dataset:
-            dataset.from_data(X, Y)
-            dsb = dataset.convert(name="test2")
+        dataset.from_data(X, Y)
+        dsb = dataset.convert(name="test2")
         with dsb:
             shape = dsb.shape
         transforms.destroy()
@@ -336,23 +335,19 @@ class TestTransforms(unittest.TestCase):
         Y = np.append(np.zeros(500), np.ones(500), axis=0)
         dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         dataset.transforms = transforms
-        with dataset:
-            dataset.from_data(X, Y, transform=False)
+        dataset.from_data(X, Y, transform=False)
         transforms = Transforms()
         transforms.add(FitRobustScaler, name="scaler")
-        with dataset:
-            dsb = dataset.convert(name="test2", transforms=transforms, dataset_path="/tmp")
+        dsb = dataset.convert(name="test2", transforms=transforms, dataset_path="/tmp")
         dataset.destroy()
         dsb.destroy()
 
         dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
         dataset.transforms = transforms
-        with dataset:
-            dataset.from_data(X, Y)
+        dataset.from_data(X, Y)
         transforms = Transforms()
         transforms.add(FitRobustScaler, name="scaler")
-        with dataset:
-            dsb = dataset.convert(name="test2", transforms=transforms, dataset_path="/tmp")
+        dsb = dataset.convert(name="test2", transforms=transforms, dataset_path="/tmp")
         dataset.destroy()
         dsb.destroy()
 
@@ -462,9 +457,9 @@ class TestProcessing(unittest.TestCase):
         import dask.dataframe as ddf
         import dask.array as ndf
 
-        data = Data(name="test", dataset_path="/tmp", clean=True)
+        data = Data(name="test", dataset_path="/tmp", clean=True)        
+        data.from_data(self.it, chunks_size=20)
         with data:
-            data.from_data(self.it, chunks_size=20)
             df = ddf.from_array(data.data, chunksize=data.data.chunks[0], columns=data.columns[:])
             #df = ndf.from_array(data.data, chunks=data.data.chunks)
             transforms = Transforms()

@@ -56,7 +56,7 @@ class BaseAe(UnsupervisedModel):
                 clean=True)
             train_ds.transforms = dataset.transforms
 
-            with train_ds:
+            with dataset:
                 train_ds.from_data(dataset.data, chunks_size=chunks_size, 
                     transform=False)
                 train_ds.columns = dataset.columns

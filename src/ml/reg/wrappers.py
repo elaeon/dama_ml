@@ -83,20 +83,21 @@ class RegModel(SupervicedModel):
             clean=True)
         dl_validation.transforms = dataset.transforms
 
-        train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv(
-             train_size=train_size, valid_size=valid_size, unbalanced=unbalanced)
-        with dl_train:
-            dl_train.from_data(train_data, train_labels, chunks_size=chunks_size,
-                transform=False)
-            dl_train.columns = dataset.columns
-        with dl_test:
-            dl_test.from_data(test_data, test_labels, chunks_size=chunks_size,
-                transform=False)
-            dl_test.columns = dataset.columns
-        with dl_validation:
-            dl_validation.from_data(validation_data, validation_labels, 
-                chunks_size=chunks_size, transform=False)
-            dl_validation.columns = dataset.columns
+        with dataset:
+            train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv(
+                 train_size=train_size, valid_size=valid_size, unbalanced=unbalanced)
+            with dl_train:
+                dl_train.from_data(train_data, train_labels, chunks_size=chunks_size,
+                    transform=False)
+                dl_train.columns = dataset.columns
+            with dl_test:
+                dl_test.from_data(test_data, test_labels, chunks_size=chunks_size,
+                    transform=False)
+                dl_test.columns = dataset.columns
+            with dl_validation:
+                dl_validation.from_data(validation_data, validation_labels, 
+                    chunks_size=chunks_size, transform=False)
+                dl_validation.columns = dataset.columns
 
         return dl_train, dl_test, dl_validation
 

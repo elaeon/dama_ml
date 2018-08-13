@@ -304,12 +304,12 @@ class SupervicedModel(BaseModel):
         pass
 
     def set_dataset(self, dataset,  train_size=.7, valid_size=.1, unbalanced=None, chunks_size=30000):
-        with dataset:
-            self.original_dataset_md5 = dataset.md5
-            self.original_dataset_path = dataset.dataset_path
-            self.original_dataset_name = dataset.name
-            self.train_ds, self.test_ds, self.validation_ds = self.reformat_all(dataset, 
-                train_size=train_size, valid_size=valid_size, unbalanced=unbalanced, chunks_size=chunks_size)
+        #with dataset:
+        self.original_dataset_md5 = dataset.md5
+        self.original_dataset_path = dataset.dataset_path
+        self.original_dataset_name = dataset.name
+        self.train_ds, self.test_ds, self.validation_ds = self.reformat_all(dataset, 
+            train_size=train_size, valid_size=valid_size, unbalanced=unbalanced, chunks_size=chunks_size)
         self.save_meta(keys="model")
 
     def metadata_model(self):

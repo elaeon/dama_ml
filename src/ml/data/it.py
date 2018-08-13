@@ -82,7 +82,10 @@ class Iterator(object):
         if isinstance(self.dtype, list):
             return [c for c, _ in self.dtype]
         else:
-            return None
+            if self.features_dim is not None and len(self.features_dim) > 0:
+                return ["c"+str(i) for i in range(self.features_dim[-1])]
+            else:
+                return ["c0"]
 
     def pushback(self, val) -> None:
         self.pushedback.append(val)
