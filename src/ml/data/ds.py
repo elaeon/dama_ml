@@ -76,11 +76,29 @@ class Memory:
         self.spaces = {}
         self.attrs = {}
 
+    def __contains__(self, item):
+        return item in self.spaces
+
+    def __getitem__(self, key):
+        levels = [e for e in key.split("/") if e != ""]
+        v =  self._get_level(self.spaces, levels)
+        return v
+
+    def __setitem__(self, key, value):
+        levels = [e for e in key.split("/") if e != ""]
+        v = self._get_level(self.spaces, levels[:-1])
+        if v is None:
+            self.spaces[levels[-1]] = value
+        else:
+            v[levels[-1]] = value
+
     def require_group(self, name):
-        self[name] = Memory()
+        if name not in self:
+            self[name] = Memory()
 
     def require_dataset(self, name, shape, dtype='float', **kwargs):
-        self[name] = np.empty(shape, dtype=dtype)
+        if name not in self:
+            self[name] = np.empty(shape, dtype=dtype)
 
     def get(self, name, value):
         try:
@@ -96,19 +114,6 @@ class Memory:
         else:
             return self._get_level(spaces[levels[0]], levels[1:])
 
-    def __getitem__(self, key):
-        levels = [e for e in key.split("/") if e != ""]
-        v =  self._get_level(self.spaces, levels)
-        return v
-
-    def __setitem__(self, key, value):
-        levels = [e for e in key.split("/") if e != ""]
-        v = self._get_level(self.spaces, levels[:-1])
-        if v is None:
-            self.spaces[levels[-1]] = value
-        else:
-            v[levels[-1]] = value
-
     def close(self):
         pass
 
@@ -116,7 +121,7 @@ class Memory:
 class ReadWriteData(object):
 
     def __enter__(self):
-        if self.drive == "core":
+        if self.driver == "core":
             if self.f is None:
                 self.f = Memory()
         else:
@@ -311,7 +316,7 @@ class Data(ReadWriteData):
     :param rewrite: if true, you can clean the saved data and add a new dataset.
     """
     def __init__(self, name=None, dataset_path=None, description='', author='', 
-                compression_level=0, clean=False, mode='a', drive='default'):
+                compression_level=0, clean=False, mode='a', driver='default'):
 
         if name is None:
             raise Exception("I can't build a dataset without a name, plese add a name to this dataset.")
@@ -319,7 +324,7 @@ class Data(ReadWriteData):
         self.name = uuid.uuid4().hex if name is None else name
         self.header_map = ["author", "description", "timestamp", "transforms_str"]
         self.f = None
-        self.drive = drive
+        self.driver = driver
         self.mode = mode
 
         if dataset_path is None:

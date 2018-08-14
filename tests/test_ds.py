@@ -7,6 +7,7 @@ from ml.data.ds import DataLabelFold
 from ml.data.ds import Data, DataLabel
 from ml.processing import Transforms
 from ml.random import sampling_size
+from ml.data.ds import Memory
 
 
 def linear(x, b=0):
@@ -462,15 +463,20 @@ class TestDataset(unittest.TestCase):
         data0.destroy()
     
     def test_memory_ds(self):
-        data0 = Data(name="test0", dataset_path="/tmp", clean=True, drive='core')
+        data0 = Data(name="test0", dataset_path="/tmp", clean=True, driver='core')
         data0.from_data(np.random.rand(10, 2))
         self.assertEqual(data0.data.shape, (10, 2))
         data0.destroy()
         
+    def test_memory_ds_label(self):
+        data0 = DataLabel(name="test0", dataset_path="/tmp", clean=True, driver='core')
+        data0.from_data(np.random.rand(10, 2), np.random.rand(10))
+        self.assertEqual(data0.data.shape, (10, 2))
+        data0.destroy()
+
 
 class TestMemoryDs(unittest.TestCase):
     def test_memory_ds(self):
-        from ml.data.ds import Memory
         m = Memory()
         m.require_group("data")
         m["/data/data"] = "y"
@@ -483,6 +489,14 @@ class TestMemoryDs(unittest.TestCase):
         m["fmtypes"].require_dataset("name", (10, 1))
         self.assertEqual(m["fmtypes"]["name"].shape, (10, 1))
         self.assertEqual(m["/fmtypes/name"].shape, (10, 1))
+
+    def test_memory_add(self):
+        m = Memory()
+        m.require_group("data")
+        m["/data"] = "y"
+        m.require_group("data")
+        self.assertEqual(m["data"], "y")
+        
 
 
 class TestDataSetFold(unittest.TestCase):
