@@ -11,8 +11,9 @@ import h5py
 
 from collections import defaultdict
 from ml.utils.config import get_settings
-from ml.utils.seq import grouper_chunk
+#from ml.utils.seq import grouper_chunk
 from ml.utils.numeric_functions import max_type, num_splits, filter_sample, wsrj
+from ml.utils.batcher import BatchWrapper, cut, assign_struct_array2df
 
 
 settings = get_settings("ml")
@@ -37,36 +38,33 @@ def choice(operator):
     return inner
 
 
-def cut(fn):
-    def check_params(*args, **kwargs):
-        smx, end, length = fn(*args, **kwargs)
-        if end < length:
-            return smx[:end]
-        return smx
-    return check_params
-
-
 class Iterator(object):
     def __init__(self, fn_iter, dtype=None, chunks_size=0) -> None:
         if isinstance(fn_iter, types.GeneratorType) or isinstance(fn_iter, psycopg2.extensions.cursor):
             self.it = fn_iter
             self.length = None
+            self.is_ds = False
         elif isinstance(fn_iter, Iterator):
             self.it = fn_iter
             self.length = fn_iter.length
+            self.is_ds = False
         elif isinstance(fn_iter, pd.DataFrame):
             self.it = fn_iter.itertuples(index=False)
             dtype = list(zip(fn_iter.columns.values, fn_iter.dtypes.values))
             self.length = fn_iter.shape[0]
+            self.is_ds = False
         elif isinstance(fn_iter, np.ndarray):
             self.it = iter(fn_iter)
             self.length = fn_iter.shape[0]
+            self.is_ds = False
         elif isinstance(fn_iter, h5py._hl.dataset.Dataset):
             self.it = iter(fn_iter)
             self.length = fn_iter.shape[0]
+            self.is_ds = True
         else:
             self.it = iter(fn_iter)
             self.length = None
+            self.is_ds = False
 
         self.pushedback = []
         if chunks_size is None:
@@ -78,6 +76,7 @@ class Iterator(object):
         #to obtain dtype, shape, global_dtype and type_elem
         self.chunk_taste(dtype)
     
+    @property
     def columns(self):
         if isinstance(self.dtype, list):
             return [c for c, _ in self.dtype]
@@ -185,34 +184,17 @@ class Iterator(object):
         else:
             return self
     
-    def chunks_gen(self, chunks_size: int, dtype):
-        if chunks_size < 1:
-            chunks_size = self.shape[0]
+    def chunks_gen(self, chunksize: int, dtype):
+        if chunksize < 1:
+            chunksize = self.shape[0]
 
         if len(self.shape) == 1:
-            chunk_shape = [chunks_size]
+            chunk_shape = [chunksize]
         else:
             i_features = self.shape[1:]
-            chunk_shape = [chunks_size] + list(i_features)
+            chunk_shape = [chunksize] + list(i_features)
 
-        if not isinstance(dtype, list):
-            if len(self.shape) == 2 and self.shape[1] == 1:
-                for smx in grouper_chunk(chunks_size, self):
-                    smx_a = np.empty(chunk_shape, dtype=dtype)
-                    for i, row in enumerate(smx):
-                        smx_a[i] = row[0]
-                    yield smx_a[:i+1]
-            else:
-                for smx in grouper_chunk(chunks_size, self):
-                    smx_a = np.empty(chunk_shape, dtype=dtype)
-                    for i, row in enumerate(smx):
-                            smx_a[i] = row
-                    yield smx_a[:i+1]
-        else:
-            columns = [c for c, _ in dtype]
-            for smx in grouper_chunk(chunks_size, self):
-                yield self._assign_struct_array2df(smx, chunk_shape[0], dtype, 
-                    columns, chunks_size=chunks_size)
+        return BatchWrapper(self, chunksize, dtype).run(chunk_shape)
     
     def check_datatime(self, dtype: list):
         cols = []
@@ -488,12 +470,12 @@ class Iterator(object):
     def to_df(self):
         if self.has_chunks:
             if self.type_elem == np.ndarray:
-                return pd.DataFrame(self.to_narray(), columns=self.columns())
+                return pd.DataFrame(self.to_narray(), columns=self.columns)
             else:
                 return pd.concat(self, axis=0, copy=False, ignore_index=True)
         else:
-            return self._assign_struct_array2df(self, self.length, self.dtype, 
-                self.columns())
+            return assign_struct_array2df(self, self.type_elem, 0, self.length, self.dtype, 
+                self.columns)
 
     def cut_it_chunk(self, length):
         end = 0
@@ -506,23 +488,6 @@ class Iterator(object):
                 yield chunk
                 break     
             yield chunk
-
-    #cut if length > array size 
-    @cut
-    def _assign_struct_array2df(self, it, length, dtype, columns, chunks_size=0):
-        stc_arr = np.empty(length, dtype=dtype)
-        i = 0
-        if hasattr(self.type_elem, "__iter__"):
-            for i, row in enumerate(it):
-                stc_arr[i] = tuple(row)
-        else:
-            for i, row in enumerate(it):
-                stc_arr[i] = row
-
-        smx = pd.DataFrame(stc_arr,
-            index=np.arange(0, length), 
-            columns=columns)
-        return smx, i+1, length
 
     def to_memory(self, length=None):
         if self.length is not None and length is None:

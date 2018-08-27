@@ -471,7 +471,7 @@ class TestIterator(unittest.TestCase):
         data = np.asarray([[1,2],[3,4],[5,6],[7,8],[9,0]], dtype='int')
         data = pd.DataFrame(data, columns=['x', 'y'])
         it = Iterator(data)
-        self.assertCountEqual(it.columns(), ['x', 'y'])
+        self.assertCountEqual(it.columns, ['x', 'y'])
 
     def test_shape_memory(self):
         data = np.random.rand(10, 2)
@@ -545,6 +545,18 @@ class TestIterator(unittest.TestCase):
         array = np.random.rand(10)
         it = Iterator(array)
         self.assertCountEqual(it.to_memory(), array)
+
+    def test_df_index_chunks(self):
+        array = np.random.rand(10, 2)
+        it = Iterator(array, dtype=[("a", int), ("b", int)]).to_chunks(3)
+        df = next(it)
+        self.assertCountEqual(df.index.values, np.array([0,1,2]))
+        df = next(it)
+        self.assertCountEqual(df.index.values, np.array([0,1,2]) + 3)
+        df = next(it)
+        self.assertCountEqual(df.index.values, np.array([0,1,2]) + 6)
+        df = next(it)
+        self.assertCountEqual(df.index.values, np.array([0]) + 9)
 
 
 def chunk_sizes(seq):

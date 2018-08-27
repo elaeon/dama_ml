@@ -510,7 +510,7 @@ class Data(ReadWriteData):
         self._set_space_shape('data', data.shape, dtype=data.global_dtype)
         end = self.chunks_writer("/data/data", data)
         #self.md5 = self.calc_md5()
-        columns = data.columns()
+        columns = data.columns
         self._set_space_fmtypes(len(columns))
         if columns is not None:
             self.columns = columns
@@ -585,7 +585,7 @@ class Data(ReadWriteData):
             max_iter = round(self.data.shape[0] / float(chunksize), 0)
             max_iter = 1 if max_iter == 0 else max_iter
             while c <= max_iter:
-                yield self.data[init:end]
+                yield pd.DataFrame(self.data[init:end], columns=self.columns)
                 init = end
                 end += chunksize
                 c += 1
@@ -601,8 +601,13 @@ class Data(ReadWriteData):
         else:
             dtype = self.dtype
         if chunksize == 0:
-            return Iterator(self.data, dtype=dtype)
+            it = Iterator(self.data, dtype=dtype)
+            it.set_length(self.data.shape[0])
+            return it
         else:
+            #it = Iterator(self.data, dtype=dtype).to_chunks(chunksize)
+            #it.set_length(self.data.shape[0])
+            #return it
             return self.to_iter(dtype=dtype, chunksize=chunksize)
 
     @staticmethod
@@ -766,7 +771,7 @@ class DataLabel(Data):
             self.chunks_writer("/data/labels", labels)
 
         #self.md5 = self.calc_md5()
-        columns = data.columns()
+        columns = data.columns
         self._set_space_fmtypes(len(columns))
         if columns is not None:
             self.columns = columns
