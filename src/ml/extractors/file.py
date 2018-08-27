@@ -154,14 +154,15 @@ class CSV(object):
         self.file_manager = get_compressed_file_manager_ext(self.filepath, engine)
         self.delimiter = delimiter
 
+    @property
     def columns(self):
-        return self.reader(nrows=1).columns()
+        return self.reader(nrows=1).columns
 
     @property
     def shape(self):
         size = sum(df.shape[0] for df in self.reader(nrows=None, 
             delimiter=self.delimiter, chunksize=1000))
-        return size, len(self.columns())
+        return size, len(self.columns)
 
     def reader(self, *args, **kwargs):
         kwargs["delimiter"] = self.delimiter

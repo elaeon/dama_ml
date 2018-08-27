@@ -7,13 +7,13 @@ import dask.dataframe as dd
 import psycopg2
 import logging
 import datetime
-import h5py
+#import h5py
 
 from collections import defaultdict
 from ml.utils.config import get_settings
-#from ml.utils.seq import grouper_chunk
 from ml.utils.numeric_functions import max_type, num_splits, filter_sample, wsrj
 from ml.utils.batcher import BatchWrapper, cut, assign_struct_array2df
+from ml.data.abc import AbsDataset
 
 
 settings = get_settings("ml")
@@ -57,8 +57,8 @@ class Iterator(object):
             self.it = iter(fn_iter)
             self.length = fn_iter.shape[0]
             self.is_ds = False
-        elif isinstance(fn_iter, h5py._hl.dataset.Dataset):
-            self.it = iter(fn_iter)
+        elif isinstance(fn_iter, AbsDataset):#h5py._hl.dataset.Dataset):
+            self.it = fn_iter
             self.length = fn_iter.shape[0]
             self.is_ds = True
         else:

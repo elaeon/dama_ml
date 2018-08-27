@@ -88,13 +88,13 @@ class BatchArray(Batch):
 
 class BatchDataFrame(Batch):
     def run(self, shape):
-        batch_array = BatchArray(it=self.it, batch_size=self.batch_size, dtype=self.dtype)
+        batch_array = BatchArray(self.it, self.batch_size, self.dtype)
         start_i = 0
         end_i = 0
         columns = [c for c, _ in self.dtype]
-        for batch in batch_array.run():
-            end_i += self.batch_size[0]
-            yield assign_struct_array2df(batch, start_i, end_i, self.dtype, 
+        for batch in batch_array.run(shape):
+            end_i += self.batch_size
+            yield assign_struct_array2df(batch, self.it.type_elem, start_i, end_i, self.dtype, 
                     columns, chunks_size=self.batch_size)
             start_i = end_i
 
@@ -104,7 +104,7 @@ class BatchWrapper(Batch):
         if self.it.is_ds:
             if isinstance(self.dtype, list):
                 return BatchDataFrame(self.it, self.batch_size, self.dtype).run(shape)
-            elif self.it.type_elem == pd.DataFrame:            
+            else:            
                 return BatchArray(self.it, self.batch_size, self.dtype).run(shape)
         else:
             return BatchIt(self.it, self.batch_size, self.dtype).run(shape)

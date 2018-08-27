@@ -19,6 +19,8 @@ from ml.data.it import Iterator
 from ml.random import downsample
 from ml import fmtypes as Fmtypes
 from ml.random import sampling_size
+from ml.data.abc import AbsDataset
+
 
 settings = get_settings("ml")
 
@@ -69,7 +71,7 @@ def clean_cache(func):
             setattr(self, attr, None)
         return func(self, value)
     return fn_wrapper
-
+    
 
 class Memory:
     def __init__(self):
@@ -118,7 +120,7 @@ class Memory:
         pass
 
 
-class ReadWriteData(object):
+class HDF5Dataset(AbsDataset):
 
     def __enter__(self):
         if self.driver == "core":
@@ -131,6 +133,18 @@ class ReadWriteData(object):
 
     def __exit__(self, type, value, traceback):
         self.f.close()
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
+    def __next__(self):
+        return next(self.__iter__())
 
     def auto_dtype(self, ttype):
         if ttype == np.dtype("O") or ttype.kind == "U":
@@ -281,9 +295,9 @@ class ReadWriteData(object):
         if DS is None:
             return
         return DS(name=name, dataset_path=dataset_path, clean=False)
-    
 
-class Data(ReadWriteData):
+
+class Data(HDF5Dataset):
     """
     Base class for dataset build. Get data from memory.
     create the initial values for the dataset.
@@ -537,7 +551,7 @@ class Data(ReadWriteData):
         """
         data = self.empty(name, dataset_path=dataset_path)
         with self:
-            data.from_data(self.data, calc_nshape(self.data, percentaje), 
+            data.from_data(self, calc_nshape(self, percentaje), 
             chunks_size=chunks_size)
         if transforms is not None:
             data.transforms = self.transforms + transforms
@@ -575,24 +589,7 @@ class Data(ReadWriteData):
         """
         convert the dataset to a dataframe
         """
-        return self.to_DF(self.data[:])
-
-    def to_iter(self, dtype:list=None, chunksize:int=258):
-        def iter_():
-            c = 0
-            init = 0
-            end = chunksize
-            max_iter = round(self.data.shape[0] / float(chunksize), 0)
-            max_iter = 1 if max_iter == 0 else max_iter
-            while c <= max_iter:
-                yield pd.DataFrame(self.data[init:end], columns=self.columns)
-                init = end
-                end += chunksize
-                c += 1
-
-        it = Iterator(iter_(), dtype=dtype, chunks_size=chunksize)
-        it.set_length(self.data.shape[0])
-        return it
+        return self.to_DF(self[:])
 
     def reader(self, chunksize:int=0, df=True) -> Iterator:
         if df is True:
@@ -601,14 +598,11 @@ class Data(ReadWriteData):
         else:
             dtype = self.dtype
         if chunksize == 0:
-            it = Iterator(self.data, dtype=dtype)
-            it.set_length(self.data.shape[0])
+            it = Iterator(self, dtype=dtype)
             return it
         else:
-            #it = Iterator(self.data, dtype=dtype).to_chunks(chunksize)
-            #it.set_length(self.data.shape[0])
-            #return it
-            return self.to_iter(dtype=dtype, chunksize=chunksize)
+            it = Iterator(self, dtype=dtype).to_chunks(chunksize)
+            return it
 
     @staticmethod
     def concat(datasets, chunksize:int=0, name:str=None):
@@ -798,7 +792,7 @@ class DataLabel(Data):
         """
         dl = self.empty(name, dataset_path=dataset_path)
         with self:
-            dl.from_data(self.data[:], self.labels[:], calc_nshape(self.data, percentaje), 
+            dl.from_data(self[:], self.labels[:], calc_nshape(self, percentaje), 
                 chunks_size=chunks_size, transform=transforms is not None)
         if transforms is not None:
             dl.transforms = self.transforms + transforms
@@ -815,16 +809,16 @@ class DataLabel(Data):
 
         if include_target == True:
             columns_name = list(self.columns) + ["target"]
-            return pd.DataFrame(data=np.column_stack((self.data[:], self.labels[:])), columns=columns_name)
+            return pd.DataFrame(data=np.column_stack((self[:], self.labels[:])), columns=columns_name)
         else:
             columns_name = list(self.columns)
-            return pd.DataFrame(data=self.data[:], columns=columns_name)
+            return pd.DataFrame(data=self[:], columns=columns_name)
 
     def to_data(self):
         name = self.name + "_data_" + uuid.uuid4().hex
         data = super(DataLabel, self).empty(name)
         with self:
-            data.from_data(self.data)
+            data.from_data(self)
         return data
 
     def plot(self, view=None, type_g=None, columns=None):        

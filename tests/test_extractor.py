@@ -38,11 +38,11 @@ class TestCSVZip(unittest.TestCase):
     def test_reader_another_file(self):
         csv = CSV(self.filepath)
         it = csv.reader(nrows=2, filename="test.csv")
-        self.assertCountEqual(it.columns(), ["A", "B", "C", "D", "F"])
+        self.assertCountEqual(it.columns, ["A", "B", "C", "D", "F"])
 
     def test_columns(self):
         csv = CSV(self.filepath)
-        self.assertCountEqual(csv.columns(), ["A", "B", "C", "D", "F"])
+        self.assertCountEqual(csv.columns, ["A", "B", "C", "D", "F"])
 
     def test_shape(self):
         csv = CSV(self.filepath)
@@ -51,12 +51,12 @@ class TestCSVZip(unittest.TestCase):
     def test_only_columns(self):
         csv = CSV(self.filepath)
         it = csv.reader(columns=["B", "C"])
-        self.assertCountEqual(it.columns(), ["B", "C"])
+        self.assertCountEqual(it.columns, ["B", "C"])
 
     def test_exclude_columns(self):
         csv = CSV(self.filepath)
         it = csv.reader(columns=["A", "C"], exclude=True)
-        self.assertCountEqual(it.columns(), ["B", "D", "F"])
+        self.assertCountEqual(it.columns, ["B", "D", "F"])
 
 
 class TestCSV(unittest.TestCase):
@@ -91,7 +91,7 @@ class TestCSV(unittest.TestCase):
 
     def test_columns(self):
         csv = CSV(self.filepath)
-        self.assertCountEqual(csv.columns(), ["A", "B", "C", "D", "F"])
+        self.assertCountEqual(csv.columns, ["A", "B", "C", "D", "F"])
 
     def test_shape(self):
         csv = CSV(self.filepath)
@@ -100,12 +100,12 @@ class TestCSV(unittest.TestCase):
     def test_only_columns(self):
         csv = CSV(self.filepath)
         it = csv.reader(columns=["B", "C"])
-        self.assertCountEqual(it.columns(), ["B", "C"])
+        self.assertCountEqual(it.columns, ["B", "C"])
 
     def test_exclude_columns(self):
         csv = CSV(self.filepath)
         it = csv.reader(columns=["A", "C"], exclude=True)
-        self.assertCountEqual(it.columns(), ["B", "D", "F"])
+        self.assertCountEqual(it.columns, ["B", "D", "F"])
 
     def test_engine(self):
         csv = CSV(self.filepath, engine="dask")
