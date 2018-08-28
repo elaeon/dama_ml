@@ -1,12 +1,15 @@
 #https://stackoverflow.com/questions/13044562/python-mechanism-to-identify-compressed-file-type-and-uncompress
 import csv
 import zipfile
+import os
 #import bz2
 #import gzip
 from io import StringIO, TextIOWrapper
 from ml.utils.files import rm
 from operator import itemgetter
 from ml.data.it import Iterator, DaskIterator
+from ml.data.abc import AbsDataset
+from ml.utils.decorators import cache
 
 
 def get_compressed_file_manager(filepath):
@@ -53,7 +56,7 @@ class File(object):
         else:
             self.engine = DaskEngine
 
-    def read(self, columns=None, exclude=False, **kwargs) -> Iterator:
+    def read(self, columns=None, exclude=False, df=True, **kwargs) -> Iterator:
         if exclude is True:
             cols = lambda col: col not in columns
         elif exclude is False and columns:
@@ -84,7 +87,7 @@ class ZIPFile(File):
     mime_type = 'compressed/zip'
     proper_extension = 'zip'
 
-    def read(self, filename=None, columns=None, exclude=False, **kwargs) -> Iterator:
+    def read(self, filename=None, columns=None, exclude=False, df=True, **kwargs) -> Iterator:
         import pandas as pd
         if filename is None:
             return super(ZIPFile, self).read(columns=columns, exclude=exclude, **kwargs)
@@ -148,17 +151,62 @@ class ZIPFile(File):
 #        return gzip.GzipFile(self.f)
 
 
-class CSV(object):
+class CSVDataset(AbsDataset):
     def __init__(self, filepath, delimiter=",", engine='pandas'):
         self.filepath = filepath
         self.file_manager = get_compressed_file_manager_ext(self.filepath, engine)
         self.delimiter = delimiter
 
+    def __enter__(self):
+        return NotImplemented
+
+    def __exit__(self, type, value, traceback):
+        return NotImplemented
+
+    def __iter__(self):
+        return NotImplemented
+
+    def __getitem__(self, key):
+        return NotImplemented
+
+    def __setitem__(self, key, value):
+        return NotImplemented
+
+    def __next__(self):
+        return NotImplemented
+
+    def chunks_writer(self, name, data, init=0):
+        return NotImplemented
+
+    def chunks_writer_split(self, data_key, labels_key, data, labels_column, init=0):
+        return NotImplemented
+
+    def url(self):
+        return self.filepath
+
+    def exists(self):
+        return os.path.exists(self.url())
+
+    def num_features(self):
+        if len(self.shape) > 1:
+            return self.shape[-1]
+        else:
+            return 1
+
+    def to_df(self):
+        return self.reader().to_memory()
+
+    @staticmethod
+    def concat(datasets, chunksize:int=0, name:str=None):
+        return NotImplemented
+
     @property
+    @cache
     def columns(self):
         return self.reader(nrows=1).columns
 
     @property
+    @cache
     def shape(self):
         size = sum(df.shape[0] for df in self.reader(nrows=None, 
             delimiter=self.delimiter, chunksize=1000))

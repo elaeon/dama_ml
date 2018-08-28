@@ -7,7 +7,6 @@ import dask.dataframe as dd
 import psycopg2
 import logging
 import datetime
-#import h5py
 
 from collections import defaultdict
 from ml.utils.config import get_settings
@@ -57,7 +56,7 @@ class Iterator(object):
             self.it = iter(fn_iter)
             self.length = fn_iter.shape[0]
             self.is_ds = False
-        elif isinstance(fn_iter, AbsDataset):#h5py._hl.dataset.Dataset):
+        elif isinstance(fn_iter, AbsDataset):
             self.it = fn_iter
             self.length = fn_iter.shape[0]
             self.is_ds = True

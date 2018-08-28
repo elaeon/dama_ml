@@ -4,9 +4,11 @@ from tqdm import tqdm
 from collections import OrderedDict
 from ml import fmtypes
 from ml.data.it import Iterator
+from ml.data.abc import AbsDataset
+from ml.utils.decorators import cache
 
 
-class SQL(object):
+class SQL(AbsDataset):
     def __init__(self, username, db_name, table_name, order_by=["id"], 
         chunks_size=0, df=False, only=None):
         self.conn = None
@@ -37,9 +39,37 @@ class SQL(object):
     def __exit__(self, type, value, traceback):
         self.close()
 
+    def __next__(self):
+        return NotImplemented
+
+    def __iter__(self):
+        return NotImplemented
+
+    def chunks_writer(self, name, data, init=0):
+        return NotImplemented
+
+    def chunks_writer_split(self, data_key, labels_key, data, labels_column, init=0):
+        return NotImplemented
+
+    def num_features(self):
+        if len(self.shape) > 1:
+            return self.shape[-1]
+        else:
+            return 1
+
+    def to_df(self):
+        return NotImplemented
+
+    def url(self):
+        return NotImplemented
+
+    @staticmethod
+    def concat(datasets, chunksize:int=0, name:str=None):
+        return NotImplemented
+
     def __getitem__(self, key):
         self.cur = self.conn.cursor(uuid.uuid4().hex, scrollable=False, withhold=False)
-        columns = self.columns(exclude_id=True)    
+        columns = self.columns 
 
         if isinstance(key, tuple):
             _columns = [list(columns.keys())[key[1]]]
@@ -162,14 +192,18 @@ class SQL(object):
     def close(self):
         self.conn.close()
 
+    def reader(self):
+        return NotImplemented
+
     @property
+    @cache
     def shape(self):
         cur = self.conn.cursor()
         query = "SELECT COUNT(*) FROM {table_name}".format(
             table_name=self.table_name)
         cur.execute(query)
         size = cur.fetchone()[0]
-        return size, self.num_columns(exclude_id=True)
+        return size, len(self.columns)
 
     def last_id(self):
         cur = self.conn.cursor()
@@ -177,16 +211,9 @@ class SQL(object):
         cur.execute(query)
         return cur.fetchone()[0]
 
-    def num_columns(self, exclude_id=False):
-        cur = self.conn.cursor()
-        query = "SELECT COUNT(*) FROM information_schema.columns WHERE table_name=%(table_name)s"
-        cur.execute(query, {"table_name": self.table_name})
-        if exclude_id is True:
-            return cur.fetchone()[0] - 1
-        else:
-            return cur.fetchone()[0]
-
-    def columns(self, exclude_id=False):
+    @property
+    @cache
+    def columns(self):
         cur = self.conn.cursor()
         query = "SELECT * FROM information_schema.columns WHERE table_name=%(table_name)s ORDER BY ordinal_position"
         cur.execute(query, {"table_name": self.table_name})
@@ -195,8 +222,8 @@ class SQL(object):
         if self.only_columns is None:                
             for column in cur.fetchall():
                 columns[column[3]] = types.get(column[7], "|O")
-            if exclude_id is True:
-                del columns["id"]
+            #if exclude_id is True:
+            del columns["id"]
         else:
             for column in cur.fetchall():
                 if column[3] in self.only_columns:
@@ -239,7 +266,7 @@ class SQL(object):
     def insert(self, data, chunks_size=258):
         from psycopg2.extras import execute_values
         from ml.utils.seq import grouper_chunk
-        header = self.columns(exclude_id=True)
+        header = self.columns
         columns = "("+", ".join(header)+")"
         insert_str = "INSERT INTO {name} {columns} VALUES".format(
             name=self.table_name, columns=columns)
@@ -253,7 +280,7 @@ class SQL(object):
         self.conn.commit()
 
     def update(self, id, values):
-        header = self.columns(exclude_id=True)
+        header = self.columns
         columns = "("+", ".join(header)+")"
         update_str = "UPDATE {name} SET {columns} = {values} WHERE id = {id}".format(name=self.table_name, 
             columns=columns, values=tuple(values), id=id+1)

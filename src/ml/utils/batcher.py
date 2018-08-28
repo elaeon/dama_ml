@@ -1,15 +1,7 @@
 from .seq import grouper_chunk
+from .decorators import cut
 import numpy as np
 import pandas as pd
-
-
-def cut(fn):
-    def check_params(*args, **kwargs):
-        smx, end, length = fn(*args, **kwargs)
-        if end < length:
-            return smx[:end]
-        return smx
-    return check_params
 
 
 #cut if length > array size 

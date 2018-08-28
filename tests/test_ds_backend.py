@@ -94,9 +94,9 @@ class TestSQL(unittest.TestCase):
         try:
             with SQL(username="alejandro", db_name="ml",
                 table_name="test", chunks_size=12, df=True) as sql:
-                columns = sql.columns()
-                self.assertEqual(list(columns.keys()), ['id', 'a', 'b', 'c'])
-                self.assertEqual(list(columns.values()), ['int', '|O', 'int', 'float'])
+                columns = sql.columns
+                self.assertEqual(list(columns.keys()), ['a', 'b', 'c'])
+                self.assertEqual(list(columns.values()), ['|O', 'int', 'float'])
         except psycopg2.OperationalError:
             pass
 

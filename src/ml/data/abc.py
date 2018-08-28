@@ -30,39 +30,11 @@ class AbsDataset(ABC):
         return NotImplemented
 
     @abstractmethod
-    def auto_dtype(self, ttype):
-        return NotImplemented
-
-    @abstractmethod
-    def _set_space_shape(self, name, shape, dtype):
-        return NotImplemented
-
-    @abstractmethod
-    def _get_data(self, name):
-        return NotImplemented
-
-    @abstractmethod
-    def _set_space_fmtypes(self, num_features):
-        return NotImplemented
-
-    @abstractmethod
-    def _set_attr(self, name, value):
-        return NotImplemented
-            
-    @abstractmethod
-    def _get_attr(self, name):
-        return NotImplemented
-
-    @abstractmethod
     def chunks_writer(self, name, data, init=0):
         return NotImplemented
 
     @abstractmethod
     def chunks_writer_split(self, data_key, labels_key, data, labels_column, init=0):
-        return NotImplemented
-
-    @abstractmethod
-    def create_route(self):
         return NotImplemented
 
     @abstractmethod
@@ -74,16 +46,32 @@ class AbsDataset(ABC):
         return NotImplemented
 
     @abstractmethod
-    def exist(self):
+    def exists(self):
         return NotImplemented
 
-    @classmethod
     @abstractmethod
-    def url_to_name(self, url):
+    def reader(self, *args, **kwargs):
         return NotImplemented
 
-    @classmethod
+    @property
     @abstractmethod
-    def original_ds(self, name, dataset_path=None):
+    def shape(self):
         return NotImplemented
-    
+
+    @property
+    @abstractmethod
+    def columns(self):
+        return NotImplemented
+
+    @abstractmethod
+    def num_features(self):
+        return NotImplemented
+
+    @abstractmethod
+    def to_df(self):
+        return NotImplemented
+
+    @staticmethod
+    @abstractmethod
+    def concat(datasets, chunksize:int=0, name:str=None):
+        return NotImplemented

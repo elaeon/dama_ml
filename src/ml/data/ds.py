@@ -20,7 +20,7 @@ from ml.random import downsample
 from ml import fmtypes as Fmtypes
 from ml.random import sampling_size
 from ml.data.abc import AbsDataset
-
+from ml.utils.decorators import clean_cache, cache
 
 settings = get_settings("ml")
 
@@ -53,24 +53,6 @@ def calc_nshape(data, value):
     if value is None or not (0 < value <= 1) or data is None:
         value = 1
     return int(round(data.shape[0] * value, 0))
-
-
-def cache(func):
-    def fn_wrapper(self):
-        attr = "{}_cache".format(func.__name__)
-        if not hasattr(self, attr) or getattr(self, attr) is None:
-            setattr(self, attr, func(self))
-        return getattr(self, attr)
-    return fn_wrapper
-
-
-def clean_cache(func):
-    def fn_wrapper(self, value):
-        attr = "{}_cache".format(func.__name__)
-        if hasattr(self, attr) and getattr(self, attr) is not None:
-            setattr(self, attr, None)
-        return func(self, value)
-    return fn_wrapper
     
 
 class Memory:
@@ -256,13 +238,6 @@ class HDF5Dataset(AbsDataset):
 
         return end
 
-    def create_route(self):
-        """
-        create directories if the dataset_path does not exist
-        """
-        if os.path.exists(self.dataset_path) is False:
-            os.makedirs(self.dataset_path)
-
     def destroy(self):
         """
         delete the correspondly hdf5 file
@@ -277,24 +252,45 @@ class HDF5Dataset(AbsDataset):
         """
         return os.path.join(self.dataset_path, self.name)
 
-    def exist(self):
+    def exists(self):
         return os.path.exists(self.url())
 
-    @classmethod
-    def url_to_name(self, url):
-        dataset_url = url.split("/")
-        name = dataset_url[-1]
-        path = "/".join(dataset_url[:-1])
-        return name, path
+    def reader(self, chunksize:int=0, df=True) -> Iterator:
+        if df is True:
+            dtypes = self.dtype
+            dtype = [(col, dtypes) for col in self.columns]
+        else:
+            dtype = self.dtype
+        if chunksize == 0:
+            it = Iterator(self, dtype=dtype)
+            return it
+        else:
+            it = Iterator(self, dtype=dtype).to_chunks(chunksize)
+            return it
 
-    @classmethod
-    def original_ds(self, name, dataset_path=None):
-        from pydoc import locate
-        meta_dataset = Data(name=name, dataset_path=dataset_path, clean=False)
-        DS = locate(str(meta_dataset.dataset_class))
-        if DS is None:
-            return
-        return DS(name=name, dataset_path=dataset_path, clean=False)
+    @property
+    def shape(self):
+        "return the shape of the dataset"
+        return self.data.shape
+
+    @property
+    def columns(self):
+        return self.f.get("fmtypes/names", None)
+
+    @columns.setter
+    def columns(self, value):
+        with self:
+            data = self.f.get("fmtypes/names", None)
+            data[:] = value
+
+    def num_features(self):
+        """
+        return the number of features of the dataset
+        """
+        if len(self.shape) > 1:
+            return self.shape[-1]
+        else:
+            return 1
 
 
 class Data(HDF5Dataset):
@@ -346,7 +342,7 @@ class Data(HDF5Dataset):
         else:
             self.dataset_path = dataset_path
 
-        ds_exist = self.exist()
+        ds_exist = self.exists()
         if ds_exist and clean:
             self.destroy()
             ds_exist = False
@@ -438,16 +434,6 @@ class Data(HDF5Dataset):
     def md5(self, value):
         self._set_attr('md5', value)
 
-    @property
-    def columns(self):
-        return self.f.get("fmtypes/names", None)
-
-    @columns.setter
-    def columns(self, value):
-        with self:
-            data = self.f.get("fmtypes/names", None)
-            data[:] = value
-
     @classmethod
     def module_cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
@@ -458,20 +444,6 @@ class Data(HDF5Dataset):
         eturn the data in the dataset
         """
         return self._get_data('data')
-
-    def num_features(self):
-        """
-        return the number of features of the dataset
-        """
-        if len(self.data.shape) > 1:
-            return self.data.shape[-1]
-        else:
-            return 1
-
-    @property
-    def shape(self):
-        "return the shape of the dataset"
-        return self.data.shape
 
     def info(self, classes=False):
         """
@@ -578,31 +550,15 @@ class Data(HDF5Dataset):
                 return Iterator(data).to_chunks(chunks_size)
             return data
 
-    @classmethod
-    def to_DF(self, dataset):
-        if len(dataset.shape) > 2:
-            dataset = dataset.reshape(dataset.shape[0], -1)
-        columns_name = map(lambda x: "c"+str(x), range(dataset.shape[-1]))
-        return pd.DataFrame(data=dataset, columns=columns_name)
-
     def to_df(self):
         """
         convert the dataset to a dataframe
         """
-        return self.to_DF(self[:])
-
-    def reader(self, chunksize:int=0, df=True) -> Iterator:
-        if df is True:
-            dtypes = self.dtype
-            dtype = [(col, dtypes) for col in self.columns]
-        else:
-            dtype = self.dtype
-        if chunksize == 0:
-            it = Iterator(self, dtype=dtype)
-            return it
-        else:
-            it = Iterator(self, dtype=dtype).to_chunks(chunksize)
-            return it
+        dataset = self[:]
+        if len(dataset.shape) > 2:
+            dataset = dataset.reshape(dataset.shape[0], -1)
+        columns_name = map(lambda x: "c"+str(x), range(dataset.shape[-1]))
+        return pd.DataFrame(data=dataset, columns=columns_name)
 
     @staticmethod
     def concat(datasets, chunksize:int=0, name:str=None):
@@ -625,6 +581,29 @@ class Data(HDF5Dataset):
         for ds in to_destroy[:-1]:
             ds.destroy()
         return ds0
+
+    def create_route(self):
+        """
+        create directories if the dataset_path does not exist
+        """
+        if os.path.exists(self.dataset_path) is False:
+            os.makedirs(self.dataset_path)
+
+    @staticmethod
+    def url_to_name(url):
+        dataset_url = url.split("/")
+        name = dataset_url[-1]
+        path = "/".join(dataset_url[:-1])
+        return name, path
+
+    @staticmethod
+    def original_ds(name, dataset_path=None):
+        from pydoc import locate
+        meta_dataset = Data(name=name, dataset_path=dataset_path, clean=False)
+        DS = locate(str(meta_dataset.dataset_class))
+        if DS is None:
+            return
+        return DS(name=name, dataset_path=dataset_path, clean=False)
 
 
 class DataLabel(Data):
@@ -881,7 +860,7 @@ class DataLabel(Data):
                 dl = DataLabel(name=self.name+"_2d_", 
                         dataset_path=self.dataset_path,
                         compression_level=9)
-                if not dl.exist():
+                if not dl.exists():
                     ds = self.to_data()
                     classif = PTsne(model_name="tsne", model_version="1", 
                         check_point_path="/tmp/", dataset=ds, latent_dim=2)
