@@ -1,25 +1,22 @@
 """
-Module for create datasets from distinct sources of data.
-"""
-from skimage import io
 
-import os
-import numpy as np
-import pandas as pd
-import dill as pickle
-import random
-import h5py
-import logging
+"""
+
 import datetime
+import logging
+import os
 import uuid
 
-from ml.processing import Transforms
-from ml.utils.config import get_settings
-from ml.data.it import Iterator 
-from ml.random import downsample
-from ml import fmtypes as Fmtypes
-from ml.random import sampling_size
+import dill as pickle
+import h5py
+import numpy as np
+import pandas as pd
 from ml.data.abc import AbsDataset
+from ml.data.it import Iterator
+from ml.processing import Transforms
+from ml.random import downsample
+from ml.random import sampling_size
+from ml.utils.config import get_settings
 from ml.utils.decorators import clean_cache, cache
 
 settings = get_settings("ml")

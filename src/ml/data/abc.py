@@ -1,5 +1,5 @@
 """
-Module for create datasets from distinct sources of data.
+
 """
 from abc import ABC, abstractmethod
 

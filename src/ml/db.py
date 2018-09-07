@@ -2,7 +2,6 @@ import psycopg2
 import uuid
 from tqdm import tqdm
 from collections import OrderedDict
-from ml import fmtypes
 from ml.data.it import Iterator
 from ml.data.abc import AbsDataset
 from ml.utils.decorators import cache
@@ -10,7 +9,7 @@ from ml.utils.decorators import cache
 
 class SQL(AbsDataset):
     def __init__(self, username, db_name, table_name, order_by=["id"], 
-        chunks_size=0, df=False, only=None):
+        itersize=2000, df=False, only=None):
         self.conn = None
         self.cur = None
         self.username = username
@@ -20,7 +19,7 @@ class SQL(AbsDataset):
         self.order_by = order_by
         self._build_order_text()
         self._build_limit_text()
-        self.chunks_size = chunks_size
+        self.itersize = itersize
         self.df_dtype = df
         self.query = None
 
@@ -67,9 +66,9 @@ class SQL(AbsDataset):
     def concat(datasets, chunksize:int=0, name:str=None):
         return NotImplemented
 
-    def __getitem__(self, key):
+    def get_cursor(self, key):
         self.cur = self.conn.cursor(uuid.uuid4().hex, scrollable=False, withhold=False)
-        columns = self.columns 
+        columns = self.columns
 
         if isinstance(key, tuple):
             _columns = [list(columns.keys())[key[1]]]
@@ -112,6 +111,9 @@ class SQL(AbsDataset):
                 self._build_limit_text()
 
             size = abs(start - stop)
+        elif key is None:
+            size = self.shape[0]
+            start = 0
 
         if self.df_dtype is True:
             self.dtype = [(column_name, columns[column_name.lower()]) for column_name in _columns]
@@ -123,13 +125,15 @@ class SQL(AbsDataset):
             order_by=self.order_by_txt,
             limit=self.limit_txt)
         self.cur.execute(self.query)
-        self.cur.itersize = 2000
+        self.cur.itersize = self.itersize
         self.cur.scroll(start)
+        return size
+
+    def __getitem__(self, key):
+        size = self.get_cursor(key)
         it = Iterator(self.cur, dtype=self.dtype)
         it.set_length(size)
-        if self.chunks_size is not None and self.chunks_size > 0:
-            return it.to_chunks(self.chunks_size)
-        return it
+        return it.to_memory()
 
     def __setitem__(self, key, value):
         if isinstance(key, str):
@@ -192,8 +196,22 @@ class SQL(AbsDataset):
     def close(self):
         self.conn.close()
 
-    def reader(self):
-        return NotImplemented
+    def reader(self, chunksize:int=0, columns=None, exclude:bool=False, df=True):
+        size = self.get_cursor(columns)
+
+        if exclude is True:
+            cols = [col for col in self.columns if col not in columns]
+        elif exclude is False and columns:
+            cols = [col for col in self.columns]
+        else:
+            cols = None
+
+        #if columns is None:
+        it = Iterator(self.cur, chunks_size=chunksize, dtype=None if df is False else self.dtype)
+        it.set_length(size)
+        #else:
+        #    it = Iterator(self[cols], chunks_size=chunksize, dtype=None if df is False else self.dtype)
+        return it
 
     @property
     @cache
