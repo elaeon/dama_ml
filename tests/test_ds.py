@@ -474,6 +474,11 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(data0.data.shape, (10, 2))
         data0.destroy()
 
+    def test_group_name(self):
+        data = Data(name="test0", dataset_path="/tmp", clean=True, group_name="test_ds")
+        self.assertEqual(data.exists(), True)
+        data.destroy()
+
 
 class TestMemoryDs(unittest.TestCase):
     def test_memory_ds(self):

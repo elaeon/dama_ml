@@ -18,6 +18,7 @@ from ml.random import downsample
 from ml.random import sampling_size
 from ml.utils.config import get_settings
 from ml.utils.decorators import clean_cache, cache
+from ml.utils.files import build_path
 
 settings = get_settings("ml")
 
@@ -247,7 +248,10 @@ class HDF5Dataset(AbsDataset):
         """
         return the path where is saved the dataset
         """
-        return os.path.join(self.dataset_path, self.name)
+        if self.group_name is None:
+            return os.path.join(self.dataset_path, self.name)
+        else:
+            return os.path.join(self.dataset_path, self.group_name, self.name)
 
     def exists(self):
         return os.path.exists(self.url())
@@ -323,7 +327,7 @@ class Data(HDF5Dataset):
     :param rewrite: if true, you can clean the saved data and add a new dataset.
     """
     def __init__(self, name=None, dataset_path=None, description='', author='', 
-                compression_level=0, clean=False, mode='a', driver='default'):
+                compression_level=0, clean=False, mode='a', driver='default', group_name=None):
 
         if name is None:
             raise Exception("I can't build a dataset without a name, plese add a name to this dataset.")
@@ -333,6 +337,7 @@ class Data(HDF5Dataset):
         self.f = None
         self.driver = driver
         self.mode = mode
+        self.group_name = group_name
 
         if dataset_path is None:
             self.dataset_path = settings["dataset_path"]
@@ -345,6 +350,7 @@ class Data(HDF5Dataset):
             ds_exist = False
 
         if not ds_exist and (self.mode == 'w' or self.mode == 'a'):
+            build_path([self.dataset_path, self.group_name])
             self.create_route()
             self.author = author
             self.transforms = Transforms()

@@ -4,21 +4,22 @@ from ml.utils.config import get_settings
 from ml.utils.numeric_functions import humanize_bytesize
 from ml.models import DataDrive
 from ml.measures import ListMeasure
-from ml.data.ds import DataLabel, Data
-from ml.utils.files import rm, get_models_path
-from ml.utils.files import get_date_from_file, get_models_from_dataset
+from ml.data.ds import Data
+from ml.utils.files import rm, get_models_from_dataset
 
 settings = get_settings("ml")
 
   
 def run(args):
+    if args.group_name:
+        dataset_path = os.path.join(settings["dataset_path"], args.group_name)
+    else:
+        dataset_path = settings["dataset_path"]
+
     if args.info:
-        dataset = Data.original_ds(args.info)
+        dataset = Data.original_ds(dataset_path=dataset_path, name=args.info)
         with dataset:
             dataset.info(classes=True)
-    elif args.sparcity:
-        dataset = Data.original_ds(args.sparcity)
-        print(dataset.sparcity())
     elif args.rm:
         try:
             for ds in args.rm:
@@ -28,19 +29,16 @@ def run(args):
         except IOError:
             pass
         print("Done.")
-    elif args.remove_outlayers:
-        dataset = Data.original_ds(args.remove_outlayers)
-        dataset.remove_outlayers()
-    elif args.used_in:        
-        dataset = Data.original_ds(args.used_in)
-        for _, model_path_meta in get_models_from_dataset(dataset, settings["checkpoints_path"]):
-            print("Dataset used in model: {}".format(DataDrive.read_meta("model_module", model_path_meta)))
-    elif args.sts:
-        dataset = Data.original_ds(args.sts)
-        print(dataset.stadistics())
+    #elif args.used_in:
+    #    dataset = Data.original_ds(args.used_in)
+    #    for _, model_path_meta in get_models_from_dataset(dataset, settings["checkpoints_path"]):
+    #        print("Dataset used in model: {}".format(DataDrive.read_meta("model_module", model_path_meta)))
+    #elif args.sts:
+    #    dataset = Data.original_ds(args.sts)
+    #    print(dataset.stadistics())
     else:
         datasets = {}
-        for parent, childs, files in os.walk(settings["dataset_path"]):
+        for parent, childs, files in os.walk(dataset_path):
             datasets[parent] = files
         
         headers = ["dataset", "size", "date"]
@@ -48,7 +46,7 @@ def run(args):
         total_size = 0
         for path, files in datasets.items():
             for filename in files:
-                size = os.stat(path+filename).st_size
+                size = os.stat(os.path.join(path, filename)).st_size
                 dl = Data.original_ds(filename)
                 if dl is not None:
                     with dl:

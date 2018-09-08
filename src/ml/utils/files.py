@@ -3,6 +3,7 @@ import shutil
 import ntpath
 import datetime
 import sys
+from pathlib import Path
 
 
 def filename_from_path(path):
@@ -102,3 +103,21 @@ def path2module(class_path):
         main_path = "__main__"
     filepath = main_path.replace(class_path, "", 1).replace(".py", "")
     return ".".join(filepath.split("/"))
+
+
+def if_file_exists(filepath):
+    my_file = Path(filepath)
+    return my_file.is_file()
+
+
+def if_dir_exists(filepath):
+    file_ = Path(filepath)
+    return file_.is_dir()
+
+
+def build_path(levels):
+    levels = [level for level in levels if level is not None]
+    path = os.path.join(*levels)
+    if not if_dir_exists(path):
+        os.makedirs(path)
+    return path

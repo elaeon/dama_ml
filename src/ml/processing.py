@@ -1,7 +1,6 @@
 from skimage import color
 from skimage import filters
 from skimage import transform
-from sklearn import preprocessing
 from skimage import img_as_ubyte
 from skimage import exposure
 from collections import OrderedDict

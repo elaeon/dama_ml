@@ -7,21 +7,3 @@ class_path = {home}
 ;Info level
 loglevel = 20
 
-[numerai]
-predictions_file_path = {home}/predictions.csv
-numerai_test = {home}/test_data/numerai_datasets/numerai_tournament_data.csv
-numerai_example = {home}/test_data/numerai_datasets/example_predictions.csv
-numerai_train = {home}/test_data/numerai_datasets/numerai_training_data.csv
-
-[tickets]
-tickets = {base}/examples/Pictures/tickets/
-xml = {base}/examples/xml/
-numbers_xml = {home}/ml_data/Pictures/tickets/numbers/
-tickets_processed = {base}/examples/Pictures/tickets_processed/
-numbers_pixelated = {home}/ml_data/numbers_raw_pixelated/
-numbers_detector = {home}/ml_data/Pictures/tickets/dirty_numbers/
-image_size = 90
-
-[transcriptor]
-detector_name = detector
-

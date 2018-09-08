@@ -1,14 +1,12 @@
-import os
-import csv
 import glob
 from tabulate import tabulate
-from ml.extractors.file import CSV
+from ml.extractors.file import CSVDataset
 
 
 def run(args):
     filepaths = check_filepaths(args.file)
     for filepath in filepaths:
-        csv = CSV(filepath)
+        csv = CSVDataset(filepath)
         reader = csv.reader(nrows=args.nrows)
         table = []
         headers = []
