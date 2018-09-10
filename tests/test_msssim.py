@@ -4,11 +4,7 @@ import tensorflow as tf
 import os
 
 from ml.utils.tf_functions import ssim, msssim
-from ml.utils.config import get_settings
 from ml.processing import Transforms, rgb2gray, merge_offset
-
-settings = get_settings("ml")
-settings.update(get_settings("tickets"))
 
 
 class TestMsssiM(unittest.TestCase):
