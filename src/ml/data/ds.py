@@ -713,13 +713,12 @@ class DataLabel(Data):
         table = []
         with self:
             table.append(["dataset", self.shape, self.dtype, self.labels.size, self.ltype])
-        print(order_table(headers, table, "shape"))
-        if classes == True:
-            headers = ["class", "# items", "%"]
-            items = [(cls, total, (total/float(self.shape[0]))*100) 
-                    for cls, total in self.labels_info().items()]
-            items_p = [0, 0]
-            print(order_table(headers, items, "# items"))
+            print(order_table(headers, table, "shape"))
+            if classes == True:
+                headers = ["class", "# items", "%"]
+                items = [(cls, total, (total / float(self.shape[0])) * 100)
+                         for cls, total in self.labels_info().items()]
+                print(order_table(headers, items, "# items"))
 
     def from_data(self, data, labels, length=None, chunks_size=258, transform=True):
         if length is None and data.shape[0] is not None:

@@ -18,8 +18,7 @@ def run(args):
 
     if args.info:
         dataset = Data.original_ds(dataset_path=dataset_path, name=args.info)
-        with dataset:
-            dataset.info(classes=True)
+        dataset.info(classes=args.targets)
     elif args.rm:
         try:
             for ds in args.rm:
