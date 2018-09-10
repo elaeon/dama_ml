@@ -14,7 +14,7 @@ import uuid
 import sys
 import inspect
 
-from ml.utils.config import get_settings
+from ml.utils.config import get_settings, get_fn_name
 from ml.data.it import Iterator
 
 settings = get_settings("ml")
@@ -77,15 +77,8 @@ class TransformsFn(object):
         This function add to the class the functions to use with the data.
         """
         if hasattr(fn, '__module__'):
-            if fn.__module__ == "__main__":
-                from ml.utils.files import path2module
-                from ml.utils.config import get_settings
-                settings = get_settings("ml")
-                fn_module = path2module(settings["class_path"])
-            else:
-                fn_module = fn.__module__
-            fn_name = "{}.{}".format(fn_module, fn.__name__)
-            self.transforms.append((fn_name, params))
+            fn_name = get_fn_name(fn, section="ml")
+            self.transforms.append((locate(fn_name), params))
             
     def is_empty(self):
         """
@@ -100,7 +93,8 @@ class TransformsFn(object):
         return json.dumps(self.info())
 
     def info(self):
-        return {"transforms": self.transforms}
+        return {"transforms": [(get_fn_name(fn, section="ml"), params)
+                               for fn, params in self.transforms]}
 
     @classmethod
     def from_json(self, json_transforms):
@@ -118,10 +112,8 @@ class TransformsFn(object):
         return transforms
 
     def reduce(self, data):
-        locate_fn = {}
         for smx in data:
-            for fn_, params in self.transforms:
-                fn = locate_fn.setdefault(fn_, locate(fn_))
+            for fn, params in self.transforms:
                 smx = fn(smx, **params)
             yield smx
 
@@ -139,17 +131,17 @@ class TransformsFn(object):
                 data = data.to_chunks(chunks_size)
         else:
             raise Exception("Type {} is not supported".format(type(data)))
-        
+
         return Iterator(self.reduce(data), chunks_size=chunks_size)
 
-    def napply(self, data):
-        fns = []
-        for fn_, params in self.transforms:
-            fns.append((locate(fn_), params))
-        
-        for fn, params in fns:
-            smx = fn(data, **params)
-        return data
+    #def napply(self, data):
+    #    fns = []
+    #    for fn_, params in self.transforms:
+    #        fns.append((locate(fn_), params))
+    #
+    #    for fn, params in fns:
+    #        smx = fn(data, **params)
+    #    return data
 
 
 class TransformsClass(TransformsFn):
@@ -267,7 +259,7 @@ class Transforms(object):
             return all_transforms
         for transform in o.transforms:
             for fn, params in transform.transforms:
-                all_transforms.add(locate(fn), **params)
+                all_transforms.add(fn, **params)
         return all_transforms
 
     def to_json(self):
@@ -307,13 +299,13 @@ class Transforms(object):
                 data = t_obj.apply(data, chunks_size=chunks_size)
         return data
 
-    def napply(self, data):
-        if not self.is_empty():
-            for t_obj in self.transforms:
-                log.debug("APPLY TRANSFORMS:" + str(t_obj.transforms))
-                log.debug("Transform type:" + t_obj.type())
-                data = t_obj.napply(data)
-        return data
+    #def napply(self, data):
+    #    if not self.is_empty():
+    #        for t_obj in self.transforms:
+    #            log.debug("APPLY TRANSFORMS:" + str(t_obj.transforms))
+    #            log.debug("Transform type:" + t_obj.type())
+    #            data = t_obj.napply(data)
+    #    return data
 
     def destroy(self):
         for transform in self.transforms:

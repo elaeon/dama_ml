@@ -1,6 +1,7 @@
 import configparser
 import os
-from ml.utils.files import check_or_create_path_dir, set_up_cfg
+from ml.utils.files import check_or_create_path_dir, set_up_cfg, path2module
+
 
 FILENAME = "settings.cfg"
 BASE_DIR = ".mlpyp"
@@ -34,3 +35,12 @@ def build_settings_file(rewrite=False) -> None:
 
 def config_filepath():
     return os.path.join(os.path.expanduser("~"), BASE_DIR, FILENAME)
+
+
+def get_fn_name(fn, section=None):
+    if fn.__module__ == "__main__":
+        settings = get_settings(section)
+        fn_module = path2module(settings["class_path"])
+    else:
+        fn_module = fn.__module__
+    return "{}.{}".format(fn_module, fn.__name__)

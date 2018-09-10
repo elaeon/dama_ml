@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from ml.processing import Transforms, Fit
+from ml.processing import Transforms
 from ml.data.it import Iterator
 
 
