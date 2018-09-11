@@ -5,5 +5,5 @@ dataset_model_path = {home}/ml_data/dataset_models/
 dataset_folds_path = {home}/ml_data/dataset_folds/
 class_path = {home}
 ;Info level
-loglevel = 20
+loglevel = 10
 

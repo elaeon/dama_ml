@@ -13,6 +13,7 @@ import json
 import uuid
 import sys
 import inspect
+import os
 
 from ml.utils.config import get_settings, get_fn_name
 from ml.data.it import Iterator
@@ -317,29 +318,31 @@ class Process(object):
     def __init__(self, data, name=None, path="/tmp/", clean=False):
         self.name = name
         self.dataset_path = path
-        self.meta_path = path + self.module_cls_name() + "_" + self.name
-        self.dtype = data.dtype
+        self.metadata_path = os.path.join(path, self.obj_name())
         self.data = data
 
     @classmethod
     def module_cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
+    def obj_name(self):
+        return "{}.{}".format(self.module_cls_name(), self.name)
+
     def map(self, fn, chunks_size=258, **params):
-        from ml.data.ds import Data
-        fn(self.data, **params)
+        data = fn(self.data, **params)
+        return data
 
-    def reduce(self, fn, chunks_size=258, **params):
-        ds_it = self.ds.to_iter(self.dtype, chunks_size=chunks_size)
-        it = Iterator(fn(ds_it, self.load(), **params), chunks_size=ds_it.chunks_size)
-        it.set_length(self.ds.shape[0])
-        return it
+    def write_metadata(self, v):
+        with open(self.metadata_path, 'w') as f:
+            return json.dump(v, f)
 
-    def load(self):
-        pass
+    def read_metadata(self):
+        with open(self.metadata_path, 'r') as f:
+            return json.load(f)
 
-    def save(self, result):
-        pass
+    def destroy(self):
+        from ml.utils.files import rm
+        rm(self.metadata_path)
 
 
 class Fit(object):
