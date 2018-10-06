@@ -5,6 +5,11 @@ from abc import ABC, abstractmethod
 
 
 class AbsDataset(ABC):
+    _graphviz_shape = 'ellipse'
+    _graphviz_style = 'rounded,filled'
+    _graphviz_fillcolor = 'white'
+    _graphviz_orientation = 0
+
     @abstractmethod
     def __enter__(self):
         return NotImplemented
@@ -75,3 +80,7 @@ class AbsDataset(ABC):
     @abstractmethod
     def concat(datasets, chunksize:int=0, name:str=None):
         return NotImplemented
+
+    def map(self, fn):
+        self.transforms.add(fn)
+        return self

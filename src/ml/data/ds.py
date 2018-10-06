@@ -101,7 +101,6 @@ class Memory:
 
 
 class HDF5Dataset(AbsDataset):
-
     def __enter__(self):
         if self.driver == "core":
             if self.f is None:
@@ -333,7 +332,7 @@ class Data(HDF5Dataset):
             raise Exception("I can't build a dataset without a name, plese add a name to this dataset.")
 
         self.name = uuid.uuid4().hex if name is None else name
-        self.header_map = ["author", "description", "timestamp", "transforms_str"]
+        self.header_map = ["author", "description", "timestamp"]
         self.f = None
         self.driver = driver
         self.mode = mode
@@ -374,20 +373,20 @@ class Data(HDF5Dataset):
     def dtype(self):
         return self.data.dtype
 
-    @property
-    @cache
-    def transforms(self):
-        return Transforms.from_json(self._get_attr('transforms'), add_to=self._set_attr)
+    #@property
+    #@cache
+    #def transforms(self):
+    #    return Transforms.from_json(self._get_attr('transforms'), add_to=self._set_attr)
 
-    @transforms.setter
-    @clean_cache
-    def transforms(self, value):
-        if isinstance(value, Transforms):
-            self._set_attr('transforms', value.to_json())
+    #@transforms.setter
+    #@clean_cache
+    #def transforms(self, value):
+    #    if isinstance(value, Transforms):
+    #        self._set_attr('transforms', value.to_json())
 
-    @property
-    def transforms_str(self):
-        return self._get_attr('transforms')
+    #@property
+    #def transforms_str(self):
+    #    return self._get_attr('transforms')
 
     @property
     def description(self):
@@ -459,7 +458,7 @@ class Data(HDF5Dataset):
         print('       ')
         print('Dataset NAME: {}'.format(self.name))
         print('Author: {}'.format(self.author))
-        print('Transforms: {}'.format(self.transforms.to_json()))
+        #print('Transforms: {}'.format(self.transforms.to_json()))
         print('Header Hash: {}'.format(self.hash_header))
         print('Body Hash: {}'.format(self.md5))
         print('Description: {}'.format(self.description))
@@ -487,14 +486,13 @@ class Data(HDF5Dataset):
         h = hashlib.md5("".join(header).encode("utf-8"))
         return h.hexdigest()
 
-    def from_data(self, data, length=None, chunks_size=258, transform=True):
+    def from_data(self, data, length=None, chunksize=258):
         """
         build a datalabel dataset from data and labels
         """
         if length is None and data.shape[0] is not None:
             length = data.shape[0]
-        data = self.processing(data, apply_transforms=transform,
-                            chunks_size=chunks_size)
+        data = self.processing(data, chunksize=chunksize)
         data = data.it_length(length)
         self._set_space_shape('data', data.shape, dtype=data.global_dtype)
         end = self.chunks_writer("/data/data", data)
@@ -534,7 +532,7 @@ class Data(HDF5Dataset):
             data.transforms = self.transforms
         return data
 
-    def processing(self, data, apply_transforms=True, chunks_size=258):
+    def processing(self, data, chunksize=258):
         """
         :type data: array
         :param data: data to transform
@@ -546,12 +544,12 @@ class Data(HDF5Dataset):
         execute the transformations to the data.
 
         """
-        if apply_transforms and not self.transforms.is_empty():
-            return self.transforms.apply(data, chunks_size=chunks_size)
-        else:
-            if not isinstance(data, Iterator):
-                return Iterator(data).to_chunks(chunks_size)
-            return data
+        #if apply_transforms and not self.transforms.is_empty():
+        #    return self.transforms.apply(data, chunks_size=chunks_size)
+        #else:
+        if not isinstance(data, Iterator):
+            return Iterator(data).to_chunks(chunksize)
+        return data
 
     def to_df(self):
         """
@@ -704,7 +702,7 @@ class DataLabel(Data):
         print('       ')
         print('DATASET NAME: {}'.format(self.name))
         print('Author: {}'.format(self.author))
-        print('Transforms: {}'.format(self.transforms.to_json()))
+        #print('Transforms: {}'.format(self.transforms.to_json()))
         print('Header Hash: {}'.format(self.hash_header))
         print('Body Hash: {}'.format(self.md5))
         print('Description: {}'.format(self.description))

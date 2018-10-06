@@ -530,6 +530,12 @@ class Iterator(object):
         except psycopg2.InterfaceError:
             raise StopIteration
 
+    def __getitem__(self, key):
+        return NotImplemented
+
+    def __setitem__(self, key, value):
+        return NotImplemented
+
 
 class DaskIterator(object):
     def __init__(self, fn_iter, dtype=None, chunks_size=0) -> None:

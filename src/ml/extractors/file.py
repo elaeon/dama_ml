@@ -10,6 +10,8 @@ from operator import itemgetter
 from ml.data.it import Iterator, DaskIterator
 from ml.data.abc import AbsDataset
 from ml.utils.decorators import cache
+from ml.processing import Transforms
+from tqdm import tqdm
 
 
 def get_compressed_file_manager(filepath):
@@ -66,7 +68,6 @@ class File(object):
         return self.engine.read_csv(self.filepath, usecols=cols, **kwargs)
 
     def write(self, iterator, header=None, delimiter=",") -> None:
-        from tqdm import tqdm
         with open(self.filepath, 'w') as f:
             csv_writer = csv.writer(f, delimiter=delimiter)
             if header is not None:
@@ -156,6 +157,8 @@ class CSVDataset(AbsDataset):
         self.filepath = filepath
         self.file_manager = get_compressed_file_manager_ext(self.filepath, engine)
         self.delimiter = delimiter
+        self.transforms = Transforms()
+        self._graph = {}
 
     def __enter__(self):
         return NotImplemented
@@ -164,16 +167,20 @@ class CSVDataset(AbsDataset):
         return NotImplemented
 
     def __iter__(self):
-        return NotImplemented
+        return self.data
 
     def __getitem__(self, key):
-        return NotImplemented
+        return self.data[key]
 
     def __setitem__(self, key, value):
         return NotImplemented
 
     def __next__(self):
-        return NotImplemented
+        return next(self.data)
+
+    @property
+    def data(self):
+        return self.reader(chunksize=10)
 
     def chunks_writer(self, name, data, init=0):
         return NotImplemented
@@ -216,7 +223,8 @@ class CSVDataset(AbsDataset):
         kwargs["delimiter"] = self.delimiter
         return self.file_manager.read(*args, **kwargs)
     
-    def writer(self, *args, **kwargs):
+    def from_data(self, *args, **kwargs):
+        kwargs["delimiter"] = self.delimiter
         return self.file_manager.write(*args, **kwargs)
 
     def destroy(self):
