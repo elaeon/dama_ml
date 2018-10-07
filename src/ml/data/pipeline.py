@@ -49,7 +49,7 @@ def identity(x):
     return x
 
 
-class StreamABC(object):
+class PipelineABC(object):
     def __init__(self, upstream=None):
         self.downstreams = OrderedWeakrefSet()
 
@@ -72,16 +72,17 @@ class StreamABC(object):
         return _
 
 
-class Stream(StreamABC):
+class Pipeline(PipelineABC):
     def __init__(self, seq, upstream=None):
-        super(Stream, self).__init__(upstream=upstream)
+        super(Pipeline, self).__init__(upstream=upstream)
         self.it = seq
         self.G = None
+        self.root = 'root'
 
     def graph(self):
         self.G = nx.DiGraph()
         l = []
-        self.maps(self.downstreams, l, None)
+        self.maps(self.downstreams, l, self.root)
         self.G.add_edges_from(l)
 
     def _eval(self, it):
@@ -90,9 +91,9 @@ class Stream(StreamABC):
             self.graph()
         for x in it:
             leafs = []
-            self.evaluate_graph_root(x, None, leafs)
+            self.evaluate_graph_root(x, self.root, leafs)
             results.extend(leafs)
-            self.clean_graph_eval(None)
+            self.clean_graph_eval(self.root)
         return results
 
     def compute(self):
@@ -100,7 +101,7 @@ class Stream(StreamABC):
         return dask.compute(results)
 
     def evaluate_graph_root(self, x, root_node, leafs):
-        for node in self.G.neighbors(root_node):
+        for node in self.G.neighbors(root_node):           
             self.evaluate_graph(node(x), leafs)
         return x
 
@@ -122,19 +123,18 @@ class Stream(StreamABC):
 
     def clean_graph_eval(self, root):
         for node in self.G.neighbors(root):
-            node.eval_task = None
+            if isinstance(node, PipelineABC):
+                node.eval_task = None
             self.clean_graph_eval(node)
 
     def maps(self, downstreams, l, parent):
         for fn in downstreams:
-            if len(fn.downstreams) > 0:
-                if type(fn) == zip:
-                    for fn_zip in fn.extra:
-                        for map_zip_fn in fn.downstreams:
-                            l.append((fn_zip, map_zip_fn))
-                    self.maps(fn.downstreams, l, fn)
-                else:
-                    self.maps(fn.downstreams, l, fn)
+            if type(fn) == zip:
+                for fn_zip in fn.extra:
+                    for map_zip_fn in fn.downstreams:
+                        l.append((fn_zip, map_zip_fn))
+            self.maps(fn.downstreams, l, fn)
+            
             if type(fn) != zip and type(parent) != zip:
                 l.append((parent, fn))
 
@@ -148,18 +148,24 @@ class Stream(StreamABC):
         r = self._eval([1])
         r[0].visualize(**kwargs)
 
+    def to_dict(self, x):
+        base = {}
+        for node in self.G.neighbors(root_node):
+            self.evaluate_graph(node(x), leafs)
+        return x
+
     def __str__(self):
         return "MAIN"
         
 
-@StreamABC.register_api()
-class map(StreamABC):
+@PipelineABC.register_api()
+class map(PipelineABC):
     def __init__(self, upstream, func):
         self.task = dask.delayed(func)
         self.eval_task = None
         self.completed = False
         self.fn_name = func.__name__
-        StreamABC.__init__(self, upstream)
+        PipelineABC.__init__(self, upstream)
 
     def __call__(self, *nodes):
         fn = []
@@ -179,11 +185,11 @@ class map(StreamABC):
         return self.fn_name
 
 
-@StreamABC.register_api()
-class zip(StreamABC):
+@PipelineABC.register_api()
+class zip(PipelineABC):
     def __init__(self, upstream, *func):
         self.extra = func
-        StreamABC.__init__(self, upstream)
+        PipelineABC.__init__(self, upstream)
 
     def __str__(self):
         return "zip"
@@ -192,17 +198,37 @@ class zip(StreamABC):
 def add(x, y):
     return x + y
 
-it = Iterator([4])
-s = Stream(it)
-a = s.map(inc)
-c = a.map(dec)
-f = c.map(lambda x: x*4)
-b = s.map(identity)
-d = s.zip(c, b).map(add).map(str).map(float)
-g = s.zip(d, f).map(add)
+def sum_(*x):
+    return sum(x)
 
-for r in s.compute():
-    print("RESULT", r)
-s.visualize_task_graph(filename="stream", format="svg")
+
+def test_pipeline_01():
+    it = Iterator([4])
+    pipeline = Pipeline(it)
+    a = pipeline.map(inc)
+    c = a.map(dec)
+    f = c.map(lambda x: x*4)
+    b = pipeline.map(identity)
+    d = pipeline.zip(c, b).map(add).map(str).map(float)
+    g = pipeline.zip(d, f).map(add)
+
+    for r in pipeline.compute():
+        print("RESULT", r, 24.0)
+
+def test_pipeline_02():
+    it = Iterator([4])
+    pipeline = Pipeline(it)
+    a = pipeline.map(inc)
+    d = pipeline.zip(1, a, 2).map(sum_).map(str)
+
+    for r in pipeline.compute():
+        print("RESULT", r, '8')
+
+def test_pipeline_03():
+    pass
+#s.visualize_task_graph(filename="stream", format="svg")
 #s.visualize_graph()
 
+test_pipeline_01()
+test_pipeline_02()
+test_pipeline_03()
