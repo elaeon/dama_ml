@@ -1,5 +1,4 @@
 from collections import MutableSet, OrderedDict
-from collections import defaultdict
 import weakref
 import functools
 import dask
@@ -85,20 +84,27 @@ class Pipeline(PipelineABC):
         self.maps(self.downstreams, l, self.root)
         self.G.add_edges_from(l)
 
-    def _eval(self, it):
-        results = []
+    def _eval(self, x):
         if self.G is None:
             self.graph()
-        for x in it:
-            leafs = []
-            self.evaluate_graph_root(x, self.root, leafs)
-            results.extend(leafs)
-            self.clean_graph_eval(self.root)
-        return results
+        leafs = []
+        self.evaluate_graph_root(x, self.root, leafs)
+        self.clean_graph_eval(self.root)
+        return leafs
 
-    def compute(self):
-        results = self._eval(self.it)
-        return dask.compute(results)
+    def compute(self, buffer_size=4):
+        if self.it.has_chunks:
+            pass
+        else:
+            buffer = []
+            for x in self.it:
+                buffer.extend(self._eval(x))
+                if len(buffer) < buffer_size:
+                    continue
+                else:
+                    yield dask.compute(buffer)[0]
+                    buffer = []
+            yield dask.compute(buffer)[0]
 
     def evaluate_graph_root(self, x, root_node, leafs):
         for node in self.G.neighbors(root_node):           
@@ -194,41 +200,3 @@ class zip(PipelineABC):
     def __str__(self):
         return "zip"
 
-
-def add(x, y):
-    return x + y
-
-def sum_(*x):
-    return sum(x)
-
-
-def test_pipeline_01():
-    it = Iterator([4])
-    pipeline = Pipeline(it)
-    a = pipeline.map(inc)
-    c = a.map(dec)
-    f = c.map(lambda x: x*4)
-    b = pipeline.map(identity)
-    d = pipeline.zip(c, b).map(add).map(str).map(float)
-    g = pipeline.zip(d, f).map(add)
-
-    for r in pipeline.compute():
-        print("RESULT", r, 24.0)
-
-def test_pipeline_02():
-    it = Iterator([4])
-    pipeline = Pipeline(it)
-    a = pipeline.map(inc)
-    d = pipeline.zip(1, a, 2).map(sum_).map(str)
-
-    for r in pipeline.compute():
-        print("RESULT", r, '8')
-
-def test_pipeline_03():
-    pass
-#s.visualize_task_graph(filename="stream", format="svg")
-#s.visualize_graph()
-
-test_pipeline_01()
-test_pipeline_02()
-test_pipeline_03()
