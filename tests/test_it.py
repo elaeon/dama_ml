@@ -427,27 +427,6 @@ class TestIterator(unittest.TestCase):
         c = collections.Counter(it_s.to_memory(num_items)[:, 3])
         self.assertEqual(c[1]/float(num_samples) > .79, True)
 
-    def test_split(self):
-        it = Iterator(((i, 'X', 'Z') for i in range(20)))
-        it0, it1 = it.split(2)
-        self.assertCountEqual(it0.to_memory(20)[0], [0, 'X'])
-        self.assertCountEqual(it1.flat().to_memory(20), np.asarray(['Z']*20))
-
-        it = Iterator(((i, 'X', 'Z') for i in range(20)))
-        it_0, it_1 = it.split(2)
-        self.assertCountEqual(it_0.to_chunks(2).to_memory(20)[0], [0, 'X'])
-        self.assertCountEqual(it_1.to_chunks(2).flat().to_memory(20), np.asarray(['Z']*20))
-
-        data = ((i, 'X'+str(i), 'Z') for i in range(20))
-        it = Iterator(data, dtype=[('A', 'int'), ('B', '|O'), ('C', '|O')])
-        it_0, it_1 = it.to_chunks(chunks_size=2).split(2)
-        self.assertCountEqual(it_0.to_memory(20).iloc[0, :].values, [0, 'X0'])
-        self.assertCountEqual(it_1.flat().to_memory(20), np.asarray(['Z']*20))
-
-        data = ((i, 'X', 'Z') for i in range(20))
-        it = Iterator(data, dtype=[('A', 'int'), ('B', 'str'), ('C', 'str')])
-        self.assertCountEqual(it.split(2)[0].to_memory(1).values[0], [0, 'X'])
-
     def test_raw(self):
         data = [1, 2, 3, 4, 5]
         it = Iterator(data)
@@ -557,6 +536,34 @@ class TestIterator(unittest.TestCase):
         self.assertCountEqual(df.index.values, np.array([0,1,2]) + 6)
         df = next(it)
         self.assertCountEqual(df.index.values, np.array([0]) + 9)
+
+    def test_buffer(self):
+        v = list(range(100))
+        it = Iterator(v)
+        buffer_size = 7
+        i = 0
+        j = buffer_size
+        for elems in it.buffer(buffer_size):
+            self.assertCountEqual(elems, list(range(i, j)))
+            i = j
+            j += buffer_size
+            if j > 100:
+                j = 100
+
+    def test_buffer_chunks(self):
+        v = list(range(100))
+        chunks_size = 2
+        it = Iterator(v).to_chunks(chunks_size=chunks_size)
+        buffer_size = 7
+        i = 0
+        j = chunks_size
+        for elems in it.buffer(buffer_size):
+            for x in elems:
+                self.assertCountEqual(x, list(range(i, j)))
+                i = j
+                j += chunks_size
+                if j > 100:
+                    j = 100
 
 
 def chunk_sizes(seq):

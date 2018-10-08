@@ -76,7 +76,7 @@ class TestETL(unittest.TestCase):
         it = Iterator(stream())
         pipeline = Pipeline(it)
         a = pipeline.map(str)
-        results = list(pipeline.compute())
+        results = list(pipeline.compute(buffer_size=4))
         self.assertCountEqual(results[0], ['1', '2', '3', '4'])
         self.assertCountEqual(results[1], ['5', '6'])
 

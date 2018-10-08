@@ -195,6 +195,24 @@ class Iterator(object):
 
         return BatchWrapper(self, chunksize, dtype).run(chunk_shape)
     
+    def buffer(self, buffer_size:int):
+        while True: 
+            buffer = []
+            for elem in self:
+                if len(buffer) < buffer_size:
+                    buffer.append(elem)
+                else:
+                    self.pushback(elem)
+                    break
+            try:
+                v = next(self)
+                if v is not None:
+                    self.pushback(v)
+            except StopIteration:
+                yield buffer
+                break
+            yield buffer
+
     def check_datatime(self, dtype: list):
         cols = []
         for col_i, (_, type_) in enumerate(dtype):
@@ -237,25 +255,6 @@ class Iterator(object):
         it = Iterator(wsrj(self.weights_gen(data, col, weight_fn), k), dtype=self.dtype)
         it.set_length(k)
         return it
-
-    def split(self, i: int):
-        if self.type_elem == pd.DataFrame:
-            a, b = tee((row.iloc[:, :i], row.iloc[:, i:]) for row in self)
-        else:
-            a, b = tee((row[:i], row[i:]) for row in self)
-
-        if isinstance(self.dtype, list):
-            dtype_0 = self.dtype[:i]
-            dtype_1 = self.dtype[i:]
-        else:
-            dtype_0 = self.dtype
-            dtype_1 = self.dtype
-
-        it0 = Iterator((item for item, _ in a), dtype=dtype_0, 
-                chunks_size=self.chunks_size)
-        it1 = Iterator((item for _, item in b), dtype=dtype_1, 
-                chunks_size=self.chunks_size)
-        return it0, it1
 
     def weights_gen(self, data, col: int, weight_fn):
         if not hasattr(self.type_elem, '__iter__') and weight_fn is not None:

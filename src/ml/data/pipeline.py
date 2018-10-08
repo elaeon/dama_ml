@@ -84,27 +84,22 @@ class Pipeline(PipelineABC):
         self.maps(self.downstreams, l, self.root)
         self.G.add_edges_from(l)
 
-    def _eval(self, x):
+    def _eval(self, X):
         if self.G is None:
             self.graph()
         leafs = []
-        self.evaluate_graph_root(x, self.root, leafs)
-        self.clean_graph_eval(self.root)
+        for x in X:
+            self.evaluate_graph_root(x, self.root, leafs)
+            self.clean_graph_eval(self.root)
         return leafs
 
-    def compute(self, buffer_size=4):
+    def compute(self, buffer_size=100):
         if self.it.has_chunks:
             pass
         else:
-            buffer = []
-            for x in self.it:
-                buffer.extend(self._eval(x))
-                if len(buffer) < buffer_size:
-                    continue
-                else:
-                    yield dask.compute(buffer)[0]
-                    buffer = []
-            yield dask.compute(buffer)[0]
+            for values in self.it.buffer(buffer_size=buffer_size):
+                leafs = self._eval(values)
+                yield dask.compute(leafs)[0]
 
     def evaluate_graph_root(self, x, root_node, leafs):
         for node in self.G.neighbors(root_node):           
