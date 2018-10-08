@@ -1,4 +1,4 @@
-from itertools import chain, tee, islice
+from itertools import chain, islice
 import operator
 import types
 import numpy as np
@@ -8,7 +8,7 @@ import psycopg2
 import logging
 import datetime
 
-from collections import defaultdict
+from collections import defaultdict, deque
 from ml.utils.config import get_settings
 from ml.utils.numeric_functions import max_type, num_splits, filter_sample, wsrj
 from ml.utils.batcher import BatchWrapper, cut, assign_struct_array2df
@@ -212,6 +212,13 @@ class Iterator(object):
                 yield buffer
                 break
             yield buffer
+
+    def window(self, win_size=2):
+        win = deque((next(self.it, None) for _ in range(win_size)), maxlen=win_size)
+        yield win
+        for e in self.it:
+            win.append(e)
+            yield win
 
     def check_datatime(self, dtype: list):
         cols = []

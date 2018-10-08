@@ -565,6 +565,15 @@ class TestIterator(unittest.TestCase):
                 if j > 100:
                     j = 100
 
+    def test_sliding_window(self):
+        it = Iterator(range(100))
+        i = 1
+        j = 2
+        for e in it.window():
+            self.assertCountEqual(e, [i, j])
+            i += 1
+            j += 1
+
 
 def chunk_sizes(seq):
     return [len(list(row)) for row in seq]
