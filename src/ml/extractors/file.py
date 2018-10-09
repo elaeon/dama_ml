@@ -10,7 +10,7 @@ from operator import itemgetter
 from ml.data.it import Iterator, DaskIterator
 from ml.data.abc import AbsDataset
 from ml.utils.decorators import cache
-from ml.processing import Transforms
+#from ml.processing import Transforms
 from tqdm import tqdm
 
 
@@ -58,7 +58,7 @@ class File(object):
         else:
             self.engine = DaskEngine
 
-    def read(self, columns=None, exclude=False, df=True, **kwargs) -> Iterator:
+    def read(self, columns=None, exclude=False, df=True, filename=None, **kwargs) -> Iterator:
         if exclude is True:
             cols = lambda col: col not in columns
         elif exclude is False and columns:
@@ -73,6 +73,7 @@ class File(object):
             if header is not None:
                 csv_writer.writerow(header)
             for row in tqdm(iterator):
+                print("RRRRR", row)
                 csv_writer.writerow(row)
 
     @classmethod
@@ -153,12 +154,11 @@ class ZIPFile(File):
 
 
 class CSVDataset(AbsDataset):
-    def __init__(self, filepath, delimiter=",", engine='pandas'):
+    def __init__(self, filepath, delimiter=",", engine='pandas', filename=None):
         self.filepath = filepath
         self.file_manager = get_compressed_file_manager_ext(self.filepath, engine)
         self.delimiter = delimiter
-        self.transforms = Transforms()
-        self._graph = {}
+        self.filename = filename
 
     def __enter__(self):
         return NotImplemented
@@ -216,7 +216,7 @@ class CSVDataset(AbsDataset):
     @cache
     def shape(self):
         size = sum(df.shape[0] for df in self.reader(nrows=None, 
-            delimiter=self.delimiter, chunksize=1000))
+            delimiter=self.delimiter, chunksize=1000, filename=self.filename))
         return size, len(self.columns)
 
     def reader(self, *args, **kwargs):
