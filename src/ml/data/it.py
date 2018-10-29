@@ -85,6 +85,13 @@ class Iterator(object):
             else:
                 return ["c0"]
 
+    @property
+    def dtypes(self):
+        if isinstance(self.dtype, list):
+            return self.dtype
+        else:
+            return [(col, self.dtype) for col in self.columns]
+
     def pushback(self, val) -> None:
         self.pushedback.append(val)
 

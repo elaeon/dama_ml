@@ -36,15 +36,40 @@ class TestDataset(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_from_data_dim_7_1_2(self):
-        dataset = DataLabel(name="test_ds_0", dataset_path="/tmp/")        
-        dataset.from_data(self.X, self.Y, self.X.shape[0])
-
+    def test_from_unique_dtype(self):
+        dataset = Data(name="test_ds_0", dataset_path="/tmp/", clean=True)
+        X = np.random.rand(10, 2).astype(int)
+        dataset.from_data(X, X.shape[0])
         with dataset:
-            X_train, X_validation, X_test, y_train, y_validation, y_test = dataset.cv()
-            self.assertEqual(y_train.shape, (7,))
-            self.assertEqual(y_validation.shape, (1,))
-            self.assertEqual(y_test.shape, (2,))
+            self.assertEqual(dataset[:].shape, (10, 2))
+        dataset.destroy()
+
+    def test_from_dtypes(self):
+        dataset = Data(name="test_ds_0", dataset_path="/tmp/")
+        X0 = np.random.rand(10).astype(int)
+        X1 = np.random.rand(10).astype(float)
+        X2 = np.random.rand(10).astype(object)
+        df = pd.DataFrame({"X0": X0, "X1": X1, "X2": X2})
+        dataset.from_data(df)
+        with dataset:
+            self.assertEqual(dataset["X0"].shape, (10,))
+            self.assertEqual(dataset["X1"].shape, (10,))
+            self.assertEqual(dataset["X2"].shape, (10,))
+            self.assertEqual(dataset["X0"].dtype, int)
+            self.assertEqual(dataset["X1"].dtype, float)
+            self.assertEqual(dataset["X2"].dtype, object)
+            print(dataset["X1"][:])
+        dataset.destroy()
+
+    def test_from_data_dim_7_1_2(self):
+        dataset = Data(name="test_ds_0", dataset_path="/tmp/")
+        dataset.from_data(self.X, self.X.shape[0])
+
+        #with dataset:
+            #X_train, X_validation, X_test, y_train, y_validation, y_test = dataset.cv()
+            #self.assertEqual(y_train.shape, (7,))
+            #self.assertEqual(y_validation.shape, (1,))
+            #self.assertEqual(y_test.shape, (2,))
         dataset.destroy()
 
     def test_from_data_dim_5_2_3(self):
@@ -323,27 +348,24 @@ class TestDataset(unittest.TestCase):
             self.assertEqual(ds.dtype, X.dtype)
             ds.destroy()
 
-    def test_fmtypes(self):
+    def test_dtypes(self):
         data = Data(name="test", dataset_path="/tmp/", clean=True)
         data.from_data(self.X, self.X.shape[0])
-        columns = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
-        data.columns = columns
+        dtypes = [("c"+str(i), "float64") for i in range(10)]
         with data:
-            self.assertEqual(data.columns.shape[0], self.X.shape[1])
-            self.assertCountEqual(data.columns[:], columns)
+            self.assertCountEqual([dtype for _, dtype in data.dtypes], [dtype for _, dtype in dtypes])
         data.destroy()
 
-    def test_fmtypes_set_columns(self):
+    def test_columns_rename(self):
         data =  Data(name="test", dataset_path="/tmp/", clean=True)
         data.from_data(self.X, self.X.shape[0])
         columns = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
         data.columns = columns
         with data:
-            data.columns[2] = 'X'
-            self.assertEqual(data.columns[2], 'X')
+            self.assertCountEqual(data.columns, columns)
         data.destroy()
 
-    def test_fmtypes_empty(self):
+    def test_columns(self):
         data = Data(name="test", dataset_path="/tmp/", clean=True)
         data.from_data(self.X, self.X.shape[0])
         with data:
@@ -359,9 +381,6 @@ class TestDataset(unittest.TestCase):
             data.data[:, 1] = np.ones((10))
             self.assertCountEqual(data.data[:, 1], np.ones((10)))
             self.assertCountEqual(data.data[:, 0], np.zeros((10)))
-
-        data = Data(name="test", dataset_path="/tmp/", mode='r')
-        data.info()
         data.destroy()
 
     def test_cv_ds(self):
@@ -465,19 +484,21 @@ class TestDataset(unittest.TestCase):
     def test_memory_ds(self):
         data0 = Data(name="test0", dataset_path="/tmp", clean=True, driver='core')
         data0.from_data(np.random.rand(10, 2))
-        self.assertEqual(data0.data.shape, (10, 2))
-        data0.destroy()
-        
-    def test_memory_ds_label(self):
-        data0 = DataLabel(name="test0", dataset_path="/tmp", clean=True, driver='core')
-        data0.from_data(np.random.rand(10, 2), np.random.rand(10))
-        self.assertEqual(data0.data.shape, (10, 2))
+        with data0:
+            self.assertEqual(data0.shape, (10, 2))
         data0.destroy()
 
     def test_group_name(self):
         data = Data(name="test0", dataset_path="/tmp", clean=True, group_name="test_ds")
         self.assertEqual(data.exists(), True)
         data.destroy()
+
+    def test_hash(self):
+        data = Data(name="test0", dataset_path="/tmp", clean=True)
+        data.from_data(np.ones(100))
+        with data:
+            self.assertEqual(data.calc_hash(), "$sha1$fe0e420a6aff8c6f81ef944644cc78a2521a0495")
+            self.assertEqual(data.calc_hash(hash_fn='md5'), "$md5$2376a2375977070dc32209a8a7bd2a99")
 
 
 class TestMemoryDs(unittest.TestCase):

@@ -6,6 +6,7 @@ import datetime
 import logging
 import os
 import uuid
+import json
 
 import dill as pickle
 import h5py
@@ -13,12 +14,11 @@ import numpy as np
 import pandas as pd
 from ml.data.abc import AbsDataset
 from ml.data.it import Iterator
-from ml.processing import Transforms
 from ml.random import downsample
 from ml.random import sampling_size
 from ml.utils.config import get_settings
-from ml.utils.decorators import clean_cache, cache
 from ml.utils.files import build_path
+from ml.utils.basic import Hash, unique_dtypes
 
 settings = get_settings("ml")
 
@@ -106,17 +106,22 @@ class HDF5Dataset(AbsDataset):
             if self.f is None:
                 self.f = Memory()
         else:
-            if not self.f:
+            if self.f is None:
                 self.f = h5py.File(self.url(), mode=self.mode)
         return self
 
     def __exit__(self, type, value, traceback):
-        self.f.close()
+        if self.f is not None:
+            self.f.close()
+            if self.driver != "core":
+                self.f = None
 
     def __iter__(self):
         return iter(self.data)
 
     def __getitem__(self, key):
+        if isinstance(key, str):
+            return self._get_data(key)
         return self.data[key]
 
     def __setitem__(self, key, value):
@@ -133,23 +138,15 @@ class HDF5Dataset(AbsDataset):
 
     def _set_space_shape(self, name, shape, dtype):
         with self:
-            self.f.require_group("data")
+            #self.f.require_group(key)
             dtype = self.auto_dtype(dtype)
-            self.f['data'].require_dataset(name, shape, dtype=dtype, chunks=True, 
+            #self.f[key].require_dataset(name, shape, dtype=dtype, chunks=True,
+            #    exact=True, **self.zip_params)
+            self.f.require_dataset(name, shape, dtype=dtype, chunks=True,
                 exact=True, **self.zip_params)
 
-    def _get_data(self, name):
-        key = '/data/' + name
+    def _get_data(self, key):
         return self.f[key]
-
-    def _set_space_fmtypes(self, num_features):
-        with self:
-            self.f.require_group("fmtypes")
-            self.f['fmtypes'].require_dataset("names", (num_features,), dtype=h5py.special_dtype(vlen=str), 
-                exact=True, chunks=True, **self.zip_params)
-            self.f['fmtypes'].require_dataset("types", (num_features,), dtype=np.dtype("|S8"), 
-                exact=True, chunks=True, **self.zip_params)
-            self.columns = list(map(lambda x: "c"+str(x), range(num_features)))
 
     def _set_attr(self, name, value):
         with self:
@@ -157,8 +154,7 @@ class HDF5Dataset(AbsDataset):
             
     def _get_attr(self, name):
         try:
-            with self:
-                return self.f.attrs[name]
+            return self.f.attrs[name]
         except KeyError:
             log.debug("Not found attribute {} in file {}".format(name, self.url()))
             return None
@@ -275,13 +271,28 @@ class HDF5Dataset(AbsDataset):
 
     @property
     def columns(self):
-        return self.f.get("fmtypes/names", None)
+        dtypes = self.dtypes
+        return [c for c, _ in dtypes]
 
     @columns.setter
     def columns(self, value):
         with self:
-            data = self.f.get("fmtypes/names", None)
-            data[:] = value
+            if len(value) == len(self.dtypes):
+                dtypes = [(col, dtypes[1]) for col, dtypes in zip(value, self.dtypes)]
+            else:
+                raise Exception
+        self.dtypes = dtypes
+
+    @property
+    def dtypes(self):
+        return [(col, np.dtype(dtype)) for col, dtype in self.f.get("dtypes", None)]
+
+    @dtypes.setter
+    def dtypes(self, value):
+        self._set_space_shape("dtypes", (len(value), 2), 'object')
+        with self:
+            for i, (c, dtype) in enumerate(value):
+                self.f["dtypes"][i] = (c, dtype.name)
 
     def num_features(self):
         """
@@ -331,8 +342,8 @@ class Data(HDF5Dataset):
         if name is None:
             raise Exception("I can't build a dataset without a name, plese add a name to this dataset.")
 
-        self.name = uuid.uuid4().hex if name is None else name
-        self.header_map = ["author", "description", "timestamp"]
+        self.name = name
+        self.header_map = ["author", "description"]
         self.f = None
         self.driver = driver
         self.mode = mode
@@ -352,14 +363,9 @@ class Data(HDF5Dataset):
             build_path([self.dataset_path, self.group_name])
             self.create_route()
             self.author = author
-            self.transforms = Transforms()
             self.description = description
-            self.compression_level = compression_level
             self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
-            self.dataset_class = self.module_cls_name()
-            self.hash_header = self.calc_hash_H()
-
-        self.zip_params = {"compression": "gzip", "compression_opts": self.compression_level}
+            self.zip_params = json.dumps({"compression": "gzip", "compression_opts": compression_level})
 
     @property
     def author(self):
@@ -372,21 +378,6 @@ class Data(HDF5Dataset):
     @property
     def dtype(self):
         return self.data.dtype
-
-    #@property
-    #@cache
-    #def transforms(self):
-    #    return Transforms.from_json(self._get_attr('transforms'), add_to=self._set_attr)
-
-    #@transforms.setter
-    #@clean_cache
-    #def transforms(self, value):
-    #    if isinstance(value, Transforms):
-    #        self._set_attr('transforms', value.to_json())
-
-    #@property
-    #def transforms_str(self):
-    #    return self._get_attr('transforms')
 
     @property
     def description(self):
@@ -405,36 +396,20 @@ class Data(HDF5Dataset):
         self._set_attr('timestamp', value)
 
     @property
-    def compression_level(self):
-        return self._get_attr('compression_level')
+    def hash(self):
+        return self._get_attr('hash')
 
-    @compression_level.setter
-    def compression_level(self, value):
-        self._set_attr('compression_level', value)
-
-    @property
-    def dataset_class(self):
-        return self._get_attr('dataset_class')
-
-    @dataset_class.setter
-    def dataset_class(self, value):
-        self._set_attr('dataset_class', value)
+    @hash.setter
+    def hash(self, value):
+        self._set_attr('hash', value)
 
     @property
-    def hash_header(self):
-        return self._get_attr('hash_H')
+    def zip_params(self):
+        return json.loads(self._get_attr('zip_params'))
 
-    @hash_header.setter
-    def hash_header(self, value):
-        self._set_attr('hash_H', value)
-
-    @property
-    def md5(self):
-        return self._get_attr('md5')
-
-    @md5.setter
-    def md5(self, value):
-        self._set_attr('md5', value)
+    @zip_params.setter
+    def zip_params(self, value):
+        self._set_attr('zip_params', value)
 
     @classmethod
     def module_cls_name(cls):
@@ -458,49 +433,48 @@ class Data(HDF5Dataset):
         print('       ')
         print('Dataset NAME: {}'.format(self.name))
         print('Author: {}'.format(self.author))
-        #print('Transforms: {}'.format(self.transforms.to_json()))
-        print('Header Hash: {}'.format(self.hash_header))
-        print('Body Hash: {}'.format(self.md5))
+        print('Hash: {}'.format(self.hash))
         print('Description: {}'.format(self.description))
         print('       ')
-        headers = ["Dataset", "Shape", "dType"]
+        headers = ["Dataset", "Shape"]
         table = []
         with self:
-            table.append(["dataset", self.shape, self.dtype])
+            table.append(["dataset", self.shape])
         print(order_table(headers, table, "shape"))
+        ###print columns
 
-    def calc_md5(self):
-        """
-        calculate the md5 from the data.
-        """
-        import hashlib
-        h = hashlib.md5(self.data[:])
-        return h.hexdigest()
-
-    def calc_hash_H(self):
-        """
-        hash digest for the header.
-        """
-        import hashlib
+    def calc_hash(self, hash_fn:str='sha1', chunksize:int=1080):
+        hash = Hash(hash_fn=hash_fn)
         header = [getattr(self, attr) for attr in self.header_map]
-        h = hashlib.md5("".join(header).encode("utf-8"))
-        return h.hexdigest()
+        hash.hash.update("".join(header).encode("utf-8"))
+        hash.chunks(self.reader(chunksize=chunksize, df=False))
+        return str(hash)
 
     def from_data(self, data, length=None, chunksize=258):
         """
         build a datalabel dataset from data and labels
         """
-        if length is None and data.shape[0] is not None:
-            length = data.shape[0]
-        data = self.processing(data, chunksize=chunksize)
-        data = data.it_length(length)
-        self._set_space_shape('data', data.shape, dtype=data.global_dtype)
-        end = self.chunks_writer("/data/data", data)
-        #self.md5 = self.calc_md5()
-        columns = data.columns
-        self._set_space_fmtypes(len(columns))
-        if columns is not None:
-            self.columns = columns
+        if isinstance(data, AbsDataset):
+            print("ok")
+        else:
+            if length is None and data.shape[0] is not None:
+                length = data.shape[0]
+            data = Iterator(data).to_chunks(chunksize)
+            data = data.it_length(length)
+        #self.hash = self.calc_hash()
+        self.dtypes = data.dtypes
+
+        with self:
+            u_dtypes = unique_dtypes(self.dtypes)
+            if len(u_dtypes) == 1:
+                dtype = np.dtype(u_dtypes[0])
+                self._set_space_shape('data', data.shape, dtype=dtype)
+                end = self.chunks_writer("/data", data)
+            else:
+                for col, dtype in self.dtypes:
+                    shape = (data.shape[0],)#data[col].shape
+                    self._set_space_shape(col, shape, dtype=dtype)
+                    end = self.chunks_writer("/{}".format(col), data[col])
 
     def empty(self, name, dataset_path=None):
         """
@@ -532,24 +506,24 @@ class Data(HDF5Dataset):
             data.transforms = self.transforms
         return data
 
-    def processing(self, data, chunksize=258):
-        """
-        :type data: array
-        :param data: data to transform
+    #def processing(self, data, chunksize=258):
+    #    """
+    #    :type data: array
+    #    :param data: data to transform#
 
-        :type initial: bool
-        :param initial: if multirow transforms are added, then this parameter
-        indicates the initial data fit
+    #    :type initial: bool
+    #    :param initial: if multirow transforms are added, then this parameter
+    #    indicates the initial data fit
 
-        execute the transformations to the data.
+    #    execute the transformations to the data.
 
-        """
-        #if apply_transforms and not self.transforms.is_empty():
-        #    return self.transforms.apply(data, chunks_size=chunks_size)
-        #else:
-        if not isinstance(data, Iterator):
-            return Iterator(data).to_chunks(chunksize)
-        return data
+    #    """
+    #    #if apply_transforms and not self.transforms.is_empty():
+    #    #    return self.transforms.apply(data, chunks_size=chunks_size)
+    #    #else:
+    #    if not isinstance(data, Iterator):
+    #        return Iterator(data).to_chunks(chunksize)
+    #    return data
 
     def to_df(self):
         """
@@ -605,6 +579,50 @@ class Data(HDF5Dataset):
         if DS is None:
             return
         return DS(name=name, dataset_path=dataset_path, clean=False)
+
+    def to_libsvm(self, name=None, save_to=None):
+        """
+        tranforms the dataset into libsvm format
+        """
+        from ml.utils.seq import libsvm_row
+        le = self.labels2num()
+        name = self.name+".txt" if name is None else name
+        file_path = os.path.join(save_to, name)
+        with open(file_path, 'w') as f:
+            for row in libsvm_row(self.labels, self.data, le):
+                f.write(" ".join(row))
+                f.write("\n")
+
+    def cv(self, train_size=.7, valid_size=.1, unbalanced=None):
+        from sklearn.model_selection import train_test_split
+
+        train_size = round(train_size+valid_size, 2)
+        X_train, X_test, y_train, y_test = train_test_split(
+            self.data[:], self.labels[:], train_size=train_size, random_state=0)
+        size = self.data.shape[0]
+        valid_size_index = int(round(size * valid_size, 0))
+        X_validation = X_train[:valid_size_index]
+        y_validation = y_train[:valid_size_index]
+        X_train = X_train[valid_size_index:]
+        y_train = y_train[valid_size_index:]
+
+        if unbalanced is not None:
+            X_unb = [X_train, X_validation]
+            y_unb = [y_train, y_validation]
+            log.debug("Unbalancing data")
+            for X_, y_ in [(X_test, y_test)]:
+                X = np.c_[X_, y_]
+                y_index = X_.shape[-1]
+                unbalanced = sampling_size(unbalanced, y_)
+                it = downsample(X, unbalanced, y_index, y_.shape[0])
+                v = it.to_memory()
+                if v.shape[0] == 0:
+                    X_unb.append(v)
+                    y_unb.append(v)
+                    continue
+                X_unb.append(v[:, :y_index])
+                y_unb.append(v[:, y_index])
+            return X_unb + y_unb
 
 
 class DataLabel(Data):
