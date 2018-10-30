@@ -52,13 +52,12 @@ class TestDataset(unittest.TestCase):
         df = pd.DataFrame({"X0": X0, "X1": X1, "X2": X2})
         dataset.from_data(df)
         with dataset:
-            self.assertEqual(dataset["X0"].shape, (10,))
-            self.assertEqual(dataset["X1"].shape, (10,))
-            self.assertEqual(dataset["X2"].shape, (10,))
+            self.assertCountEqual(dataset["X0"][:], X0)
+            self.assertCountEqual(dataset["X1"][:], X1)
+            self.assertCountEqual(dataset["X2"][:], map(str, X2))
             self.assertEqual(dataset["X0"].dtype, int)
             self.assertEqual(dataset["X1"].dtype, float)
             self.assertEqual(dataset["X2"].dtype, object)
-            print(dataset["X0"][:])
         dataset.destroy()
 
     def test_from_data_dim_7_1_2(self):
@@ -73,167 +72,39 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
 
     def test_from_data_dim_5_2_3(self):
-        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", clean=True)        
-        dataset.from_data(self.X, self.Y, self.X.shape[0])
-        with dataset:
-            X_train, X_validation, X_test, y_train, y_validation, y_test = dataset.cv(train_size=.5, valid_size=.2)
-            self.assertEqual(y_train.shape, (5,))
-            self.assertEqual(y_validation.shape, (2,))
-            self.assertEqual(y_test.shape, (3,))
-        dataset.destroy()
-
-    def test_only_labels(self):
-        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", clean=True)    
-        dataset.from_data(self.X, self.Y, self.X.shape[0])
-
-        with dataset:
-            dataset0, label0 = dataset.only_labels([0])
-            self.assertCountEqual(label0, np.zeros(5))
-            dataset1, label1 = dataset.only_labels([1])
-            self.assertCountEqual(label1, np.ones(5))
-        dataset.destroy()
-
-    def test_labels_info(self):
-        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", clean=True)        
-        dataset.from_data(self.X, self.Y, self.X.shape[0])
-        with dataset:
-            labels_counter = dataset.labels_info()
-            self.assertEqual(labels_counter[0]+labels_counter[1], 10)
-        dataset.destroy()
-
-    def test_copy(self):
-        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", clean=True)
-        dataset.from_data(self.X, self.Y, self.X.shape[0])
-        ds = dataset.convert("test_convert", percentaje=.5, dataset_path="/tmp")
-
-        with ds:
-            self.assertEqual(ds.data.shape[0], 5)
-
-        ds.destroy()
-        dataset.destroy()
-
-    def test_convert_percentaje(self):
-        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", clean=True)
-        dataset.from_data(self.X, self.Y, self.X.shape[0])
-        dsb = dataset.convert("convert_test", dataset_path="/tmp/", percentaje=.5)
-
-        with dsb:
-            self.assertEqual(round(self.X.shape[0]/2,0), dsb.data.shape[0])
-            self.assertEqual(round(self.Y.shape[0]/2,0), dsb.labels.shape[0])
-        dsb.destroy()
-        dataset.destroy()
-
-    def test_convert_transforms_true(self):
-        transforms = Transforms()
-        transforms.add(linear, b=1)
-        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", clean=True)
-        dataset.transforms = transforms
-        dataset.from_data(self.X, self.Y, self.X.shape[0])
-        transforms = Transforms()
-        transforms.add(parabole)
-        dsb = dataset.convert("convert_test", dataset_path="/tmp/",
-                                transforms=transforms)
-
-        with dsb:
-            self.assertEqual(len(dsb.transforms.transforms), 1)
-            self.assertEqual(len(dsb.transforms.transforms[0].transforms), 2)
-
-        dsb.destroy()
-        dataset.destroy()
-
-    def test_convert_data_transforms_true(self):
-        transforms = Transforms()
-        transforms.add(linear, b=1)
         dataset = Data(name="test_ds", dataset_path="/tmp/", clean=True)
-        dataset.transforms = transforms
+        #dataset.from_data(self.X, self.X.shape[0])
+        #with dataset:
+        #    X_train, X_validation, X_test, y_train, y_validation, y_test = dataset.cv(train_size=.5, valid_size=.2)
+        #    self.assertEqual(y_train.shape, (5,))
+        #    self.assertEqual(y_validation.shape, (2,))
+        #    self.assertEqual(y_test.shape, (3,))
+        dataset.destroy()
+
+    def test_only_column(self):
+        dataset = Data(name="test_ds", dataset_path="/tmp/", clean=True)
+        XY = np.hstack((self.X, self.Y.reshape(-1, 1)))
         dataset.from_data(self.X, self.X.shape[0])
-        transforms = Transforms()
-        transforms.add(parabole)
-        dsb = dataset.convert("convert_test", dataset_path="/tmp/",
-                            transforms=transforms)
-
-        with dsb:
-            self.assertEqual(len(dsb.transforms.transforms), 1)
-            self.assertEqual(len(dsb.transforms.transforms[0].transforms), 2)
-
-        dsb.destroy()
-        dataset.destroy()
-
-    def test_convert_transforms_false(self):
-        transforms = Transforms()
-        transforms.add(linear, b=1)
-        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", clean=True)
-        dataset.transforms = transforms
-        dataset.apply_transforms = False
-        transforms = Transforms()
-        transforms.add(parabole)
-        dataset.from_data(self.X, self.Y, self.X.shape[0])
-        dsb = dataset.convert("convert_test", dataset_path="/tmp/",
-                            transforms=transforms)
-
-        with dsb:
-            self.assertEqual(len(dsb.transforms.transforms), 1)
-            self.assertEqual(len(dsb.transforms.transforms[0].transforms), 2)
-        dsb.destroy()
-        dataset.destroy()
-
-
-    def test_add_transform_convert(self):
-        transforms = Transforms()
-        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", clean=True)
-        dataset.apply_transforms=False
-        dataset.transforms.add(linear, b=1)
-        dataset.from_data(self.X, self.Y, self.X.shape[0])            
-        dsb = dataset.convert("add_transform", transforms=transforms)
-
-        with dsb, dataset:
-            self.assertEqual(dsb.transforms.to_json() == dataset.transforms.to_json(), True)
-        dsb.destroy()
-        dataset.destroy()
-
-    def test_add_transform(self):
-        transforms = Transforms()
-        transforms.add(linear, b=1)
-        transforms.add(linear, b=2)
-        transforms.add(linear, b=3)
-        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", clean=True)
-        dataset.apply_transforms=False
-        dataset.transforms.add(linear, b=1)
-        dataset.transforms.add(linear, b=2)
-        dataset.transforms.add(linear, b=3)
-        dataset.from_data(self.X, self.Y, self.X.shape[0])
-
-        with DataLabel(name="test_ds", dataset_path="/tmp/") as dataset:
-            self.assertEqual(dataset.transforms.to_json(), transforms.to_json())
-        
-        dataset.destroy()
-
-    def test_add_transform_setter(self):
-        transforms = Transforms()
-        transforms.add(linear, b=1)
-        transforms.add(linear, b=2)
-        transforms.add(linear, b=3)
-        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", clean=True)
-        dataset.transforms = transforms
-        dataset.from_data(self.X, self.Y, self.X.shape[0])
-
-        with DataLabel(name="test_ds", dataset_path="/tmp/") as dataset:
-            self.assertEqual(dataset.transforms.to_json(), transforms.to_json())
-        
+        with dataset:
+            self.assertCountEqual(dataset["c0"], XY[:, 0])
         dataset.destroy()
 
     def test_to_df(self):
-        dataset = DataLabel(name="test_ds", dataset_path="/tmp/", clean=True)
-        dataset.from_data(self.X, self.Y, 10)
-        with dataset:
-            df = dataset.to_df()
-            self.assertEqual(list(df.columns), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'target'])
-        dataset.destroy()
         dataset = Data(name="test_ds", dataset_path="/tmp/", clean=True)
         dataset.from_data(self.X, 10)
         with dataset:
             df = dataset.to_df()
             self.assertEqual(list(df.columns), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'])
+        dataset.destroy()
+
+    def test_to_df_columns(self):
+        dataset = Data(name="test_ds", dataset_path="/tmp/", clean=True)
+        df = pd.DataFrame({"X": self.X[:, 0], "Y": self.Y})
+        dataset.from_data(df)
+        with dataset:
+            df = dataset.to_df()
+            print(df)
+            #self.assertEqual(list(df.columns), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'])
         dataset.destroy()
 
     def test_ds_build(self):
