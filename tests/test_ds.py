@@ -58,7 +58,7 @@ class TestDataset(unittest.TestCase):
             self.assertEqual(dataset["X0"].dtype, int)
             self.assertEqual(dataset["X1"].dtype, float)
             self.assertEqual(dataset["X2"].dtype, object)
-            print(dataset["X1"][:])
+            print(dataset["X0"][:])
         dataset.destroy()
 
     def test_from_data_dim_7_1_2(self):

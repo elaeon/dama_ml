@@ -197,7 +197,7 @@ class HDF5Dataset(AbsDataset):
                         must_type, array_type))
             return end
 
-    def chunks_writer_split(self, data_key, labels_key, data, labels_column, init=0):
+    def chunks_writer_columns(self, keys, data, init=0):
         from tqdm import tqdm
         log.info("Writing with chunks size {}".format(data.chunks_size))
         end = init
@@ -207,29 +207,9 @@ class HDF5Dataset(AbsDataset):
                     end += smx.shape[0]
                 else:
                     end += 1
-
-                if isinstance(smx, pd.DataFrame):
-                    array_data = smx.drop([labels_column], axis=1).values
-                    array_labels = smx[labels_column].values
-                else:
-                    labels_column = int(labels_column)
-                    array_data = np.delete(smx, labels_column, axis=1)
-                    array_labels = smx[:, labels_column]
-
-                self.f[data_key][init:end] = array_data
-                self.f[labels_key][init:end] = array_labels
+                for key in keys:
+                    self.f[key][init:end] = smx[key]
                 init = end
-
-        if hasattr(data.dtype, "__iter__"):
-            ndtype = []
-            for col_name, type_e in data.dtype:
-                if col_name == labels_column:
-                    pass
-                else:
-                    ndtype.append((col_name, type_e))
-            data.dtype = ndtype
-
-        return end
 
     def destroy(self):
         """
@@ -471,10 +451,12 @@ class Data(HDF5Dataset):
                 self._set_space_shape('data', data.shape, dtype=dtype)
                 end = self.chunks_writer("/data", data)
             else:
+                columns = []
                 for col, dtype in self.dtypes:
                     shape = (data.shape[0],)#data[col].shape
                     self._set_space_shape(col, shape, dtype=dtype)
-                    end = self.chunks_writer("/{}".format(col), data[col])
+                    columns.append(col)
+                self.chunks_writer_columns(columns, data)
 
     def empty(self, name, dataset_path=None):
         """

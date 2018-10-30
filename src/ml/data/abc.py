@@ -39,8 +39,12 @@ class AbsDataset(ABC):
         return NotImplemented
 
     @abstractmethod
-    def chunks_writer_split(self, data_key, labels_key, data, labels_column, init=0):
+    def chunks_writer_columns(self, keys, data, init=0):
         return NotImplemented
+
+    #@abstractmethod
+    #def chunks_writer_split(self, data_key, labels_key, data, labels_column, init=0):
+    #    return NotImplemented
 
     @abstractmethod
     def destroy(self):
