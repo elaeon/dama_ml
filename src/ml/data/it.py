@@ -6,11 +6,10 @@ import pandas as pd
 import dask.dataframe as dd
 import psycopg2
 import logging
-import datetime
 
 from collections import defaultdict, deque
 from ml.utils.config import get_settings
-from ml.utils.numeric_functions import max_type, num_splits, filter_sample, wsrj
+from ml.utils.numeric_functions import max_type, num_splits, wsrj
 from ml.utils.batcher import BatchWrapper, cut, assign_struct_array2df
 from ml.data.abc import AbsDataset
 

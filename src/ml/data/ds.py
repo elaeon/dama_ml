@@ -18,7 +18,7 @@ from ml.random import downsample
 from ml.random import sampling_size
 from ml.utils.config import get_settings
 from ml.utils.files import build_path
-from ml.utils.basic import Hash, unique_dtypes
+from ml.utils.basic import Hash, unique_dtypes, StructArray
 
 settings = get_settings("ml")
 
@@ -418,12 +418,12 @@ class Data(HDF5Dataset):
     @property
     def data(self):
         try:
-            return self._get_data('data')
+            columns = [("c0", self._get_data('data'))]
         except KeyError:
             columns = []
             for column in self.columns:
-                columns.append(self._get_data(column))
-            return columns
+                columns.append((column, self._get_data(column)))
+        return StructArray(columns)
 
     def info(self, classes=False):
         """
@@ -497,11 +497,7 @@ class Data(HDF5Dataset):
         """
         convert the dataset to a dataframe
         """
-        dataset = self[:]
-        print(dataset)
-        #if len(dataset.shape) > 2:
-        #    dataset = dataset.reshape(dataset.shape[0], -1)
-        return pd.DataFrame(data=dataset, columns=self.columns)
+        return self.data.to_df()
 
     @staticmethod
     def concat(datasets, chunksize:int=0, name:str=None):

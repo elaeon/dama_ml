@@ -6,7 +6,7 @@ import pandas as pd
 
 #cut if length > array size 
 @cut
-def assign_struct_array2df(it, type_elem, start_i, end_i, dtype, columns, chunks_size=0):
+def assign_struct_array2df(it, type_elem, start_i, end_i, dtype, columns):
         length = end_i - start_i
         stc_arr = np.empty(length, dtype=dtype)
         i = 0
@@ -52,7 +52,7 @@ class BatchIt(Batch):
         for smx in grouper_chunk(self.batch_size, self.it):
             end_i += shape[0]
             yield assign_struct_array2df(smx, self.it.type_elem, start_i, end_i, self.dtype, 
-                columns, chunks_size=self.batch_size)
+                columns)
             start_i = end_i
 
     def run(self, shape):

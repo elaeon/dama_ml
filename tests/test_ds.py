@@ -1,7 +1,6 @@
 import unittest
 import numpy as np
 import pandas as pd
-import csv
 
 from ml.data.ds import DataLabelFold
 from ml.data.ds import Data, DataLabel
@@ -58,6 +57,7 @@ class TestDataset(unittest.TestCase):
             self.assertEqual(dataset["X0"].dtype, int)
             self.assertEqual(dataset["X1"].dtype, float)
             self.assertEqual(dataset["X2"].dtype, object)
+            self.assertCountEqual(dataset[:]["X0"], X0)
         dataset.destroy()
 
     def test_from_data_dim_7_1_2(self):
@@ -103,8 +103,7 @@ class TestDataset(unittest.TestCase):
         dataset.from_data(df)
         with dataset:
             df = dataset.to_df()
-            print(df)
-            #self.assertEqual(list(df.columns), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'])
+            self.assertEqual(list(df.columns), ['X', 'Y'])
         dataset.destroy()
 
     def test_ds_build(self):
@@ -116,38 +115,21 @@ class TestDataset(unittest.TestCase):
         dl = Data(name="test", dataset_path="/tmp", clean=True)
         dl.from_data(X, X.shape[0])
         with dl:
-            self.assertCountEqual(dl.data[0], X[0])
-            self.assertCountEqual(dl.data[1], X[1])
-            self.assertCountEqual(dl.data[2], X[2])
-            self.assertCountEqual(dl.data[3], X[3])
+            self.assertCountEqual(dl[0]["c0"], X[0])
+            self.assertCountEqual(dl[1]["c0"], X[1])
+            self.assertCountEqual(dl[2]["c0"], X[2])
+            self.assertCountEqual(dl[3]["c0"], X[3])
         dl.destroy()
 
-    def test_ds_dtype(self):
-        X = np.asarray([[1,2,3,4,5]], dtype=np.int)
-        Y = np.asarray(['1','2','3','4','5'], dtype=object)
-        dl = DataLabel(name="test", dataset_path="/tmp", clean=True)
-        dl.from_data(X, Y, self.X.shape[0])
-        with dl:            
-            self.assertEqual(dl.dtype, X.dtype)
-            self.assertEqual(dl.ltype, Y.dtype)
-        dl.destroy()
 
-    def test_get_set(self):
-        from ml.processing import rgb2gray
-        transforms = Transforms()
-        transforms.add(rgb2gray)
-        dsb = DataLabel(name="test", dataset_path="/tmp", author="AGMR", clean=True,
+    def test_attrs(self):
+        dsb = Data(name="test", dataset_path="/tmp", author="AGMR", clean=True,
             description="description text", compression_level=5)
-        dsb.transforms.add(rgb2gray)
-        self.assertEqual(dsb.author, "AGMR")
-        self.assertEqual(dsb.transforms.to_json(), transforms.to_json())
-        self.assertEqual(dsb.description, "description text")
-        self.assertEqual(dsb.compression_level, 5)
-        self.assertEqual(dsb.dataset_class, 'ml.data.ds.DataLabel')
-        self.assertEqual(type(dsb.timestamp), type(''))
-        self.assertEqual(dsb.hash_header is not None, True)
-        dsb.from_data(self.X.astype('float32'), self.Y, self.X.shape[0])
-        #self.assertEqual(dsb.md5 is not None, True)
+        with dsb:
+            self.assertEqual(dsb.author, "AGMR")
+            self.assertEqual(dsb.description, "description text")
+            self.assertEqual(dsb.zip_params["compression_opts"], 5)
+            self.assertEqual(type(dsb.timestamp), type(''))
         dsb.destroy()
 
     def test_to_libsvm(self):
@@ -166,13 +148,14 @@ class TestDataset(unittest.TestCase):
 
         X = np.random.rand(100, 2)
         Y = np.asarray([0 if .5 < sum(e) <= 1 else -1 if 0 < sum(e) < .5 else 1 for e in X])
-        dataset = DataLabel(name="test_ds_1", dataset_path="/tmp/", clean=True)
-        dataset.from_data(X, Y, self.X.shape[0])
+        df = pd.DataFrame({"X0": self.X[:, 0], "X1": self.X[:, 1], "Y": self.Y})
+        dataset = Data(name="test_ds_1", dataset_path="/tmp/", clean=True)
+        dataset.from_data(df)
         with dataset:
             dataset.to_libsvm(name="test.txt", save_to="/tmp")
         check("/tmp/test.txt")
         dataset.destroy()
-        rm("/tmp/test.txt")
+        #rm("/tmp/test.txt")
 
     def test_no_data(self):
         from ml.processing import rgb2gray
