@@ -41,11 +41,11 @@ class TestStructArray(unittest.TestCase):
         self.assertCountEqual(df["x"], columns[0][1])
         self.assertCountEqual(df["y"], columns[1][1])
 
-    def test_array(self):
+    def test_from_columns(self):
         array = np.array([[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
         columns = [("x", array)]
         str_array = StructArray(columns)
-        print(str_array[:])
+        self.assertCountEqual(str_array[:]["x"][0], array[0])
 
     def test_is_multidim(self):
         array = np.array([[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
@@ -56,3 +56,28 @@ class TestStructArray(unittest.TestCase):
         columns = [("x", np.array([1, 2, 3, 4, 5])), ("y", np.array([6, 7, 8, 9, 10]))]
         str_array = StructArray(columns)
         self.assertEqual(str_array.is_multidim(), False)
+
+    def test_multindex_str(self):
+        array = np.empty(5, dtype=[("x", "uint8"), ("y", "uint8"), ("z", "object")])
+        array["x"] = [1, 2, 3, 4, 5]
+        array["y"] = [6, 7, 8, 9, 10]
+        array["z"] = ["a", "b", "c", "d", "e"]
+        columns = [("x", array["x"]),
+                   ("y", array["y"]),
+                   ("z", array["z"])]
+        str_array = StructArray(columns)
+        self.assertCountEqual(str_array["x"]["x"], array["x"])
+        self.assertCountEqual(str_array[["x", "y"]]["x"], array["x"])
+        self.assertCountEqual(str_array[["x", "y"]]["y"], array["y"])
+
+    def test_multindex_int(self):
+        array = np.empty(5, dtype=[("x", "uint8"), ("y", "uint8"), ("z", "object")])
+        array["x"] = [1, 2, 3, 4, 5]
+        array["y"] = [6, 7, 8, 9, 10]
+        array["z"] = ["a", "b", "c", "d", "e"]
+        columns = [("x", array["x"]),
+                   ("y", array["y"]),
+                    ("z", array["z"])]
+        str_array = StructArray(columns)
+        self.assertCountEqual(str_array[[0]]["x"], array["x"])
+        self.assertCountEqual(str_array[[0,2]]["z"], array["z"])

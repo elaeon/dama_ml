@@ -544,16 +544,17 @@ class Data(HDF5Dataset):
     #        return
     #    return DS(name=name, dataset_path=dataset_path, clean=False)
 
-    def to_libsvm(self, name=None, save_to=None):
+    def to_libsvm(self, target, save_to=None):
         """
         tranforms the dataset into libsvm format
         """
         from ml.utils.seq import libsvm_row
-        le = self.labels2num()
-        name = self.name+".txt" if name is None else name
-        file_path = os.path.join(save_to, name)
-        with open(file_path, 'w') as f:
-            for row in libsvm_row(self.labels, self.data, le):
+        from sklearn.preprocessing import LabelEncoder
+        le = LabelEncoder()
+        labels = le.fit_transform(self._get_data(target))
+        columns = [col for col in self.columns if col != target]
+        with open(save_to, 'w') as f:
+            for row in libsvm_row(labels, self.data[columns]):
                 f.write(" ".join(row))
                 f.write("\n")
 
@@ -587,6 +588,20 @@ class Data(HDF5Dataset):
                 X_unb.append(v[:, :y_index])
                 y_unb.append(v[:, y_index])
             return X_unb + y_unb
+
+    def cv_ds(self, train_size=.7, valid_size=.1, dataset_path=None, apply_transforms=True):
+        data = self.cv(train_size=train_size, valid_size=valid_size)
+        train_ds = Data(name="train", dataset_path=dataset_path)
+        with train_ds:
+            train_ds.from_data(data[0], data[3], data[0].shape[0])
+        validation_ds = Data(name="validation", dataset_path=dataset_path)
+        with validation_ds:
+            validation_ds.from_data(data[1], data[4], data[1].shape[0])
+        test_ds = Data(name="test", dataset_path=dataset_path)
+        with test_ds:
+            test_ds.from_data(data[2], data[5], data[2].shape[0])
+
+        return train_ds, validation_ds, test_ds
 
 
 class DataLabel(Data):

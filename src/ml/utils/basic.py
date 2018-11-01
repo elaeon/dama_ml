@@ -1,6 +1,7 @@
 import hashlib
 import numpy as np
 import pandas as pd
+from collections import OrderedDict
 
 
 class Hash:
@@ -20,6 +21,7 @@ class StructArray:
     def __init__(self, columns):
         self.columns = columns
         self.dtype = self.columns2dtype()
+        self.o_columns = OrderedDict(self.columns)
 
     def __getitem__(self, key):
         if isinstance(key, slice):
@@ -32,8 +34,16 @@ class StructArray:
                 stop = self.length
             else:
                 stop = key.stop
-            #size = abs(start - stop)
-            return self.convert(self.shape, start, stop)
+            return self.convert(self.columns, self.shape, start, stop)
+        elif isinstance(key, str):
+            columns = [(key, self.o_columns[key])]
+            return self.convert_from_columns(columns, self.shape, 0, self.length)
+        elif isinstance(key, list):
+            try:
+                columns = [(col_name, self.o_columns[col_name]) for col_name in key]
+            except KeyError:
+                columns = [(self.columns[i][0], self.columns[i][1]) for i in key]
+            return self.convert_from_columns(columns, self.shape, 0, self.length)
         else:
             shape = list(self.columns[0][1].shape[1:])
             return self.convert_from_index(shape, key)
@@ -53,9 +63,9 @@ class StructArray:
     def columns2dtype(self):
         return [(col_name, array.dtype) for col_name, array in self.columns]
 
-    def convert(self, shape, init, end):
+    def convert(self, columns, shape, init, end):
         stc_arr = np.empty(shape, dtype=self.dtype)
-        for col_name, array in self.columns:
+        for col_name, array in columns:
             stc_arr[col_name] = array[init:end]
         return stc_arr
 
@@ -63,6 +73,15 @@ class StructArray:
         stc_arr = np.empty(shape, dtype=self.dtype)
         for col_name, array in self.columns:
             stc_arr[col_name] = array[index]
+        return stc_arr
+
+    def convert_from_columns(self, columns, shape, init, end):
+        o_dtype = OrderedDict(self.dtype)
+        dtype = [(col_name, o_dtype[col_name]) for col_name, _ in columns]
+
+        stc_arr = np.empty(shape, dtype=dtype)
+        for col_name, array in columns:
+            stc_arr[col_name] = array[init:end]
         return stc_arr
 
     def to_df(self, start_i=0, end_i=None):
@@ -83,3 +102,10 @@ class StructArray:
 
 def unique_dtypes(dtypes):
     return np.unique([dtype.name for _, dtype in dtypes])
+
+
+def labels2num(self):
+    from sklearn.preprocessing import LabelEncoder
+    le = LabelEncoder()
+    le.fit(self.labels)
+    return le
