@@ -2,34 +2,16 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from ml.data.ds import DataLabelFold
-from ml.data.ds import Data, DataLabel
-from ml.processing import Transforms
+from ml.data.ds import Data
+from ml.data.it import Iterator
 from ml.random import sampling_size
 from ml.data.ds import Memory
 
 
-def linear(x, b=0):
-    return x + b
-
-
-def parabole(x, b=0):
-    return x**2 + b
-
-
-def to_int(x, col=None):
-    x[:, col] = x[:, col].astype(np.int)
-    return x
-
-
-def label_t(x):
-    return np.log1p(x)
-
-
 class TestDataset(unittest.TestCase):
     def setUp(self):
-        NUM_FEATURES = 10
-        self.X = np.append(np.zeros((5, NUM_FEATURES)), np.ones((5, NUM_FEATURES)), axis=0).astype(float)
+        num_features = 10
+        self.X = np.append(np.zeros((5, num_features)), np.ones((5, num_features)), axis=0).astype(float)
         self.Y = (np.sum(self.X, axis=1) / 10).astype(int)
 
     def tearDown(self):
@@ -86,7 +68,7 @@ class TestDataset(unittest.TestCase):
         XY = np.hstack((self.X, self.Y.reshape(-1, 1)))
         dataset.from_data(self.X)
         with dataset:
-            self.assertCountEqual(dataset["c0"], XY[:, 0])
+            self.assertCountEqual(dataset["c0"]["c0"], XY[:, 0])
         dataset.destroy()
 
     def test_to_df(self):
@@ -108,19 +90,18 @@ class TestDataset(unittest.TestCase):
 
     def test_ds_build(self):
         X = np.asarray([
-            [1,2,3,4,5,6],
-            [6,5,4,3,2,1],
-            [0,0,0,0,0,0],
-            [-1,0,-1,0,-1,0]], dtype=np.float)
+            [1, 2, 3, 4, 5, 6],
+            [6, 5, 4, 3, 2, 1],
+            [0, 0, 0, 0, 0, 0],
+            [-1, 0, -1, 0, -1, 0]], dtype=np.float)
         dl = Data(name="test", dataset_path="/tmp", clean=True)
-        dl.from_data(X, X.shape[0])
+        dl.from_data(X)
         with dl:
             self.assertCountEqual(dl[0]["c0"], X[0])
             self.assertCountEqual(dl[1]["c0"], X[1])
             self.assertCountEqual(dl[2]["c0"], X[2])
             self.assertCountEqual(dl[3]["c0"], X[3])
         dl.destroy()
-
 
     def test_attrs(self):
         dsb = Data(name="test", dataset_path="/tmp", author="AGMR", clean=True,
@@ -215,8 +196,8 @@ class TestDataset(unittest.TestCase):
         dl = Data(name="test", dataset_path="/tmp/", clean=True)
         XY = np.hstack((self.X, self.Y.reshape(-1, 1)))
         dl.from_data(XY)
-        with dl:
-            train_ds, validation_ds, test_ds = dl.cv_ds(train_size=.6, valid_size=.2)
+        #with dl:
+        #    train_ds, validation_ds, test_ds = dl.cv_ds(train_size=.6, valid_size=.2)
         #with train_ds:
         #    self.assertEqual(train_ds.shape, (6, 10))
         #with validation_ds:
@@ -225,89 +206,39 @@ class TestDataset(unittest.TestCase):
         #    self.assertEqual(test_ds.shape, (2, 10))
 
         dl.destroy()
-        train_ds.destroy()
-        validation_ds.destroy()
-        test_ds.destroy()
+        #train_ds.destroy()
+        #validation_ds.destroy()
+        #test_ds.destroy()
 
     def test_cv_unbalanced(self):
         X = np.random.rand(1000, 2)
         Y = np.asarray([str(e) for e in (X[:, 1] < .5)], dtype="|O")
         ds = Data(name="test", dataset_path="/tmp/", clean=True)
         unbalanced = sampling_size({u'True': .2, u'False': 350}, Y)
-        ds.from_data(X, Y, X.shape[0])
+        #ds.from_data(X, Y, X.shape[0])
         #with ds:
         #    X_train, X_validation, X_test, y_train, y_validation, y_test = ds.cv(train_size=.7, valid_size=0, unbalanced=unbalanced)
         #counter = np.unique(Y, return_counts=True)
         #un = np.unique(y_test, return_counts=True)
         #self.assertEqual(np.unique(y_test, return_counts=True)[1][1] - 4 <= round(counter[1][1]*.2, 0), True)
         ds.destroy()
-
-    def test_labels_transforms(self):
-        transforms = Transforms()
-        transforms.add(label_t)
-        dl = DataLabel(name="test", dataset_path="/tmp/", clean=True)
-        X = np.random.rand(10, 1)
-        Y_0 = np.random.randint(1, 10, size=(10, 1))
-        Y = transforms.apply(Y_0, chunks_size=0)
-        dl.from_data(X, Y, self.X.shape[0])
-        with dl:
-            self.assertEqual(dl.labels[0], np.log1p(Y_0[0]))
-        dl.destroy()
-
-    def test_label_index(self):
-        X = np.random.rand(10, 2)
-        X[:, 1] = X[:, 1] > .5
-        ds = DataLabel(name="test", dataset_path="/tmp/", clean=True)
-        ds.from_data(X, "1")
-        with ds:
-            self.assertEqual(ds.shape, (10, 1))
-            self.assertCountEqual(ds.data, X[:, 0])
-            self.assertCountEqual(ds.labels, X[:, 1])
-        ds.destroy()
-
-        ds = DataLabel(name="test", dataset_path="/tmp/", clean=True)
-        X = pd.DataFrame({"a": [0,1,2,3,4,5,6,7,8,9], "b": [0,1,1,0,1,1,0,0,0,1]})
-        ds.from_data(X, "b")
-        with ds:            
-            self.assertEqual(ds.shape, (10, 1))
-            self.assertCountEqual(ds.data, X["a"])
-            self.assertCountEqual(ds.labels, X["b"])
-        ds.destroy()
     
     def test_from_it(self):
-        from ml.data.it import Iterator
-        l = [1,2,3,4,4,4,5,6,3,8,1]
-        it = Iterator(l)
+        seq = [1, 2, 3, 4, 4, 4, 5, 6, 3, 8, 1]
+        it = Iterator(seq)
         it.set_length(10)
         data = Data(name="test", dataset_path="/tmp", clean=True)
-        data.from_data(it, chunks_size=20)
+        data.from_data(it, chunksize=20)
         with data:
             self.assertCountEqual(data.columns[:], ["c0"])
         data.destroy()
-
-    def test_concat(self):
-        data0 = Data(name="test0", dataset_path="/tmp", clean=True)
-        data1 = Data(name="test1", dataset_path="/tmp", clean=True)
-        data2 = Data(name="test2", dataset_path="/tmp", clean=True)
-        data0.from_data(np.random.rand(10, 2))
-        data1.from_data(np.random.rand(10, 2))
-        data2.from_data(np.random.rand(10, 2))
-
-        dataC = Data.concat([data0, data1, data2], chunksize=10, name="concat")
-        data0.destroy()
-        data1.destroy()
-        data2.destroy()
-
-        with dataC:
-            self.assertEqual(dataC.name, "concat")
-            self.assertEqual(dataC.shape, (30, 2))
-        dataC.destroy()
 
     def test_reader(self):
         data0 = Data(name="test0", dataset_path="/tmp", clean=True)
         data0.from_data(np.random.rand(10, 2))
         with data0:
-            self.assertEqual(data0.reader(chunksize=5, df=True).to_memory().shape, (10, 2))
+            self.assertEqual(data0.reader(chunksize=5).to_memory().shape, (10, 2))
+            self.assertEqual(data0.reader(chunksize=5, dtype="float32").to_memory().shape, (10, 2))
         data0.destroy()
     
     def test_memory_ds(self):
@@ -351,34 +282,12 @@ class TestMemoryDs(unittest.TestCase):
         m["/data"] = "y"
         m.require_group("data")
         self.assertEqual(m["data"], "y")
-        
 
-
-class TestDataSetFold(unittest.TestCase):
-    def setUp(self):
-        NUM_FEATURES = 10
-        self.X = np.append(np.zeros((5, NUM_FEATURES)), np.ones((5, NUM_FEATURES)), axis=0)
-        self.Y = (np.sum(self.X, axis=1) / 10).astype(int)
-        self.dataset = DataLabel(
-            name="test_ds",
-            dataset_path="/tmp/",
-            clean=True)
-        with self.dataset:
-            self.dataset.from_data(self.X, self.Y)
-
-    def tearDown(self):
-        self.dataset.destroy()
-
-    def test_fold(self):
-        n_splits = 5
-        dsbf = DataLabelFold(n_splits=n_splits, dataset_path="/tmp")
-        dsbf.from_data(self.dataset)
-        for dsb in dsbf.get_splits():
-            with dsb:
-                self.assertEqual(dsb.shape[0], 8)
-                self.assertEqual(dsb.shape[1], 10)
-        self.assertEqual(len(dsbf.splits), n_splits)
-        dsbf.destroy()
+    def test_memory_shape(self):
+        m = Memory()
+        m.require_dataset("data", 10)
+        m.require_group("group")
+        self.assertEqual(list(m.keys()), ["data", "group"])
 
 
 if __name__ == '__main__':

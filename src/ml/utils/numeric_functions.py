@@ -3,11 +3,11 @@ import heapq as hq
 from collections import defaultdict
 
 
-def pearsoncc(X, Y):
+def pearsoncc(x, y):
     """ Compute Pearson Correlation Coefficient. """
-    X = (X - X.mean(0)) / X.std(0)
-    Y = (Y - Y.mean(0)) / Y.std(0)
-    return (X * Y).mean()
+    x = (x - x.mean(0)) / x.std(0)
+    y = (y - y.mean(0)) / y.std(0)
+    return (x * y).mean()
 
 
 def le(x, y):
@@ -50,7 +50,7 @@ def humanize_bytesize(size):
 
 def expand_matrix_row(matrix, max_size, actual_size):
     """
-    :type matrix: array
+    :type matrix: ndarray
     :param matrix: NxM matrix
 
     :type max_size: int
@@ -61,43 +61,30 @@ def expand_matrix_row(matrix, max_size, actual_size):
 
     add rows with zeros to the end of the matrix
     """
-    return np.append(
-        matrix, 
-        np.zeros((max_size - actual_size, matrix.shape[1]), dtype=matrix.dtype),
-        axis=0)
+    return np.append(matrix,
+                     np.zeros((max_size - actual_size, matrix.shape[1]), dtype=matrix.dtype), axis=0)
 
 
 def expand_matrix_col(matrix, max_size, actual_size):
     """
     add columns of zeros to the right of the matrix
     """
-    return np.append(
-        matrix, 
-        np.zeros((matrix.shape[0], max_size - actual_size), dtype=matrix.dtype),
-        axis=1)
+    return np.append(matrix,
+                     np.zeros((matrix.shape[0], max_size - actual_size), dtype=matrix.dtype), axis=1)
 
 
-def expand_rows_cols(X, n_rows=2, n_cols=2):
-    """
-    :type n_rows: int
-    :param n_rows: number of rows to add
-
-    :type n_cols: int
-    :param n_cols: number of columns to add
-
-    add an expecific number of rows and columns of zeros to the array X
-    """
-    if len(X.shape) == 2:
-        X = np.hstack((X, np.zeros((X.shape[0], n_cols))))
-        X = np.vstack((X, np.zeros((n_rows, X.shape[1]))))
-    return X
+def expand_rows_cols(x, n_rows=2, n_cols=2):
+    if len(x.shape) == 2:
+        x = np.hstack((x, np.zeros((x.shape[0], n_cols))))
+        x = np.vstack((x, np.zeros((n_rows, x.shape[1]))))
+    return x
 
 
 def is_binary(array, include_null=True):
     if include_null is False:
         return np.count_nonzero((array != 0) & (array != 1)) == 0
     else:
-        return np.all((array==0)|(array==1)|(np.isnan(array)))
+        return np.all((array == 0) | (array == 1) | (np.isnan(array)))
 
 
 def is_integer(array):
@@ -126,13 +113,13 @@ def unique_size(array):
     return np.unique(array).size
 
 
-def data_type(usize, total_size):
+def data_type(usize):
     from ml import fmtypes
     
     critery = [
         (fmtypes.BOOLEAN, usize == 2),
         (fmtypes.NANBOOLEAN, usize == 3),
-        (fmtypes.ORDINAL, usize > 3 and total_size*.0001 > usize or total_size <= 1000),
+        (fmtypes.ORDINAL, 3 < usize < 10000),
         (fmtypes.DENSE, True)
     ]
 
@@ -143,7 +130,7 @@ def data_type(usize, total_size):
 
 def features2rows(data):
     """
-    :type labels: bool
+    :type data: ndarray
 
     transforms a matrix of dim (n, m) to a matrix of dim (n*m, 2) where
     each row has the form [feature_column, feature_data]
@@ -165,13 +152,13 @@ def gini(actual, pred):
     n = actual.shape[0]
     a_s = actual[np.argsort(pred)]
     a_c = a_s.cumsum()
-    giniSum = a_c.sum() / a_s.sum() - (n + 1) / 2.0
-    return giniSum / n
+    gini_sum = a_c.sum() / a_s.sum() - (n + 1) / 2.0
+    return gini_sum / n
  
 
 def gini_normalized(a, p):
     if p.ndim == 2:
-        p = p[:,1] #just pick class 1 if is a binary array
+        p = p[:, 1]  # just pick class 1 if is a binary array
     return gini(a, p) / gini(a, a)
 
 
@@ -190,18 +177,17 @@ def features_fmtype(fmtypes, fmtype):
     return map_col[fmtype.id]
 
 
-def swap_noise(x, y, p=.15, cols=[1]):
+def swap_noise(x, y, p=.15, cols=1):
     indexes_o = [int(round(i, 0)) for i in np.random.uniform(0, x.size-1, size=int(round(x.size * p, 0)))]
     indexes_d = [int(round(i, 0)) for i in np.random.uniform(0, x.size-1, size=int(round(x.size * p, 0)))]
 
-    M = np.c_[x, y]
-    vo = M[indexes_o, cols]
-    vd = M[indexes_d, cols]
+    matrix = np.c_[x, y]
+    vo = matrix[indexes_o, cols]
+    vd = matrix[indexes_d, cols]
     for s0, s1, nv0, nv1 in zip(indexes_o, indexes_d, vo, vd):
-        M[s1, cols] = nv0
-        M[s0, cols] = nv1
-
-    return M
+        matrix[s1, cols] = nv0
+        matrix[s0, cols] = nv1
+    return matrix
 
 
 def max_type(items):
@@ -211,6 +197,11 @@ def max_type(items):
         return None
     v = max(zip(sizeof, types), key=lambda x: x[0])
     return v[1]
+
+
+def max_dtype(dtype):
+    sizeof_dtype = [(dtype_obj, dtype_obj.num) for _, dtype_obj in dtype]
+    return max(sizeof_dtype, key=lambda x: x[1])[0]
 
 
 def filter_sample(stream, label, col_index):
@@ -239,7 +230,9 @@ def num_splits(length, chunksize):
 
 def wsr(stream, k):
     heap = []
-    hkey = lambda w: -np.random.exponential(1./w)
+
+    def hkey(w):
+        return -np.random.exponential(1./w)
 
     for item, weight in stream:
         if len(heap) < k:
@@ -253,7 +246,9 @@ def wsr(stream, k):
 
 def wsrj(stream, k):
     reservoir = []
-    hkey = lambda w: np.random.exponential(1./w)
+
+    def hkey(w):
+        return np.random.exponential(1./w)
 
     for item, weight in stream:
         if len(reservoir) < k:
@@ -265,13 +260,13 @@ def wsrj(stream, k):
         return
 
     while True:
-        T_w = reservoir[0][0]
+        t_w = reservoir[0][0]
         r = np.random.uniform(0, 1)
-        X_w = np.log(r) / np.log(T_w)
+        x_w = np.log(r) / np.log(t_w)
         w_c = 0
         for item, weight in stream:
-            if 0 < X_w - w_c <= weight:
-                r2 = np.random.uniform(T_w, 1)
+            if 0 < x_w - w_c <= weight:
+                r2 = np.random.uniform(t_w, 1)
                 k_i = r2**(1./weight)
                 hq.heapreplace(reservoir, (k_i, item))                
                 break

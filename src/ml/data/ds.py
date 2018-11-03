@@ -99,6 +99,9 @@ class Memory:
     def close(self):
         pass
 
+    def keys(self):
+        return self.spaces.keys()
+
 
 class HDF5Dataset(AbsDataset):
     def __enter__(self):
@@ -236,7 +239,7 @@ class HDF5Dataset(AbsDataset):
         rm(self.url())
         log.debug("DESTROY {}".format(self.url()))
 
-    def url(self):
+    def url(self) -> str:
         """
         return the path where is saved the dataset
         """
@@ -245,32 +248,21 @@ class HDF5Dataset(AbsDataset):
         else:
             return os.path.join(self.dataset_path, self.group_name, self.name)
 
-    def exists(self):
+    def exists(self) -> bool:
         return os.path.exists(self.url())
 
-    def reader(self, chunksize:int=0, df=True) -> Iterator:
-        if df is True:
-            dtypes = self.dtype
-            dtype = [(col, dtypes) for col in self.columns]
-        else:
-            dtype = self.dtype
-        if chunksize == 0:
-            it = Iterator(self, dtype=dtype)
-            return it
-        else:
-            it = Iterator(self, dtype=dtype).to_chunks(chunksize)
-            return it
+    def reader(self, chunksize: int=0, dtype: list=None) -> Iterator:
+        return Iterator(self, dtype=self.dtype).to_chunks(chunksize, dtype=dtype)
 
     @property
-    def shape(self):
-        "return the shape of the dataset"
+    def shape(self) -> tuple:
         if 'data' not in self.f.keys():
             return self._get_data(self.columns[0]).shape
         else:
             return self.data.shape
 
     @property
-    def columns(self):
+    def columns(self) -> list:
         dtypes = self.dtypes
         return [c for c, _ in dtypes]
 
@@ -284,7 +276,7 @@ class HDF5Dataset(AbsDataset):
         self.dtypes = dtypes
 
     @property
-    def dtypes(self):
+    def dtypes(self) -> list:
         return [(col, np.dtype(dtype)) for col, dtype in self.f.get("dtypes", None)]
 
     @dtypes.setter
@@ -446,12 +438,12 @@ class Data(HDF5Dataset):
         print(order_table(headers, table, "shape"))
         ###print columns
 
-    def calc_hash(self, hash_fn:str='sha1', chunksize:int=1080):
-        hash = Hash(hash_fn=hash_fn)
+    def calc_hash(self, hash_fn: str='sha1', chunksize: int=1080) -> str:
+        hash_obj = Hash(hash_fn=hash_fn)
         header = [getattr(self, attr) for attr in self.header_map]
-        hash.hash.update("".join(header).encode("utf-8"))
-        hash.chunks(self.reader(chunksize=chunksize, df=False))
-        return str(hash)
+        hash_obj.hash.update("".join(header).encode("utf-8"))
+        hash_obj.update(self.reader(chunksize=chunksize, dtype=self.data.global_dtype))
+        return str(hash_obj)
 
     def from_data(self, data, length=None, chunksize=258):
         """
@@ -481,23 +473,11 @@ class Data(HDF5Dataset):
                     columns.append(col)
                 self.chunks_writer_columns(columns, data)
 
-    def empty(self, name, dataset_path=None):
-        """
-        build an empty Data with the default parameters
-        """
-        data = Data(name=name, 
-            dataset_path=dataset_path,
-            description=self.description,
-            author=self.author,
-            compression_level=self.compression_level,
-            clean=True)
-        return data
+    def to_df(self, start_i: int=0, end_i=None):
+        return self.data.to_df(start_i=start_i, end_i=end_i)
 
-    def to_df(self):
-        """
-        convert the dataset to a dataframe
-        """
-        return self.data.to_df()
+    def to_ndarray(self, start_i: int=0, end_i=None, dtype=None):
+        return self.data.to_ndarray(start_i=start_i, end_i=end_i, dtype=dtype)
 
     @staticmethod
     def concat(datasets, chunksize:int=0, name:str=None):
@@ -534,15 +514,6 @@ class Data(HDF5Dataset):
         name = dataset_url[-1]
         path = "/".join(dataset_url[:-1])
         return name, path
-
-    #@staticmethod
-    #def original_ds(name, dataset_path=None):
-    #    from pydoc import locate
-    #    meta_dataset = Data(name=name, dataset_path=dataset_path, clean=False)
-    #    DS = locate(str(meta_dataset.dataset_class))
-    #    if DS is None:
-    #        return
-    #    return DS(name=name, dataset_path=dataset_path, clean=False)
 
     def to_libsvm(self, target, save_to=None):
         """
@@ -589,7 +560,7 @@ class Data(HDF5Dataset):
                 y_unb.append(v[:, y_index])
             return X_unb + y_unb
 
-    def cv_ds(self, train_size=.7, valid_size=.1, dataset_path=None, apply_transforms=True):
+    def cv_ds(self, train_size=.7, valid_size=.1, dataset_path=None):
         data = self.cv(train_size=train_size, valid_size=valid_size)
         train_ds = Data(name="train", dataset_path=dataset_path)
         with train_ds:
@@ -757,60 +728,3 @@ class DataLabel(Data):
 
         return tabulate(table, headers)
 
-
-class DataLabelFold(object):
-    """
-    Class for create datasets folds from datasets.
-    
-    :type n_splits: int
-    :param n_plists: numbers of splits for apply to the dataset
-    """
-    def __init__(self, n_splits=2, dataset_path=None):
-        self.name = uuid.uuid4().hex
-        self.splits = []
-        self.n_splits = n_splits
-        self.dataset_path = settings["dataset_folds_path"] if dataset_path is None else dataset_path
-    
-    def create_folds(self, dl):
-        """
-        :type dl: DataLabel
-        :param dl: datalabel to split
-
-        return an iterator of splited datalabel in n_splits DataSetBuilder datasets
-        """
-        from sklearn.model_selection import StratifiedKFold
-        skf = StratifiedKFold(n_splits=self.n_splits)        
-        with dl:
-            for i, (train, test) in enumerate(skf.split(dl.data, dl.labels)):
-                dsb = DataLabel(name=self.name+"_"+str(i), 
-                    dataset_path=self.dataset_path,
-                    description="",
-                    author="",
-                    compression_level=3,
-                    clean=True)
-                data = dl.data[:]
-                labels = dl.labels[:]
-                with dsb:
-                    dsb.from_data(data[train], labels[train])
-                    yield dsb
-
-    def from_data(self, dataset=None):
-        """
-        :type dataset: DataLabel
-        :param dataset: dataset to fold
-
-        construct the dataset fold from an DataSet class
-        """
-        for dsb in self.create_folds(dataset):
-            self.splits.append(dsb.name)
-
-    def get_splits(self):
-        """
-        return an iterator of datasets with the splits of original data
-        """
-        for split in self.splits:
-            yield DataLabel(name=split, dataset_path=self.dataset_path)
-
-    def destroy(self):
-        for split in self.get_splits():
-            split.destroy()

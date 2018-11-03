@@ -4,23 +4,21 @@ import numpy as np
 import pandas as pd
 
 
-#cut if length > array size 
+# cut if length > array size
 @cut
 def assign_struct_array2df(it, type_elem, start_i, end_i, dtype, columns):
-        length = end_i - start_i
-        stc_arr = np.empty(length, dtype=dtype)
-        i = 0
-        if hasattr(type_elem, "__iter__"):
-            for i, row in enumerate(it):
-                stc_arr[i] = tuple(row)
-        else:
-            for i, row in enumerate(it):
-                stc_arr[i] = row
+    length = end_i - start_i
+    stc_arr = np.empty(length, dtype=dtype)
+    i = 0
+    if hasattr(type_elem, "__iter__"):
+        for i, row in enumerate(it):
+            stc_arr[i] = tuple(row)
+    else:
+        for i, row in enumerate(it):
+            stc_arr[i] = row
 
-        smx = pd.DataFrame(stc_arr,
-            index=np.arange(start_i, end_i), 
-            columns=columns)
-        return smx, i+1, length
+    smx = pd.DataFrame(stc_arr, index=np.arange(start_i, end_i), columns=columns)
+    return smx, i+1, length
 
 
 class Batch(object):
@@ -34,6 +32,7 @@ class BatchIt(Batch):
     def batch_from_it_flat(self, shape):
         for smx in grouper_chunk(self.batch_size, self.it):
             smx_a = np.empty(shape, dtype=self.dtype)
+            i = 0
             for i, row in enumerate(smx):
                 smx_a[i] = row[0]
             yield smx_a[:i+1]
@@ -41,6 +40,7 @@ class BatchIt(Batch):
     def batch_from_it_array(self, shape):
         for smx in grouper_chunk(self.batch_size, self.it):
             smx_a = np.empty(shape, dtype=self.dtype)
+            i = 0
             for i, row in enumerate(smx):
                 smx_a[i] = row
             yield smx_a[:i+1]
@@ -51,8 +51,8 @@ class BatchIt(Batch):
         columns = [c for c, _ in self.dtype]
         for smx in grouper_chunk(self.batch_size, self.it):
             end_i += shape[0]
-            yield assign_struct_array2df(smx, self.it.type_elem, start_i, end_i, self.dtype, 
-                columns)
+            yield assign_struct_array2df(smx, self.it.type_elem, start_i, end_i, self.dtype,
+                                         columns)
             start_i = end_i
 
     def run(self, shape):
@@ -66,12 +66,12 @@ class BatchIt(Batch):
 
 
 class BatchArray(Batch):
-    def run(self, shape):
+    def run(self):
         init = 0
         end = self.batch_size
         length = self.batch_size
         while length > 0:
-            batch = self.it.it[init:end]
+            batch = self.it.data.to_ndarray(start_i=init, end_i=end, dtype=self.dtype)
             yield batch
             init = end
             end += self.batch_size
@@ -79,25 +79,24 @@ class BatchArray(Batch):
 
 
 class BatchDataFrame(Batch):
-    def run(self, shape):
-        batch_array = BatchArray(self.it, self.batch_size, self.dtype)
-        start_i = 0
-        end_i = 0
-        columns = [c for c, _ in self.dtype]
-        for batch in batch_array.run(shape):
-            end_i += self.batch_size
-            yield assign_struct_array2df(batch, self.it.type_elem, start_i, end_i, self.dtype, 
-                    columns, chunks_size=self.batch_size)
-            start_i = end_i
+    def run(self):
+        init = 0
+        end = self.batch_size
+        length = self.batch_size
+        while length > 0:
+            batch = self.it.data.to_df(start_i=init, end_i=end)
+            yield batch
+            init = end
+            end += self.batch_size
+            length = batch.shape[0]
 
 
 class BatchWrapper(Batch):
     def run(self, shape):
         if self.it.is_ds:
             if isinstance(self.dtype, list):
-                return BatchDataFrame(self.it, self.batch_size, self.dtype).run(shape)
-            else:            
-                return BatchArray(self.it, self.batch_size, self.dtype).run(shape)
+                return BatchDataFrame(self.it, self.batch_size, self.dtype).run()
+            else:
+                return BatchArray(self.it, self.batch_size, self.dtype).run()
         else:
             return BatchIt(self.it, self.batch_size, self.dtype).run(shape)
-        
