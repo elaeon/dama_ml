@@ -1,4 +1,3 @@
-from itertools import chain
 from functools import reduce
 import operator
 import logging
@@ -19,12 +18,12 @@ log.setLevel(int(settings["loglevel"]))
 def avg(iters, method="arithmetic"):
     size = len(iters)
     dtype = iters[0].dtype
-    chunks_size = iters[0].chunks_size
+    batch_size = iters[0].batch_size
     if method == "arithmetic":
         iter_ = (sum(x) / float(size) for x in zip(*iters))
     else:
         iter_ = (reduce(operator.mul, x)**(1. / size) for x in zip(*iters))
-    return Iterator(iter_, dtype=dtype, chunks_size=chunks_size)
+    return Iterator(iter_, dtype=dtype, batch_size=batch_size)
 
 
 def max_counter(iters_b, weights=None):
@@ -41,13 +40,13 @@ def max_counter(iters_b, weights=None):
     iters = iter(iters_b)
     base_iter = next(iters)
     iter_ = (max(merge(x, weights), key=lambda x: x[1])[0] for x in zip(base_iter, *iters))
-    return Iterator(iter_, dtype=base_iter.dtype, chunks_size=base_iter.chunks_size)
+    return Iterator(iter_, dtype=base_iter.dtype, batch_size=base_iter.batch_size)
 
 
 def concat(iters):
     if len(iters) > 1:
         base_iter = iters[0]
-        it_base = Iterator([], chunks_size=base_iter.chunks_size, dtype=base_iter.dtype)
+        it_base = Iterator([], batch_size=base_iter.batch_size, dtype=base_iter.dtype)
         it_base.set_length(0)
         for it in iters:            
             it_base = it_base.concat(it)

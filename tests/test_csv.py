@@ -1,8 +1,9 @@
 import unittest
-import zipfile
+import numpy as np
 
-from ml.extractors.file import CSVDataset, ZIPFile, File, get_compressed_file_manager_ext
-from ml.extractors.file import DaskEngine
+from ml.data.csv import CSVDataset, ZIPFile, File, get_compressed_file_manager_ext
+from ml.data.csv import DaskEngine
+from ml.data.it import Iterator
 
 
 class TestCSVZip(unittest.TestCase):
@@ -14,7 +15,7 @@ class TestCSVZip(unittest.TestCase):
         self.filepath = "/tmp/test.zip"
         self.filename = "test.csv"
         csv_writer = CSVDataset(filepath=self.filepath, delimiter=",")
-        csv_writer.writer(self.iterator, header=["A", "B", "C", "D", "F"])
+        csv_writer.from_data(self.iterator, header=["A", "B", "C", "D", "F"])
 
     def tearDown(self):
         csv = CSVDataset(filepath=self.filepath)
@@ -39,6 +40,7 @@ class TestCSVZip(unittest.TestCase):
         csv = CSVDataset(self.filepath)
         it = csv.reader(nrows=2, filename="test.csv")
         self.assertCountEqual(it.columns, ["A", "B", "C", "D", "F"])
+        csv.destroy()
 
     def test_columns(self):
         csv = CSVDataset(self.filepath)
@@ -68,7 +70,7 @@ class TestCSV(unittest.TestCase):
             [0, 9, 8, 7, 6]]
         self.filepath = "/tmp/test.csv"
         csv_writer = CSVDataset(filepath=self.filepath)
-        csv_writer.writer(self.iterator, delimiter=",")
+        csv_writer.from_data(self.iterator, delimiter=",")
 
     def tearDown(self):
         csv = CSVDataset(filepath=self.filepath)
@@ -116,9 +118,17 @@ class TestCSV(unittest.TestCase):
 
     def test_to_df(self):
         csv = CSVDataset(self.filepath)
-        it = csv.reader(columns=["A", "C"], exclude=True)
         self.assertEqual(csv.to_df().shape, (3, 5))
 
+    def test_to_ndarray(self):
+        csv = CSVDataset(self.filepath)
+        array = np.asarray(self.iterator[1:]).astype("float32")
+        self.assertEqual((csv.to_ndarray(dtype="float32") == array).all(), True)
+
+    def test_it(self):
+        csv = CSVDataset(self.filepath)
+        it = Iterator(csv)
+        print(it.to_memory())
 
 if __name__ == '__main__':
     unittest.main()

@@ -28,16 +28,7 @@ class StructArray:
 
     def __getitem__(self, key):
         if isinstance(key, slice):
-            if key.start is None:
-                start = 0
-            else:
-                start = key.start
-
-            if key.stop is None:
-                stop = self.length
-            else:
-                stop = key.stop
-            return self.convert(self.columns, start, stop)
+            return self.convert(self.columns, key.start, key.stop)
         elif isinstance(key, str):
             columns = [(key, self.o_columns[key])]
             return self.convert_from_columns(columns, 0, self.length)
@@ -66,64 +57,58 @@ class StructArray:
         return [(col_name, array.dtype) for col_name, array in self.columns]
 
     def convert(self, columns, start_i, end_i):
-        size = abs(end_i - start_i)
-        if size > self.length:
-            size = self.length
-        shape = [size] + list(self.shape[1:])
-        return StructArray._array_builder(shape, self.dtype, columns, start_i, end_i)
+        if start_i is None:
+            start_i = 0
+
+        if end_i is None:
+            end_i = self.length
+
+        ncolumns = [(col_name, array[start_i:end_i]) for col_name, array in columns]
+        return StructArray(ncolumns)
 
     def convert_from_index(self, index):
-        shape = self.shape[1:]
-        stc_arr = np.empty(shape, dtype=self.dtype)
-        for col_name, array in self.columns:
-            stc_arr[col_name] = array[index]
-        return stc_arr
+        ncolumns = [(col_name, array[index:index+1]) for col_name, array in self.columns]
+        return StructArray(ncolumns)
 
     def convert_from_columns(self, columns, start_i, end_i):
-        shape = [abs(end_i - start_i)] + list(self.shape[1:])
-        o_dtype = OrderedDict(self.dtype)
-        dtype = [(col_name, o_dtype[col_name]) for col_name, _ in columns]
-        return StructArray._array_builder(shape, dtype, columns, start_i, end_i)
+        ncolumns = [(col_name, array[start_i:end_i]) for col_name, array in columns]
+        return StructArray(ncolumns)
 
     @staticmethod
-    def _array_builder(shape, dtype, columns, start_i, end_i):
+    def _array_builder(shape, dtype, columns, start_i:int, end_i:int):
         stc_arr = np.empty(shape, dtype=dtype)
         for col_name, array in columns:
             stc_arr[col_name] = array[start_i:end_i]
         return stc_arr
 
-    def to_df(self, start_i: int=0, end_i=None):
+    def to_df(self, init_i: int=0, end_i=None):
+        columns = [col_name for col_name, _ in self.dtype]
+        data = StructArray._array_builder(self.shape, self.dtype, self.columns, 0, self.length)
         if end_i is None:
             end_i = self.length
+        size = abs(end_i - init_i)
+        if size > data.shape[0]:
+            end_i = init_i + data.shape[0]
+        return pd.DataFrame(data, index=np.arange(init_i, end_i), columns=columns)
 
-        if self.is_multidim():
-            columns = ["c{}".format(i) for i in range(self.shape[1])]
-            data = self[start_i:end_i][self.columns[0][0]]
-        else:
-            data = self[start_i:end_i]
-            columns = [col_name for col_name, _ in self.dtype]
-        return pd.DataFrame(data, index=np.arange(start_i, end_i), columns=columns)
+    def to_ndarray(self, dtype=None):
+        if dtype is None:
+            dtype = self.global_dtype
+        shape = self.shape
+        array = StructArray._array_builder(shape, self.dtype, self.columns, 0, self.length)
 
-    def to_ndarray(self, start_i: int=0, end_i=None, dtype=None):
-        if end_i is None:
-            end_i = self.length
-        size = abs(end_i - start_i)
-        if size > self.length:
-            size = self.length
-        shape = [size] + list(self.shape[1:])
-        array = StructArray._array_builder(shape, self.dtype, self.columns, start_i, end_i)
         if len(shape) == 1:
-            reshape = True
-            shape = shape + [1]
-        else:
-            reshape = False
+            shape = list(shape) + [len(self.columns)]
+
         ndarray = np.empty(shape, dtype=dtype)
-        for i, row in enumerate(array):
-            ndarray[i] = row
-        if reshape is True:
-            return ndarray.reshape(-1)
+        if self.is_multidim():
+            columns = [col_name for col_name, _ in self.dtype]
+            for i, row in enumerate(array):
+                ndarray[i] = row[columns]
         else:
-            return ndarray
+            for i, row in enumerate(array):
+                ndarray[i] = tuple(row)
+        return ndarray
 
     @property
     @cache

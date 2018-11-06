@@ -71,15 +71,14 @@ class TestDataset(unittest.TestCase):
             self.assertCountEqual(dataset["c0"]["c0"], XY[:, 0])
         dataset.destroy()
 
-    def test_to_df(self):
+    def test_columns(self):
         dataset = Data(name="test_ds", dataset_path="/tmp/", clean=True)
         dataset.from_data(self.X)
         with dataset:
-            df = dataset.to_df()
-            self.assertEqual(list(df.columns), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'])
+            self.assertEqual(dataset.columns, ['c0'])
         dataset.destroy()
 
-    def test_to_df_columns(self):
+    def test_columns_2(self):
         dataset = Data(name="test_ds", dataset_path="/tmp/", clean=True)
         df = pd.DataFrame({"X": self.X[:, 0], "Y": self.Y})
         dataset.from_data(df)
@@ -87,6 +86,29 @@ class TestDataset(unittest.TestCase):
             df = dataset.to_df()
             self.assertEqual(list(df.columns), ['X', 'Y'])
         dataset.destroy()
+
+    def test_to_df(self):
+        data0 = Data(name="test0", dataset_path="/tmp", clean=True)
+        array = np.random.rand(10)
+        data0.from_data(array)
+        with data0:
+            self.assertEqual((Iterator(data0).to_df().values.reshape(-1) == array).all(), True)
+        data0.destroy()
+
+    def test_to_ndarray(self):
+        data0 = Data(name="test0", dataset_path="/tmp", clean=True)
+        array = np.random.rand(10, 2)
+        data0.from_data(array)
+        with data0:
+            self.assertEqual((Iterator(data0).to_ndarray() == array), True)
+        data0.destroy()
+
+    def test_memory_ds(self):
+        data0 = Data(name="test0", dataset_path="/tmp", clean=True, driver='core')
+        data0.from_data(np.random.rand(10, 2))
+        with data0:
+            self.assertEqual(data0.shape, (10, 2))
+        data0.destroy()
 
     def test_ds_build(self):
         X = np.asarray([
@@ -178,14 +200,6 @@ class TestDataset(unittest.TestCase):
             self.assertCountEqual(data.columns, columns)
         data.destroy()
 
-    def test_columns(self):
-        data = Data(name="test", dataset_path="/tmp/", clean=True)
-        data.from_data(self.X)
-        with data:
-            self.assertCountEqual(data.columns, [u'c0', u'c1', u'c2', u'c3', 
-                u'c4', u'c5', u'c6', u'c7', u'c8', u'c9'])
-        data.destroy()
-
     def test_length(self):
         data = Data(name="test", dataset_path="/tmp/", clean=True)
         data.from_data(self.X, 3)
@@ -232,21 +246,6 @@ class TestDataset(unittest.TestCase):
         with data:
             self.assertCountEqual(data.columns[:], ["c0"])
         data.destroy()
-
-    def test_reader(self):
-        data0 = Data(name="test0", dataset_path="/tmp", clean=True)
-        data0.from_data(np.random.rand(10, 2))
-        with data0:
-            self.assertEqual(data0.reader(chunksize=5).to_memory().shape, (10, 2))
-            self.assertEqual(data0.reader(chunksize=5, dtype="float32").to_memory().shape, (10, 2))
-        data0.destroy()
-    
-    def test_memory_ds(self):
-        data0 = Data(name="test0", dataset_path="/tmp", clean=True, driver='core')
-        data0.from_data(np.random.rand(10, 2))
-        with data0:
-            self.assertEqual(data0.shape, (10, 2))
-        data0.destroy()
 
     def test_group_name(self):
         data = Data(name="test0", dataset_path="/tmp", clean=True, group_name="test_ds")

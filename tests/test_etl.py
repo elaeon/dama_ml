@@ -1,7 +1,5 @@
 import unittest
-import numpy as np
 
-#from ml.data.ds import Data, DataLabel
 from ml.extractors.file import CSVDataset
 from ml.data.it import Iterator
 from ml.data.etl import Pipeline

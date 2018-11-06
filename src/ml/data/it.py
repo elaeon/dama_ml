@@ -37,7 +37,7 @@ def choice(op):
 
 
 class Iterator(object):
-    def __init__(self, fn_iter, dtype=None, chunks_size=0) -> None:
+    def __init__(self, fn_iter, dtype=None, batch_size=0) -> None:
         if isinstance(fn_iter, types.GeneratorType) or isinstance(fn_iter, psycopg2.extensions.cursor):
             self.data = fn_iter
             self.length = None
@@ -69,10 +69,10 @@ class Iterator(object):
         self.shape = None
         self.global_dtype = None
         self.type_elem = None
-        if chunks_size is None:
-            chunks_size = 0
-        self.chunks_size = chunks_size
-        self.has_chunks = True if chunks_size > 0 else False
+        if batch_size is None:
+            batch_size = 0
+        self.batch_size = batch_size
+        self.has_batchs = True if batch_size > 0 else False
         self.features_dim = None
         self.iter_init = True
         # to obtain dtype, shape, global_dtype and type_elem
@@ -183,28 +183,28 @@ class Iterator(object):
         sizeof = [(np.dtype(cdtype), cdtype) for _, cdtype in dtype]
         return max(sizeof, key=lambda x: x[0])[1]
 
-    def to_chunks(self, chunks_size: int, dtype=None):
-        if self.has_chunks is False and chunks_size > 0:
+    def batchs(self, batch_size: int, dtype=None):
+        if self.has_batchs is False and batch_size > 0:
             if dtype is None:
                 dtype = self.dtype
-            it = Iterator(self.chunks_gen(chunks_size, dtype),
-                          chunks_size=chunks_size, dtype=dtype)
+            it = Iterator(self.chunks_gen(batch_size, dtype),
+                          batch_size=batch_size, dtype=dtype)
             it.set_length(self.length)
             return it
         else:
             return self
     
-    def chunks_gen(self, chunksize: int, dtype):
-        if chunksize < 1:
-            chunksize = self.shape[0]
+    def chunks_gen(self, batch_size: int, dtype):
+        if batch_size < 1:
+            batch_size = self.shape[0]
 
         if len(self.shape) == 1:
-            chunk_shape = [chunksize]
+            chunk_shape = [batch_size]
         else:
             i_features = self.shape[1:]
-            chunk_shape = [chunksize] + list(i_features)
+            chunk_shape = [batch_size] + list(i_features)
 
-        return BatchWrapper(self, chunksize, dtype).run(chunk_shape)
+        return BatchWrapper(self, batch_size, dtype).run(chunk_shape)
     
     def buffer(self, buffer_size: int):
         while True: 
@@ -262,12 +262,12 @@ class Iterator(object):
         if self.length is not None:
             it.set_length(self.length*sum(self.features_dim))
 
-        if self.has_chunks:
-            it = it.to_chunks(self.chunks_size, dtype=self.global_dtype)  
+        if self.has_batchs:
+            it = it.batchs(self.batch_size, dtype=self.global_dtype)
         return it
 
     def sample(self, k: int, col=None, weight_fn=None):
-        if self.has_chunks:
+        if self.has_batchs:
             data = self.clean_chunks()
         else:
             data = self
@@ -287,12 +287,12 @@ class Iterator(object):
                 yield row, 1
 
     def clean_chunks(self):
-        if self.has_chunks:
+        if self.has_batchs:
             def cleaner():
                 for chunk in self:
                     for row in chunk:
                         yield row
-            return Iterator(cleaner(), chunks_size=0, dtype=None)
+            return Iterator(cleaner(), batch_size=0, dtype=None)
         return self
 
     @property
@@ -306,7 +306,7 @@ class Iterator(object):
                 self._shape = tuple(v)
                 self.features_dim = ()
             else:
-                if self.has_chunks:
+                if self.has_batchs:
                     self._shape = tuple([v[0]] + list(v[2:]))
                     self.features_dim = tuple(self._shape[1:])
                 else:
@@ -322,9 +322,9 @@ class Iterator(object):
             self._shape = tuple([length] + list(self.features_dim))
 
     def it_length(self, length: int):
-        if self.has_chunks:
+        if self.has_batchs:
             it = Iterator(self.cut_it_chunk(length), dtype=self.dtype,
-                          chunks_size=self.chunks_size)
+                          batch_size=self.batch_size)
             it.set_length(length)
             return it
         else:
@@ -333,13 +333,13 @@ class Iterator(object):
 
     def scalar_operation(self, op, scalar: float):
         iter_ = map(lambda x: op(x, scalar), self)
-        it = Iterator(iter_, dtype=self.dtype, chunks_size=self.chunks_size)
+        it = Iterator(iter_, dtype=self.dtype, batch_size=self.batch_size)
         it.set_length(self.length)
         return it
 
     def stream_operation(self, op, stream):
         iter_ = map(lambda x: op(x[0], x[1]), zip(self, stream))
-        it = Iterator(iter_, dtype=self.dtype, chunks_size=self.chunks_size)
+        it = Iterator(iter_, dtype=self.dtype, batch_size=self.batch_size)
         it.set_length(self.length)
         return it
 
@@ -388,7 +388,7 @@ class Iterator(object):
 
     def compose(self, fn, *args, **kwargs):
         iter_ = (fn(x, *args, **kwargs) for x in self)
-        return Iterator(iter_, dtype=self.dtype, chunks_size=self.chunks_size)
+        return Iterator(iter_, dtype=self.dtype, batch_size=self.batch_size)
 
     def _concat_aux(self, it):
         from collections import deque
@@ -411,7 +411,7 @@ class Iterator(object):
                 yield chunk
 
             for chunk in it:
-                r = abs(last_chunk.shape[0] - self.chunks_size)
+                r = abs(last_chunk.shape[0] - self.batch_size)
                 yield concat_fn((last_chunk, chunk[:r]))
                 last_chunk = chunk[r:]
 
@@ -419,40 +419,30 @@ class Iterator(object):
                 yield last_chunk
 
     def concat(self, it):
-        if not self.has_chunks and not it.has_chunks:
-            it_c = Iterator(chain(self, it), chunks_size=self.chunks_size)
+        if not self.has_batchs and not it.has_batchs:
+            it_c = Iterator(chain(self, it), batch_size=self.batch_size)
             if self.length is not None and it.length is not None:
                 it_c.set_length(self.length+it.length)
             return it_c
-        elif self.chunks_size == it.chunks_size:
-            it_c = Iterator(self._concat_aux(it), chunks_size=self.chunks_size)
+        elif self.batch_size == it.batch_size:
+            it_c = Iterator(self._concat_aux(it), batch_size=self.batch_size)
             if self.length is not None and it.length is not None:
                 it_c.set_length(self.length+it.length)
             return it_c
         else:
             raise Exception("I can't concatenate two iterables with differents chunks size")
 
-    # def to_datamodelset(self, labels, features, size, ltype):
-    #    from ml.data.ds import DataLabel
-    #    data = np.zeros((size, features))
-    #    label_m = np.empty(size, dtype=ltype)
-    #    for i, y in enumerate(self):
-    #        row_c = i % labels.shape[0]
-    #        data[i] = y
-    #        label_m[i] = labels[row_c]
-        
-    #    dataset = DataLabel(dataset_path=settings["dataset_model_path"])
-    #    with dataset:
-    #        dataset.from_data(data, label_m)
-    #    return dataset
-
-    def to_narray(self, dtype=None):
+    def to_ndarray(self, length=None, dtype=None):
         if dtype is None:
             dtype = self.global_dtype
-        if self.has_chunks:
-            return self._to_narray_chunks(dtype)
+        #if self.has_batchs:
+        #    return self._to_narray_chunks(dtype)
+        #else:
+        #    return self._to_narray_raw(dtype)
+        if length is None:
+            return self.data.to_ndarray(dtype=dtype)
         else:
-            return self._to_narray_raw(dtype)
+            return self.data[:length].ndarray(dtype=dtype)
 
     @cut
     def _to_narray_chunks(self, dtype):
@@ -479,47 +469,34 @@ class Iterator(object):
             init = end
         return smx_a, end, self.length
 
-    def to_df(self):
-        if self.has_chunks:
-            if self.type_elem == np.ndarray:
-                return pd.DataFrame(self.to_narray(), columns=self.columns)
-            else:
-                return pd.concat(self, axis=0, copy=False, ignore_index=True)
+    def to_df(self, length=None):
+        if length is None:
+            return self.data.to_df()
         else:
-            return assign_struct_array2df(self, self.type_elem, 0, self.length, self.dtype,
-                                          self.columns)
+            return self.data[:length].to_df()
 
     def cut_it_chunk(self, length):
         end = 0
         for chunk in self:
             end += chunk.shape[0]
             if end > length:
-                mod = length % self.chunks_size
+                mod = length % self.batch_size
                 if mod > 0:
                     chunk = chunk[:mod]
                 yield chunk
                 break     
             yield chunk
 
-    def to_memory(self, length=None):
-        if self.length is not None and length is None:
-            length = self.length
-        it = self.it_length(length)
-        if isinstance(it.dtype, list):
-            return it.to_df()
-        else:
-            return it.to_narray()
-
     def num_splits(self):
-        if self.has_chunks:
-            return num_splits(self.length, self.chunks_size)
+        if self.has_batchs:
+            return num_splits(self.length, self.batch_size)
         else:
             return self.length
 
     def unique(self):
         values = defaultdict(lambda: 0)
-        for chunk in self:
-            u_values, counter = np.unique(chunk, return_counts=True)
+        for batch in self:
+            u_values, counter = np.unique(batch, return_counts=True)
             for k, v in dict(zip(u_values, counter)).items():
                 values[k] += v
         return values

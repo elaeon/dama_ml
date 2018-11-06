@@ -48,7 +48,7 @@ setup(
     classifiers=[
         'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: Apache 2 License',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.5',
     ],
     zip_safe=False,
     keywords = 'ml dataset inference machine learning',

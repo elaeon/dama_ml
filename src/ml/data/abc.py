@@ -1,6 +1,3 @@
-"""
-
-"""
 from abc import ABC, abstractmethod
 
 
@@ -15,7 +12,7 @@ class AbsDataset(ABC):
         return NotImplemented
 
     @abstractmethod
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type_, value, traceback):
         return NotImplemented
 
     @abstractmethod
@@ -42,10 +39,6 @@ class AbsDataset(ABC):
     def chunks_writer_columns(self, keys, data, init=0):
         return NotImplemented
 
-    #@abstractmethod
-    #def chunks_writer_split(self, data_key, labels_key, data, labels_column, init=0):
-    #    return NotImplemented
-
     @abstractmethod
     def destroy(self):
         return NotImplemented
@@ -58,7 +51,7 @@ class AbsDataset(ABC):
     def exists(self):
         return NotImplemented
 
-    @abstractmethod
+    # @abstractmethod
     def reader(self, *args, **kwargs):
         return NotImplemented
 
@@ -80,11 +73,11 @@ class AbsDataset(ABC):
     def to_df(self):
         return NotImplemented
 
-    @staticmethod
     @abstractmethod
-    def concat(datasets, chunksize:int=0, name:str=None):
+    def to_ndarray(self):
         return NotImplemented
 
-    def map(self, fn):
-        self.transforms.add(fn)
-        return self
+    @staticmethod
+    @abstractmethod
+    def concat(datasets, chunksize: int=0, name: str=None):
+        return NotImplemented

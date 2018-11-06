@@ -184,11 +184,11 @@ class HDF5Dataset(AbsDataset):
 
     def chunks_writer(self, name, data, init=0):
         from tqdm import tqdm
-        log.info("Writing with chunks size {}".format(data.chunks_size))
+        log.info("Writing with chunks size {}".format(data.batch_size))
         end = init
         with self:
             for smx in tqdm(data, total=data.num_splits()):
-                if hasattr(smx, 'shape') and len(smx.shape) >= 1 and data.has_chunks:
+                if hasattr(smx, 'shape') and len(smx.shape) >= 1 and data.has_batchs:
                     end += smx.shape[0]
                 else:
                     end += 1
@@ -219,11 +219,11 @@ class HDF5Dataset(AbsDataset):
 
     def chunks_writer_columns(self, keys, data, init=0):
         from tqdm import tqdm
-        log.info("Writing with chunks size {}".format(data.chunks_size))
+        log.info("Writing with chunks size {}".format(data.batch_size))
         end = init
         with self:
             for smx in tqdm(data, total=data.num_splits()):
-                if hasattr(smx, 'shape') and len(smx.shape) >= 1 and data.has_chunks:
+                if hasattr(smx, 'shape') and len(smx.shape) >= 1 and data.has_batchs:
                     end += smx.shape[0]
                 else:
                     end += 1
@@ -233,7 +233,7 @@ class HDF5Dataset(AbsDataset):
 
     def destroy(self):
         """
-        delete the correspondly hdf5 file
+        delete the hdf5 file
         """
         from ml.utils.files import rm
         rm(self.url())
@@ -251,8 +251,8 @@ class HDF5Dataset(AbsDataset):
     def exists(self) -> bool:
         return os.path.exists(self.url())
 
-    def reader(self, chunksize: int=0, dtype: list=None) -> Iterator:
-        return Iterator(self, dtype=self.dtype).to_chunks(chunksize, dtype=dtype)
+    # def reader(self, batch_size: int=0, dtype: list=None) -> Iterator:
+    #    return Iterator(self, dtype=self.dtype).batchs(batch_size, dtype=dtype)
 
     @property
     def shape(self) -> tuple:
@@ -412,9 +412,7 @@ class Data(HDF5Dataset):
         try:
             columns = [("c0", self._get_data('data'))]
         except KeyError:
-            columns = []
-            for column in self.columns:
-                columns.append((column, self._get_data(column)))
+            columns = [(column, self._get_data(column)) for column in self.columns]
         return StructArray(columns)
 
     def info(self, classes=False):
@@ -438,14 +436,14 @@ class Data(HDF5Dataset):
         print(order_table(headers, table, "shape"))
         ###print columns
 
-    def calc_hash(self, hash_fn: str='sha1', chunksize: int=1080) -> str:
+    def calc_hash(self, hash_fn: str='sha1', batch_size: int=1080) -> str:
         hash_obj = Hash(hash_fn=hash_fn)
         header = [getattr(self, attr) for attr in self.header_map]
         hash_obj.hash.update("".join(header).encode("utf-8"))
-        hash_obj.update(self.reader(chunksize=chunksize, dtype=self.data.global_dtype))
+        hash_obj.update(self.reader(batch_size=batch_size, dtype=self.data.global_dtype))
         return str(hash_obj)
 
-    def from_data(self, data, length=None, chunksize=258):
+    def from_data(self, data, length=None, batch_size: int=258):
         """
         build a datalabel dataset from data and labels
         """
@@ -454,7 +452,7 @@ class Data(HDF5Dataset):
         else:
             if length is None and data.shape[0] is not None:
                 length = data.shape[0]
-            data = Iterator(data).to_chunks(chunksize)
+            data = Iterator(data).batchs(batch_size)
             data = data.it_length(length)
         #self.hash = self.calc_hash()
         self.dtypes = data.dtypes
@@ -464,7 +462,7 @@ class Data(HDF5Dataset):
             if len(u_dtypes) == 1:
                 dtype = np.dtype(u_dtypes[0])
                 self._set_space_shape('data', data.shape, dtype=dtype)
-                end = self.chunks_writer("/data", data)
+                self.chunks_writer("/data", data)
             else:
                 columns = []
                 for col, dtype in self.dtypes:
@@ -473,14 +471,14 @@ class Data(HDF5Dataset):
                     columns.append(col)
                 self.chunks_writer_columns(columns, data)
 
-    def to_df(self, start_i: int=0, end_i=None):
-        return self.data.to_df(start_i=start_i, end_i=end_i)
+    def to_df(self):
+        return self.data.to_df()
 
-    def to_ndarray(self, start_i: int=0, end_i=None, dtype=None):
-        return self.data.to_ndarray(start_i=start_i, end_i=end_i, dtype=dtype)
+    def to_ndarray(self, dtype=None):
+        return self.data.to_ndarray(dtype=dtype)
 
     @staticmethod
-    def concat(datasets, chunksize:int=0, name:str=None):
+    def concat(datasets, batch_size:int=0, name:str=None):
         ds0 = datasets.pop(0)
         i = 0
         to_destroy = []
@@ -492,7 +490,7 @@ class Data(HDF5Dataset):
                 name_ds = "test_"+str(i)
             data = Data(name=name_ds, dataset_path="/tmp", clean=True)
             with ds0, ds1, data:
-                it = ds0.reader(chunksize=chunksize).concat(ds1.reader(chunksize=chunksize))
+                it = ds0.reader(batch_size=batch_size).concat(ds1.reader(batch_size=batch_size))
                 data.from_data(it)
             i += 1
             ds0 = data
@@ -576,113 +574,6 @@ class Data(HDF5Dataset):
 
 
 class DataLabel(Data):
-    """
-    Base class for dataset build. Get data from memory.
-    create the initial values for the dataset.
-
-    :type name: string
-    :param name: dataset's name
-
-    :type dataset_path: string
-    :param dataset_path: path where the datased is saved. This param is automaticly set by the settings.cfg file.
-
-    :type transforms: transform instance
-    :param transforms: list of transforms
-
-    :type apply_transforms: bool
-    :param apply_transforms: apply transformations to the data
-
-    :type dtype: string
-    :param dtype: the type of the data to save
-
-    :type ltype: string
-    :param ltype: the type of the labels to save
-
-    :type description: string
-    :param description: an bref description of the dataset
-
-    :type author: string
-    :param author: Dataset Author's name
-
-    :type compression_level: int
-    :param compression_level: number in 0-9 range. If 0 is passed no compression is executed
-
-    :type rewrite: bool
-    :param rewrite: if true, you can clean the saved data and add a new dataset.
-    """
-
-    def info(self, classes=False):
-        """
-        :type classes: bool
-        :param classes: if true, print the detail of the labels
-
-        This function print the details of the dataset.
-        """
-        from ml.utils.order import order_table
-        print('       ')
-        print('DATASET NAME: {}'.format(self.name))
-        print('Author: {}'.format(self.author))
-        #print('Transforms: {}'.format(self.transforms.to_json()))
-        print('Header Hash: {}'.format(self.hash_header))
-        print('Body Hash: {}'.format(self.md5))
-        print('Description: {}'.format(self.description))
-        print('       ')
-        headers = ["Dataset", "Shape", "dType", "Labels", "ltype"]
-        table = []
-        with self:
-            table.append(["dataset", self.shape, self.dtype, self.labels.size, self.ltype])
-        print(order_table(headers, table, "shape"))
-        if classes == True:
-            headers = ["class", "# items", "%"]
-            with self:
-                items = [(cls, total, (total / float(self.shape[0])) * 100)
-                         for cls, total in self.labels_info().items()]
-            print(order_table(headers, items, "# items"))
-
-    def from_data(self, data, labels, length=None, chunks_size=258, transform=True):
-        if length is None and data.shape[0] is not None:
-            length = data.shape[0]
-        data = self.processing(data, apply_transforms=transform,
-            chunks_size=chunks_size)
-        if isinstance(labels, str):
-            data = data.it_length(length)
-            data_shape = list(data.shape[:-1]) + [data.shape[-1] - 1]
-            self._set_space_shape('data', data_shape, data.global_dtype)
-            if isinstance(data.dtype, list):
-                dtype_dict = dict(data.dtype)
-                self._set_space_shape('labels', (data.shape[0],), dtype_dict[labels])
-            else:
-                self._set_space_shape('labels', (data.shape[0],), data.global_dtype)
-            self.chunks_writer_split("/data/data", "/data/labels", data, labels)
-        else:
-            if not isinstance(labels, Iterator):
-                labels = Iterator(labels, dtype=labels.dtype).to_chunks(chunks_size)
-            data = data.it_length(length)
-            labels = labels.it_length(length)
-            self._set_space_shape('data', data.shape, data.global_dtype)
-            self._set_space_shape('labels', labels.shape, labels.dtype)
-            self.chunks_writer("/data/data", data)
-            self.chunks_writer("/data/labels", labels)
-
-        #self.md5 = self.calc_md5()
-        columns = data.columns
-        self._set_space_fmtypes(len(columns))
-        if columns is not None:
-            self.columns = columns
-
-    def to_df(self, include_target=True):
-        """
-        convert the dataset to a dataframe
-        """
-        if len(self.shape) > 2:
-            raise Exception("I could don't convert a multiarray to tabular")
-
-        if include_target == True:
-            columns_name = list(self.columns) + ["target"]
-            return pd.DataFrame(data=np.column_stack((self[:], self.labels[:])), columns=columns_name)
-        else:
-            columns_name = list(self.columns)
-            return pd.DataFrame(data=self[:], columns=columns_name)
 
     def stadistics(self):
         from tabulate import tabulate

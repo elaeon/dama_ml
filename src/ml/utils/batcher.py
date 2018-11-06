@@ -71,7 +71,7 @@ class BatchArray(Batch):
         end = self.batch_size
         length = self.batch_size
         while length > 0:
-            batch = self.it.data.to_ndarray(start_i=init, end_i=end, dtype=self.dtype)
+            batch = self.it.data[init:end].to_ndarray(dtype=self.dtype)
             yield batch
             init = end
             end += self.batch_size
@@ -84,7 +84,7 @@ class BatchDataFrame(Batch):
         end = self.batch_size
         length = self.batch_size
         while length > 0:
-            batch = self.it.data.to_df(start_i=init, end_i=end)
+            batch = self.it.data[init:end].to_df(init_i=init, end_i=end)
             yield batch
             init = end
             end += self.batch_size

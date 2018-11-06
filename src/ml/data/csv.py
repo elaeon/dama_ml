@@ -1,27 +1,26 @@
-#https://stackoverflow.com/questions/13044562/python-mechanism-to-identify-compressed-file-type-and-uncompress
+# https://stackoverflow.com/questions/13044562/python-mechanism-to-identify-compressed-file-type-and-uncompress
 import csv
 import zipfile
 import os
-#import bz2
-#import gzip
+# import bz2
+# import gzip
 from io import StringIO, TextIOWrapper
 from ml.utils.files import rm
 from operator import itemgetter
 from ml.data.it import Iterator, DaskIterator
 from ml.data.abc import AbsDataset
 from ml.utils.decorators import cache
-#from ml.processing import Transforms
 from tqdm import tqdm
 
 
-def get_compressed_file_manager(filepath):
-    with file(filepath, 'r') as f:
-        start_of_file = f.read(1024)
-        f.seek(0)
-        for cls in (ZIPFile,):
-            if cls.is_magic(start_of_file):
-                return cls(filepath)
-        return File(filepath)
+# def get_compressed_file_manager(filepath):
+#    with file(filepath, 'r') as f:
+#        start_of_file = f.read(1024)
+#        f.seek(0)
+#        for cls in (ZIPFile,):
+#            if cls.is_magic(start_of_file):
+#                return cls(filepath)
+#        return File(filepath)
 
 
 def get_compressed_file_manager_ext(filepath, engine):
@@ -34,15 +33,21 @@ def get_compressed_file_manager_ext(filepath, engine):
 class PandasEngine:
     def read_csv(*args, **kwargs):
         import pandas as pd
+        if "batch_size" in kwargs:
+            kwargs['chunksize'] = kwargs['batch_size']
+            batch_size = kwargs['batch_size']
+            del kwargs['batch_size']
+        else:
+            batch_size = 0
         df = pd.read_csv(*args, **kwargs)
-        return Iterator(df, chunks_size=kwargs.get('chunksize', 0))
+        return Iterator(df, batch_size=batch_size)
 
 
 class DaskEngine:
     def read_csv(*args, **kwargs):
         import dask.dataframe as dd
         df = dd.read_csv(*args, **kwargs)
-        return DaskIterator(df, chunks_size=kwargs.get('chunksize', 0))
+        return DaskIterator(df)
 
 
 class File(object):
@@ -58,7 +63,7 @@ class File(object):
         else:
             self.engine = DaskEngine
 
-    def read(self, columns=None, exclude=False, df=True, filename=None, **kwargs) -> Iterator:
+    def read(self, columns=None, exclude: bool=False, df: bool=True, filename: str=None, **kwargs) -> Iterator:
         if exclude is True:
             cols = lambda col: col not in columns
         elif exclude is False and columns:
@@ -67,13 +72,12 @@ class File(object):
             cols = None
         return self.engine.read_csv(self.filepath, usecols=cols, **kwargs)
 
-    def write(self, iterator, header=None, delimiter=",") -> None:
+    def write(self, iterator, header=None, delimiter: str=",") -> None:
         with open(self.filepath, 'w') as f:
             csv_writer = csv.writer(f, delimiter=delimiter)
             if header is not None:
                 csv_writer.writerow(header)
             for row in tqdm(iterator):
-                print("RRRRR", row)
                 csv_writer.writerow(row)
 
     @classmethod
@@ -90,13 +94,12 @@ class ZIPFile(File):
     proper_extension = 'zip'
 
     def read(self, filename=None, columns=None, exclude=False, df=True, **kwargs) -> Iterator:
-        import pandas as pd
         if filename is None:
             return super(ZIPFile, self).read(columns=columns, exclude=exclude, **kwargs)
         else:
             iter_ = self._read_another_file(filename, columns, kwargs.get("delimiter", None))
             dtype = [(col, object) for col in next(iter_)] 
-            it = Iterator(iter_, chunks_size=kwargs.get("chunksize", 0), dtype=dtype)
+            it = Iterator(iter_, batch_size=kwargs.get("batch_size", 0), dtype=dtype)
             nrows = kwargs.get("nrows", None)
             if nrows is not None:
                 it.set_length(nrows)
@@ -180,12 +183,12 @@ class CSVDataset(AbsDataset):
 
     @property
     def data(self):
-        return self.reader(chunksize=10)
+        return self.reader(batch_size=10)
 
     def chunks_writer(self, name, data, init=0):
         return NotImplemented
 
-    def chunks_writer_split(self, data_key, labels_key, data, labels_column, init=0):
+    def chunks_writer_columns(self, data_key, labels_key, data, labels_column, init=0):
         return NotImplemented
 
     def url(self):
@@ -203,8 +206,11 @@ class CSVDataset(AbsDataset):
     def to_df(self):
         return self.reader().to_memory()
 
+    def to_ndarray(self, dtype=None):
+        return self.reader().to_ndarray(dtype=dtype)
+
     @staticmethod
-    def concat(datasets, chunksize:int=0, name:str=None):
+    def concat(datasets, batch_size: int=0, name: str=None):
         return NotImplemented
 
     @property
@@ -216,7 +222,7 @@ class CSVDataset(AbsDataset):
     @cache
     def shape(self):
         size = sum(df.shape[0] for df in self.reader(nrows=None, 
-            delimiter=self.delimiter, chunksize=1000, filename=self.filename))
+            delimiter=self.delimiter, batch_size=1000, filename=self.filename))
         return size, len(self.columns)
 
     def reader(self, *args, **kwargs):
