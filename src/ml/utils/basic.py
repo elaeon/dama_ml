@@ -70,12 +70,13 @@ class StructArray:
         ncolumns = [(col_name, array[index:index+1]) for col_name, array in self.columns]
         return StructArray(ncolumns)
 
-    def convert_from_columns(self, columns, start_i, end_i):
+    @staticmethod
+    def convert_from_columns(columns, start_i, end_i):
         ncolumns = [(col_name, array[start_i:end_i]) for col_name, array in columns]
         return StructArray(ncolumns)
 
     @staticmethod
-    def _array_builder(shape, dtype, columns, start_i:int, end_i:int):
+    def _array_builder(shape, dtype, columns, start_i: int, end_i: int):
         stc_arr = np.empty(shape, dtype=dtype)
         for col_name, array in columns:
             stc_arr[col_name] = array[start_i:end_i]

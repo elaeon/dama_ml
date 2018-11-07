@@ -1,11 +1,6 @@
-"""
-
-"""
-
 import datetime
 import logging
 import os
-import uuid
 import json
 
 import dill as pickle
@@ -45,12 +40,6 @@ def load_metadata(path):
         return {}
     except Exception as e:
         log.error("{} {}".format(e, path))
-
-
-def calc_nshape(data, value):
-    if value is None or not (0 < value <= 1) or data is None:
-        value = 1
-    return int(round(data.shape[0] * value, 0))
     
 
 class Memory:
@@ -105,7 +94,7 @@ class Memory:
 
 class HDF5Dataset(AbsDataset):
     def __enter__(self):
-        if self.driver == "core":
+        if self.driver == "memory":
             if self.f is None:
                 self.f = Memory()
         else:
@@ -116,7 +105,7 @@ class HDF5Dataset(AbsDataset):
     def __exit__(self, type, value, traceback):
         if self.f is not None:
             self.f.close()
-            if self.driver != "core":
+            if self.driver != "memory":
                 self.f = None
 
     def __iter__(self):
@@ -249,7 +238,10 @@ class HDF5Dataset(AbsDataset):
             return os.path.join(self.dataset_path, self.group_name, self.name)
 
     def exists(self) -> bool:
-        return os.path.exists(self.url())
+        if self.driver == 'disk':
+            return os.path.exists(self.url())
+        else:
+            return False
 
     # def reader(self, batch_size: int=0, dtype: list=None) -> Iterator:
     #    return Iterator(self, dtype=self.dtype).batchs(batch_size, dtype=dtype)
@@ -329,7 +321,7 @@ class Data(HDF5Dataset):
     :param rewrite: if true, you can clean the saved data and add a new dataset.
     """
     def __init__(self, name=None, dataset_path=None, description='', author='', 
-                compression_level=0, clean=False, mode='a', driver='default', group_name=None):
+                compression_level=0, clean=False, mode='a', driver='disk', group_name=None):
 
         if name is None:
             raise Exception("I can't build a dataset without a name, plese add a name to this dataset.")
@@ -443,17 +435,14 @@ class Data(HDF5Dataset):
         hash_obj.update(self.reader(batch_size=batch_size, dtype=self.data.global_dtype))
         return str(hash_obj)
 
-    def from_data(self, data, length=None, batch_size: int=258):
+    def from_data(self, data, batch_size: int=258, df=False):
         """
         build a datalabel dataset from data and labels
         """
         if isinstance(data, AbsDataset):
             print("ok")
-        else:
-            if length is None and data.shape[0] is not None:
-                length = data.shape[0]
-            data = Iterator(data).batchs(batch_size)
-            data = data.it_length(length)
+        elif not isinstance(data, Iterator):
+            data = Iterator(data).batchs(batch_size=batch_size, df=df)
         #self.hash = self.calc_hash()
         self.dtypes = data.dtypes
 

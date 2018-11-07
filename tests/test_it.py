@@ -13,6 +13,13 @@ def multi_round(matrix, *args):
     return np.asarray([round(x, *args) for x in matrix])
 
 
+def stream():
+    i = 0
+    while True:
+        yield i
+        i += 1
+
+
 class TestIterator(unittest.TestCase):
 
     def test_length_array(self):
@@ -42,17 +49,21 @@ class TestIterator(unittest.TestCase):
         self.assertCountEqual(x, y)
 
     def test_stream(self):
-        def stream(limit=1000):
-            i = 0
-            while True:
-                yield i + 1
-                if i > limit:
-                    break
+        it = Iterator(stream())
+        data = Data(name="test", driver="memory")
+        data.from_data(it[:10])
+        self.assertCountEqual(data.to_ndarray(), np.arange(1, 11))
+        self.assertCountEqual(data.to_df().values, pd.DataFrame(np.arange(1, 11)).values)
 
-        it = Iterator(stream()).batchs(batch_size=3)
-        print(it[:5].to_df())
-        #result = predictor.to_memory(20)
-        #self.assertCountEqual(result[:, 0], np.asarray([[4, 4]]*20)[:, 0])
+    def test_stream_batchs(self):
+        it = Iterator(stream()).batchs(batch_size=3, df=True)
+        it[:10]
+        #for e in it[:10]:
+        #    print(e)
+        #data = Data(name="test", driver="memory")
+        #data.from_data(it[:10])
+        #print(data.to_ndarray())
+        #print(data.to_df())
 
     def test_concat_it(self):
         l0 = np.random.rand(10, 2)
