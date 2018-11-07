@@ -15,92 +15,44 @@ def multi_round(matrix, *args):
 
 class TestIterator(unittest.TestCase):
 
-    def test_operations_lscalar(self):
+    def test_length_array(self):
         data = np.zeros((20, 2))
-        predictor = Iterator(data).batchs(batch_size=2)
-        # predictor += 10.
-        # predictor -= 1.
-        # predictor *= 3.
-        # predictor /= 2.
-        # predictor **= 2
-        result = predictor.to_ndarray(20)
-        print(result)
-        #self.assertCountEqual(result[:, 0], np.asarray([[182.25, 182.25]]*20)[:, 0])
+        it = Iterator(data)
+        result = it[:5].to_ndarray()
+        self.assertEqual((result == data[:5]).all(), True)
 
-    def test_operations_rscalar(self):
-        data = np.zeros((20, 2)) + 1
-        predictor0 = Iterator(data).batchs(batch_size=3)
-        predictor1 = Iterator(data).batchs(batch_size=3)
-        predictor2 = Iterator(data).batchs(batch_size=3)
-        predictor = .6*predictor0 + .3*predictor1 + .1*predictor2
-        x = predictor.flat().compose(multi_round, 0).to_memory(40)
-        y = np.zeros((40,)) + 1
+    def test_length_batch(self):
+        data = np.zeros((20, 2))
+        it = Iterator(data).batchs(batch_size=3, df=False)
+        result = it[:5].to_ndarray()
+        self.assertEqual((result == data[:5]).all(), True)
+
+    def test_flat_all(self):
+        data = np.zeros((20, 2))
+        it = Iterator(data)
+        x = it.flat().to_ndarray()
+        y = np.zeros((40,))
         self.assertCountEqual(x, y)
 
-    def test_operations_stream(self):
-        data_0 = np.zeros((20, 2)) - 1 
-        data_1 = np.zeros((20, 2)) + 2
-        predictor_0 = Iterator(data_0).batchs(batch_size=3)
-        predictor_1 = Iterator(data_1).batchs(batch_size=3)
+    def test_flat_all_batch(self):
+        data = np.zeros((20, 2))
+        it = Iterator(data).batchs(batch_size=3, df=False)
+        x = it.flat().to_ndarray()
+        y = np.zeros((40,))
+        self.assertCountEqual(x, y)
 
-        predictor = 4*predictor_0 + predictor_1**3
-        result = predictor.to_memory(20)
-        self.assertCountEqual(result[:, 0], np.asarray([[4, 4]]*20)[:, 0])
+    def test_stream(self):
+        def stream(limit=1000):
+            i = 0
+            while True:
+                yield i + 1
+                if i > limit:
+                    break
 
-    def test_operations(self):
-        data_0 = np.zeros((20, 2)) + 1.2
-        data_1 = np.zeros((20, 2)) + 1
-        data_2 = np.zeros((20, 2)) + 3
-        predictor_0 = Iterator(data_0).batchs(batch_size=3, dtype=[('x', float), ('y', float)])
-        predictor_1 = Iterator(data_1).batchs(batch_size=3)
-        predictor_2 = Iterator(data_2).batchs(batch_size=3)
-
-        predictor = ((predictor_0**.65) * (predictor_1**.35) * .85) + predictor_2 * .15
-        predictor = predictor.flat().compose(multi_round, 2).to_memory(40)
-        self.assertCountEqual(predictor, np.zeros((40,)) + 1.41)
-
-    def test_raw_iter(self):
-        data_0 = np.zeros((20, 3)) + 1.2
-        predictor_0 = Iterator(data_0)
-        predictor_1 = Iterator(data_0+1)
-        predictor = predictor_0 + predictor_1
-        predictor = predictor.flat().compose(round, 0).to_memory(60)
-        self.assertCountEqual(predictor, np.zeros((60,)) + 3)
-
-    def test_avg(self):
-        predictor_0 = Iterator(np.zeros((20, 2)) + 1).batchs(batch_size=3)
-        predictor_1 = Iterator(np.zeros((20, 2)) + 2).batchs(batch_size=3)
-        predictor_2 = Iterator(np.zeros((20, 2)) + 3).batchs(batch_size=3)
-
-        predictor_avg = ittools.avg([predictor_0, predictor_1, predictor_2])
-        self.assertCountEqual(predictor_avg.flat().to_memory(40), np.zeros((40,)) + 2)
-
-        predictor_0 = Iterator(np.zeros((20, 2)) + 1).batchs(batch_size=3)
-        predictor_1 = Iterator(np.zeros((20, 2)) + 2).batchs(batch_size=3)
-        predictor_2 = Iterator(np.zeros((20, 2)) + 3).batchs(batch_size=3)
-
-        predictor_avg = ittools.avg([predictor_0, predictor_1, predictor_2], method="geometric")
-        predictor_avg = predictor_avg.flat().compose(multi_round, 2).to_memory(40)
-        self.assertCountEqual(predictor_avg, np.zeros((40,)) + 1.82)
-
-    def test_max_counter(self):
-        predictor_0 = Iterator(["0", "1", "0", "1", "2", "0", "1", "2"])
-        predictor_1 = Iterator(["1", "2", "2", "1", "2", "0", "0", "0"])
-        predictor_2 = Iterator(["0", "1", "0", "1", "2", "0", "1", "2"])
-        predictor_mc = ittools.max_counter([predictor_0, predictor_1, predictor_2])
-        self.assertCountEqual(predictor_mc.to_memory(8), ['0', '1', '0', '1', '2', '0', '1', '2'])
-
-        weights = [1.5, 2, 1]
-        predictor_0 = Iterator(["0", "1", "0", "1", "2", "0", "1", "2"])
-        predictor_1 = Iterator(["1", "2", "2", "1", "2", "0", "0", "0"])
-        predictor_2 = Iterator(["0", "1", "0", "1", "2", "0", "1", "2"])        
-        predictor_mc = ittools.max_counter([predictor_0, predictor_1, predictor_2], weights=weights)
-        self.assertCountEqual(predictor_mc.to_memory(8), ['0', '1', '0', '1', '2', '0', '1', '2'])
-
-    def test_custom_fn(self):
-        predictor = Iterator(np.zeros((20, 2)) + 1.6).batchs(batch_size=3)
-        predictor = predictor.flat().compose(multi_round, 0).to_memory(40)
-        self.assertCountEqual(predictor, np.zeros((40,)) + 2)
+        it = Iterator(stream()).batchs(batch_size=3)
+        print(it[:5].to_df())
+        #result = predictor.to_memory(20)
+        #self.assertCountEqual(result[:, 0], np.asarray([[4, 4]]*20)[:, 0])
 
     def test_concat_it(self):
         l0 = np.random.rand(10, 2)

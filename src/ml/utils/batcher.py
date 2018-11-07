@@ -22,16 +22,43 @@ def assign_struct_array2df(it, type_elem, start_i, end_i, dtype, columns):
 
 
 class Batch(object):
-    def __init__(self, it, batch_size=258, dtype=None):
+    def __init__(self, it, batch_size: int=258, df: bool=False):
         self.it = it
         self.batch_size = batch_size
-        self.dtype = dtype if dtype is not None else self.it.dtype
+        self.df = df
+
+    def cut_batch(self, it, length):
+        end = 0
+        for batch in it:
+            end += batch.shape[0]
+            if end > length:
+                mod = length % self.batch_size
+                if mod > 0:
+                    batch = batch[:mod]
+                yield batch
+                break
+            yield batch
+
+    def __next__(self):
+        return next(self.run())
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            if key.stop is not None:
+                stop = key.stop
+                return self.cut_batch(self.run(), stop)
+        return NotImplemented
+
 
 
 class BatchIt(Batch):
+    def __init__(self, it, shape, batch_size: int=258, df: bool=False):
+        super(BatchIt, self).__init__(it, batch_size=batch_size, df=df)
+        self.shape = shape
+
     def batch_from_it_flat(self, shape):
         for smx in grouper_chunk(self.batch_size, self.it):
-            smx_a = np.empty(shape, dtype=self.dtype)
+            smx_a = np.empty(shape, dtype=self.it.dtypes)
             i = 0
             for i, row in enumerate(smx):
                 smx_a[i] = row[0]
@@ -39,7 +66,7 @@ class BatchIt(Batch):
 
     def batch_from_it_array(self, shape):
         for smx in grouper_chunk(self.batch_size, self.it):
-            smx_a = np.empty(shape, dtype=self.dtype)
+            smx_a = np.empty(shape, dtype=self.it.dtypes)
             i = 0
             for i, row in enumerate(smx):
                 smx_a[i] = row
@@ -48,21 +75,22 @@ class BatchIt(Batch):
     def batch_from_it_df(self, shape):
         start_i = 0
         end_i = 0
-        columns = [c for c, _ in self.dtype]
+        #columns = [c for c, _ in self.it.dtypes]
+        columns = self.it.columns
         for smx in grouper_chunk(self.batch_size, self.it):
             end_i += shape[0]
-            yield assign_struct_array2df(smx, self.it.type_elem, start_i, end_i, self.dtype,
+            yield assign_struct_array2df(smx, self.it.type_elem, start_i, end_i, self.it.dtypes,
                                          columns)
             start_i = end_i
 
-    def run(self, shape):
-        if isinstance(self.dtype, list):
-            return self.batch_from_it_df(shape)
+    def run(self):
+        if self.df is True:
+            return self.batch_from_it_df(self.shape)
         else:
             if len(self.it.shape) == 2 and self.it.shape[1] == 1:
-                return self.batch_from_it_flat(shape)
+                return self.batch_from_it_flat(self.shape)
             else:
-                return self.batch_from_it_array(shape)
+                return self.batch_from_it_array(self.shape)
 
 
 class BatchArray(Batch):
@@ -94,9 +122,9 @@ class BatchDataFrame(Batch):
 class BatchWrapper(Batch):
     def run(self, shape):
         if self.it.is_ds:
-            if isinstance(self.dtype, list):
-                return BatchDataFrame(self.it, self.batch_size, self.dtype).run()
+            if self.df is True:
+                return BatchDataFrame(self.it, self.batch_size, self.dtype)
             else:
-                return BatchArray(self.it, self.batch_size, self.dtype).run()
+                return BatchArray(self.it, self.batch_size, self.dtype)
         else:
-            return BatchIt(self.it, self.batch_size, self.dtype).run(shape)
+            return BatchIt(self.it, shape, self.batch_size, self.df)
