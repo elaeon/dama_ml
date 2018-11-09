@@ -48,6 +48,51 @@ class TestIterator(unittest.TestCase):
         y = np.zeros((40,))
         self.assertCountEqual(x, y)
 
+    def test_it_attrs(self):
+        it = Iterator(stream())
+        self.assertEqual(it.dtype, int)
+        self.assertEqual(it.dtypes, [('c0', np.dtype('int64'))])
+        self.assertEqual(it.length, None)
+        self.assertEqual(it.shape, (None,))
+        self.assertEqual(it.num_splits(), None)
+        self.assertEqual(it.type_elem, int)
+        self.assertEqual(it.columns, ["c0"])
+
+    def test_it_attrs_length(self):
+        it = Iterator(stream())[:10]
+        self.assertEqual(it.dtype, int)
+        self.assertEqual(it.dtypes, [('c0', np.dtype('int64'))])
+        self.assertEqual(it.length, 10)
+        self.assertEqual(it.shape, (10,))
+        self.assertEqual(it.num_splits(), 10)
+        self.assertEqual(it.type_elem, int)
+        self.assertEqual(it.columns, ["c0"])
+
+    def test_batch_it_attrs(self):
+        it = Iterator(stream()).batchs(batch_size=3, df=True)
+        self.assertEqual(it.dtype, int)
+        self.assertEqual(it.dtypes, [('c0', np.dtype('int64'))])
+        self.assertEqual(it.length, None)
+        self.assertEqual(it.shape, (None,))
+        self.assertEqual(it.batch_size, 3)
+        self.assertEqual(it.num_splits(), 0)
+        self.assertEqual(it.batch_shape(), [3])
+        self.assertEqual(it.type_elem, pd.DataFrame)
+        self.assertEqual(it.columns, ["c0"])
+
+    def test_batch_it_attrs_length(self):
+        it = Iterator(stream()).batchs(batch_size=3, df=True)[:10]
+        #self.assertEqual(it.dtype, int)
+        #self.assertEqual(it.dtypes, [('c0', np.dtype('int64'))])
+        #self.assertEqual(it.length, 10)
+        #self.assertEqual(it.shape, (10,))
+        self.assertEqual(it.batch_size, 3)
+        #print(it.num_splits())
+        #self.assertEqual(it.num_splits(), 3)
+        #self.assertEqual(it.batch_shape(), [3])
+        #self.assertEqual(it.type_elem, pd.DataFrame)
+        #self.assertEqual(it.columns, ["c0"])
+
     def test_stream(self):
         it = Iterator(stream())
         data = Data(name="test", driver="memory")
@@ -56,10 +101,9 @@ class TestIterator(unittest.TestCase):
         self.assertCountEqual(data.to_df().values, pd.DataFrame(np.arange(1, 11)).values)
 
     def test_stream_batchs(self):
-        it = Iterator(stream()).batchs(batch_size=3, df=True)
-        it[:10]
-        #for e in it[:10]:
-        #    print(e)
+
+        for e in it[:10]:
+            print(e)
         #data = Data(name="test", driver="memory")
         #data.from_data(it[:10])
         #print(data.to_ndarray())

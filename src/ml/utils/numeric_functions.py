@@ -200,6 +200,8 @@ def max_type(items):
 
 
 def max_dtype(dtype):
+    if dtype is None:
+        return None
     sizeof_dtype = [(dtype_obj, dtype_obj.num) for _, dtype_obj in dtype]
     return max(sizeof_dtype, key=lambda x: x[1])[0]
 
@@ -215,15 +217,15 @@ def filter_sample(stream, label, col_index):
                 yield row
 
 
-def num_splits(length, chunksize):
-    if length is None or chunksize is None:
+def num_splits(length: int, batch_size: int) -> int:
+    if length is None or batch_size is None:
         return 0
-    elif 0 < chunksize <= length:
-        if length % chunksize > 0:
+    elif 0 < batch_size <= length:
+        if length % batch_size > 0:
             r = 1
         else:
             r = 0
-        return int(round(length/chunksize, 0)) + r
+        return int(round(length / batch_size, 0)) + r
     else:
         return 1
 

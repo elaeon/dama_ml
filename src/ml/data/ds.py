@@ -173,7 +173,7 @@ class HDF5Dataset(AbsDataset):
 
     def chunks_writer(self, name, data, init=0):
         from tqdm import tqdm
-        log.info("Writing with chunks size {}".format(data.batch_size))
+        log.info("Writing with batch size {}".format(getattr(data, 'batch_size', 0)))
         end = init
         with self:
             for smx in tqdm(data, total=data.num_splits()):
@@ -259,7 +259,7 @@ class HDF5Dataset(AbsDataset):
         return [c for c, _ in dtypes]
 
     @columns.setter
-    def columns(self, value):
+    def columns(self, value) -> None:
         with self:
             if len(value) == len(self.dtypes):
                 dtypes = [(col, dtypes[1]) for col, dtypes in zip(value, self.dtypes)]
@@ -278,7 +278,7 @@ class HDF5Dataset(AbsDataset):
             for i, (c, dtype) in enumerate(value):
                 self.f["dtypes"][i] = (c, dtype.name)
 
-    def num_features(self):
+    def num_features(self) -> int:
         """
         return the number of features of the dataset
         """
