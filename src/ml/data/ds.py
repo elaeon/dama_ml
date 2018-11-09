@@ -68,6 +68,7 @@ class Memory:
             self[name] = Memory()
 
     def require_dataset(self, name, shape, dtype='float', **kwargs):
+        print(shape)
         if name not in self:
             self[name] = np.empty(shape, dtype=dtype)
 
