@@ -52,7 +52,7 @@ class BaseIterator(object):
 
     def calc_shape(self, length, shape) -> tuple:
         if shape is None:
-            return (length, )
+            return tuple([length])
         elif shape[0] is None and length is not None:
             return tuple([length] + list(shape[1:]))
         elif shape[0] is not None and length is not None:
@@ -101,32 +101,30 @@ class BaseIterator(object):
             win.append(e)
             yield win
 
-    def flat(self, df=False):
-        def _iter():
-            if self.type_elem == np.ndarray:
-                for chunk in self:
-                    for e in chunk.reshape(-1):
-                        if hasattr(e, "__iter__") and len(e) == 1:
-                            yield e[0]
-                        else:
-                            yield e
-            elif self.type_elem == pd.DataFrame:
-                for chunk in self:
-                    for e in chunk.values.reshape(-1):
+    def flatter(self):
+        if self.type_elem == np.ndarray:
+            for chunk in self:
+                for e in chunk.reshape(-1):
+                    if hasattr(e, "__iter__") and len(e) == 1:
+                        yield e[0]
+                    else:
                         yield e
-            elif self.type_elem.__module__ == 'builtins':
-                for e in chain.from_iterable(self):
+        elif self.type_elem == pd.DataFrame:
+            for chunk in self:
+                for e in chunk.values.reshape(-1):
                     yield e
-            else:
-                raise Exception("Type of elem {} does not supported".format(self.type_elem))
+        elif self.type_elem.__module__ == 'builtins':
+            for e in chain.from_iterable(self):
+                yield e
+        else:
+            raise Exception("Type of elem {} does not supported".format(self.type_elem))
 
-        it = Iterator(_iter(), dtypes=self.dtypes)
-        if self.length is not None:
-            it.set_length(self.length*sum(self.shape[1:]))
-
-        if self.has_batchs:
-            it = it.batchs(self.batch_size, df=df)
-        return it
+    def flat(self):
+        if self.length() is not None:
+            length = self.length() * sum(self.shape[1:])
+        else:
+            length = None
+        return Iterator(self.flatter(), dtypes=self.dtypes, length=length)
 
     def sample(self, k: int, col=None, weight_fn=None):
         if self.has_batchs:
@@ -147,11 +145,6 @@ class BaseIterator(object):
         else:
             for row in data:
                 yield row, 1
-
-    # def set_length(self, length: int):
-    #    self.length = length
-    #    if length is not None and self.features_dim is not None:
-    #        self.shape = [length] + list(self.features_dim)
 
     def num_splits(self) -> int:
         return self.length()
@@ -190,8 +183,8 @@ class Iterator(BaseIterator):
         if isinstance(fn_iter, types.GeneratorType):  # or isinstance(fn_iter, psycopg2.extensions.cursor):
             self.data = fn_iter
             self.is_ds = False
-        if isinstance(fn_iter, Iterator):
-            self.data = fn_iter
+        elif isinstance(fn_iter, Iterator):
+            self.data = fn_iter.data
             length = fn_iter.length if length is None else length
             self.is_ds = False
         elif isinstance(fn_iter, pd.DataFrame):
@@ -211,8 +204,15 @@ class Iterator(BaseIterator):
             self.data = iter(fn_iter)
             self.is_ds = False
 
-        # to obtain dtypes, shape, dtype, type_elem and length
-        self.chunk_taste(length, dtypes)
+        if isinstance(fn_iter, Iterator):
+            self.shape = self.calc_shape(length, fn_iter.shape)
+            self.dtype = fn_iter.dtype
+            self.type_elem = fn_iter.type_elem
+            self.dims = fn_iter.dims
+            self.pushedback = fn_iter.pushedback
+        else:
+            # obtain dtypes, shape, dtype, type_elem and length
+            self.chunk_taste(length, dtypes)
 
     def chunk_type_elem(self):
         try:
@@ -351,7 +351,7 @@ class Iterator(BaseIterator):
     def __getitem__(self, key) -> BaseIterator:
         if isinstance(key, slice):
             if key.stop is not None:
-                return Iterator(self.data, dtypes=self.dtypes, length=key.stop)
+                return Iterator(self, dtypes=self.dtypes, length=key.stop)
         return NotImplemented
 
     def __setitem__(self, key, value):
@@ -398,12 +398,20 @@ class BatchIterator(BaseIterator):
 
     def calc_shape(self, length, shape) -> tuple:
         if shape is None:
-            return (length, )
+            return tuple([length])
         elif shape[0] is None and length is not None:
             return tuple([length] + list(shape[1:]))
         elif shape[0] is not None and length is not None:
             return tuple([length] + list(shape[1:]))
         return shape
+
+    def flat(self) -> BaseIterator:
+        if self.length() is not None:
+            length = self.length() * sum(self.shape[1:])
+        else:
+            length = None
+        return Iterator(self.flatter(), dtypes=self.dtypes,
+                      length=length).batchs(batch_size=self.batch_size, df=self.df)
 
     def run(self) -> BaseIterator:
         return self.data

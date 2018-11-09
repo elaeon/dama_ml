@@ -23,30 +23,38 @@ def stream():
 class TestIterator(unittest.TestCase):
 
     def test_length_array(self):
-        data = np.zeros((20, 2))
-        it = Iterator(data)
-        result = it[:5].to_ndarray()
-        self.assertEqual((result == data[:5]).all(), True)
+        array = np.zeros((20, 2)) + 1
+        it = Iterator(array)
+        data = Data(name="test", driver="memory")
+        data.from_data(it[:10])
+        result = data[:5].to_ndarray()
+        self.assertEqual((result == array[:5]).all(), True)
 
-    def test_length_batch(self):
-        data = np.zeros((20, 2))
-        it = Iterator(data).batchs(batch_size=3, df=False)
-        result = it[:5].to_ndarray()
-        self.assertEqual((result == data[:5]).all(), True)
+    def test_length_array_batch(self):
+        array = np.zeros((20, 2)) + 1
+        it = Iterator(array).batchs(batch_size=3, df=False)
+        data = Data(name="test", driver="memory")
+        data.from_data(it[:10])
+        result = data[:5].to_ndarray()
+        self.assertEqual((result == array[:5]).all(), True)
 
     def test_flat_all(self):
-        data = np.zeros((20, 2))
-        it = Iterator(data)
-        x = it.flat().to_ndarray()
+        array = np.zeros((20, 2))
+        it = Iterator(array)
+        x = it.flat()
+        data = Data(name="test", driver="memory")
+        data.from_data(x)
         y = np.zeros((40,))
-        self.assertCountEqual(x, y)
+        self.assertCountEqual(data.to_ndarray(), y)
 
     def test_flat_all_batch(self):
         data = np.zeros((20, 2))
         it = Iterator(data).batchs(batch_size=3, df=False)
-        x = it.flat().to_ndarray()
+        x = it.flat()
+        data = Data(name="test", driver="memory")
+        data.from_data(x)
         y = np.zeros((40,))
-        self.assertCountEqual(x, y)
+        self.assertCountEqual(data.to_ndarray(), y)
 
     def test_it_attrs(self):
         it = Iterator(stream())
@@ -96,15 +104,34 @@ class TestIterator(unittest.TestCase):
         it = Iterator(stream())
         data = Data(name="test", driver="memory")
         data.from_data(it[:10])
-        self.assertCountEqual(data.to_ndarray(), np.arange(1, 11))
-        self.assertCountEqual(data.to_df().values, pd.DataFrame(np.arange(1, 11)).values)
+        self.assertCountEqual(data.to_ndarray(), np.arange(0, 10))
+        self.assertCountEqual(data.to_df().values, pd.DataFrame(np.arange(0, 10)).values)
 
     def test_stream_batchs(self):
         it = Iterator(stream()).batchs(batch_size=3, df=True)
         data = Data(name="test", driver="memory")
         data.from_data(it[:10])
-        print(data.to_ndarray())
-        #print(data.to_df())
+        self.assertCountEqual(data.to_ndarray(), np.arange(0, 10))
+        self.assertCountEqual(data.to_df().values, pd.DataFrame(np.arange(0, 10)).values)
+
+    def test_multidim(self):
+        x0 = np.zeros(20) + 1
+        x1 = np.zeros(20) + 2
+        x2 = np.zeros(20) + 3
+        df = pd.DataFrame({"x0": x0, "x1": x1, "x2": x2})
+        data = Data(name="test", driver="memory")
+        data.from_data(df, batch_size=0)
+        print(data[:5].to_ndarray())
+        print(data[:5].to_df())
+
+    def test_multidim_batchs(self):
+        x0 = np.zeros(20) + 1
+        x1 = np.zeros(20) + 2
+        x2 = np.zeros(20) + 3
+        df = pd.DataFrame({"x0": x0, "x1": x1, "x2": x2})
+        data = Data(name="test", driver="memory")
+        data.from_data(df, batch_size=3)
+        print(data[:5].to_ndarray())
 
     def test_concat_it(self):
         l0 = np.random.rand(10, 2)

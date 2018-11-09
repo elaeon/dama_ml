@@ -8,7 +8,7 @@ import h5py
 import numpy as np
 import pandas as pd
 from ml.data.abc import AbsDataset
-from ml.data.it import Iterator
+from ml.data.it import Iterator, BaseIterator
 from ml.random import downsample
 from ml.random import sampling_size
 from ml.utils.config import get_settings
@@ -68,7 +68,6 @@ class Memory:
             self[name] = Memory()
 
     def require_dataset(self, name, shape, dtype='float', **kwargs):
-        print(shape)
         if name not in self:
             self[name] = np.empty(shape, dtype=dtype)
 
@@ -178,13 +177,16 @@ class HDF5Dataset(AbsDataset):
         end = init
         with self:
             for smx in tqdm(data, total=data.num_splits()):
-                if hasattr(smx, 'shape') and len(smx.shape) >= 1 and data.has_batchs:
+                if hasattr(smx, 'shape') and len(smx.shape) > 0:
                     end += smx.shape[0]
                 else:
                     end += 1
 
                 if isinstance(smx, pd.DataFrame):
-                    array = smx.values
+                    if len(self.columns) == 1:
+                        array = smx.values.reshape(-1)
+                    else:
+                        array = smx.values
                 elif not hasattr(smx, '__iter__'):
                     array = (smx,)
                 else:
@@ -243,9 +245,6 @@ class HDF5Dataset(AbsDataset):
             return os.path.exists(self.url())
         else:
             return False
-
-    # def reader(self, batch_size: int=0, dtype: list=None) -> Iterator:
-    #    return Iterator(self, dtype=self.dtype).batchs(batch_size, dtype=dtype)
 
     @property
     def shape(self) -> tuple:
@@ -436,17 +435,16 @@ class Data(HDF5Dataset):
         hash_obj.update(self.reader(batch_size=batch_size, dtype=self.data.global_dtype))
         return str(hash_obj)
 
-    def from_data(self, data, batch_size: int=258, df=False):
+    def from_data(self, data, batch_size: int=258):
         """
         build a datalabel dataset from data and labels
         """
         if isinstance(data, AbsDataset):
             print("ok")
-        elif not isinstance(data, Iterator):
-            data = Iterator(data).batchs(batch_size=batch_size, df=df)
+        elif not isinstance(data, BaseIterator):
+            data = Iterator(data).batchs(batch_size=batch_size, df=False)
         #self.hash = self.calc_hash()
         self.dtypes = data.dtypes
-
         with self:
             u_dtypes = unique_dtypes(self.dtypes)
             if len(u_dtypes) == 1:
@@ -456,8 +454,7 @@ class Data(HDF5Dataset):
             else:
                 columns = []
                 for col, dtype in self.dtypes:
-                    shape = (data.shape[0],)#data[col].shape
-                    self._set_space_shape(col, shape, dtype=dtype)
+                    self._set_space_shape(col, data.shape, dtype=dtype)
                     columns.append(col)
                 self.chunks_writer_columns(columns, data)
 
