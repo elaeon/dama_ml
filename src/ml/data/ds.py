@@ -211,17 +211,24 @@ class HDF5Dataset(AbsDataset):
 
     def chunks_writer_columns(self, keys, data, init=0):
         from tqdm import tqdm
-        log.info("Writing with chunks size {}".format(data.batch_size))
+        log.info("Writing with batch size {}".format(getattr(data, 'batch_size', 0)))
         end = init
         with self:
-            for smx in tqdm(data, total=data.num_splits()):
-                if hasattr(smx, 'shape') and len(smx.shape) >= 1 and data.has_batchs:
+            if getattr(data, 'batch_size', 0) > 0:
+                for smx in tqdm(data, total=data.num_splits()):
                     end += smx.shape[0]
-                else:
-                    end += 1
-                for key in keys:
-                    self.f[key][init:end] = smx[key]
-                init = end
+                    for key in keys:
+                        self.f[key][init:end] = smx[key]
+                    init = end
+            else:
+                for smx in tqdm(data, total=data.num_splits()):
+                    if hasattr(smx, 'shape') and len(smx.shape) > 0:
+                        end += smx.shape[0]
+                    else:
+                        end += 1
+                    for i, key in enumerate(keys):
+                        self.f[key][init:end] = smx[i]
+                    init = end
 
     def destroy(self):
         """
@@ -453,8 +460,9 @@ class Data(HDF5Dataset):
                 self.chunks_writer("/data", data)
             else:
                 columns = []
+                shape = [data.shape[0]]#, int(data.shape[1] / len(self.dtypes))]
                 for col, dtype in self.dtypes:
-                    self._set_space_shape(col, data.shape, dtype=dtype)
+                    self._set_space_shape(col, shape, dtype=dtype)  # data[col].shape
                     columns.append(col)
                 self.chunks_writer_columns(columns, data)
 

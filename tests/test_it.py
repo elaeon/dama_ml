@@ -116,7 +116,7 @@ class TestIterator(unittest.TestCase):
 
     def test_multidim(self):
         x0 = np.zeros(20) + 1
-        x1 = np.zeros(20) + 2
+        x1 = (np.zeros(20) + 2).astype("int")
         x2 = np.zeros(20) + 3
         df = pd.DataFrame({"x0": x0, "x1": x1, "x2": x2})
         data = Data(name="test", driver="memory")

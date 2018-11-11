@@ -42,18 +42,28 @@ class StructArray:
         else:
             return self.convert_from_index(key)
 
-    def is_multidim(self):
-        return len(self.columns) == 1 and len(self.columns[0][1].shape) >= 2
+    def is_multidim(self) -> bool:
+        return len(self.columns[0][1].shape) >= 2
 
     @cache
-    def length(self):
+    def length(self) -> int:
         return max([a.shape[0] for _, a in self.columns])
 
     @property
-    def shape(self):
-        return tuple([self.length()] + list(self.columns[0][1].shape[1:]))
+    def struct_shape(self) -> tuple:
+        if len(self.columns) > 1:
+            return tuple([self.length()])  # + [1])
+        else:
+            return tuple([self.length()] + list(self.columns[0][1].shape[1:]))
 
-    def columns2dtype(self):
+    @property
+    def shape(self):
+        if len(self.columns) > 1:
+            return tuple([self.length()] + [len(self.columns)])
+        else:
+            return tuple([self.length()] + list(self.columns[0][1].shape[1:]))
+
+    def columns2dtype(self) -> list:
         return [(col_name, array.dtype) for col_name, array in self.columns]
 
     def convert(self, columns, start_i, end_i):
@@ -66,52 +76,51 @@ class StructArray:
         ncolumns = [(col_name, array[start_i:end_i]) for col_name, array in columns]
         return StructArray(ncolumns)
 
-    def convert_from_index(self, index):
+    def convert_from_index(self, index: int):
         ncolumns = [(col_name, array[index:index+1]) for col_name, array in self.columns]
         return StructArray(ncolumns)
 
     @staticmethod
-    def convert_from_columns(columns, start_i, end_i):
+    def convert_from_columns(columns: list, start_i: int, end_i: int):
         ncolumns = [(col_name, array[start_i:end_i]) for col_name, array in columns]
         return StructArray(ncolumns)
 
     @staticmethod
-    def _array_builder(shape, dtypes, columns, start_i: int, end_i: int):
+    def _array_builder(shape, dtypes, columns: list, start_i: int, end_i: int):
         stc_arr = np.empty(shape, dtype=dtypes)
         for col_name, array in columns:
             stc_arr[col_name] = array[start_i:end_i]
         return stc_arr
 
-    def to_df(self, init_i: int=0, end_i=None):
-        columns = [col_name for col_name, _ in self.dtypes]
-        data = StructArray._array_builder(self.shape, self.dtypes, self.columns, 0, self.length())
+    def to_df(self, init_i: int=0, end_i=None) -> pd.DataFrame:
+        data = StructArray._array_builder(self.struct_shape, self.dtypes, self.columns, 0, self.length())
         if end_i is None:
             end_i = self.length()
         size = abs(end_i - init_i)
         if size > data.shape[0]:
             end_i = init_i + data.shape[0]
-        return pd.DataFrame(data, index=np.arange(init_i, end_i), columns=columns)
+        if len(self.dtypes) == 1 and len(data.shape) == 2:
+            columns = ["c"+str(i) for i in range(data.shape[1])]
+            return pd.DataFrame(data[columns[0]], index=np.arange(init_i, end_i), columns=columns)
+        else:
+            columns = [col_name for col_name, _ in self.dtypes]
+            return pd.DataFrame(data, index=np.arange(init_i, end_i), columns=columns)
 
-    def to_ndarray(self, dtype=None):
+    def to_ndarray(self, dtype=None) -> np.ndarray:
         if dtype is None:
             dtype = self.dtype
-        shape = self.shape
-        array = StructArray._array_builder(shape, self.dtypes, self.columns, 0, self.length())
-        if len(shape) == 1:
-            shape = list(shape) + [len(self.columns)]
-
-        ndarray = np.empty(shape, dtype=dtype)
-        if self.is_multidim():
-            columns = [col_name for col_name, _ in self.dtypes]
-            for i, row in enumerate(array):
-                ndarray[i] = row[columns]
+        ndarray = np.empty(self.shape, dtype=dtype)
+        if len(self.shape) == 1:
+            col_name, array = self.columns[0]
+            ndarray = array[0:self.length()]
         else:
-            for i, row in enumerate(array):
-                ndarray[i] = row
+            for i, (col_name, array) in enumerate(self.columns):
+                print(array[0:self.length()])
+                ndarray[:, i] = array[0:self.length()]#.reshape(-1)
         return ndarray
 
 
-def unique_dtypes(dtypes):
+def unique_dtypes(dtypes) -> np.ndarray:
     return np.unique([dtype.name for _, dtype in dtypes])
 
 
