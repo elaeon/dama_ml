@@ -306,48 +306,6 @@ class Iterator(BaseIterator):
                 cols.append(col_i)
         return cols
 
-    def _concat_aux(self, it):
-        from collections import deque
-        
-        if self.type_elem == np.ndarray:
-            concat_fn = np.concatenate
-        elif self.type_elem is None:
-            concat_fn = None
-        else:
-            concat_fn = pd.concat
-
-        self_it = deque(self)
-        try:
-            last_chunk = self_it.pop()
-        except IndexError:
-            for chunk in it:
-                yield chunk
-        else:
-            for chunk in self_it:
-                yield chunk
-
-            for chunk in it:
-                r = abs(last_chunk.shape[0] - self.batch_size)
-                yield concat_fn((last_chunk, chunk[:r]))
-                last_chunk = chunk[r:]
-
-            if last_chunk.shape[0] > 0:
-                yield last_chunk
-
-    def concat(self, it):
-        if not self.has_batchs and not it.has_batchs:
-            it_c = Iterator(chain(self, it), batch_size=self.batch_size)
-            if self.length is not None and it.length is not None:
-                it_c.set_length(self.length+it.length)
-            return it_c
-        elif self.batch_size == it.batch_size:
-            it_c = Iterator(self._concat_aux(it), batch_size=self.batch_size)
-            if self.length is not None and it.length is not None:
-                it_c.set_length(self.length+it.length)
-            return it_c
-        else:
-            raise Exception("I can't concatenate two iterables with differents chunks size")
-
     def __getitem__(self, key) -> BaseIterator:
         if isinstance(key, slice):
             if key.stop is not None:
@@ -442,7 +400,7 @@ class BatchIt(BatchIterator):
 
     def batch_from_it_array(self, shape):
         for smx in grouper_chunk(self.batch_size, self.data):
-            smx_a = np.empty(shape, dtype=self.data.dtypes)
+            smx_a = np.empty(shape, dtype=self.data.dtype)
             i = 0
             for i, row in enumerate(smx):
                 smx_a[i] = row

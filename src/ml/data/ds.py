@@ -409,10 +409,10 @@ class Data(HDF5Dataset):
     @property
     def data(self):
         try:
-            columns = [("c0", self._get_data('data'))]
+            labels_data = [("c0", self._get_data('data'))]
         except KeyError:
-            columns = [(column, self._get_data(column)) for column in self.columns]
-        return StructArray(columns)
+            labels_data = [(label, self._get_data(label)) for label in self.columns]
+        return StructArray(labels_data, labels=self.columns)
 
     def info(self, classes=False):
         """
@@ -471,28 +471,6 @@ class Data(HDF5Dataset):
 
     def to_ndarray(self, dtype=None):
         return self.data.to_ndarray(dtype=dtype)
-
-    @staticmethod
-    def concat(datasets, batch_size:int=0, name:str=None):
-        ds0 = datasets.pop(0)
-        i = 0
-        to_destroy = []
-        while len(datasets) > 0:
-            ds1 = datasets.pop(0)
-            if len(datasets) == 0:
-                name_ds = name
-            else:
-                name_ds = "test_"+str(i)
-            data = Data(name=name_ds, dataset_path="/tmp", clean=True)
-            with ds0, ds1, data:
-                it = ds0.reader(batch_size=batch_size).concat(ds1.reader(batch_size=batch_size))
-                data.from_data(it)
-            i += 1
-            ds0 = data
-            to_destroy.append(data)
-        for ds in to_destroy[:-1]:
-            ds.destroy()
-        return ds0
 
     def create_route(self):
         """

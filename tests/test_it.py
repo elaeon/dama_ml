@@ -121,8 +121,11 @@ class TestIterator(unittest.TestCase):
         df = pd.DataFrame({"x0": x0, "x1": x1, "x2": x2})
         data = Data(name="test", driver="memory")
         data.from_data(df, batch_size=0)
-        print(data[:5].to_ndarray())
-        print(data[:5].to_df())
+        self.assertEqual(data[:5].to_ndarray().shape, (5, 3))
+        df = data[:5].to_df()
+        self.assertEqual(df.dtypes["x0"], float)
+        self.assertEqual(df.dtypes["x1"], int)
+        self.assertEqual(df.dtypes["x2"], float)
 
     def test_multidim_batchs(self):
         x0 = np.zeros(20) + 1
@@ -131,144 +134,51 @@ class TestIterator(unittest.TestCase):
         df = pd.DataFrame({"x0": x0, "x1": x1, "x2": x2})
         data = Data(name="test", driver="memory")
         data.from_data(df, batch_size=3)
-        print(data[:5].to_ndarray())
+        self.assertEqual(data[:5].to_ndarray().shape, (5, 3))
+        df = data[:5].to_df()
+        self.assertEqual(df.dtypes["x0"], float)
+        self.assertEqual(df.dtypes["x1"], float)
+        self.assertEqual(df.dtypes["x2"], float)
 
-    def test_concat_it(self):
-        l0 = np.random.rand(10, 2)
-        l1 = np.random.rand(10, 2)
-        predictor_0 = Iterator(l0)
-        predictor_0.set_length(10)
-        predictor_1 = Iterator(l1)
-        predictor_1.set_length(10)
-        predictor = predictor_0.concat(predictor_1)
-        self.assertEqual(predictor.to_memory().shape, (20, 2))
-
-    def test_concat_it_chunks(self):
-        l0 = np.zeros((10, 2)) + 1
-        l1 = np.zeros((10, 2)) + 2
-        l2 = np.zeros((10, 2)) + 3
-        predictor_0 = Iterator(l0).batchs(3)
-        predictor_1 = Iterator(l1).batchs(3)
-        predictor_2 = Iterator(l2).batchs(3)
-        predictor_0 = predictor_0.concat(predictor_1)
-        predictor = predictor_0.concat(predictor_2)
-        m = predictor.flat().to_memory()
-        self.assertCountEqual(m, np.concatenate([l0, l1, l2]).reshape(-1))
-
-    def test_concat_it_chunks_df(self):
-        l0 = np.zeros((10, 2)) + 1
-        l1 = np.zeros((10, 2)) + 2
-        l2 = np.zeros((10, 2)) + 3
-        dtype = [("a", int), ("b", int)]
-        predictor_0 = Iterator(l0, dtype=dtype).batchs(3)
-        predictor_1 = Iterator(l1, dtype=dtype).batchs(3)
-        predictor_2 = Iterator(l2, dtype=dtype).batchs(3)
-        predictor_0 = predictor_0.concat(predictor_1)
-        predictor = predictor_0.concat(predictor_2)
-        m = predictor.flat().to_memory()
-        self.assertCountEqual(m, np.concatenate([l0, l1, l2]).reshape(-1))
-
-    def test_concat_n(self):
-        l0 = np.zeros((10, 2)) + 1
-        l1 = np.zeros((10, 2)) + 2
-        l2 = np.zeros((10, 2)) + 3
-        fl = np.concatenate((l0.reshape(-1), l1.reshape(-1), l2.reshape(-1)))
-        predictor_0 = Iterator(l0).batchs(3)
-        predictor_0.set_length(10)
-        predictor_1 = Iterator(l1).batchs(3)
-        predictor_1.set_length(10)
-        predictor_2 = Iterator(l2).batchs(3)
-        predictor_2.set_length(10)
-        predictor = ittools.concat([predictor_0, predictor_1, predictor_2])
-        self.assertEqual(predictor.shape, (30, 2))
-        self.assertCountEqual(predictor.flat().to_memory(), fl)
-
-    def test_operations_concat_n_scalar(self):
-        data_0 = np.zeros((20, 2)) - 1 
-        data_1 = np.zeros((20, 2)) + 1
-        w = 3
-        predictor_0 = Iterator(data_0).batchs(2)
-        predictor_1 = Iterator(data_1).batchs(2)
-
-        predictor = ittools.concat([predictor_0, predictor_1])
-        predictors = predictor * w
-        predictors = predictors.flat().to_memory()
-        self.assertCountEqual(predictors.reshape(-1)[:40], np.zeros(40)-3)
-        self.assertCountEqual(predictors.reshape(-1)[40:], np.zeros(40)+3)
-
-    def test_append_iter_to_iter(self):
-        data_i2 = [[0, 1], [2, 3], [4, 5], [6, 7]]
-        data_i1 = [['a', 'b'], ['c', 'd'], ['e', 'f'], ['g', 'h']]
-        iter_layer_1 = Iterator((e for e in data_i1))
-        iter_layer_2 = Iterator((e for e in data_i2))
-        iter_ce = iter_layer_1.concat(iter_layer_2)
-
-        self.assertCountEqual(iter_ce.flat().to_memory(16),
-                              ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 0, 1, 2, 3, 4, 5, 6, 7])
-
-    def test_flat_shape(self):
-        data = np.random.rand(10, 1)
-        it = Iterator(data)
-        data_flat = it.flat().to_memory(10)
-        self.assertEqual(data_flat.shape, (10,))
-
-        data = np.random.rand(10, 5)
-        it = Iterator(data)
-        data_flat = it.flat().to_memory(50)
-        self.assertEqual(data_flat.shape, (50,))
-
-        data = np.random.rand(10, 2, 2)
-        it = Iterator(data)
-        data_flat = it.flat().to_memory(40)
-        self.assertEqual(data_flat.shape, (40,))
-
-        data = np.random.rand(1000, 2, 2)
-        it = Iterator(data)
-        data_flat = it.batchs(batch_size=100).flat().to_memory(4000)
-        self.assertEqual(data_flat.shape, (4000,))
+    def test_multidtype_batchs(self):
+        x0 = np.zeros(20) + 1
+        x1 = (np.zeros(20) + 2).astype("int")
+        x2 = np.zeros(20) + 3
+        df = pd.DataFrame({"x0": x0, "x1": x1, "x2": x2})
+        data = Data(name="test", driver="memory")
+        data.from_data(df, batch_size=3)
+        self.assertEqual(data[:5].to_ndarray().shape, (5, 3))
+        df = data[:5].to_df()
+        self.assertEqual(df.dtypes["x0"], float)
+        self.assertEqual(df.dtypes["x1"], float)
+        self.assertEqual(df.dtypes["x2"], float)
 
     def test_shape(self):
         data = np.random.rand(10, 3)
         it = Iterator(data)
         self.assertEqual(it.shape, (10, 3))
-        self.assertEqual(it.features_dim, (3,))
 
         data = np.random.rand(10)
         it = Iterator(data)
         self.assertEqual(it.shape, (10,))
-        self.assertEqual(it.features_dim, ())
 
         data = np.random.rand(10, 3, 3)
         it = Iterator(data)
         self.assertEqual(it.shape, (10, 3, 3))
-        self.assertEqual(it.features_dim, (3, 3))
 
         data = np.random.rand(10)
         it = Iterator(data).batchs(2)
         self.assertEqual(it.shape, (10,))
-        self.assertEqual(it.features_dim, ())
 
         data = np.random.rand(10, 3)
         it = Iterator(data).batchs(2)
         self.assertEqual(it.shape, (10, 3))
-        self.assertEqual(it.features_dim, (3,))
 
         data = np.random.rand(10, 3, 3)
         it = Iterator(data).batchs(2)
         self.assertEqual(it.shape, (10, 3, 3))
-        self.assertEqual(it.features_dim, (3, 3))
 
-    def test_chunks(self):
-        batch_size = 3
-        data = np.random.rand(10, 1)
-        it = Iterator(data)
-        it_0 = it.batchs(batch_size)
-        self.assertEqual(it_0.batch_size, batch_size)
-        self.assertEqual(it_0.has_batchs, True)
-        for smx in it_0:
-            self.assertEqual(smx.shape[0] <= 3, True)
-
-    def test_chunks_obj(self):
+    def test_batchs_values(self):
         batch_size = 3
         m = [[1, '5.0'], [2, '3'], [4, 'C']]
         data = pd.DataFrame(m, columns=['A', 'B'])
@@ -280,23 +190,12 @@ class TestIterator(unittest.TestCase):
             for i, row in enumerate(smx.values):
                 self.assertCountEqual(row, m[i])
 
-    def test_from_chunks(self):
+    def test_batchs_shape(self):
         data = np.random.rand(10, 1)
         batch_size = 2
         it = Iterator(data)
         for smx in it.batchs(batch_size):
             self.assertEqual(smx.shape[0], 2)
-
-    def test_chunks_to_array(self):
-        batch_size = 3
-        data = np.random.rand(10, 1)
-        it = Iterator(data).batchs(batch_size)
-        self.assertCountEqual(it.to_memory(10), data)
-
-        batch_size = 0
-        data = np.random.rand(10, 1)
-        it = Iterator(data).batchs(batch_size)
-        self.assertCountEqual(it.to_memory(10), data)
 
     def test_df_chunks(self):
         batch_size = 3

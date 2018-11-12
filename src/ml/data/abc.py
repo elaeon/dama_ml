@@ -51,10 +51,6 @@ class AbsDataset(ABC):
     def exists(self):
         return NotImplemented
 
-    # @abstractmethod
-    def reader(self, *args, **kwargs):
-        return NotImplemented
-
     @property
     @abstractmethod
     def shape(self):
@@ -77,7 +73,3 @@ class AbsDataset(ABC):
     def to_ndarray(self):
         return NotImplemented
 
-    @staticmethod
-    @abstractmethod
-    def concat(datasets, chunksize: int=0, name: str=None):
-        return NotImplemented

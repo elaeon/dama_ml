@@ -21,11 +21,12 @@ class Hash:
 
 
 class StructArray:
-    def __init__(self, columns):
+    def __init__(self, columns, labels=None):
         self.columns = columns
         self.dtypes = self.columns2dtype()
         self.dtype = max_dtype(self.dtypes)
         self.o_columns = OrderedDict(self.columns)
+        self.labels = labels
 
     def __getitem__(self, key):
         if isinstance(key, slice):
@@ -74,7 +75,7 @@ class StructArray:
             end_i = self.length()
 
         ncolumns = [(col_name, array[start_i:end_i]) for col_name, array in columns]
-        return StructArray(ncolumns)
+        return StructArray(ncolumns, labels=self.labels)
 
     def convert_from_index(self, index: int):
         ncolumns = [(col_name, array[index:index+1]) for col_name, array in self.columns]
@@ -100,23 +101,27 @@ class StructArray:
         if size > data.shape[0]:
             end_i = init_i + data.shape[0]
         if len(self.dtypes) == 1 and len(data.shape) == 2:
-            columns = ["c"+str(i) for i in range(data.shape[1])]
-            return pd.DataFrame(data[columns[0]], index=np.arange(init_i, end_i), columns=columns)
+            if self.labels is None:
+                self.labels = ["c"+str(i) for i in range(data.shape[1])]
+            return pd.DataFrame(data["c0"], index=np.arange(init_i, end_i), columns=self.labels)
         else:
-            columns = [col_name for col_name, _ in self.dtypes]
-            return pd.DataFrame(data, index=np.arange(init_i, end_i), columns=columns)
+            if self.labels is None:
+                self.labels = [col_name for col_name, _ in self.dtypes]
+            return pd.DataFrame(data, index=np.arange(init_i, end_i), columns=self.labels)
 
     def to_ndarray(self, dtype=None) -> np.ndarray:
         if dtype is None:
             dtype = self.dtype
         ndarray = np.empty(self.shape, dtype=dtype)
-        if len(self.shape) == 1:
+        if len(self.columns) == 1:
             col_name, array = self.columns[0]
             ndarray = array[0:self.length()]
         else:
-            for i, (col_name, array) in enumerate(self.columns):
-                print(array[0:self.length()])
-                ndarray[:, i] = array[0:self.length()]#.reshape(-1)
+            if not self.is_multidim():
+                for i, (col_name, array) in enumerate(self.columns):
+                    ndarray[:, i] = array[0:self.length()]
+            else:
+                return NotImplemented
         return ndarray
 
 
