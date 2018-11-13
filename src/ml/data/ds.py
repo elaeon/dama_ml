@@ -7,6 +7,7 @@ import dill as pickle
 import h5py
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 from ml.data.abc import AbsDataset
 from ml.data.it import Iterator, BaseIterator
 from ml.random import downsample
@@ -51,12 +52,18 @@ class Memory:
         return item in self.spaces
 
     def __getitem__(self, key):
-        levels = [e for e in key.split("/") if e != ""]
+        if key is not None:
+            levels = [e for e in key.split("/") if e != ""]
+        else:
+            levels = ["c0"]
         v =  self._get_level(self.spaces, levels)
         return v
 
     def __setitem__(self, key, value):
-        levels = [e for e in key.split("/") if e != ""]
+        if key is not None:
+            levels = [e for e in key.split("/") if e != ""]
+        else:
+            levels = ["c0"]
         v = self._get_level(self.spaces, levels[:-1])
         if v is None:
             self.spaces[levels[-1]] = value
@@ -171,56 +178,33 @@ class HDF5Dataset(AbsDataset):
             log.debug("Error opening {} in file {}".format(name, self.url()))
             return None
 
-    def chunks_writer(self, name, data, init=0):
-        from tqdm import tqdm
-        log.info("Writing with batch size {}".format(getattr(data, 'batch_size', 0)))
-        end = init
-        with self:
-            for smx in tqdm(data, total=data.num_splits()):
-                if hasattr(smx, 'shape') and len(smx.shape) > 0:
-                    end += smx.shape[0]
-                else:
-                    end += 1
-
-                if isinstance(smx, pd.DataFrame):
-                    if len(self.columns) == 1:
-                        array = smx.values.reshape(-1)
-                    else:
-                        array = smx.values
-                elif not hasattr(smx, '__iter__'):
-                    array = (smx,)
-                else:
-                    array = smx
-
-                try:
-                    self.f[name][init:end] = array
-                    init = end
-                except TypeError as e:
-                    if type(array) == np.ndarray:
-                        array_type = array.dtype
-                        if array.dtype != self.f[name].dtype:                        
-                            must_type = self.f[name].dtype
-                        else:
-                            raise TypeError(e)
-                    else:
-                        array_type = type(array[0])
-                        must_type = self.f[name].dtype
-                    raise TypeError("All elements in array must be of type '{}' but found '{}'".format(
-                        must_type, array_type))
-            return end
-
     def chunks_writer_columns(self, keys, data, init=0):
-        from tqdm import tqdm
         log.info("Writing with batch size {}".format(getattr(data, 'batch_size', 0)))
         end = init
         with self:
-            if getattr(data, 'batch_size', 0) > 0:
+            if getattr(data, 'batch_size', 0) > 0 and data.batch_type == "structured":
                 for smx in tqdm(data, total=data.num_splits()):
                     end += smx.shape[0]
                     for key in keys:
                         self.f[key][init:end] = smx[key]
                     init = end
-            else:
+            elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "array":
+                for smx in tqdm(data, total=data.num_splits()):
+                    end += smx.shape[0]
+                    for key in keys:
+                        self.f[key][init:end] = smx
+                    init = end
+            elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "df":
+                for smx in tqdm(data, total=data.num_splits()):
+                    if len(self.columns) == 1:
+                        array = smx.values.reshape(-1)
+                    else:
+                        array = smx.values
+                    end += smx.shape[0]
+                    for key in keys:
+                        self.f[key][init:end] = array
+                    init = end
+            elif getattr(data, 'batch_size', 0) > 0:
                 for smx in tqdm(data, total=data.num_splits()):
                     if hasattr(smx, 'shape') and len(smx.shape) > 0:
                         end += smx.shape[0]
@@ -228,6 +212,18 @@ class HDF5Dataset(AbsDataset):
                         end += 1
                     for i, key in enumerate(keys):
                         self.f[key][init:end] = smx[i]
+                    init = end
+            elif len(keys) > 1:
+                for smx in tqdm(data, total=data.num_splits()):
+                    end += 1
+                    for key in keys:
+                        self.f[key][init:end] = getattr(smx, key)
+                    init = end
+            else:
+                key = keys[0]
+                for smx in tqdm(data, total=data.num_splits()):
+                    end += 1
+                    self.f[key][init:end] = smx
                     init = end
 
     def destroy(self):
@@ -280,10 +276,13 @@ class HDF5Dataset(AbsDataset):
 
     @dtypes.setter
     def dtypes(self, value):
-        self._set_space_shape("dtypes", (len(value), 2), 'object')
-        with self:
-            for i, (c, dtype) in enumerate(value):
-                self.f["dtypes"][i] = (c, dtype.name)
+        if value is not None:
+            self._set_space_shape("dtypes", (len(value), 2), 'object')
+            with self:
+                for i, (c, dtype) in enumerate(value):
+                    self.f["dtypes"][i] = (c, dtype.name)
+        else:
+            self._set_space_shape("dtypes", (1, 2), 'object')
 
     def num_features(self) -> int:
         """
@@ -408,10 +407,10 @@ class Data(HDF5Dataset):
 
     @property
     def data(self):
-        try:
-            labels_data = [("c0", self._get_data('data'))]
-        except KeyError:
-            labels_data = [(label, self._get_data(label)) for label in self.columns]
+        #try:
+        #    labels_data = [("c0", self._get_data('data'))]
+        #except KeyError:
+        labels_data = [(label, self._get_data(label)) for label in self.columns]
         return StructArray(labels_data, labels=self.columns)
 
     def info(self, classes=False):
@@ -449,27 +448,26 @@ class Data(HDF5Dataset):
         if isinstance(data, AbsDataset):
             print("ok")
         elif not isinstance(data, BaseIterator):
-            data = Iterator(data).batchs(batch_size=batch_size, df=False)
+            data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
         #self.hash = self.calc_hash()
         self.dtypes = data.dtypes
         with self:
-            u_dtypes = unique_dtypes(self.dtypes)
-            if len(u_dtypes) == 1:
-                dtype = np.dtype(u_dtypes[0])
-                self._set_space_shape('data', data.shape, dtype=dtype)
-                self.chunks_writer("/data", data)
-            else:
-                columns = []
+            columns = []
+            if len(self.columns) > 1:
                 shape = [data.shape[0]]#, int(data.shape[1] / len(self.dtypes))]
-                for col, dtype in self.dtypes:
-                    self._set_space_shape(col, shape, dtype=dtype)  # data[col].shape
-                    columns.append(col)
-                self.chunks_writer_columns(columns, data)
+            elif len(self.columns) == 1 and len(data.shape) == 2 and data.shape[1] == 1:
+                shape = [data.shape[0]]
+            else:
+                shape = data.shape
+            for col, dtype in self.dtypes:
+                self._set_space_shape(col, shape, dtype=dtype)  # data[col].shape
+                columns.append(col)
+            self.chunks_writer_columns(columns, data)
 
-    def to_df(self):
+    def to_df(self) -> pd.DataFrame:
         return self.data.to_df()
 
-    def to_ndarray(self, dtype=None):
+    def to_ndarray(self, dtype=None) -> np.ndarray:
         return self.data.to_ndarray(dtype=dtype)
 
     def create_route(self):

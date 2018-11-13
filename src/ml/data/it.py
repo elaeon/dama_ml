@@ -22,7 +22,7 @@ log.addHandler(handler)
 log.setLevel(int(settings["loglevel"]))
 
 
-def assign_struct_array2df(it, type_elem, start_i, end_i, dtype, columns):
+def assign_struct_array(it, type_elem, start_i, end_i, dtype):
     length = end_i - start_i
     stc_arr = np.empty(length, dtype=dtype)
     if hasattr(type_elem, "__iter__"):
@@ -31,8 +31,7 @@ def assign_struct_array2df(it, type_elem, start_i, end_i, dtype, columns):
     else:
         for i, row in enumerate(it):
             stc_arr[i] = row
-    smx = pd.DataFrame(stc_arr, index=np.arange(start_i, end_i), columns=columns)
-    return smx
+    return stc_arr
 
 
 class BaseIterator(object):
@@ -126,14 +125,8 @@ class BaseIterator(object):
             length = None
         return Iterator(self.flatter(), dtypes=self.dtypes, length=length)
 
-    def sample(self, k: int, col=None, weight_fn=None):
-        if self.has_batchs:
-            data = self.clean_chunks()
-        else:
-            data = self
-        it = Iterator(wsrj(self.weights_gen(data, col, weight_fn), k), dtypes=self.dtypes)
-        it.set_length(k)
-        return it
+    def sample(self, length: int, col=None, weight_fn=None):
+        return Iterator(wsrj(self.weights_gen(self, col, weight_fn), length), dtypes=self.dtypes, length=length)
 
     def weights_gen(self, data, col, weight_fn):
         if not hasattr(self.type_elem, '__iter__') and weight_fn is not None:
@@ -286,15 +279,15 @@ class Iterator(BaseIterator):
                 dtype_tmp = dtype
         return dtype_tmp
 
-    def batchs(self, batch_size: int, df=True):
+    def batchs(self, batch_size: int, batch_type: str="array"):
         if batch_size > 0:
             if self.is_ds:
-                if df is True:
-                    return BatchDataFrame(self, batch_size=batch_size, length=self.length())
-                else:
-                    return BatchArray(self, batch_size=batch_size, length=self.length())
+                if batch_type == "df":
+                    return BatchDataFrame(self, batch_size=batch_size)
+                elif batch_type == "array":
+                    return BatchArray(self, batch_size=batch_size)
             else:
-                return BatchIt(self, batch_size=batch_size, length=self.length(), df=df)
+                return BatchIt(self, batch_size=batch_size, batch_type=batch_type)
         else:
             return self
 
@@ -317,14 +310,14 @@ class Iterator(BaseIterator):
 
 
 class BatchIterator(BaseIterator):
-    def __init__(self, it: Iterator, batch_size: int=258, length=None, df: bool=False):
+    def __init__(self, it: Iterator, batch_size: int=258, batch_type: str='array'):
         super(BatchIterator, self).__init__(it, dtypes=it.dtypes, length=it.length)
         self.batch_size = batch_size
         self.shape = it.shape
-        self.df = df
-        self.type_elem = pd.DataFrame if df is True else np.ndarray
+        self.type_elem = pd.DataFrame if batch_type is "df" else np.ndarray
+        self.batch_type = batch_type
 
-    def clean_chunks(self) -> BaseIterator:
+    def clean_batchs(self) -> BaseIterator:
         def cleaner():
             for chunk in self:
                 for row in chunk:
@@ -339,7 +332,7 @@ class BatchIterator(BaseIterator):
             i_features = shape[1:]
             return [self.batch_size] + list(i_features)
 
-    def cut_batch(self, length):
+    def cut_batch(self, length: int):
         end = 0
         for batch in self:
             end += batch.shape[0]
@@ -369,7 +362,11 @@ class BatchIterator(BaseIterator):
         else:
             length = None
         return Iterator(self.flatter(), dtypes=self.dtypes,
-                      length=length).batchs(batch_size=self.batch_size, df=self.df)
+                        length=length).batchs(batch_size=self.batch_size, batch_type=self.batch_type)
+
+    def sample(self, length: int, col=None, weight_fn=None):
+        data = self.clean_batchs()
+        return Iterator(wsrj(self.weights_gen(data, col, weight_fn), length), dtypes=self.dtypes, length=length)
 
     def run(self) -> BaseIterator:
         return self.data
@@ -385,7 +382,7 @@ class BatchIterator(BaseIterator):
             if key.stop is not None:
                 return BatchIterator(BaseIterator(self.cut_batch(key.stop), dtypes=self.dtypes,
                                                   length=key.stop, shape=self.shape),
-                                     df=self.df, batch_size=self.batch_size)
+                                     batch_type=self.batch_type, batch_size=self.batch_size)
         return NotImplemented
 
 
@@ -406,25 +403,42 @@ class BatchIt(BatchIterator):
                 smx_a[i] = row
             yield smx_a[:i+1]
 
+    def batch_from_it_structured(self, shape):
+        start_i = 0
+        end_i = 0
+        if self.length() is None:
+            for smx in grouper_chunk(self.batch_size, self.data):
+                end_i += shape[0]
+                yield assign_struct_array(smx, self.data.type_elem, start_i, end_i, self.data.dtypes)
+                start_i = end_i
+        else:
+            for smx in grouper_chunk(self.batch_size, self.data):
+                end_i += shape[0]
+                if end_i > self.length():
+                    end_i = self.length()
+                yield assign_struct_array(smx, self.data.type_elem, start_i, end_i, self.data.dtypes)
+                start_i = end_i
+
     def batch_from_it_df(self, shape):
         start_i = 0
         end_i = 0
         columns = self.data.columns
-        for smx in grouper_chunk(self.batch_size, self.data):
-            end_i += shape[0]
-            yield assign_struct_array2df(smx, self.data.type_elem, start_i, end_i, self.data.dtypes,
-                                         columns)
+        for stc_array in self.batch_from_it_structured(shape):
+            end_i += stc_array.shape[0]
+            yield pd.DataFrame(stc_array, index=np.arange(start_i, end_i), columns=columns)
             start_i = end_i
 
     def run(self):
         batch_shape = self.batch_shape()
-        if self.df is True:
+        if self.batch_type == "df":
             return self.batch_from_it_df(batch_shape)
-        else:
+        elif self.batch_type == "array":
             if len(self.data.shape) == 2 and self.data.shape[1] == 1:
                 return self.batch_from_it_flat(batch_shape)
             else:
                 return self.batch_from_it_array(batch_shape)
+        else:
+            return self.batch_from_it_structured(batch_shape)
 
 
 class BatchArray(BatchIterator):

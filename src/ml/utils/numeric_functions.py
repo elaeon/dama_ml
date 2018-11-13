@@ -225,7 +225,7 @@ def num_splits(length: int, batch_size: int) -> int:
             r = 1
         else:
             r = 0
-        return int(round(length / batch_size, 0)) + r
+        return int((length / batch_size) + r)
     else:
         return 1
 

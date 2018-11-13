@@ -115,7 +115,7 @@ class StructArray:
         ndarray = np.empty(self.shape, dtype=dtype)
         if len(self.columns) == 1:
             col_name, array = self.columns[0]
-            ndarray = array[0:self.length()]
+            ndarray[:] = array[0:self.length()]
         else:
             if not self.is_multidim():
                 for i, (col_name, array) in enumerate(self.columns):
