@@ -115,9 +115,6 @@ class HDF5Dataset(AbsDataset):
             if self.driver != "memory":
                 self.f = None
 
-    def __iter__(self):
-        return iter(self.data)
-
     def __getitem__(self, key):
         if isinstance(key, str):
             try:
@@ -143,8 +140,20 @@ class HDF5Dataset(AbsDataset):
     def __setitem__(self, key, value):
         self.data[key] = value
 
+    def __iter__(self):
+        return self
+
     def __next__(self):
-        return next(self.__iter__())
+        if self._it is None:
+            self._it = self.run()
+        return next(self._it)
+
+    def run(self):
+        i = 0
+        data = self.data
+        while i < data.length():
+            yield data[i]
+            i += 1
 
     def auto_dtype(self, ttype):
         if ttype == np.dtype("O") or ttype.kind == "U":
@@ -178,7 +187,7 @@ class HDF5Dataset(AbsDataset):
             log.debug("Error opening {} in file {}".format(name, self.url()))
             return None
 
-    def chunks_writer_columns(self, keys, data, init=0):
+    def batchs_writer(self, keys, data, init=0):
         log.info("Writing with batch size {}".format(getattr(data, 'batch_size', 0)))
         end = init
         with self:
@@ -338,6 +347,7 @@ class Data(HDF5Dataset):
         self.driver = driver
         self.mode = mode
         self.group_name = group_name
+        self._it = None
 
         if dataset_path is None:
             self.dataset_path = settings["dataset_path"]
@@ -407,9 +417,6 @@ class Data(HDF5Dataset):
 
     @property
     def data(self):
-        #try:
-        #    labels_data = [("c0", self._get_data('data'))]
-        #except KeyError:
         labels_data = [(label, self._get_data(label)) for label in self.columns]
         return StructArray(labels_data, labels=self.columns)
 
@@ -462,7 +469,7 @@ class Data(HDF5Dataset):
             for col, dtype in self.dtypes:
                 self._set_space_shape(col, shape, dtype=dtype)  # data[col].shape
                 columns.append(col)
-            self.chunks_writer_columns(columns, data)
+            self.batchs_writer(columns, data)
 
     def to_df(self) -> pd.DataFrame:
         return self.data.to_df()

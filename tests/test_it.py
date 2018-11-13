@@ -330,83 +330,90 @@ class TestIterator(unittest.TestCase):
         data = Data(name="test", driver="memory")
         data.from_data(df)
         self.assertCountEqual(data.to_df().values, df.values)
-        #it = Iterator(m, dtypes=[("A", np.dtype('<M8[ns]'))]).batchs(batch_size=2, batch_type="df")
-        #data = Data(name="test", driver="memory")
-        #data.from_data(df)
-        #self.assertCountEqual(data.to_df().values, df.values)
+        it = Iterator(m, dtypes=[("A", np.dtype('<M8[ns]'))]).batchs(batch_size=2, batch_type="df")
+        data = Data(name="test", driver="memory")
+        data.from_data(it)
+        self.assertCountEqual(data.to_df().values, df.values)
 
+    def test_unique(self):
+        it = Iterator([1, 2, 3, 4, 4, 4, 5, 6, 3, 8, 1])
+        counter = it.batchs(3).unique()
+        self.assertEqual(counter[1], 2)
+        self.assertEqual(counter[2], 1)
+        self.assertEqual(counter[3], 2)
+        self.assertEqual(counter[4], 3)
+        self.assertEqual(counter[5], 1)
+        self.assertEqual(counter[6], 1)
+        self.assertEqual(counter[8], 1)
 
-    #def test_chunks_unique(self):
-    #    it = Iterator([1, 2, 3, 4, 4, 4, 5, 6, 3, 8, 1])
-    #    counter = it.batchs(3).unique()
-    #    self.assertEqual(counter[1], 2)
-    #    self.assertEqual(counter[2], 1)
-    #    self.assertEqual(counter[3], 2)
-    #    self.assertEqual(counter[4], 3)
-    #    self.assertEqual(counter[5], 1)
-    #    self.assertEqual(counter[6], 1)
-    #    self.assertEqual(counter[8], 1)
+    def test_df_index_chunks(self):
+        array = np.random.rand(10, 2)
+        it = Iterator(array, dtypes=[("a", np.dtype("float")), ("b", np.dtype("float"))]).batchs(3, batch_type="df")
+        df = next(it)
+        self.assertCountEqual(df.index.values, np.array([0, 1, 2]))
+        df = next(it)
+        self.assertCountEqual(df.index.values, np.array([0, 1, 2]) + 3)
+        df = next(it)
+        self.assertCountEqual(df.index.values, np.array([0, 1, 2]) + 6)
+        df = next(it)
+        self.assertCountEqual(df.index.values, np.array([0]) + 9)
 
-    #def test_df_index_chunks(self):
-    #    array = np.random.rand(10, 2)
-    #    it = Iterator(array, dtype=[("a", int), ("b", int)]).batchs(3)
-    #    df = next(it)
-    #    self.assertCountEqual(df.index.values, np.array([0, 1, 2]))
-    #    df = next(it)
-    #    self.assertCountEqual(df.index.values, np.array([0, 1, 2]) + 3)
-    #    df = next(it)
-    #    self.assertCountEqual(df.index.values, np.array([0, 1, 2]) + 6)
-    #    df = next(it)
-    #    self.assertCountEqual(df.index.values, np.array([0]) + 9)
+    def test_buffer(self):
+        v = list(range(100))
+        it = Iterator(v)
+        buffer_size = 7
+        i = 0
+        j = buffer_size
+        for elems in it.buffer(buffer_size):
+            self.assertCountEqual(elems, list(range(i, j)))
+            i = j
+            j += buffer_size
+            if j > 100:
+                j = 100
 
-    #def test_buffer(self):
-    #    v = list(range(100))
-    #    it = Iterator(v)
-    #    buffer_size = 7
-    #    i = 0
-    #    j = buffer_size
-    #    for elems in it.buffer(buffer_size):
-    #        self.assertCountEqual(elems, list(range(i, j)))
-    #        i = j
-    #        j += buffer_size
-    #        if j > 100:
-    #            j = 100
+    def test_batch_buffer(self):
+        v = list(range(100))
+        batch_size = 2
+        it = Iterator(v).batchs(batch_size=batch_size)
+        buffer_size = 7
+        i = 0
+        j = batch_size
+        for elems in it.buffer(buffer_size):
+            for x in elems:
+                self.assertCountEqual(x, list(range(i, j)))
+                i = j
+                j += batch_size
+                if j > 100:
+                    j = 100
 
-    #def test_buffer_chunks(self):
-    #    v = list(range(100))
-    #    batch_size = 2
-    #    it = Iterator(v).batchs(batch_size=batch_size)
-    #    buffer_size = 7
-    #    i = 0
-    #    j = batch_size
-    #    for elems in it.buffer(buffer_size):
-    #        for x in elems:
-    #            self.assertCountEqual(x, list(range(i, j)))
-    #            i = j
-    #            j += batch_size
-    #            if j > 100:
-    #                j = 100
+    def test_sliding_window(self):
+        it = Iterator(range(100))
+        i = 1
+        j = 2
+        for e in it.window():
+            self.assertCountEqual(e, [i, j])
+            i += 1
+            j += 1
 
-    #def test_sliding_window(self):
-    #    it = Iterator(range(100))
-    #    i = 1
-    #    j = 2
-    #    for e in it.window():
-    #        self.assertCountEqual(e, [i, j])
-    #        i += 1
-    #        j += 1
+    def test_ads(self):
+        array = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        data = Data(name="test", driver="memory")
+        data.from_data(array)
+        with data:
+            it = Iterator(data)
+            for it_array, array_elem in zip(it, array):
+                self.assertEqual(it_array.to_ndarray(), array_elem)
+        data.destroy()
 
-    #def test_ds_batchs(self):
-    #    data = Data(name="test", dataset_path="/tmp", clean=True)
-    #    data.from_data(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
-    #    index_l = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9]]
-    #    array_l = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10]]
-    #    with data:
-    #        it = Iterator(data).batchs(batch_size=3)
-    #        for batch, index, array in zip(it, index_l, array_l):
-    #            self.assertCountEqual(batch.values, array)
-    #            self.assertCountEqual(batch.index, index)
-    #    data.destroy()
+    def test_batch_ads(self):
+        data = Data(name="test", driver="memory")
+        data.from_data(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
+        array_l = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10]]
+        with data:
+            it = Iterator(data).batchs(batch_size=3, batch_type="array")
+            for batch, array in zip(it, array_l):
+                self.assertCountEqual(batch, array)
+        data.destroy()
 
 
 def chunk_sizes(seq):

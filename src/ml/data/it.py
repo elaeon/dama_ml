@@ -84,6 +84,7 @@ class BaseIterator(object):
                 else:
                     self.pushback(elem)
                     break
+            #print("PPPPP", self.pushedback)
             try:
                 v = next(self)
                 if v is not None:
@@ -93,7 +94,7 @@ class BaseIterator(object):
                 break
             yield buffer
 
-    def window(self, win_size=2):
+    def window(self, win_size: int=2):
         win = deque((next(self.data, None) for _ in range(win_size)), maxlen=win_size)
         yield win
         for e in self.data:
@@ -195,6 +196,8 @@ class Iterator(BaseIterator):
             self.is_ds = True
         else:
             self.data = iter(fn_iter)
+            if hasattr(fn_iter, '__len__'):
+                length = len(fn_iter)
             self.is_ds = False
 
         if isinstance(fn_iter, Iterator):
@@ -316,6 +319,7 @@ class BatchIterator(BaseIterator):
         self.shape = it.shape
         self.type_elem = pd.DataFrame if batch_type is "df" else np.ndarray
         self.batch_type = batch_type
+        self._it = None
 
     def clean_batchs(self) -> BaseIterator:
         def cleaner():
@@ -364,7 +368,7 @@ class BatchIterator(BaseIterator):
         return Iterator(self.flatter(), dtypes=self.dtypes,
                         length=length).batchs(batch_size=self.batch_size, batch_type=self.batch_type)
 
-    def sample(self, length: int, col=None, weight_fn=None):
+    def sample(self, length: int, col=None, weight_fn=None) -> BaseIterator:
         data = self.clean_batchs()
         return Iterator(wsrj(self.weights_gen(data, col, weight_fn), length), dtypes=self.dtypes, length=length)
 
@@ -372,10 +376,15 @@ class BatchIterator(BaseIterator):
         return self.data
 
     def __next__(self):
-        return next(self.run())
+        if self._it is None:
+            self._it = self.run()
+        if len(self.pushedback) > 0:
+            return self.pushedback.pop()
+        else:
+            return next(self._it)
 
     def __iter__(self) -> BaseIterator:
-        return self.run()
+        return self
 
     def __getitem__(self, key) -> BaseIterator:
         if isinstance(key, slice):
@@ -447,7 +456,7 @@ class BatchArray(BatchIterator):
         end = self.batch_size
         length = self.batch_size
         while length > 0:
-            batch = self.data[init:end].to_ndarray(dtype=self.dtype)
+            batch = self.data.data[init:end].to_ndarray(dtype=self.dtype)
             yield batch
             init = end
             end += self.batch_size
@@ -460,7 +469,7 @@ class BatchDataFrame(BatchIterator):
         end = self.batch_size
         length = self.batch_size
         while length > 0:
-            batch = self.data[init:end].to_df(init_i=init, end_i=end)
+            batch = self.data.data[init:end].to_df(init_i=init, end_i=end)
             yield batch
             init = end
             end += self.batch_size
