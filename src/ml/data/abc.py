@@ -54,7 +54,7 @@ class AbsDataset(ABC):
 
     @property
     @abstractmethod
-    def columns(self):
+    def labels(self):
         return NotImplemented
 
     @abstractmethod

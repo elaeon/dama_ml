@@ -14,7 +14,7 @@ from ml.random import downsample
 from ml.random import sampling_size
 from ml.utils.config import get_settings
 from ml.utils.files import build_path
-from ml.utils.basic import Hash, unique_dtypes, StructArray
+from ml.utils.basic import Hash, StructArray
 
 settings = get_settings("ml")
 
@@ -120,7 +120,7 @@ class HDF5Dataset(AbsDataset):
             try:
                 return self._get_data(key)
             except KeyError:
-                index = self.columns.index(key)
+                index = self.labels.index(key)
                 return self.data[:, index]
         elif isinstance(key, slice):
             if key.start is None:
@@ -205,7 +205,7 @@ class HDF5Dataset(AbsDataset):
                     init = end
             elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "df":
                 for smx in tqdm(data, total=data.num_splits()):
-                    if len(self.columns) == 1:
+                    if len(self.labels) == 1:
                         array = smx.values.reshape(-1)
                     else:
                         array = smx.values
@@ -261,17 +261,17 @@ class HDF5Dataset(AbsDataset):
     @property
     def shape(self) -> tuple:
         if 'data' not in self.f.keys():
-            return self._get_data(self.columns[0]).shape
+            return self._get_data(self.labels[0]).shape
         else:
             return self.data.shape
 
     @property
-    def columns(self) -> list:
+    def labels(self) -> list:
         dtypes = self.dtypes
         return [c for c, _ in dtypes]
 
-    @columns.setter
-    def columns(self, value) -> None:
+    @labels.setter
+    def labels(self, value) -> None:
         with self:
             if len(value) == len(self.dtypes):
                 dtypes = [(col, dtypes[1]) for col, dtypes in zip(value, self.dtypes)]
@@ -417,8 +417,8 @@ class Data(HDF5Dataset):
 
     @property
     def data(self):
-        labels_data = [(label, self._get_data(label)) for label in self.columns]
-        return StructArray(labels_data, labels=self.columns)
+        labels_data = [(label, self._get_data(label)) for label in self.labels]
+        return StructArray(labels_data, labels=self.labels)
 
     def info(self, classes=False):
         """
@@ -445,7 +445,7 @@ class Data(HDF5Dataset):
         hash_obj = Hash(hash_fn=hash_fn)
         header = [getattr(self, attr) for attr in self.header_map]
         hash_obj.hash.update("".join(header).encode("utf-8"))
-        hash_obj.update(self.reader(batch_size=batch_size, dtype=self.data.global_dtype))
+        hash_obj.update(self.reader(batch_size=batch_size, dtype=self.data.dtype))
         return str(hash_obj)
 
     def from_data(self, data, batch_size: int=258):
@@ -459,17 +459,17 @@ class Data(HDF5Dataset):
         #self.hash = self.calc_hash()
         self.dtypes = data.dtypes
         with self:
-            columns = []
-            if len(self.columns) > 1:
+            labels = []
+            if len(self.labels) > 1:
                 shape = [data.shape[0]]#, int(data.shape[1] / len(self.dtypes))]
-            elif len(self.columns) == 1 and len(data.shape) == 2 and data.shape[1] == 1:
+            elif len(self.labels) == 1 and len(data.shape) == 2 and data.shape[1] == 1:
                 shape = [data.shape[0]]
             else:
                 shape = data.shape
-            for col, dtype in self.dtypes:
-                self._set_space_shape(col, shape, dtype=dtype)  # data[col].shape
-                columns.append(col)
-            self.batchs_writer(columns, data)
+            for label, dtype in self.dtypes:
+                self._set_space_shape(label, shape, dtype=dtype)  # data[col].shape
+                labels.append(label)
+            self.batchs_writer(labels, data)
 
     def to_df(self) -> pd.DataFrame:
         return self.data.to_df()
@@ -498,10 +498,10 @@ class Data(HDF5Dataset):
         from ml.utils.seq import libsvm_row
         from sklearn.preprocessing import LabelEncoder
         le = LabelEncoder()
-        labels = le.fit_transform(self._get_data(target))
-        columns = [col for col in self.columns if col != target]
+        target_t = le.fit_transform(self._get_data(target))
+        labels = [label for label in self.labels if label != target]
         with open(save_to, 'w') as f:
-            for row in libsvm_row(labels, self.data[columns]):
+            for row in libsvm_row(target_t, self.data[labels].to_ndarray()):
                 f.write(" ".join(row))
                 f.write("\n")
 

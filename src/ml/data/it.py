@@ -22,10 +22,17 @@ log.addHandler(handler)
 log.setLevel(int(settings["loglevel"]))
 
 
-def assign_struct_array(it, type_elem, start_i, end_i, dtype):
+def assign_struct_array(it, type_elem, start_i, end_i, dtype, dims):
     length = end_i - start_i
-    stc_arr = np.empty(length, dtype=dtype)
-    if hasattr(type_elem, "__iter__"):
+    if dims == 1 or len(dims) == 1 and dims[0] == 1:
+        shape = length
+    elif len(dims) == 1 and len(dtype) == dims[0]:
+        shape = length
+    else:
+        shape = [length] + dims
+
+    stc_arr = np.empty(shape, dtype=dtype)
+    if type_elem == np.ndarray and len(stc_arr.shape) == 1:
         for i, row in enumerate(it):
             stc_arr[i] = tuple(row)
     else:
@@ -84,7 +91,6 @@ class BaseIterator(object):
                 else:
                     self.pushback(elem)
                     break
-            #print("PPPPP", self.pushedback)
             try:
                 v = next(self)
                 if v is not None:
@@ -415,17 +421,21 @@ class BatchIt(BatchIterator):
     def batch_from_it_structured(self, shape):
         start_i = 0
         end_i = 0
+        if len(shape) > 1:
+            dims = shape[1:]
+        else:
+            dims = 1
         if self.length() is None:
             for smx in grouper_chunk(self.batch_size, self.data):
                 end_i += shape[0]
-                yield assign_struct_array(smx, self.data.type_elem, start_i, end_i, self.data.dtypes)
+                yield assign_struct_array(smx, self.data.type_elem, start_i, end_i, self.data.dtypes, dims)
                 start_i = end_i
         else:
             for smx in grouper_chunk(self.batch_size, self.data):
                 end_i += shape[0]
                 if end_i > self.length():
                     end_i = self.length()
-                yield assign_struct_array(smx, self.data.type_elem, start_i, end_i, self.data.dtypes)
+                yield assign_struct_array(smx, self.data.type_elem, start_i, end_i, self.data.dtypes, dims)
                 start_i = end_i
 
     def batch_from_it_df(self, shape):

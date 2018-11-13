@@ -19,14 +19,14 @@ class TestDataset(unittest.TestCase):
 
     def test_from_unique_dtype(self):
         dataset = Data(name="test_ds_0", dataset_path="/tmp/", clean=True)
-        X = np.random.rand(10, 2).astype(int)
-        dataset.from_data(X, X.shape[0])
+        array = np.random.rand(10, 2)
+        dataset.from_data(array)
         with dataset:
-            self.assertEqual(dataset[:].shape, (10, 2))
+            self.assertEqual(dataset.shape, (10, 2))
         dataset.destroy()
 
     def test_from_dtypes(self):
-        dataset = Data(name="test_ds_0", dataset_path="/tmp/")
+        dataset = Data(name="test_ds_0", dataset_path="/tmp/", clean=True)
         X0 = np.random.rand(10).astype(int)
         X1 = np.random.rand(10).astype(float)
         X2 = np.random.rand(10).astype(object)
@@ -39,7 +39,7 @@ class TestDataset(unittest.TestCase):
             self.assertEqual(dataset["X0"].dtype, int)
             self.assertEqual(dataset["X1"].dtype, float)
             self.assertEqual(dataset["X2"].dtype, object)
-            self.assertCountEqual(dataset[:]["X0"], X0)
+            self.assertCountEqual(dataset[:]["X0"].to_ndarray(), X0)
         dataset.destroy()
 
     def test_from_data_dim_7_1_2(self):
@@ -68,17 +68,17 @@ class TestDataset(unittest.TestCase):
         XY = np.hstack((self.X, self.Y.reshape(-1, 1)))
         dataset.from_data(self.X)
         with dataset:
-            self.assertCountEqual(dataset["c0"]["c0"], XY[:, 0])
+            self.assertCountEqual(dataset["c0"][:, 0], XY[:, 0])
         dataset.destroy()
 
-    def test_columns(self):
+    def test_labels(self):
         dataset = Data(name="test_ds", dataset_path="/tmp/", clean=True)
         dataset.from_data(self.X)
         with dataset:
-            self.assertEqual(dataset.columns, ['c0'])
+            self.assertEqual(dataset.labels, ['c0'])
         dataset.destroy()
 
-    def test_columns_2(self):
+    def test_labels_2(self):
         dataset = Data(name="test_ds", dataset_path="/tmp/", clean=True)
         df = pd.DataFrame({"X": self.X[:, 0], "Y": self.Y})
         dataset.from_data(df)
@@ -92,7 +92,7 @@ class TestDataset(unittest.TestCase):
         array = np.random.rand(10)
         data0.from_data(array)
         with data0:
-            self.assertEqual((Iterator(data0).to_df().values.reshape(-1) == array).all(), True)
+            self.assertEqual((data0.to_df().values.reshape(-1) == array).all(), True)
         data0.destroy()
 
     def test_to_ndarray(self):
@@ -100,14 +100,7 @@ class TestDataset(unittest.TestCase):
         array = np.random.rand(10, 2)
         data0.from_data(array)
         with data0:
-            self.assertEqual((Iterator(data0).to_ndarray() == array), True)
-        data0.destroy()
-
-    def test_memory_ds(self):
-        data0 = Data(name="test0", dataset_path="/tmp", clean=True, driver='core')
-        data0.from_data(np.random.rand(10, 2))
-        with data0:
-            self.assertEqual(data0.shape, (10, 2))
+            self.assertEqual((data0.to_ndarray() == array).all(), True)
         data0.destroy()
 
     def test_ds_build(self):
@@ -119,10 +112,10 @@ class TestDataset(unittest.TestCase):
         dl = Data(name="test", dataset_path="/tmp", clean=True)
         dl.from_data(X)
         with dl:
-            self.assertCountEqual(dl[0]["c0"], X[0])
-            self.assertCountEqual(dl[1]["c0"], X[1])
-            self.assertCountEqual(dl[2]["c0"], X[2])
-            self.assertCountEqual(dl[3]["c0"], X[3])
+            self.assertCountEqual(dl["c0"][0], X[0])
+            self.assertCountEqual(dl["c0"][1], X[1])
+            self.assertCountEqual(dl["c0"][2], X[2])
+            self.assertCountEqual(dl["c0"][3], X[3])
         dl.destroy()
 
     def test_attrs(self):
@@ -180,24 +173,41 @@ class TestDataset(unittest.TestCase):
         ds.from_data(X)
         with ds:
             self.assertEqual(ds.shape, (100, 2))
-            self.assertEqual(ds.dtype[0][1], X.dtype)
+            self.assertEqual(ds.dtype, X.dtype)
             ds.destroy()
 
     def test_dtypes(self):
         data = Data(name="test", dataset_path="/tmp/", clean=True)
         data.from_data(self.X)
-        dtypes = [("c"+str(i), np.dtype("float64")) for i in range(10)]
+        dtypes = [("c"+str(i), np.dtype("float64")) for i in range(1)]
         with data:
             self.assertCountEqual([dtype for _, dtype in data.dtypes], [dtype for _, dtype in dtypes])
         data.destroy()
 
-    def test_columns_rename(self):
+    def test_dtypes_2(self):
+        data = Data(name="test", dataset_path="/tmp/", clean=True)
+        data.from_data(self.X)
+        dtypes = [("c"+str(i), np.dtype("float64")) for i in range(1)]
+        with data:
+            self.assertCountEqual([dtype for _, dtype in data.dtypes], [dtype for _, dtype in dtypes])
+        data.destroy()
+
+    def test_labels_rename(self):
         data =  Data(name="test", dataset_path="/tmp/", clean=True)
         data.from_data(self.X)
-        columns = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
-        data.columns = columns
+        columns = ['a']
+        data.labels = columns
         with data:
-            self.assertCountEqual(data.columns, columns)
+            self.assertCountEqual(data.labels, columns)
+        data.destroy()
+
+    def test_labels_rename_2(self):
+        data =  Data(name="test", dataset_path="/tmp/", clean=True)
+        data.from_data(self.X)
+        columns = ['a']
+        data.labels = columns
+        with data:
+            self.assertCountEqual(data.labels, columns)
         data.destroy()
 
     def test_length(self):
