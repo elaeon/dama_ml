@@ -445,7 +445,8 @@ class Data(HDF5Dataset):
         hash_obj = Hash(hash_fn=hash_fn)
         header = [getattr(self, attr) for attr in self.header_map]
         hash_obj.hash.update("".join(header).encode("utf-8"))
-        hash_obj.update(self.reader(batch_size=batch_size, dtype=self.data.dtype))
+        it = Iterator(self).batchs(batch_size=batch_size, batch_type="structured")
+        hash_obj.update(it)
         return str(hash_obj)
 
     def from_data(self, data, batch_size: int=258):

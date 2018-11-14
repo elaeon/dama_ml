@@ -124,6 +124,9 @@ class StructArray:
                 return NotImplemented
         return ndarray
 
+    def to_structured(self):
+        return StructArray._array_builder(self.struct_shape, self.dtypes, self.columns, 0, self.length())
+
 
 def unique_dtypes(dtypes) -> np.ndarray:
     return np.unique([dtype.name for _, dtype in dtypes])

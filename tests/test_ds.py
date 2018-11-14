@@ -185,11 +185,11 @@ class TestDataset(unittest.TestCase):
         data.destroy()
 
     def test_dtypes_2(self):
+        df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
         data = Data(name="test", dataset_path="/tmp/", clean=True)
-        data.from_data(self.X)
-        dtypes = [("c"+str(i), np.dtype("float64")) for i in range(1)]
+        data.from_data(df)
         with data:
-            self.assertCountEqual([dtype for _, dtype in data.dtypes], [dtype for _, dtype in dtypes])
+            self.assertCountEqual([e for _, e in data.dtypes], df.dtypes.values)
         data.destroy()
 
     def test_labels_rename(self):
@@ -202,9 +202,10 @@ class TestDataset(unittest.TestCase):
         data.destroy()
 
     def test_labels_rename_2(self):
+        df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
         data =  Data(name="test", dataset_path="/tmp/", clean=True)
-        data.from_data(self.X)
-        columns = ['a']
+        data.from_data(df)
+        columns = ['x0', 'x1']
         data.labels = columns
         with data:
             self.assertCountEqual(data.labels, columns)
@@ -212,9 +213,9 @@ class TestDataset(unittest.TestCase):
 
     def test_length(self):
         data = Data(name="test", dataset_path="/tmp/", clean=True)
-        data.from_data(self.X, 3)
+        data.from_data(self.X)
         with data:
-            self.assertCountEqual(data[:].shape, self.X[:3].shape)
+            self.assertCountEqual(data[:3].shape, self.X[:3].shape)
 
     def test_cv_ds(self):
         dl = Data(name="test", dataset_path="/tmp/", clean=True)
@@ -250,11 +251,10 @@ class TestDataset(unittest.TestCase):
     def test_from_it(self):
         seq = [1, 2, 3, 4, 4, 4, 5, 6, 3, 8, 1]
         it = Iterator(seq)
-        it.set_length(10)
         data = Data(name="test", dataset_path="/tmp", clean=True)
-        data.from_data(it, chunksize=20)
+        data.from_data(it, batch_size=20)
         with data:
-            self.assertCountEqual(data.columns[:], ["c0"])
+            self.assertCountEqual(data.labels, ["c0"])
         data.destroy()
 
     def test_group_name(self):

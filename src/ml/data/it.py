@@ -80,7 +80,10 @@ class BaseIterator(object):
 
     @staticmethod
     def default_dtypes(dtype):
-        return [("c0", dtype)]
+        if not isinstance(dtype, list):
+            return [("c0", dtype)]
+        else:
+            return dtype
 
     def buffer(self, buffer_size: int):
         while True:
@@ -184,9 +187,7 @@ class Iterator(BaseIterator):
             self.data = fn_iter
             self.is_ds = False
         elif isinstance(fn_iter, Iterator):
-            self.data = fn_iter.data
-            length = fn_iter.length if length is None else length
-            self.is_ds = False
+            pass
         elif isinstance(fn_iter, pd.DataFrame):
             self.data = fn_iter.itertuples(index=False)
             dtypes = list(zip(fn_iter.columns.values, fn_iter.dtypes.values))
@@ -207,11 +208,15 @@ class Iterator(BaseIterator):
             self.is_ds = False
 
         if isinstance(fn_iter, Iterator):
+            self.data = fn_iter.data
+            length = fn_iter.length if length is None else length
+            self.is_ds = False
             self.shape = self.calc_shape(length, fn_iter.shape)
             self.dtype = fn_iter.dtype
             self.type_elem = fn_iter.type_elem
             self.dims = fn_iter.dims
             self.pushedback = fn_iter.pushedback
+            self.dtypes = fn_iter.dtypes
         else:
             # obtain dtypes, shape, dtype, type_elem and length
             self.chunk_taste(length, dtypes)
@@ -295,6 +300,8 @@ class Iterator(BaseIterator):
                     return BatchDataFrame(self, batch_size=batch_size)
                 elif batch_type == "array":
                     return BatchArray(self, batch_size=batch_size)
+                else:
+                    return BatchStructured(self, batch_size=batch_size)
             else:
                 return BatchIt(self, batch_size=batch_size, batch_type=batch_type)
         else:
@@ -480,6 +487,19 @@ class BatchDataFrame(BatchIterator):
         length = self.batch_size
         while length > 0:
             batch = self.data.data[init:end].to_df(init_i=init, end_i=end)
+            yield batch
+            init = end
+            end += self.batch_size
+            length = batch.shape[0]
+
+
+class BatchStructured(BatchIterator):
+    def run(self):
+        init = 0
+        end = self.batch_size
+        length = self.batch_size
+        while length > 0:
+            batch = self.data.data[init:end].to_structured()
             yield batch
             init = end
             end += self.batch_size
