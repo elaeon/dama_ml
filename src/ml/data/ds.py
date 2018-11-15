@@ -115,26 +115,7 @@ class HDF5Dataset(AbsDataset):
             if self.driver != "memory":
                 self.f = None
 
-    def __getitem__(self, key):
-        if isinstance(key, str):
-            try:
-                return self._get_data(key)
-            except KeyError:
-                index = self.labels.index(key)
-                return self.data[:, index]
-        elif isinstance(key, slice):
-            if key.start is None:
-                start = 0
-            else:
-                start = key.start
-
-            if key.stop is None:
-                stop = self.shape[0]
-            else:
-                stop = key.stop
-            return self.data[start:stop]
-        elif key is None:
-            return self.data[:]
+    def __getitem__(self, key) -> StructArray:
         return self.data[key]
 
     def __setitem__(self, key, value):
@@ -222,6 +203,12 @@ class HDF5Dataset(AbsDataset):
                     for i, key in enumerate(keys):
                         self.f[key][init:end] = smx[i]
                     init = end
+            elif len(keys) > 1 and data.type_elem == tuple:
+                for smx in tqdm(data, total=data.num_splits()):
+                    end += 1
+                    for i, key in enumerate(keys):
+                        self.f[key][init:end] = smx[i]
+                    init = end
             elif len(keys) > 1:
                 for smx in tqdm(data, total=data.num_splits()):
                     end += 1
@@ -260,15 +247,14 @@ class HDF5Dataset(AbsDataset):
 
     @property
     def shape(self) -> tuple:
-        if 'data' not in self.f.keys():
-            return self._get_data(self.labels[0]).shape
-        else:
-            return self.data.shape
+        #if 'data' not in self.f.keys():
+        #    return self._get_data(self.labels[0]).shape
+        #else:
+        return self.data.shape
 
     @property
     def labels(self) -> list:
-        dtypes = self.dtypes
-        return [c for c, _ in dtypes]
+        return [c for c, _ in self.dtypes]
 
     @labels.setter
     def labels(self, value) -> None:
@@ -418,7 +404,7 @@ class Data(HDF5Dataset):
     @property
     def data(self):
         labels_data = [(label, self._get_data(label)) for label in self.labels]
-        return StructArray(labels_data, labels=self.labels)
+        return StructArray(labels_data)
 
     def info(self, classes=False):
         """

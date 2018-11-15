@@ -200,10 +200,10 @@ def max_type(items):
 
 
 def max_dtype(dtype):
-    if dtype is None:
-        return None
-    sizeof_dtype = [(dtype_obj, dtype_obj.num) for _, dtype_obj in dtype]
-    return max(sizeof_dtype, key=lambda x: x[1])[0]
+    if dtype is not None:
+        sizeof_dtype = [(dtype_obj, dtype_obj.num) for _, dtype_obj in dtype]
+        if len(sizeof_dtype) > 0:
+            return max(sizeof_dtype, key=lambda x: x[1])[0]
 
 
 def filter_sample(stream, label, col_index):

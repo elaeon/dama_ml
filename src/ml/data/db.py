@@ -1,27 +1,29 @@
 import psycopg2
 import uuid
+import numpy as np
 from tqdm import tqdm
 from collections import OrderedDict
 from ml.data.it import Iterator
 from ml.data.abc import AbsDataset
 from ml.utils.decorators import cache
+from ml.utils.numeric_functions import max_dtype
+from ml.data.ds import Data
+from ml.utils.basic import StructArray
 
 
 class SQL(AbsDataset):
-    def __init__(self, username, db_name, table_name, order_by=["id"], 
-        itersize=2000, df=False, only=None):
+    def __init__(self, username, db_name, table_name, order_by=["id"],
+                 itersize=2000, only=None):
         self.conn = None
-        self.cur = None
         self.username = username
         self.db_name = db_name
         self.table_name = table_name
-        self.limit = None
+        # self.limit = None
         self.order_by = order_by
         self._build_order_text()
-        self._build_limit_text()
+        # self._build_limit_text()
         self.itersize = itersize
-        self.df_dtype = df
-        self.query = None
+        self.dtype = None
 
         if only is not None:
             self.only_columns = set([column.lower() for column in only])
@@ -33,6 +35,7 @@ class SQL(AbsDataset):
             "dbname={db_name} user={username}".format(db_name=self.db_name, 
                                                         username=self.username))
         self.conn.autocommit = False
+        self.dtype = max_dtype(self.dtypes)
         return self
 
     def __exit__(self, type, value, traceback):
@@ -44,10 +47,7 @@ class SQL(AbsDataset):
     def __iter__(self):
         return NotImplemented
 
-    def chunks_writer(self, name, data, init=0):
-        return NotImplemented
-
-    def chunks_writer_split(self, data_key, labels_key, data, labels_column, init=0):
+    def batchs_writer(self, keys, data, init=0):
         return NotImplemented
 
     def num_features(self):
@@ -62,16 +62,12 @@ class SQL(AbsDataset):
     def url(self):
         return NotImplemented
 
-    @staticmethod
-    def concat(datasets, chunksize:int=0, name:str=None):
-        return NotImplemented
-
     def get_cursor(self, key):
-        self.cur = self.conn.cursor(uuid.uuid4().hex, scrollable=False, withhold=False)
-        columns = self.columns
-
+        cur = self.conn.cursor(uuid.uuid4().hex, scrollable=False, withhold=False)
+        stop = None
         if isinstance(key, tuple):
-            _columns = [list(columns.keys())[key[1]]]
+            #_columns = [list(columns.keys())[key[1]]]
+            _columns = self.labels[key[1]]
             key = key[0]
         else:
             _columns = None
@@ -79,25 +75,18 @@ class SQL(AbsDataset):
         if isinstance(key, str):
             if _columns is None:
                 _columns = [key]
-            num_features = len(_columns)
-            size = self.shape[0]
             start = 0
         elif isinstance(key, list):
             if _columns is None:
                 _columns = key
-            num_features = len(_columns)
-            size = self.shape[0]
             start = 0
         elif isinstance(key, int):
             if _columns is None:
-                _columns = columns.keys()
-            num_features = len(_columns)
-            size = 1
+                _columns = self.labels
             start = key
         elif isinstance(key, slice):
             if _columns is None:
-                _columns = columns.keys()
-            num_features = len(_columns)
+                _columns = self.labels
             if key.start is None:
                 start = 0
             else:
@@ -107,33 +96,54 @@ class SQL(AbsDataset):
                 stop = self.shape[0]
             else:
                 stop = key.stop
-                self.limit = key.stop
-                self._build_limit_text()
-
-            size = abs(start - stop)
         elif key is None:
-            size = self.shape[0]
             start = 0
 
-        if self.df_dtype is True:
-            self.dtype = [(column_name, columns[column_name.lower()]) for column_name in _columns]
+        if stop is None:
+            limit_txt = ""
         else:
-            self.dtype = None
+            limit_txt = "LIMIT {}".format(stop)
 
-        self.query = "SELECT {columns} FROM {table_name} {order_by} {limit}".format(
+        query = "SELECT {columns} FROM {table_name} {order_by} {limit}".format(
             columns=self.format_columns(_columns), table_name=self.table_name,
             order_by=self.order_by_txt,
-            limit=self.limit_txt)
-        self.cur.execute(self.query)
-        self.cur.itersize = self.itersize
-        self.cur.scroll(start)
-        return size
+            limit=limit_txt)
+        cur.execute(query)
+        cur.itersize = self.itersize
+        cur.scroll(start)
+        return cur
+
+    @property
+    def data(self):
+        labels_data = []
+        for label in self.labels:
+            cur = self.get_cursor(label)
+            labels_data.append((label, cur))
+        stc_arr = StructArray(labels_data)
+        return stc_arr.to_ndarray()
+
+    @property
+    def labels(self) -> list:
+        return [c for c, _ in self.dtypes]
+
+    @labels.setter
+    def labels(self, value) -> None:
+        with self:
+            if len(value) == len(self.dtypes):
+                dtypes = [(col, dtypes[1]) for col, dtypes in zip(value, self.dtypes)]
+            else:
+                raise Exception
+        self.dtypes = dtypes
 
     def __getitem__(self, key):
-        size = self.get_cursor(key)
-        it = Iterator(self.cur, dtype=self.dtype)
-        it.set_length(size)
-        return it.to_memory()
+        #cur, length = self.get_cursor(key)
+        #print(key, self.query, length)
+        #it = Iterator(cur, dtypes=self.dtypes, length=length)
+        #data = Data(name="test", driver="memory")
+        #data.from_data(it)
+        #with data:
+        #    return data.to_ndarray()
+        return self.data[key]
 
     def __setitem__(self, key, value):
         if isinstance(key, str):
@@ -178,12 +188,6 @@ class SQL(AbsDataset):
                     i += 1
                 self.insert(value[size:])
 
-    def _build_limit_text(self):
-        if self.limit is None:
-            self.limit_txt = ""
-        else:
-            self.limit_txt = "LIMIT {}".format(self.limit)
-
     def _build_order_text(self):
         if self.order_by is None:
             self.order_by_txt = ""
@@ -220,8 +224,8 @@ class SQL(AbsDataset):
         query = "SELECT COUNT(*) FROM {table_name}".format(
             table_name=self.table_name)
         cur.execute(query)
-        size = cur.fetchone()[0]
-        return size, len(self.columns)
+        length = cur.fetchone()[0]
+        return length, len(self.labels)
 
     def last_id(self):
         cur = self.conn.cursor()
@@ -231,22 +235,28 @@ class SQL(AbsDataset):
 
     @property
     @cache
-    def columns(self):
+    def dtypes(self) -> list:
         cur = self.conn.cursor()
         query = "SELECT * FROM information_schema.columns WHERE table_name=%(table_name)s ORDER BY ordinal_position"
         cur.execute(query, {"table_name": self.table_name})
-        columns = OrderedDict()
-        types = {"text": "|O", "integer": "int", "double precision": "float", "boolean": "bool"}
+        dtypes = OrderedDict()
+        types = {"text": np.dtype("object"), "integer": np.dtype("int"),
+                 "double precision": np.dtype("float"), "boolean": np.dtype("bool")}
         if self.only_columns is None:                
             for column in cur.fetchall():
-                columns[column[3]] = types.get(column[7], "|O")
+                dtypes[column[3]] = types.get(column[7], np.dtype("object"))
             #if exclude_id is True:
-            del columns["id"]
+            if "id" in dtypes:
+                del dtypes["id"]
         else:
             for column in cur.fetchall():
                 if column[3] in self.only_columns:
-                    columns[column[3]] = types.get(column[7], "|O")
-        return columns
+                    dtypes[column[3]] = types.get(column[7], np.dtype("object"))
+
+        if len(dtypes) == 0:
+            return None
+        else:
+            return list(dtypes.items())
 
     def format_columns(self, columns):
         if columns is None:
@@ -284,7 +294,7 @@ class SQL(AbsDataset):
     def insert(self, data, chunks_size=258):
         from psycopg2.extras import execute_values
         from ml.utils.seq import grouper_chunk
-        header = self.columns
+        header = self.labels
         columns = "("+", ".join(header)+")"
         insert_str = "INSERT INTO {name} {columns} VALUES".format(
             name=self.table_name, columns=columns)
@@ -315,3 +325,6 @@ class SQL(AbsDataset):
         cur = self.conn.cursor()
         cur.execute("DROP TABLE {name};".format(name=self.table_name))
         self.conn.commit()
+
+    def to_ndarray(self):
+        return NotImplemented

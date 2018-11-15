@@ -25,6 +25,16 @@ class TestDataset(unittest.TestCase):
             self.assertEqual(dataset.shape, (10, 2))
         dataset.destroy()
 
+    def test_to_list(self):
+        dataset = Data(name="test_ds_0", dataset_path="/tmp/", clean=True)
+        X0 = np.random.rand(10).astype(int)
+        X1 = np.random.rand(10).astype(float)
+        X2 = np.random.rand(10).astype(object)
+        df = pd.DataFrame({"X0": X0, "X1": X1, "X2": X2})
+        dataset.from_data(df)
+        with dataset:
+            self.assertEqual(len(list(dataset["X0"])), 10)
+
     def test_from_dtypes(self):
         dataset = Data(name="test_ds_0", dataset_path="/tmp/", clean=True)
         X0 = np.random.rand(10).astype(int)
@@ -33,9 +43,9 @@ class TestDataset(unittest.TestCase):
         df = pd.DataFrame({"X0": X0, "X1": X1, "X2": X2})
         dataset.from_data(df)
         with dataset:
-            self.assertCountEqual(dataset["X0"][:], X0)
-            self.assertCountEqual(dataset["X1"][:], X1)
-            self.assertCountEqual(dataset["X2"][:], map(str, X2))
+            self.assertCountEqual(dataset["X0"].to_ndarray(), X0)
+            self.assertCountEqual(dataset["X1"].to_ndarray(), X1)
+            self.assertCountEqual(dataset["X2"].to_ndarray(), map(str, X2))
             self.assertEqual(dataset["X0"].dtype, int)
             self.assertEqual(dataset["X1"].dtype, float)
             self.assertEqual(dataset["X2"].dtype, object)
@@ -43,8 +53,8 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
 
     def test_from_data_dim_7_1_2(self):
-        dataset = Data(name="test_ds_0", dataset_path="/tmp/")
-        dataset.from_data(self.X, self.X.shape[0])
+        dataset = Data(name="test_ds_0", dataset_path="/tmp/", clean=True)
+        dataset.from_data(self.X)
 
         #with dataset:
             #X_train, X_validation, X_test, y_train, y_validation, y_test = dataset.cv()
@@ -68,7 +78,7 @@ class TestDataset(unittest.TestCase):
         XY = np.hstack((self.X, self.Y.reshape(-1, 1)))
         dataset.from_data(self.X)
         with dataset:
-            self.assertCountEqual(dataset["c0"][:, 0], XY[:, 0])
+            self.assertEqual((dataset["c0"][:, 0].to_ndarray() == XY[:, 0]).all(), True)
         dataset.destroy()
 
     def test_labels(self):
@@ -112,10 +122,7 @@ class TestDataset(unittest.TestCase):
         dl = Data(name="test", dataset_path="/tmp", clean=True)
         dl.from_data(X)
         with dl:
-            self.assertCountEqual(dl["c0"][0], X[0])
-            self.assertCountEqual(dl["c0"][1], X[1])
-            self.assertCountEqual(dl["c0"][2], X[2])
-            self.assertCountEqual(dl["c0"][3], X[3])
+            self.assertEqual((dl["c0"].to_ndarray()[:, 0] == X[:, 0]).all(), True)
         dl.destroy()
 
     def test_attrs(self):
@@ -268,6 +275,19 @@ class TestDataset(unittest.TestCase):
         with data:
             self.assertEqual(data.calc_hash(), "$sha1$fe0e420a6aff8c6f81ef944644cc78a2521a0495")
             self.assertEqual(data.calc_hash(hash_fn='md5'), "$md5$2376a2375977070dc32209a8a7bd2a99")
+
+    def test_getitem(self):
+        df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
+        data = Data(name="test0", dataset_path="/tmp", clean=True)
+        data.from_data(df)
+        with data:
+            self.assertCountEqual(data["a"].to_ndarray(), df["a"].values)
+            self.assertEqual((data[["a", "b"]].to_ndarray() == df[["a", "b"]].values).all(), True)
+            self.assertEqual((data[0].to_ndarray() == df.iloc[0].values).all(), True)
+            self.assertEqual((data[0:1].to_ndarray() == df.iloc[0:1].values).all(), True)
+            self.assertEqual((data[3:].to_ndarray() == df.iloc[3:].values).all(), True)
+            self.assertEqual((data[:3].to_ndarray() == df.iloc[:3].values).all(), True)
+        data.destroy()
 
 
 class TestMemoryDs(unittest.TestCase):
