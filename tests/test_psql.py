@@ -48,7 +48,11 @@ class TestSQL(unittest.TestCase):
     def test_index(self):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                print(sql["x0"])
+                #print(sql[["x0", "x1"]].to_ndarray())
+                #print(sql[3:8].to_ndarray())
+                print(sql[2:].to_ndarray())
+                #print(sql.to_df())
+                #print(self.assertCountEqual(sql[1][0]))
                 #self.assertCountEqual(sql[1][0], self.data[1])
                 #self.assertCountEqual(sql[5][0], self.data[5])
                 #self.assertCountEqual(sql[1:][2], self.data[1:][2])

@@ -66,7 +66,7 @@ class BaseIterator(object):
         return shape
 
     @property
-    def columns(self):
+    def labels(self):
         if isinstance(self.dtypes, list):
             return [c for c, _ in self.dtypes]
         else:
@@ -448,7 +448,7 @@ class BatchIt(BatchIterator):
     def batch_from_it_df(self, shape):
         start_i = 0
         end_i = 0
-        columns = self.data.columns
+        columns = self.data.labels
         for stc_array in self.batch_from_it_structured(shape):
             end_i += stc_array.shape[0]
             yield pd.DataFrame(stc_array, index=np.arange(start_i, end_i), columns=columns)

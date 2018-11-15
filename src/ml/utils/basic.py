@@ -115,19 +115,21 @@ class StructArray:
                 self.labels = [col_name for col_name, _ in self.dtypes]
             return pd.DataFrame(data, index=np.arange(init_i, end_i), columns=self.labels)
 
-    def to_ndarray(self, dtype=None) -> np.ndarray:
+    def to_ndarray(self, dtype: list=None) -> np.ndarray:
         if dtype is None:
             dtype = self.dtype
         ndarray = np.empty(self.shape, dtype=dtype)
         if len(self.labels_data) == 1:
-            col_name, array = self.labels_data[0]
+            _, array = self.labels_data[0]
             ndarray[:] = array[0:self.length()]
         else:
             if not self.is_multidim():
-                for i, (col_name, array) in enumerate(self.labels_data):
+                for i, (label, array) in enumerate(self.labels_data):
                     ndarray[:, i] = array[0:self.length()]
             else:
-                return NotImplemented
+                for i, (label, array) in enumerate(self.labels_data):
+                    ndarray[:, i] = array[0:self.length()].reshape(-1)
+                return ndarray
         return ndarray
 
     def to_structured(self):

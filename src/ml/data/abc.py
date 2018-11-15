@@ -58,10 +58,6 @@ class AbsDataset(ABC):
         return NotImplemented
 
     @abstractmethod
-    def num_features(self):
-        return NotImplemented
-
-    @abstractmethod
     def to_df(self):
         return NotImplemented
 
