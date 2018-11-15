@@ -48,48 +48,21 @@ class TestSQL(unittest.TestCase):
     def test_index(self):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                #print(sql[["x0", "x1"]].to_ndarray())
-                #print(sql[3:8].to_ndarray())
-                print(sql[2:].to_ndarray())
-                #print(sql.to_df())
-                #print(self.assertCountEqual(sql[1][0]))
-                #self.assertCountEqual(sql[1][0], self.data[1])
-                #self.assertCountEqual(sql[5][0], self.data[5])
-                #self.assertCountEqual(sql[1:][2], self.data[1:][2])
-                #self.assertCountEqual(sql[:10][5], self.data[:10][5])
-                #self.assertCountEqual(sql[3:8][1], self.data[3:8][1])
+                self.assertEqual((sql[["x0", "x1"]].to_ndarray() == self.data[:, :2]).all(), True)
+                self.assertEqual((sql[3:8].to_ndarray() == self.data[3:8]).all(), True)
+                self.assertEqual((sql[3:].to_ndarray() == self.data[3:]).all(), True)
+                self.assertEqual((sql[1].to_ndarray() == self.data[1]).all(), True)
+                self.assertEqual((sql[5].to_ndarray() == self.data[5]).all(), True)
+                self.assertEqual((sql[:10].to_ndarray() == self.data[:10]).all(), True)
+                self.assertEqual((sql[["x1", "x2"]][:5].to_ndarray() == self.data[:5, 1:]).all(), True)
         except psycopg2.OperationalError:
             pass
- 
-    def test_key(self):
+
+    def test_to_df(self):
         try:
+            df = pd.DataFrame(self.data, columns=["x0", "x1", "x2"])
             with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                self.assertCountEqual(sql.reader(columns=["A"]).flat().to_memory(), get_column(self.data, 0))
-                self.assertCountEqual(sql.reader(columns=["B"]).flat().to_memory(), get_column(self.data, 1))
-                self.assertCountEqual(sql.reader(columns=["C"]).flat().to_memory(), get_column(self.data, 2))
-        except psycopg2.OperationalError:
-            pass
-
-    def test_multikey(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                self.assertCountEqual(sql[["A", "B"]][0], ['a', 1])
-                self.assertCountEqual(sql[["B", "C"]][0], [1, 0.1])
-                self.assertCountEqual(sql[["A", "C"]][0], ['a', 0.1])
-        except psycopg2.OperationalError:
-            pass
-
-    def test_data_df(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test", df=True) as sql:
-                self.assertEqual(type(sql["A"]), pd.DataFrame)
-        except psycopg2.OperationalError:
-            pass
-
-    def test_data_array(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test", df=False) as sql:
-                self.assertEqual(type(sql.reader(columns=["A"]).to_memory()), np.ndarray)
+                self.assertEqual(sql["x0"].to_df(), df["x0"])
         except psycopg2.OperationalError:
             pass
 

@@ -61,6 +61,8 @@ class IteratorConn(BaseIterator):
         else:
             limit_txt = "LIMIT {}".format(stop)
 
+        length = abs(stop - start)
+        shape = [length] + list(self.shape[1:])
         query = "SELECT {columns} FROM {table_name} {order_by} {limit}".format(
             columns=self.format_columns(_columns), table_name=self.table_name,
             order_by="id",
@@ -68,9 +70,10 @@ class IteratorConn(BaseIterator):
         cur.execute(query)
         cur.itersize = self.batch_size
         cur.scroll(start)
-        e = np.asarray(cur.fetchall())
-        #print("****", e.shape, e.dtype, self.dtype, self.dtypes, self.shape)
-        return e
+        smx = np.empty(shape, dtype=self.dtype)
+        for i, row in enumerate(cur.fetchall()):
+            smx[i] = row
+        return smx
 
     def format_columns(self, columns):
         if columns is None:
