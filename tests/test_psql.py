@@ -62,25 +62,23 @@ class TestSQL(unittest.TestCase):
         try:
             df = pd.DataFrame(self.data, columns=["x0", "x1", "x2"])
             with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                self.assertEqual(sql["x0"].to_df(), df["x0"])
+                self.assertEqual((sql["x0"].to_df().values.reshape(-1) == df["x0"].values).all(), True)
         except psycopg2.OperationalError:
             pass
 
-    def test_chunks(self):
+    def test_batchs(self):
         try:
-            with SQL(username="alejandro", db_name="ml", order_by=['id'],
-                table_name="test", df=False) as sql:
-                self.assertCountEqual(sql[2:6].reshape(-1), np.asarray(self.data[2:6]).reshape(-1))
+            with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
+                self.assertEqual((sql[2:6].to_ndarray() == self.data[2:6]).all(), True)
         except psycopg2.OperationalError:
             pass
 
-    def test_columns(self):
+    def test_dtypes(self):
         try:
-            with SQL(username="alejandro", db_name="ml",
-                table_name="test", df=True) as sql:
-                columns = sql.columns
-                self.assertEqual(list(columns.keys()), ['a', 'b', 'c'])
-                self.assertEqual(list(columns.values()), ['|O', 'int', 'float'])
+            with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
+                dtypes = dict(sql.dtypes)
+                self.assertEqual(list(dtypes.keys()), ['x0', 'x1', 'x2'])
+                self.assertEqual(list(dtypes.values()), ['|O', 'int', 'float'])
         except psycopg2.OperationalError:
             pass
 
@@ -98,7 +96,9 @@ class TestSQL(unittest.TestCase):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
                 sql.update(3, ("0", 0, 0))
-                self.assertCountEqual(sql[3].reshape(-1), ("0", 0, 0))
+                self.assertEqual((sql[3].to_ndarray()[0][0] == "0"), True)
+                self.assertEqual((sql[3].to_ndarray()[0][1] == 0), True)
+                self.assertEqual((sql[3].to_ndarray()[0][2] == 0), True)
         except psycopg2.OperationalError:
             pass
 
@@ -106,26 +106,26 @@ class TestSQL(unittest.TestCase):
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
                 sql[12] = ["0", 0, 0]
-                self.assertCountEqual(sql[12][0], ["0", 0, 0])
-                sql[10] = ["0", 0, 0]
-                self.assertCountEqual(sql[10][0], ["0", 0, 0])
+                self.assertEqual((sql[12].to_ndarray()[0][0] == "0"), True)
+                self.assertEqual((sql[12].to_ndarray()[0][1] == 0), True)
+                self.assertEqual((sql[12].to_ndarray()[0][2] == 0), True)
                 values = [["k", 11, 1.1], ["l", 12, 1.2], ["m", 13, 1.3]]
                 sql[10:] = values
-                sql_values = sql[10:]
+                sql_values = sql[10:].to_ndarray()
                 self.assertCountEqual(sql_values[0], values[0])
                 self.assertCountEqual(sql_values[1], values[1])
                 self.assertCountEqual(sql_values[2], values[2])
 
                 values = [["A", 1, 1], ["B", 2, 2], ["C", 3, 3]]
                 sql[:3] = values
-                sql_values = sql[:3]
+                sql_values = sql[:3].to_ndarray()
                 self.assertCountEqual(sql_values[0], values[0])
                 self.assertCountEqual(sql_values[1], values[1])
                 self.assertCountEqual(sql_values[2], values[2])
 
                 values = [["M", 13, 13], ["N", 14, 1.4], ["O", 15, 1.5]]
                 sql[12:14] = values
-                sql_values = sql[12:15]
+                sql_values = sql[12:15].to_ndarray()
                 self.assertCountEqual(sql_values[0], values[0])
                 self.assertCountEqual(sql_values[1], values[1])
                 self.assertCountEqual(sql_values[2], values[2])

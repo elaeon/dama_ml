@@ -109,7 +109,8 @@ class StructArray:
         if len(self.dtypes) == 1 and len(data.shape) == 2:
             if self.labels is None:
                 self.labels = ["c"+str(i) for i in range(data.shape[1])]
-            return pd.DataFrame(data["c0"], index=np.arange(init_i, end_i), columns=self.labels)
+            label, _ = self.dtypes[0]
+            return pd.DataFrame(data[label], index=np.arange(init_i, end_i), columns=self.labels)
         else:
             if self.labels is None:
                 self.labels = [col_name for col_name, _ in self.dtypes]

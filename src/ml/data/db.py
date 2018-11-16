@@ -63,7 +63,7 @@ class IteratorConn(BaseIterator):
 
         length = abs(stop - start)
         shape = [length] + list(self.shape[1:])
-        query = "SELECT {columns} FROM {table_name} {order_by} {limit}".format(
+        query = "SELECT {columns} FROM {table_name} ORDER BY {order_by} {limit}".format(
             columns=self.format_columns(_columns), table_name=self.table_name,
             order_by="id",
             limit=limit_txt)
@@ -89,7 +89,7 @@ class SQL(AbsDataset):
         self.db_name = db_name
         self.table_name = table_name
         self.order_by = ["id"]
-        self._build_order_text()
+        # self._build_order_text()
         self.dtype = None
 
         if only is not None:
@@ -190,14 +190,14 @@ class SQL(AbsDataset):
                     i += 1
                 self.insert(value[size:])
 
-    def _build_order_text(self):
-        if self.order_by is None:
-            self.order_by_txt = ""
-        else:
-            if "rand" in self.order_by:
-                self.order_by_txt = "ORDER BY random()"
-            else:
-                self.order_by_txt = "ORDER BY " + ",".join(self.order_by)
+    # def _build_order_text(self):
+    #    if self.order_by is None:
+    #        self.order_by_txt = ""
+    #    else:
+    #        if "rand" in self.order_by:
+    #            self.order_by_txt = "ORDER BY random()"
+    #        else:
+    #            self.order_by_txt = "ORDER BY " + ",".join(self.order_by)
 
     def close(self):
         self.conn.close()
@@ -293,7 +293,7 @@ class SQL(AbsDataset):
         self.conn.commit()
 
     def update(self, id, values):
-        header = self.columns
+        header = self.labels
         columns = "("+", ".join(header)+")"
         update_str = "UPDATE {name} SET {columns} = {values} WHERE id = {id}".format(name=self.table_name, 
             columns=columns, values=tuple(values), id=id+1)
