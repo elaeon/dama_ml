@@ -94,11 +94,7 @@ class BaseIterator(object):
                 else:
                     self.pushback(elem)
                     break
-            try:
-                v = next(self)
-                if v is not None:
-                    self.pushback(v)
-            except StopIteration:
+            else:
                 yield buffer
                 break
             yield buffer
@@ -170,14 +166,8 @@ class BaseIterator(object):
     def __next__(self):
         if len(self.pushedback) > 0:
             return self.pushedback.pop()
-        try:
+        else:
             return next(self.data)
-        except StopIteration:
-            if hasattr(self.data, 'close'):
-                self.data.close()
-            raise StopIteration
-        except psycopg2.InterfaceError:
-            raise StopIteration
 
 
 class Iterator(BaseIterator):
@@ -307,13 +297,13 @@ class Iterator(BaseIterator):
         else:
             return self
 
-    @staticmethod
-    def check_datatime(dtype: list):
-        cols = []
-        for col_i, (_, type_) in enumerate(dtype):
-            if type_ == np.dtype('<M8[ns]'):
-                cols.append(col_i)
-        return cols
+    # @staticmethod
+    # def check_datatime(dtype: list):
+    #    cols = []
+    #    for col_i, (_, type_) in enumerate(dtype):
+    #        if type_ == np.dtype('<M8[ns]'):
+    #            cols.append(col_i)
+    #    return cols
 
     def __getitem__(self, key) -> BaseIterator:
         if isinstance(key, slice):

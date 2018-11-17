@@ -289,6 +289,15 @@ class TestDataset(unittest.TestCase):
             self.assertEqual((data[:3].to_ndarray() == df.iloc[:3].values).all(), True)
         data.destroy()
 
+    def test_sample(self):
+        df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
+        data = Data(name="test0", dataset_path="/tmp", clean=True)
+        data.from_data(df)
+        with data:
+            it = Iterator(data).sample(5)
+            for e in it:
+                print(e.to_ndarray())
+
 
 class TestMemoryDs(unittest.TestCase):
     def test_memory_ds(self):

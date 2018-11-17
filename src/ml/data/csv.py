@@ -4,6 +4,7 @@ import zipfile
 import os
 # import bz2
 # import gzip
+import numpy as np
 from io import StringIO, TextIOWrapper
 from ml.utils.files import rm
 from operator import itemgetter
@@ -40,7 +41,7 @@ class PandasEngine:
         else:
             batch_size = 0
         df = pd.read_csv(*args, **kwargs)
-        return Iterator(df, batch_size=batch_size)
+        return Iterator(df).batchs(batch_size=batch_size, batch_type="df")
 
 
 class DaskEngine:
@@ -98,11 +99,9 @@ class ZIPFile(File):
             return super(ZIPFile, self).read(columns=columns, exclude=exclude, **kwargs)
         else:
             iter_ = self._read_another_file(filename, columns, kwargs.get("delimiter", None))
-            dtype = [(col, object) for col in next(iter_)] 
-            it = Iterator(iter_, batch_size=kwargs.get("batch_size", 0), dtype=dtype)
+            dtype = [(col, np.dtype("object")) for col in next(iter_)]
             nrows = kwargs.get("nrows", None)
-            if nrows is not None:
-                it.set_length(nrows)
+            it = Iterator(iter_, dtypes=dtype, length=nrows).batchs(batch_size=kwargs.get("batch_size", 0), batch_type="df")
             return it
 
     def _read_another_file(self, filename, columns, delimiter, dtype=None):
@@ -185,10 +184,7 @@ class CSVDataset(AbsDataset):
     def data(self):
         return self.reader(batch_size=10)
 
-    def chunks_writer(self, name, data, init=0):
-        return NotImplemented
-
-    def chunks_writer_columns(self, data_key, labels_key, data, labels_column, init=0):
+    def batchs_writer(self, keys, data, init=0):
         return NotImplemented
 
     def url(self):
@@ -197,33 +193,21 @@ class CSVDataset(AbsDataset):
     def exists(self):
         return os.path.exists(self.url())
 
-    def num_features(self):
-        if len(self.shape) > 1:
-            return self.shape[-1]
-        else:
-            return 1
-
     def to_df(self):
-        return self.reader().to_memory()
+        return NotImplemented
 
     def to_ndarray(self, dtype=None):
-        return self.reader().to_ndarray(dtype=dtype)
-
-    @staticmethod
-    def concat(datasets, batch_size: int=0, name: str=None):
         return NotImplemented
 
     @property
     @cache
-    def columns(self):
-        return self.reader(nrows=1).columns
+    def labels(self):
+        return self.reader(nrows=1).labels
 
     @property
     @cache
     def shape(self):
-        size = sum(df.shape[0] for df in self.reader(nrows=None, 
-            delimiter=self.delimiter, batch_size=1000, filename=self.filename))
-        return size, len(self.columns)
+        return None, len(self.labels)
 
     def reader(self, *args, **kwargs):
         kwargs["delimiter"] = self.delimiter

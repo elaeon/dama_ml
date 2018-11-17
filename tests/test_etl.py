@@ -1,6 +1,6 @@
 import unittest
 
-from ml.extractors.file import CSVDataset
+from ml.data.csv import CSVDataset
 from ml.data.it import Iterator
 from ml.data.etl import Pipeline
 
@@ -23,6 +23,13 @@ def sum_(*x):
 
 def ident(x):
     return x
+
+
+def stream():
+    i = 0
+    while True:
+        yield i
+        i += 1
 
 
 class TestETL(unittest.TestCase):
@@ -79,11 +86,17 @@ class TestETL(unittest.TestCase):
         self.assertCountEqual(results[1], ['5', '6'])
 
     def test_stream(self):
-        csv = CSVDataset(self.filepath)
-        it = csv.reader(nrows=2)#, chunksize=3)
-        pipeline = Pipeline(it)
-        a = pipeline.map(str)
-        print(list(pipeline.compute()))
+        #csv = CSVDataset(self.filepath)
+        #it = csv.reader(nrows=2)#, chunksize=3)
+        it = Iterator(stream())
+        for e in it[:10].buffer(2):
+            print(e)
+            #break
+        #pipeline = Pipeline(it[:10])
+        #a = pipeline.map(str)
+        #print(list(pipeline.compute()))
+        #self.assertCountEqual(data.to_ndarray(), np.arange(0, 10))
+        #self.assertCountEqual(data.to_df().values, pd.DataFrame(np.arange(0, 10)).values)
 
     #def test_stream2(self):
     #    csv = CSVDataset(self.filepath)

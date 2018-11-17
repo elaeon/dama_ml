@@ -79,7 +79,7 @@ class TestIterator(unittest.TestCase):
         self.assertEqual(it.shape, (None,))
         self.assertEqual(it.num_splits(), None)
         self.assertEqual(it.type_elem, int)
-        self.assertEqual(it.columns, ["c0"])
+        self.assertEqual(it.labels, ["c0"])
 
     def test_it_attrs_length(self):
         it = Iterator(stream())[:10]
@@ -89,7 +89,7 @@ class TestIterator(unittest.TestCase):
         self.assertEqual(it.shape, (10,))
         self.assertEqual(it.num_splits(), 10)
         self.assertEqual(it.type_elem, int)
-        self.assertEqual(it.columns, ["c0"])
+        self.assertEqual(it.labels, ["c0"])
 
     def test_batch_it_attrs(self):
         it = Iterator(stream()).batchs(batch_size=3, batch_type="df")
@@ -322,7 +322,7 @@ class TestIterator(unittest.TestCase):
         data = np.asarray([[1, 2], [3, 4], [5, 6], [7, 8], [9, 0]], dtype='int')
         data = pd.DataFrame(data, columns=['x', 'y'])
         it = Iterator(data)
-        self.assertCountEqual(it.columns, ['x', 'y'])
+        self.assertCountEqual(it.labels, ['x', 'y'])
 
     def test_datetime(self):
         m = [datetime.datetime.today(), datetime.datetime.today(), datetime.datetime.today()]

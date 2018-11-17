@@ -3,9 +3,7 @@ import weakref
 import functools
 import dask
 import networkx as nx
-import copy
 import matplotlib.pyplot as plt
-from ml.data.it import Iterator
 
 
 class OrderedSet(MutableSet):
@@ -34,14 +32,6 @@ class OrderedWeakrefSet(weakref.WeakSet):
         self.data = OrderedSet()
         for elem in values:
             self.add(elem)
-
-
-def inc(x):
-    return x + 1
-
-
-def dec(x):
-    return x - 1
 
 
 def identity(x):
@@ -80,21 +70,21 @@ class Pipeline(PipelineABC):
 
     def graph(self):
         self.G = nx.DiGraph()
-        l = []
-        self.maps(self.downstreams, l, self.root)
-        self.G.add_edges_from(l)
+        nodes = []
+        self.maps(self.downstreams, nodes, self.root)
+        self.G.add_edges_from(nodes)
 
-    def _eval(self, X):
+    def _eval(self, tree):
         if self.G is None:
             self.graph()
         leafs = []
-        for x in X:
+        for x in tree:
             self.evaluate_graph_root(x, self.root, leafs)
             self.clean_graph_eval(self.root)
         return leafs
 
     def compute(self, buffer_size=100):
-        if self.it.has_chunks:
+        if hasattr(self.it, 'batch_size'):
             pass
         else:
             for values in self.it.buffer(buffer_size=buffer_size):
@@ -149,11 +139,10 @@ class Pipeline(PipelineABC):
         r = self._eval([1])
         r[0].visualize(**kwargs)
 
-    def to_dict(self, x):
-        base = {}
-        for node in self.G.neighbors(root_node):
-            self.evaluate_graph(node(x), leafs)
-        return x
+    # def to_dict(self, x):
+    #    for node in self.G.neighbors(root_node):
+    #        self.evaluate_graph(node(x), leafs)
+    #    return x
 
     def __str__(self):
         return "MAIN"

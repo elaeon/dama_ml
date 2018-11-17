@@ -226,17 +226,14 @@ class SQL(AbsDataset):
         cur.execute(query, {"table_name": self.table_name})
         dtypes = OrderedDict()
         types = {"text": np.dtype("object"), "integer": np.dtype("int"),
-                 "double precision": np.dtype("float"), "boolean": np.dtype("bool")}
-        if self.only_columns is None:                
-            for column in cur.fetchall():
-                dtypes[column[3]] = types.get(column[7], np.dtype("object"))
-            #if exclude_id is True:
-            if "id" in dtypes:
-                del dtypes["id"]
-        else:
-            for column in cur.fetchall():
-                if column[3] in self.only_columns:
-                    dtypes[column[3]] = types.get(column[7], np.dtype("object"))
+                 "double precision": np.dtype("float"), "boolean": np.dtype("bool"),
+                 "timestamp without time zone": np.dtype('datetime64[ns]')}
+
+        for column in cur.fetchall():
+            dtypes[column[3]] = types.get(column[7], np.dtype("object"))
+
+        if "id" in dtypes:
+            del dtypes["id"]
 
         if len(dtypes) == 0:
             return None

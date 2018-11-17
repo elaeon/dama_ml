@@ -4,6 +4,8 @@ import pandas as pd
 import psycopg2
 
 from ml.data.db import SQL
+from ml.data.it import Iterator
+from ml.data.ds import Data
 from ml import fmtypes
 
 
@@ -132,61 +134,15 @@ class TestSQL(unittest.TestCase):
         except psycopg2.OperationalError:
             pass
 
-    def test_index_limit(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test", only=["A"]) as sql:
-                self.assertCountEqual(sql[:3].reshape(-1), ["a", "b", "c"])
-            with SQL(username="alejandro", db_name="ml", table_name="test", only=["B", "C"]) as sql:
-                self.assertCountEqual(sql[:3].reshape(-1), [1, 0.1, 2, 0.2, 3, 0.3])
-            with SQL(username="alejandro", db_name="ml", table_name="test", only=["A", "B", "C"]) as sql:
-                self.assertCountEqual(sql[:3].reshape(-1), ["a", 1, 0.1, "b", 2, 0.2, "c", 3, 0.3])
-        except psycopg2.OperationalError:
-            pass
-
-    def test_random(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test", only=["A"], order_by="rand") as sql:
-                sql[:10]
-                self.assertCountEqual(sql.query, "SELECT a FROM test ORDER BY random() LIMIT 10")
-        except psycopg2.OperationalError:
-            pass
-
     def test_sample(self):
         try:
-            with SQL(username="alejandro", db_name="ml", table_name="test", only=["A"], order_by="rand") as sql:
-                self.assertEqual(len(sql.reader().sample(5).to_memory()), 5)
-        except psycopg2.OperationalError:
-            pass
-
-    def test_order_by(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test", only=["A"]) as sql:
-                sql[:10]
-                self.assertCountEqual(sql.query, "SELECT a FROM test ORDER BY id LIMIT 10")
-        except psycopg2.OperationalError:
-            pass
-
-    def test_no_order(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test", only=["A"], order_by=None) as sql:
-                sql[:10]
-                self.assertCountEqual(sql.query, "SELECT a FROM test  LIMIT 10")
-        except psycopg2.OperationalError:
-            pass
-
-    def test_no_order_no_limit(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test", only=["A"], order_by=None) as sql:
-                sql[:]
-                self.assertCountEqual(sql.query, "SELECT a FROM test  ")
-        except psycopg2.OperationalError:
-            pass
-
-    def test_slide_col(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test", order_by=None) as sql:
-                sql[:, 1]
-                self.assertCountEqual(sql.query, "SELECT b FROM test  ")
+            with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
+                it = Iterator(sql[["x0", "x2"]]).sample(5)
+                for e in it:
+                    print(e.to_ndarray())
+                #data = Data(name="test", driver="memory")
+                #data.from_data(it)
+                #self.assertEqual(len(sql.reader().sample(5).to_memory()), 5)
         except psycopg2.OperationalError:
             pass
 
@@ -219,10 +175,9 @@ class TestSQLDateTime(unittest.TestCase):
 
     def test_data_df(self):
         try:
-            with SQL(username="alejandro", db_name="ml", table_name="test_dt",
-                df=True) as sql:
-                df = sql["B"]
-                self.assertEqual(str(df.dtypes[0]), "datetime64[ns]")
+            with SQL(username="alejandro", db_name="ml", table_name="test_dt") as sql:
+                df = sql["b"]
+                self.assertEqual(str(df.dtypes[0][1]), "datetime64[ns]")
         except psycopg2.OperationalError:
             pass
 
