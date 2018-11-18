@@ -101,7 +101,7 @@ class TestIterator(unittest.TestCase):
         self.assertEqual(it.num_splits(), 0)
         self.assertEqual(it.batch_shape(), [3])
         self.assertEqual(it.type_elem, pd.DataFrame)
-        self.assertEqual(it.columns, ["c0"])
+        self.assertEqual(it.labels, ["c0"])
 
     def test_batch_it_attrs_length(self):
         it = Iterator(stream()).batchs(batch_size=3, batch_type="df")[:10]
@@ -113,7 +113,7 @@ class TestIterator(unittest.TestCase):
         self.assertEqual(it.num_splits(), 4)
         self.assertEqual(it.batch_shape(), [3])
         self.assertEqual(it.type_elem, pd.DataFrame)
-        self.assertEqual(it.columns, ["c0"])
+        self.assertEqual(it.labels, ["c0"])
 
     def test_stream(self):
         it = Iterator(stream())
@@ -364,7 +364,7 @@ class TestIterator(unittest.TestCase):
         buffer_size = 7
         i = 0
         j = buffer_size
-        for elems in it.buffer(buffer_size):
+        for elems in it.batchs(batch_size=buffer_size):
             self.assertCountEqual(elems, list(range(i, j)))
             i = j
             j += buffer_size

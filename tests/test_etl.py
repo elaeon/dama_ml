@@ -1,4 +1,6 @@
 import unittest
+import numpy as np
+import datetime
 
 from ml.data.csv import CSVDataset
 from ml.data.it import Iterator
@@ -30,6 +32,20 @@ def stream():
     while True:
         yield i
         i += 1
+
+def temperature_sensor_stream():
+    while True:
+        temp = np.random.uniform(20, 3)
+        t_stamp = datetime.datetime.today().timestamp()
+        yield (t_stamp, temp)
+
+
+def mov_avg(values):
+    avg = 0
+    n = len(values)
+    for t_stamp, temp in values:
+        avg += temp / n
+    return avg
 
 
 class TestETL(unittest.TestCase):
@@ -78,25 +94,31 @@ class TestETL(unittest.TestCase):
                 yield t
                 if t > 5:
                     break
-        it = Iterator(stream())
+        it = Iterator(stream()).batchs(3)
         pipeline = Pipeline(it)
         a = pipeline.map(str)
-        results = list(pipeline.compute(buffer_size=4))
+        results = list(pipeline.compute())
+        print(results)
         self.assertCountEqual(results[0], ['1', '2', '3', '4'])
         self.assertCountEqual(results[1], ['5', '6'])
 
     def test_stream(self):
-        #csv = CSVDataset(self.filepath)
-        #it = csv.reader(nrows=2)#, chunksize=3)
         it = Iterator(stream())
-        for e in it[:10].buffer(2):
-            print(e)
-            #break
-        #pipeline = Pipeline(it[:10])
-        #a = pipeline.map(str)
-        #print(list(pipeline.compute()))
-        #self.assertCountEqual(data.to_ndarray(), np.arange(0, 10))
-        #self.assertCountEqual(data.to_df().values, pd.DataFrame(np.arange(0, 10)).values)
+        pipeline = Pipeline(it[:10])
+        a = pipeline.map(str)
+        data = list(pipeline.compute())
+        self.assertEqual(data[0] == list(map(str, np.arange(0, 10))), True)
+
+    def test_temperature_sensor_stream(self):
+        it = Iterator(temperature_sensor_stream()).window(200)
+        pipeline = Pipeline(it)
+        a = pipeline.map(mov_avg)
+        counter = 0
+        for e in pipeline.compute():
+            self.assertEqual(10 <= e[0] <= 13, True)
+            if counter == 1:
+                break
+            counter += 1
 
     #def test_stream2(self):
     #    csv = CSVDataset(self.filepath)

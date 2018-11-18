@@ -2,7 +2,6 @@ from itertools import chain, islice
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd
-import psycopg2
 import types
 import logging
 
@@ -42,15 +41,15 @@ def assign_struct_array(it, type_elem, start_i, end_i, dtype, dims):
 
 
 class BaseIterator(object):
-    def __init__(self, it, length=None, dtypes=None, shape=None, type_elem=None) -> None:
+    def __init__(self, it, length=None, dtypes=None, shape=None, type_elem=None, pushedback=None) -> None:
         self.data = it
-        self.pushedback = []
+        self.pushedback = [] if pushedback is None else pushedback
         self.dtypes = dtypes
         self.dtype = max_dtype(dtypes)
         self.type_elem = type_elem
         self.shape = self.calc_shape(length, shape)
         self.iter_init = True
-        self.dims = len(self.shape)
+        self._it = None
 
     def length(self) -> int:
         if self.shape is not None:
@@ -66,38 +65,18 @@ class BaseIterator(object):
         return shape
 
     @property
-    def labels(self):
-        if isinstance(self.dtypes, list):
-            return [c for c, _ in self.dtypes]
-        else:
-            if self.dims is not None:
-                return ["c"+str(i) for i in range(self.dims)]
-            else:
-                return ["c0"]
+    def labels(self) -> list:
+        return [c for c, _ in self.dtypes]
 
     def pushback(self, val) -> None:
         self.pushedback.append(val)
 
     @staticmethod
-    def default_dtypes(dtype):
+    def default_dtypes(dtype) -> list:
         if not isinstance(dtype, list):
             return [("c0", dtype)]
         else:
             return dtype
-
-    def buffer(self, buffer_size: int):
-        while True:
-            buffer = []
-            for elem in self:
-                if len(buffer) < buffer_size:
-                    buffer.append(elem)
-                else:
-                    self.pushback(elem)
-                    break
-            else:
-                yield buffer
-                break
-            yield buffer
 
     def window(self, win_size: int=2):
         win = deque((next(self.data, None) for _ in range(win_size)), maxlen=win_size)
@@ -124,14 +103,14 @@ class BaseIterator(object):
         else:
             raise Exception("Type of elem {} does not supported".format(self.type_elem))
 
-    def flat(self):
+    def flat(self) -> 'Iterator':
         if self.length() is not None:
             length = self.length() * sum(self.shape[1:])
         else:
             length = None
         return Iterator(self.flatter(), dtypes=self.dtypes, length=length)
 
-    def sample(self, length: int, col=None, weight_fn=None):
+    def sample(self, length: int, col=None, weight_fn=None) -> 'Iterator':
         return Iterator(wsrj(self.weights_gen(self, col, weight_fn), length), dtypes=self.dtypes, length=length)
 
     def weights_gen(self, data, col, weight_fn):
@@ -156,24 +135,25 @@ class BaseIterator(object):
                 values[k] += v
         return values
 
-    def __iter__(self):
-        if self.length() is None or self.iter_init is False:
-            return self
-        else:
-            self.iter_init = False
-            return islice(self, self.num_splits())
+    def __iter__(self) -> 'BaseIterator':
+        return self
 
     def __next__(self):
+        if self._it is None and self.length() is None:
+            self._it = self.data
+        elif self._it is None:
+            self._it = islice(self.data, self.num_splits() - len(self.pushedback))
+
         if len(self.pushedback) > 0:
             return self.pushedback.pop()
         else:
-            return next(self.data)
+            return next(self._it)
 
 
 class Iterator(BaseIterator):
     def __init__(self, fn_iter, dtypes=None, length=None) -> None:
         super(Iterator, self).__init__(fn_iter, dtypes=dtypes, length=length)
-        if isinstance(fn_iter, types.GeneratorType):  # or isinstance(fn_iter, psycopg2.extensions.cursor):
+        if isinstance(fn_iter, types.GeneratorType):
             self.data = fn_iter
             self.is_ds = False
         elif isinstance(fn_iter, Iterator):
@@ -204,7 +184,6 @@ class Iterator(BaseIterator):
             self.shape = self.calc_shape(length, fn_iter.shape)
             self.dtype = fn_iter.dtype
             self.type_elem = fn_iter.type_elem
-            self.dims = fn_iter.dims
             self.pushedback = fn_iter.pushedback
             self.dtypes = fn_iter.dtypes
         else:
@@ -265,10 +244,9 @@ class Iterator(BaseIterator):
         self.dtype = max_dtype(self.dtypes)
         self.pushback(chunk)
         self.type_elem = type(chunk)
-        self.dims = len(self.shape)
 
     @staticmethod
-    def replace_str_type_to_obj(dtype):
+    def replace_str_type_to_obj(dtype) -> list:
         if hasattr(dtype, '__iter__'):
             dtype_tmp = []
             for c, dtp in dtype:
@@ -283,7 +261,7 @@ class Iterator(BaseIterator):
                 dtype_tmp = dtype
         return dtype_tmp
 
-    def batchs(self, batch_size: int, batch_type: str="array"):
+    def batchs(self, batch_size: int, batch_type: str="array") -> BaseIterator:
         if batch_size > 0:
             if self.is_ds:
                 if batch_type == "df":
@@ -297,15 +275,7 @@ class Iterator(BaseIterator):
         else:
             return self
 
-    # @staticmethod
-    # def check_datatime(dtype: list):
-    #    cols = []
-    #    for col_i, (_, type_) in enumerate(dtype):
-    #        if type_ == np.dtype('<M8[ns]'):
-    #            cols.append(col_i)
-    #    return cols
-
-    def __getitem__(self, key) -> BaseIterator:
+    def __getitem__(self, key) -> 'Iterator':
         if isinstance(key, slice):
             if key.stop is not None:
                 return Iterator(self, dtypes=self.dtypes, length=key.stop)
@@ -322,9 +292,8 @@ class BatchIterator(BaseIterator):
         self.shape = it.shape
         self.type_elem = pd.DataFrame if batch_type is "df" else np.ndarray
         self.batch_type = batch_type
-        self._it = None
 
-    def clean_batchs(self) -> BaseIterator:
+    def clean_batchs(self) -> Iterator:
         def cleaner():
             for chunk in self:
                 for row in chunk:
@@ -363,7 +332,7 @@ class BatchIterator(BaseIterator):
             return tuple([length] + list(shape[1:]))
         return shape
 
-    def flat(self) -> BaseIterator:
+    def flat(self) -> Iterator:
         if self.length() is not None:
             length = self.length() * sum(self.shape[1:])
         else:
@@ -371,11 +340,11 @@ class BatchIterator(BaseIterator):
         return Iterator(self.flatter(), dtypes=self.dtypes,
                         length=length).batchs(batch_size=self.batch_size, batch_type=self.batch_type)
 
-    def sample(self, length: int, col=None, weight_fn=None) -> BaseIterator:
+    def sample(self, length: int, col: list=None, weight_fn=None) -> BaseIterator:
         data = self.clean_batchs()
         return Iterator(wsrj(self.weights_gen(data, col, weight_fn), length), dtypes=self.dtypes, length=length)
 
-    def run(self) -> BaseIterator:
+    def run(self) -> Iterator:
         return self.data
 
     def __next__(self):
@@ -386,10 +355,10 @@ class BatchIterator(BaseIterator):
         else:
             return next(self._it)
 
-    def __iter__(self) -> BaseIterator:
+    def __iter__(self) -> 'BatchIterator':
         return self
 
-    def __getitem__(self, key) -> BaseIterator:
+    def __getitem__(self, key) -> 'BatchIterator':
         if isinstance(key, slice):
             if key.stop is not None:
                 return BatchIterator(BaseIterator(self.cut_batch(key.stop), dtypes=self.dtypes,

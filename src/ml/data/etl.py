@@ -5,6 +5,8 @@ import dask
 import networkx as nx
 import matplotlib.pyplot as plt
 
+from ml.data.it import BaseIterator
+
 
 class OrderedSet(MutableSet):
     def __init__(self, values=()):
@@ -62,7 +64,7 @@ class PipelineABC(object):
 
 
 class Pipeline(PipelineABC):
-    def __init__(self, seq, upstream=None):
+    def __init__(self, seq: BaseIterator, upstream=None):
         super(Pipeline, self).__init__(upstream=upstream)
         self.it = seq
         self.G = None
@@ -74,22 +76,22 @@ class Pipeline(PipelineABC):
         self.maps(self.downstreams, nodes, self.root)
         self.G.add_edges_from(nodes)
 
-    def _eval(self, tree):
+    def _eval(self, values):
         if self.G is None:
             self.graph()
         leafs = []
-        for x in tree:
-            self.evaluate_graph_root(x, self.root, leafs)
-            self.clean_graph_eval(self.root)
+        self.evaluate_graph_root(values, self.root, leafs)
+        self.clean_graph_eval(self.root)
         return leafs
 
-    def compute(self, buffer_size=100):
-        if hasattr(self.it, 'batch_size'):
-            pass
-        else:
-            for values in self.it.buffer(buffer_size=buffer_size):
-                leafs = self._eval(values)
-                yield dask.compute(leafs)[0]
+    def compute(self):
+        #if hasattr(self.it, 'batch_size'):
+        #    pass
+        #else:
+        for values in self.it:
+            leafs = self._eval(values)
+            print(leafs)
+            yield dask.compute(leafs)[0]
 
     def evaluate_graph_root(self, x, root_node, leafs):
         for node in self.G.neighbors(root_node):           
