@@ -5,7 +5,7 @@ import dask
 import networkx as nx
 import matplotlib.pyplot as plt
 
-from ml.data.it import BaseIterator
+from ml.data.it import BaseIterator, BatchIterator
 
 
 class OrderedSet(MutableSet):
@@ -57,7 +57,7 @@ class PipelineABC(object):
         def _(func):
             @functools.wraps(func)
             def wrapped(*args, **kwargs):
-                return func(*args, **kwargs)
+                return func(*args, params=kwargs)
             setattr(cls, func.__name__, modifier(wrapped))
             return func
         return _
@@ -76,25 +76,21 @@ class Pipeline(PipelineABC):
         self.maps(self.downstreams, nodes, self.root)
         self.G.add_edges_from(nodes)
 
-    def _eval(self, values):
+    def _eval(self, batch):
         if self.G is None:
             self.graph()
         leafs = []
-        self.evaluate_graph_root(values, self.root, leafs)
+        self.evaluate_graph_root(batch, self.root, leafs)
         self.clean_graph_eval(self.root)
         return leafs
 
     def compute(self):
-        #if hasattr(self.it, 'batch_size'):
-        #    pass
-        #else:
         for values in self.it:
             leafs = self._eval(values)
-            print(leafs)
             yield dask.compute(leafs)[0]
 
     def evaluate_graph_root(self, x, root_node, leafs):
-        for node in self.G.neighbors(root_node):           
+        for node in self.G.neighbors(root_node):
             self.evaluate_graph(node(x), leafs)
         return x
 
@@ -152,24 +148,25 @@ class Pipeline(PipelineABC):
 
 @PipelineABC.register_api()
 class map(PipelineABC):
-    def __init__(self, upstream, func):
+    def __init__(self, upstream, func, params=None):
         self.task = dask.delayed(func)
         self.eval_task = None
         self.completed = False
         self.fn_name = func.__name__
+        self.params = params
         PipelineABC.__init__(self, upstream)
 
     def __call__(self, *nodes):
-        fn = []
+        items = []
         for node in nodes:
             if type(node) == map:
                 if node.eval_task is None:
                     self.completed = False
                     return self
-                fn.append(node.eval_task)
+                items.append(node.eval_task)
             else:
-                fn.append(node)
-        self.eval_task = self.task(*fn)
+                items.append(node)
+        self.eval_task = self.task(*items, **self.params)
         self.completed = True
         return self
 

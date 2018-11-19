@@ -5,6 +5,7 @@ import datetime
 from ml.data.csv import CSVDataset
 from ml.data.it import Iterator
 from ml.data.etl import Pipeline
+from ml.utils.basic import Hash
 
 
 def inc(x):
@@ -48,21 +49,20 @@ def mov_avg(values):
     return avg
 
 
+def calc_hash(batch):
+    h = Hash()
+    h.update(batch)
+    return str(h)
+
+
+def write_csv(it):
+    filepath = "/tmp/test.csv"
+    csv_writer = CSVDataset(filepath=filepath, delimiter=",")
+    csv_writer.from_data(it, header=["A", "B", "C", "D", "F"])
+    return True
+
+
 class TestETL(unittest.TestCase):
-    def setUp(self):
-        self.iterator = [
-            [1, 2, 3, 4, 5],
-            [6, 7, 8, 9, 0],
-            [0, 9, 8, 7, 6]]
-        self.filepath = "/tmp/test.zip"
-        self.filename = "test.csv"
-        csv_writer = CSVDataset(filepath=self.filepath, delimiter=",")
-        csv_writer.from_data(self.iterator, header=["A", "B", "C", "D", "F"])
-
-    def tearDown(self):
-        csv = CSVDataset(filepath=self.filepath)
-        csv.destroy()
-
     def test_pipeline_01(self):
         it = Iterator([4])
         pipeline = Pipeline(it)
@@ -94,13 +94,11 @@ class TestETL(unittest.TestCase):
                 yield t
                 if t > 5:
                     break
-        it = Iterator(stream()).batchs(3)
+        it = Iterator(stream())
         pipeline = Pipeline(it)
         a = pipeline.map(str)
         results = list(pipeline.compute())
-        print(results)
-        self.assertCountEqual(results[0], ['1', '2', '3', '4'])
-        self.assertCountEqual(results[1], ['5', '6'])
+        self.assertCountEqual(results, [['1'], ['2'], ['3'], ['4'], ['5'], ['6']])
 
     def test_stream(self):
         it = Iterator(stream())
@@ -119,6 +117,25 @@ class TestETL(unittest.TestCase):
             if counter == 1:
                 break
             counter += 1
+
+    def test_pipeline_write_calc_hash(self):
+        iterator = [
+            [1, 2, 3, 4, 5],
+            [6, 7, 8, 9, 0],
+            [0, 9, 8, 7, 9]]
+
+        it = Iterator(iterator).batchs(2)
+        pipeline = Pipeline(it)
+        a = pipeline.map(calc_hash)
+        b = pipeline.map(write_csv)
+        for r in pipeline.compute():
+            print("--", r)
+
+        filepath = "/tmp/test.csv"
+        csv_writer = CSVDataset(filepath=filepath, delimiter=",")
+        #for e in csv_writer:
+        #    print(e)
+        csv_writer.destroy()
 
     #def test_stream2(self):
     #    csv = CSVDataset(self.filepath)
