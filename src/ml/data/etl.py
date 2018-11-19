@@ -119,7 +119,7 @@ class Pipeline(PipelineABC):
     def maps(self, downstreams, l, parent):
         for fn in downstreams:
             if type(fn) == zip:
-                for fn_zip in fn.extra:
+                for fn_zip in fn.args:
                     for map_zip_fn in fn.downstreams:
                         l.append((fn_zip, map_zip_fn))
             self.maps(fn.downstreams, l, fn)
@@ -148,7 +148,7 @@ class Pipeline(PipelineABC):
 
 @PipelineABC.register_api()
 class map(PipelineABC):
-    def __init__(self, upstream, func, params=None):
+    def __init__(self, upstream, func, params: dict=None):
         self.task = dask.delayed(func)
         self.eval_task = None
         self.completed = False
@@ -176,8 +176,9 @@ class map(PipelineABC):
 
 @PipelineABC.register_api()
 class zip(PipelineABC):
-    def __init__(self, upstream, *func):
-        self.extra = func
+    def __init__(self, upstream, *func, params: dict=None):
+        self.args = func
+        self.params = params
         PipelineABC.__init__(self, upstream)
 
     def __str__(self):

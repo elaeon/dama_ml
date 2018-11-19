@@ -104,8 +104,8 @@ class TestETL(unittest.TestCase):
         it = Iterator(stream())
         pipeline = Pipeline(it[:10])
         a = pipeline.map(str)
-        data = list(pipeline.compute())
-        self.assertEqual(data[0] == list(map(str, np.arange(0, 10))), True)
+        results = list(pipeline.compute())
+        self.assertCountEqual(results, [[e] for e in list(map(str, np.arange(0, 10)))])
 
     def test_temperature_sensor_stream(self):
         it = Iterator(temperature_sensor_stream()).window(200)
