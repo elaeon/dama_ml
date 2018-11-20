@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 import datetime
 
+from dask.threaded import get
 from ml.data.csv import CSVDataset
 from ml.data.it import Iterator
 from ml.data.etl import Pipeline
@@ -121,18 +122,16 @@ class TestETL(unittest.TestCase):
             counter += 1
 
     def test_pipeline_write_calc_hash(self):
-        import dask.bag as db
         iterator = [
             [1, 2, 3, 4, 5],
             [6, 7, 8, 9, 0],
             [0, 9, 8, 7, 9]]
 
         it = Iterator(iterator).batchs(2)
-        #bag = db.from_sequence(it)
         pipeline = Pipeline(it)
         a = pipeline.map(calc_hash)
         b = pipeline.map(write_csv)
-        for r in pipeline.compute_consume():
+        for r in pipeline.compute():
             print("--", r)
 
         #filepath = "/tmp/test.csv"
@@ -140,6 +139,17 @@ class TestETL(unittest.TestCase):
         #for e in csv_writer:
         #    print(e)
         #csv_writer.destroy()
+
+    def test_dask_graph(self):
+        data = 4
+        pipeline = Pipeline(data)
+        a = pipeline.map(inc).map(ident)
+        b = pipeline.map(dec)
+        c = pipeline.zip(a, b).map(add)
+        dask_graph = pipeline.to_dask_graph()
+        self.assertEqual(get(dask_graph, 'dec-key'), 3)
+        self.assertEqual(get(dask_graph, 'ident-key'), 5)
+        self.assertEqual(get(dask_graph, 'add-key'), 8)
 
     #def test_graph(self):
         #s.visualize_task_graph(filename="stream", format="svg")

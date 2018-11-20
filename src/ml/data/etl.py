@@ -89,15 +89,9 @@ class Pipeline(PipelineABC):
             leafs = self._eval(values)
             yield dask.compute(leafs)[0]
 
-    def compute_consume(self):
-        leafs = self._eval(self.it)
-        return dask.compute(leafs)[0]
-
     def evaluate_graph_root(self, x, root_node, leafs):
         for node in self.G.neighbors(root_node):
-            print(node, x)
             self.evaluate_graph(node(x), leafs)
-        #return x
 
     def evaluate_graph(self, base_node, leafs):
         if len(list(self.G.neighbors(base_node))) == 0:
@@ -146,10 +140,28 @@ class Pipeline(PipelineABC):
             else:
                 e.visualize(**kwargs)
 
-    # def to_dict(self, x):
-    #    for node in self.G.neighbors(root_node):
-    #        self.evaluate_graph(node(x), leafs)
-    #    return x
+    def to_dask_graph(self):
+        if self.G is None:
+            self.graph()
+        dask_graph = {}
+        for node in self.G.neighbors(self.root):
+            dask_graph["x"] = self.it
+            dask_graph[node.key] = (node.func, "x")
+            self.walk_graph(node, dask_graph)
+        return dask_graph
+
+    def walk_graph(self, base_node: PipelineABC, dask_graph: dict):
+        if len(list(self.G.neighbors(base_node))) == 0:
+            return
+
+        for node in self.G.neighbors(base_node):
+            if node.key in dask_graph:
+                params = [param for param in dask_graph[node.key]]
+                tuple_value = tuple(params + [base_node.key])
+                dask_graph[node.key] = tuple_value
+            else:
+                dask_graph[node.key] = (node.func, base_node.key)
+            self.walk_graph(node, dask_graph)
 
     def __str__(self):
         return "MAIN"
@@ -159,6 +171,7 @@ class Pipeline(PipelineABC):
 class map(PipelineABC):
     def __init__(self, upstream, func, params: dict=None):
         self.task = dask.delayed(func)
+        self.func = func
         self.eval_task = None
         self.completed = False
         self.fn_name = func.__name__
@@ -178,6 +191,10 @@ class map(PipelineABC):
         self.eval_task = self.task(*items, **self.params)
         self.completed = True
         return self
+
+    @property
+    def key(self):
+        return "{}-{}".format(self.fn_name, "key")
 
     def __str__(self):
         return self.fn_name
