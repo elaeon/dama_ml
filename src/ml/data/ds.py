@@ -114,6 +114,7 @@ class HDF5Dataset(AbsDataset):
             self.f.close()
             if self.driver != "memory":
                 self.f = None
+            self._it = None
 
     def __getitem__(self, key) -> StructArray:
         return self.data[key]
@@ -143,20 +144,21 @@ class HDF5Dataset(AbsDataset):
             return ttype
 
     def _set_space_shape(self, name, shape, dtype):
-        with self:
+        #with self:
             #self.f.require_group(key)
-            dtype = self.auto_dtype(dtype)
+        dtype = self.auto_dtype(dtype)
             #self.f[key].require_dataset(name, shape, dtype=dtype, chunks=True,
             #    exact=True, **self.zip_params)
-            self.f.require_dataset(name, shape, dtype=dtype, chunks=True,
-                exact=True, **self.zip_params)
+        self.f.require_dataset(name, shape, dtype=dtype, chunks=True,
+            exact=True, **self.zip_params)
 
     def _get_data(self, key):
         return self.f[key]
 
     def _set_attr(self, name, value):
-        with self:
-            self.f.attrs[name] = value
+        if value is not None:
+            with self:
+                self.f.attrs[name] = value
             
     def _get_attr(self, name):
         try:
@@ -171,56 +173,56 @@ class HDF5Dataset(AbsDataset):
     def batchs_writer(self, keys, data, init=0):
         log.info("Writing with batch size {}".format(getattr(data, 'batch_size', 0)))
         end = init
-        with self:
-            if getattr(data, 'batch_size', 0) > 0 and data.batch_type == "structured":
-                for smx in tqdm(data, total=data.num_splits()):
-                    end += smx.shape[0]
-                    for key in keys:
-                        self.f[key][init:end] = smx[key]
-                    init = end
-            elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "array":
-                for smx in tqdm(data, total=data.num_splits()):
-                    end += smx.shape[0]
-                    for key in keys:
-                        self.f[key][init:end] = smx
-                    init = end
-            elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "df":
-                for smx in tqdm(data, total=data.num_splits()):
-                    if len(self.labels) == 1:
-                        array = smx.values.reshape(-1)
-                    else:
-                        array = smx.values
-                    end += smx.shape[0]
-                    for key in keys:
-                        self.f[key][init:end] = array
-                    init = end
-            elif getattr(data, 'batch_size', 0) > 0:
-                for smx in tqdm(data, total=data.num_splits()):
-                    if hasattr(smx, 'shape') and len(smx.shape) > 0:
-                        end += smx.shape[0]
-                    else:
-                        end += 1
-                    for i, key in enumerate(keys):
-                        self.f[key][init:end] = smx[i]
-                    init = end
-            elif len(keys) > 1 and data.type_elem == tuple:
-                for smx in tqdm(data, total=data.num_splits()):
-                    end += 1
-                    for i, key in enumerate(keys):
-                        self.f[key][init:end] = smx[i]
-                    init = end
-            elif len(keys) > 1:
-                for smx in tqdm(data, total=data.num_splits()):
-                    end += 1
-                    for key in keys:
-                        self.f[key][init:end] = getattr(smx, key)
-                    init = end
-            else:
-                key = keys[0]
-                for smx in tqdm(data, total=data.num_splits()):
-                    end += 1
+        #with self:
+        if getattr(data, 'batch_size', 0) > 0 and data.batch_type == "structured":
+            for smx in tqdm(data, total=data.num_splits()):
+                end += smx.shape[0]
+                for key in keys:
+                    self.f[key][init:end] = smx[key]
+                init = end
+        elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "array":
+            for smx in tqdm(data, total=data.num_splits()):
+                end += smx.shape[0]
+                for key in keys:
                     self.f[key][init:end] = smx
-                    init = end
+                init = end
+        elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "df":
+            for smx in tqdm(data, total=data.num_splits()):
+                if len(self.labels) == 1:
+                    array = smx.values.reshape(-1)
+                else:
+                    array = smx.values
+                end += smx.shape[0]
+                for key in keys:
+                    self.f[key][init:end] = array
+                init = end
+        elif getattr(data, 'batch_size', 0) > 0:
+            for smx in tqdm(data, total=data.num_splits()):
+                if hasattr(smx, 'shape') and len(smx.shape) > 0:
+                    end += smx.shape[0]
+                else:
+                    end += 1
+                for i, key in enumerate(keys):
+                    self.f[key][init:end] = smx[i]
+                init = end
+        elif len(keys) > 1 and data.type_elem == tuple:
+            for smx in tqdm(data, total=data.num_splits()):
+                end += 1
+                for i, key in enumerate(keys):
+                    self.f[key][init:end] = smx[i]
+                init = end
+        elif len(keys) > 1:
+            for smx in tqdm(data, total=data.num_splits()):
+                end += 1
+                for key in keys:
+                    self.f[key][init:end] = getattr(smx, key)
+                init = end
+        else:
+            key = keys[0]
+            for smx in tqdm(data, total=data.num_splits()):
+                end += 1
+                self.f[key][init:end] = smx
+                init = end
 
     def destroy(self):
         """
@@ -269,12 +271,13 @@ class HDF5Dataset(AbsDataset):
     @dtypes.setter
     def dtypes(self, value):
         if value is not None:
-            self._set_space_shape("dtypes", (len(value), 2), 'object')
             with self:
+                self._set_space_shape("dtypes", (len(value), 2), 'object')
                 for i, (c, dtype) in enumerate(value):
                     self.f["dtypes"][i] = (c, dtype.name)
         else:
-            self._set_space_shape("dtypes", (1, 2), 'object')
+            with self:
+                self._set_space_shape("dtypes", (1, 2), 'object')
 
     def num_features(self) -> int:
         """
@@ -290,36 +293,10 @@ class Data(HDF5Dataset):
     """
     Base class for dataset build. Get data from memory.
     create the initial values for the dataset.
-
-    :type name: string
-    :param name: dataset's name
-
-    :type dataset_path: string
-    :param dataset_path: path where the datased is saved. This param is automaticly set by the settings.cfg file.
-
-    :type transforms: transform instance
-    :param transforms: list of transforms
-
-    :type apply_transforms: bool
-    :param apply_transforms: apply transformations to the data
-
-    :type dtype: string
-    :param dtype: the type of the data to save
-
-    :type description: string
-    :param description: an bref description of the dataset
-
-    :type author: string
-    :param author: Dataset Author's name
-
-    :type compression_level: int
-    :param compression_level: number in 0-9 range. If 0 is passed no compression is executed
-
-    :type rewrite: bool
-    :param rewrite: if true, you can clean the saved data and add a new dataset.
     """
-    def __init__(self, name=None, dataset_path=None, description='', author='', 
-                compression_level=0, clean=False, mode='a', driver='disk', group_name=None):
+    def __init__(self, name: str=None, dataset_path: str=None, description: str='', author: str='',
+                 compression_level: int=0, clean: bool=False, mode: str='a', driver: str='disk',
+                 group_name: str=None):
 
         if name is None:
             raise Exception("I can't build a dataset without a name, plese add a name to this dataset.")
@@ -424,15 +401,15 @@ class Data(HDF5Dataset):
         print(order_table(headers, table, "shape"))
         ###print columns
 
-    def calc_hash(self, hash_fn: str='sha1', batch_size: int=1080) -> str:
-        hash_obj = Hash(hash_fn=hash_fn)
+    def calc_hash(self, with_hash: str='sha1', batch_size: int=1080) -> str:
+        hash_obj = Hash(hash_fn=with_hash)
         header = [getattr(self, attr) for attr in self.header_map]
         hash_obj.hash.update("".join(header).encode("utf-8"))
         it = Iterator(self).batchs(batch_size=batch_size, batch_type="structured")
         hash_obj.update(it)
         return str(hash_obj)
 
-    def from_data(self, data, batch_size: int=258):
+    def from_data(self, data, batch_size: int=258, with_hash: str="sha1"):
         """
         build a datalabel dataset from data and labels
         """
@@ -440,7 +417,6 @@ class Data(HDF5Dataset):
             print("ok")
         elif not isinstance(data, BaseIterator):
             data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
-        #self.hash = self.calc_hash()
         self.dtypes = data.dtypes
         with self:
             labels = []
@@ -454,6 +430,11 @@ class Data(HDF5Dataset):
                 self._set_space_shape(label, shape, dtype=dtype)  # data[col].shape
                 labels.append(label)
             self.batchs_writer(labels, data)
+            if with_hash is not None:
+                hash = self.calc_hash(with_hash=with_hash)
+            else:
+                hash = None
+        self.hash = hash
 
     def to_df(self) -> pd.DataFrame:
         return self.data.to_df()

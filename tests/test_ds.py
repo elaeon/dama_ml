@@ -273,8 +273,14 @@ class TestDataset(unittest.TestCase):
         data = Data(name="test0", dataset_path="/tmp", clean=True)
         data.from_data(np.ones(100))
         with data:
-            self.assertEqual(data.calc_hash(), "$sha1$fe0e420a6aff8c6f81ef944644cc78a2521a0495")
-            self.assertEqual(data.calc_hash(hash_fn='md5'), "$md5$2376a2375977070dc32209a8a7bd2a99")
+            self.assertEqual(data.hash, "$sha1$fe0e420a6aff8c6f81ef944644cc78a2521a0495")
+            self.assertEqual(data.calc_hash(with_hash='md5'), "$md5$2376a2375977070dc32209a8a7bd2a99")
+
+    def test_empty_hash(self):
+        data = Data(name="test0", dataset_path="/tmp", clean=True)
+        data.from_data(np.ones(100), with_hash=None)
+        with data:
+            self.assertEqual(data.hash, None)
 
     def test_getitem(self):
         df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
