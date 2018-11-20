@@ -8,7 +8,7 @@ import numpy as np
 from io import StringIO, TextIOWrapper
 from ml.utils.files import rm
 from operator import itemgetter
-from ml.data.it import Iterator, DaskIterator
+from ml.data.it import Iterator, DaskIterator, BatchIterator
 from ml.data.abc import AbsDataset
 from ml.utils.decorators import cache
 from tqdm import tqdm
@@ -41,7 +41,12 @@ class PandasEngine:
         else:
             batch_size = 0
         df = pd.read_csv(*args, **kwargs)
-        return Iterator(df).batchs(batch_size=batch_size, batch_type="df")
+        it = Iterator(df)
+        print(it.shape)
+        if batch_size == 0:
+            return it
+        else:
+            return BatchIterator(it, batch_size=batch_size)
 
 
 class DaskEngine:
@@ -161,6 +166,7 @@ class CSVDataset(AbsDataset):
         self.file_manager = get_compressed_file_manager_ext(self.filepath, engine)
         self.delimiter = delimiter
         self.filename = filename
+        self._it = None
 
     def __enter__(self):
         return NotImplemented
@@ -169,7 +175,7 @@ class CSVDataset(AbsDataset):
         return NotImplemented
 
     def __iter__(self):
-        return self.data
+        return self
 
     def __getitem__(self, key):
         return self.data[key]
@@ -178,7 +184,9 @@ class CSVDataset(AbsDataset):
         return NotImplemented
 
     def __next__(self):
-        return next(self.data)
+        if self._it is None:
+            self._it = self.data
+        return next(self._it)
 
     @property
     def data(self):

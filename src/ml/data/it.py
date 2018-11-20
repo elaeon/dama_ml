@@ -340,7 +340,7 @@ class BatchIterator(BaseIterator):
         return Iterator(self.flatter(), dtypes=self.dtypes,
                         length=length).batchs(batch_size=self.batch_size, batch_type=self.batch_type)
 
-    def sample(self, length: int, col: list=None, weight_fn=None) -> BaseIterator:
+    def sample(self, length: int, col: list=None, weight_fn=None) -> Iterator:
         data = self.clean_batchs()
         return Iterator(wsrj(self.weights_gen(data, col, weight_fn), length), dtypes=self.dtypes, length=length)
 

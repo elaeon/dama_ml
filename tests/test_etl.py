@@ -49,14 +49,16 @@ def mov_avg(values):
     return avg
 
 
-def calc_hash(batch):
+def calc_hash(it):
     h = Hash()
-    h.update(batch)
+    for batch in it:
+        h.update(batch)
     return str(h)
 
 
 def write_csv(it):
     filepath = "/tmp/test.csv"
+    print("IT", it, type(it))
     csv_writer = CSVDataset(filepath=filepath, delimiter=",")
     csv_writer.from_data(it, header=["A", "B", "C", "D", "F"])
     return True
@@ -119,33 +121,25 @@ class TestETL(unittest.TestCase):
             counter += 1
 
     def test_pipeline_write_calc_hash(self):
+        import dask.bag as db
         iterator = [
             [1, 2, 3, 4, 5],
             [6, 7, 8, 9, 0],
             [0, 9, 8, 7, 9]]
 
         it = Iterator(iterator).batchs(2)
+        #bag = db.from_sequence(it)
         pipeline = Pipeline(it)
         a = pipeline.map(calc_hash)
         b = pipeline.map(write_csv)
-        for r in pipeline.compute():
+        for r in pipeline.compute_consume():
             print("--", r)
 
-        filepath = "/tmp/test.csv"
-        csv_writer = CSVDataset(filepath=filepath, delimiter=",")
+        #filepath = "/tmp/test.csv"
+        #csv_writer = CSVDataset(filepath=filepath, delimiter=",")
         #for e in csv_writer:
         #    print(e)
-        csv_writer.destroy()
-
-    #def test_stream2(self):
-    #    csv = CSVDataset(self.filepath)
-    #    csv.map(plus)
-    #    data = Data(name="test", dataset_path="/tmp")
-    #    data.from_data(csv, chunksize=3, length=2)
-        #reg = Xgboost(name="test")
-        #reg.set_dataset(csv)
-        #reg.train()
-        #reg.save(model_version="1")
+        #csv_writer.destroy()
 
     #def test_graph(self):
         #s.visualize_task_graph(filename="stream", format="svg")

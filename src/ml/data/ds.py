@@ -247,9 +247,6 @@ class HDF5Dataset(AbsDataset):
 
     @property
     def shape(self) -> tuple:
-        #if 'data' not in self.f.keys():
-        #    return self._get_data(self.labels[0]).shape
-        #else:
         return self.data.shape
 
     @property

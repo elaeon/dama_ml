@@ -89,10 +89,15 @@ class Pipeline(PipelineABC):
             leafs = self._eval(values)
             yield dask.compute(leafs)[0]
 
+    def compute_consume(self):
+        leafs = self._eval(self.it)
+        return dask.compute(leafs)[0]
+
     def evaluate_graph_root(self, x, root_node, leafs):
         for node in self.G.neighbors(root_node):
+            print(node, x)
             self.evaluate_graph(node(x), leafs)
-        return x
+        #return x
 
     def evaluate_graph(self, base_node, leafs):
         if len(list(self.G.neighbors(base_node))) == 0:
@@ -134,8 +139,12 @@ class Pipeline(PipelineABC):
         plt.show()
 
     def visualize_task_graph(self, **kwargs):
-        r = self._eval([1])
-        r[0].visualize(**kwargs)
+        r = self._eval(1)
+        for i, e in enumerate(r):
+            if 'filename' not in kwargs:
+                e.visualize(filename='{}_{}'.format(i, e.key), **kwargs)
+            else:
+                e.visualize(**kwargs)
 
     # def to_dict(self, x):
     #    for node in self.G.neighbors(root_node):

@@ -371,21 +371,6 @@ class TestIterator(unittest.TestCase):
             if j > 100:
                 j = 100
 
-    def test_batch_buffer(self):
-        v = list(range(100))
-        batch_size = 2
-        it = Iterator(v).batchs(batch_size=batch_size)
-        buffer_size = 7
-        i = 0
-        j = batch_size
-        for elems in it.buffer(buffer_size):
-            for x in elems:
-                self.assertCountEqual(x, list(range(i, j)))
-                i = j
-                j += batch_size
-                if j > 100:
-                    j = 100
-
     def test_sliding_window(self):
         it = Iterator(range(100))
         i = 1

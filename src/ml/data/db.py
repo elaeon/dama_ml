@@ -204,7 +204,7 @@ class SQL(AbsDataset):
 
     @property
     @cache
-    def shape(self):
+    def shape(self) -> tuple:
         cur = self.conn.cursor()
         query = "SELECT COUNT(*) FROM {table_name}".format(
             table_name=self.table_name)
@@ -298,10 +298,10 @@ class SQL(AbsDataset):
         cur.execute(update_str)
         self.conn.commit()
 
-    def exists(self):
+    def exists(self) -> bool:
         cur = self.conn.cursor()
         cur.execute("select exists(select relname from pg_class where relname='{name}')".format(name=self.table_name))
-        return cur.fetchone()[0]
+        return True if cur.fetchone()[0] else False
 
     def destroy(self):
         cur = self.conn.cursor()
