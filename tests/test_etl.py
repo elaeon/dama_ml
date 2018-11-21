@@ -25,6 +25,12 @@ def sum_(*x):
     return sum(x)
 
 
+def op_da_array(da):
+    x = da + 1
+    y = x*2
+    return y
+
+
 def ident(x):
     return x
 
@@ -42,10 +48,19 @@ def temperature_sensor_stream():
         yield (t_stamp, temp)
 
 
-def mov_avg(values):
+def mov_avg_it(values):
+    for window in values:
+        avg = 0
+        n = len(window)
+        for t_stamp, temp in window:
+            avg += temp / n
+        yield avg
+
+
+def mov_avg_fn(window):
     avg = 0
-    n = len(values)
-    for t_stamp, temp in values:
+    n = len(window)
+    for t_stamp, temp in window:
         avg += temp / n
     return avg
 
@@ -76,7 +91,7 @@ class TestETL(unittest.TestCase):
         d = pipeline.zip(c, b).map(add).map(str).map(float)
         g = pipeline.zip(d, f).map(add)
 
-        for r in pipeline.compute():
+        for r in pipeline.compute_delays():
             self.assertEqual(r[0], 24.0)
 
     def test_pipeline_02(self):
@@ -85,7 +100,7 @@ class TestETL(unittest.TestCase):
         a = pipeline.map(inc)
         d = pipeline.zip(1, a, 2).map(sum_).map(str)
 
-        for r in pipeline.compute():
+        for r in pipeline.compute_delays():
             self.assertEqual(r[0], '8')
 
 
@@ -100,23 +115,35 @@ class TestETL(unittest.TestCase):
         it = Iterator(stream())
         pipeline = Pipeline(it)
         a = pipeline.map(str)
-        results = list(pipeline.compute())
+        results = list(pipeline.compute_delays())
         self.assertCountEqual(results, [['1'], ['2'], ['3'], ['4'], ['5'], ['6']])
 
     def test_stream(self):
         it = Iterator(stream())
         pipeline = Pipeline(it[:10])
         a = pipeline.map(str)
-        results = list(pipeline.compute())
+        results = list(pipeline.compute_delays())
         self.assertCountEqual(results, [[e] for e in list(map(str, np.arange(0, 10)))])
 
     def test_temperature_sensor_stream(self):
         it = Iterator(temperature_sensor_stream()).window(200)
         pipeline = Pipeline(it)
-        a = pipeline.map(mov_avg)
+        a = pipeline.map(mov_avg_it)
+        dask_graph = pipeline.to_dask_graph()
         counter = 0
-        for e in pipeline.compute():
-            self.assertEqual(10 <= e[0] <= 13, True)
+        for avg in get(dask_graph, 'mov_avg_it-fn'):
+            self.assertEqual(10 <= avg <= 13, True)
+            if counter == 1:
+                break
+            counter += 1
+
+    def test_temperature_sensor_stream_delays(self):
+        it = Iterator(temperature_sensor_stream()).window(200)
+        pipeline = Pipeline(it)
+        a = pipeline.map(mov_avg_fn)
+        counter = 0
+        for avg in pipeline.compute_delays():
+            self.assertEqual(10 <= avg[0] <= 13, True)
             if counter == 1:
                 break
             counter += 1
@@ -131,7 +158,7 @@ class TestETL(unittest.TestCase):
         pipeline = Pipeline(it)
         a = pipeline.map(calc_hash)
         b = pipeline.map(write_csv)
-        for r in pipeline.compute():
+        for r in pipeline.compute_delays():
             print("--", r)
 
         #filepath = "/tmp/test.csv"
@@ -147,12 +174,35 @@ class TestETL(unittest.TestCase):
         b = pipeline.map(dec)
         c = pipeline.zip(a, b).map(add)
         dask_graph = pipeline.to_dask_graph()
-        self.assertEqual(get(dask_graph, 'dec-key'), 3)
-        self.assertEqual(get(dask_graph, 'ident-key'), 5)
-        self.assertEqual(get(dask_graph, 'add-key'), 8)
+        self.assertEqual(get(dask_graph, 'dec-fn'), 3)
+        self.assertEqual(get(dask_graph, 'ident-fn'), 5)
+        self.assertEqual(get(dask_graph, 'add-fn'), 8)
 
-    #def test_graph(self):
-        #s.visualize_task_graph(filename="stream", format="svg")
+    def test_dask_graph_map_values(self):
+        data = 4
+        values = np.asarray([1, 2, 3])
+        pipeline = Pipeline(data)
+        a = pipeline.map(inc)
+        b = pipeline.map(dec, with_values=values)
+        c = pipeline.zip(a, b).map(add)
+        dask_graph = pipeline.to_dask_graph()
+        self.assertEqual((get(dask_graph, 'add-fn') == (values + 4)).all(), True)
+
+    def test_dask_graph_da(self):
+        import dask.array as da
+        x = np.array(range(1000))
+        darray = da.from_array(x, chunks=(100,))
+        print(darray)
+        pipeline = Pipeline(darray)
+        a = pipeline.map(op_da_array)
+        dask_graph = pipeline.to_dask_graph()
+        print(get(dask_graph, 'op_da_array-fn').compute())
+
+    def test_graph(self):
+        pipeline = Pipeline(None)
+        a = pipeline.map(ident)
+        pipeline.visualize(filename="stream", format="svg")
+        #print(list(pipeline.compute_delays()))
         #s.visualize_graph()
 
 
