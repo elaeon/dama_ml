@@ -4,6 +4,7 @@ import functools
 import dask
 import networkx as nx
 import matplotlib.pyplot as plt
+from dask import get as sync_get
 
 
 class OrderedSet(MutableSet):
@@ -82,11 +83,6 @@ class Pipeline(PipelineABC):
         self.clean_graph_eval(self.root)
         return leafs
 
-    def compute_delays(self):
-        for values in self.data:
-            leafs = self._eval(values)
-            yield dask.compute(leafs)[0]
-
     def evaluate_graph_root(self, x, root_node, leafs):
         for node in self.G.neighbors(root_node):
             self.evaluate_graph(node(x), leafs)
@@ -97,7 +93,7 @@ class Pipeline(PipelineABC):
             if len(nodes) > 1:
                 base_node(*nodes)
             if base_node.completed:
-                leafs.append(base_node.eval_task)
+                leafs.append((base_node.eval_task, base_node.key))
 
         for node in self.G.neighbors(base_node):
             nodes = list(self.G.predecessors(node))
@@ -132,11 +128,18 @@ class Pipeline(PipelineABC):
 
     def visualize(self, **kwargs):
         graphs = self._eval(None)
-        for i, graph in enumerate(graphs):
+        for i, (graph, _) in enumerate(graphs):
             if 'filename' not in kwargs:
                 graph.visualize(filename='{}_{}'.format(i, graph.key), **kwargs)
             else:
                 graph.visualize(**kwargs)
+
+    def compute(self, scheduler=None, **kwargs):
+        if scheduler is None:
+            scheduler = sync_get
+        dask_graph = self.to_dask_graph()
+        leafs = [key for _, key in self._eval(None)]
+        return scheduler(dask_graph, leafs, **kwargs)
 
     def to_dask_graph(self):
         if self.G is None:
@@ -155,17 +158,20 @@ class Pipeline(PipelineABC):
         if len(list(self.G.neighbors(base_node))) == 0:
             return
 
+        #print("**", base_node)
         for node in self.G.neighbors(base_node):
+            #print(node, base_node)
             if node.key in dask_graph:
                 params = [param for param in dask_graph[node.key]]
-                tuple_value = tuple(params + [base_node.key])
-                dask_graph[node.key] = tuple_value
+                if not base_node.key in params[1:]:
+                    tuple_value = tuple(params + [base_node.key])
+                    dask_graph[node.key] = tuple_value
             else:
                 if node.with_values is None:
                     dask_graph[node.key] = (node.func, base_node.key)
                 else:
                     dask_graph[node.key] = (node.func, node.with_values)
-            self.walk_graph(node, dask_graph)
+            self._walk_graph(node, dask_graph)
 
     def __str__(self):
         return "MAIN"
@@ -201,7 +207,7 @@ class map(PipelineABC):
 
     @property
     def key(self):
-        return "{}-{}".format(self.fn_name, "fn")
+        return self.task.key
 
     def __str__(self):
         return self.fn_name
