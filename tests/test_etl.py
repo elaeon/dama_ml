@@ -1,11 +1,14 @@
 import unittest
 import numpy as np
 import datetime
+import dask.array as da
+import os
 
 from ml.data.csv import CSVDataset
 from ml.data.it import Iterator
 from ml.data.etl import Pipeline
 from ml.utils.basic import Hash
+from ml.utils.files import rm
 
 
 def str_it(it):
@@ -42,6 +45,10 @@ def op_da_array(da):
 
 def ident(x):
     return x
+
+
+def square(x):
+    return x**2
 
 
 def stream():
@@ -140,14 +147,15 @@ class TestETL(unittest.TestCase):
     def test_dask_graph(self):
         data = 4
         pipeline = Pipeline(data)
-        a = pipeline.map(inc).map(ident)
+        a = pipeline.map(inc)
         b = pipeline.map(dec)
-        c = pipeline.zip(a, b).map(add)
-        print(a)
-        #dask_graph = pipeline.to_dask_graph()
-        #self.assertEqual(get(dask_graph, 'dec-fn'), 3)
-        #self.assertEqual(get(dask_graph, 'ident-fn'), 5)
-        #self.assertEqual(get(dask_graph, 'add-fn'), 8)
+        c = b.map(ident).map(square)
+        d = pipeline.zip(a, b).map(add)
+        self.assertEqual(a.compute(), 5)
+        self.assertEqual(b.compute(), 3)
+        self.assertEqual(c.compute(), 9)
+        self.assertEqual(d.compute(), 8)
+        self.assertEqual(pipeline.compute(), (9, 8))
 
     def test_dask_graph_map_values(self):
         data = 4
@@ -156,24 +164,21 @@ class TestETL(unittest.TestCase):
         a = pipeline.map(inc)
         b = pipeline.map(dec, with_values=values)
         c = pipeline.zip(a, b).map(add)
-        dask_graph = pipeline.to_dask_graph()
-        self.assertEqual((get(dask_graph, 'add-fn') == (values + 4)).all(), True)
+        self.assertEqual((c.compute() == (values + 4)).all(), True)
 
     def test_dask_graph_da(self):
-        import dask.array as da
         x = np.array(range(1000))
         darray = da.from_array(x, chunks=(100,))
-        print(darray)
         pipeline = Pipeline(darray)
         a = pipeline.map(op_da_array)
-        dask_graph = pipeline.to_dask_graph()
-        print(get(dask_graph, 'op_da_array-fn').compute())
+        shape = a.compute().compute().shape
+        self.assertEqual(shape, (1000,))
 
     def test_graph(self):
         pipeline = Pipeline(None)
         a = pipeline.map(ident)
-        pipeline.visualize(filename="stream", format="svg")
-        #print(list(pipeline.compute_delays()))
-        #s.visualize_graph()
+        rm("/tmp/stream.svg")
+        pipeline.visualize(filename="/tmp/stream", format="svg")
+        self.assertEqual(os.path.exists("/tmp/stream.svg"), True)
 
 

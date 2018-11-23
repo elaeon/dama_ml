@@ -35,10 +35,6 @@ class OrderedWeakrefSet(weakref.WeakSet):
             self.add(elem)
 
 
-def identity(x):
-    return x
-
-
 class PipelineABC(object):
     def __init__(self, upstream=None):
         self.downstreams = OrderedWeakrefSet()
@@ -52,81 +48,86 @@ class PipelineABC(object):
             upstream.downstreams.add(self)
 
     @classmethod
-    def register_api(cls, modifier=identity):
+    def register_api(cls):
         def _(func):
             @functools.wraps(func)
             def wrapped(*args, **kwargs):
                 return func(*args, **kwargs)
-            setattr(cls, func.__name__, modifier(wrapped))
+            setattr(cls, func.__name__, wrapped)
             return func
         return _
+
+    @property
+    def key(self):
+        return NotImplemented
 
 
 class Pipeline(PipelineABC):
     def __init__(self, data, upstream=None):
         super(Pipeline, self).__init__(upstream=upstream)
         self.data = data
-        self.G = None
+        self.di_graph = None
         self.root = 'root'
 
-    def graph(self):
-        self.G = nx.DiGraph()
+    def graph(self) -> nx.DiGraph:
+        di_graph = nx.DiGraph()
         nodes = []
         self.maps(self.downstreams, nodes, self.root)
-        self.G.add_edges_from(nodes)
+        di_graph.add_edges_from(nodes)
+        return di_graph
 
     def _eval(self, batch):
-        if self.G is None:
-            self.graph()
+        if self.di_graph is None:
+            self.di_graph = self.graph()
         leafs = []
         self.evaluate_graph_root(batch, self.root, leafs)
         self.clean_graph_eval(self.root)
         return leafs
 
     def evaluate_graph_root(self, x, root_node, leafs):
-        for node in self.G.neighbors(root_node):
+        for node in self.di_graph.neighbors(root_node):
             self.evaluate_graph(node(x), leafs)
 
     def evaluate_graph(self, base_node, leafs):
-        if len(list(self.G.neighbors(base_node))) == 0:
-            nodes = list(self.G.predecessors(base_node))
+        if len(list(self.di_graph.neighbors(base_node))) == 0:
+            nodes = list(self.di_graph.predecessors(base_node))
             if len(nodes) > 1:
                 base_node(*nodes)
             if base_node.completed:
                 leafs.append((base_node.eval_task, base_node.key))
 
-        for node in self.G.neighbors(base_node):
-            nodes = list(self.G.predecessors(node))
+        for node in self.di_graph.neighbors(base_node):
+            nodes = list(self.di_graph.predecessors(node))
             if len(nodes) > 1:
                 node(*nodes)
             else:
                 node(base_node)
             self.evaluate_graph(node, leafs)
 
-    def clean_graph_eval(self, root):
-        for node in self.G.neighbors(root):
+    def clean_graph_eval(self, root) -> None:
+        for node in self.di_graph.neighbors(root):
             if isinstance(node, PipelineABC):
                 node.eval_task = None
             self.clean_graph_eval(node)
 
-    def maps(self, downstreams, l, parent):
+    def maps(self, downstreams, nodes, parent) -> None:
         for fn in downstreams:
             if type(fn) == zip:
                 for fn_zip in fn.args:
                     for map_zip_fn in fn.downstreams:
-                        l.append((fn_zip, map_zip_fn))
-            self.maps(fn.downstreams, l, fn)
+                        nodes.append((fn_zip, map_zip_fn))
+            self.maps(fn.downstreams, nodes, fn)
             
             if type(fn) != zip and type(parent) != zip:
-                l.append((parent, fn))
+                nodes.append((parent, fn))
 
-    def visualize_graph(self):
-        if self.G is None:
-            self.graph()
-        nx.draw(self.G, with_labels=True, font_weight='bold')
+    def visualize_graph(self) -> None:
+        if self.di_graph is None:
+            self.di_graph = self.graph()
+        nx.draw(self.di_graph, with_labels=True, font_weight='bold')
         plt.show()
 
-    def visualize(self, **kwargs):
+    def visualize(self, **kwargs) -> None:
         graphs = self._eval(None)
         for i, (graph, _) in enumerate(graphs):
             if 'filename' not in kwargs:
@@ -141,29 +142,27 @@ class Pipeline(PipelineABC):
         leafs = [key for _, key in self._eval(None)]
         return scheduler(dask_graph, leafs, **kwargs)
 
-    def to_dask_graph(self):
-        if self.G is None:
-            self.graph()
+    def to_dask_graph(self) -> dict:
+        if self.di_graph is None:
+            self.di_graph = self.graph()
         dask_graph = {}
-        for node in self.G.neighbors(self.root):
-            dask_graph[node.input_value] = self.data
+        for node in self.di_graph.neighbors(self.root):
+            dask_graph[node.placeholder] = self.data
             if node.with_values is None:
-                dask_graph[node.key] = (node.func, node.input_value)
+                dask_graph[node.key] = (node.func, node.placeholder)
             else:
                 dask_graph[node.key] = (node.func, node.with_values)
-            self._walk_graph(node, dask_graph)
+            self._walk(node, dask_graph)
         return dask_graph
 
-    def _walk_graph(self, base_node: PipelineABC, dask_graph: dict):
-        if len(list(self.G.neighbors(base_node))) == 0:
+    def _walk(self, base_node: PipelineABC, dask_graph: dict) -> None:
+        if len(list(self.di_graph.neighbors(base_node))) == 0:
             return
 
-        #print("**", base_node)
-        for node in self.G.neighbors(base_node):
-            #print(node, base_node)
+        for node in self.di_graph.neighbors(base_node):
             if node.key in dask_graph:
                 params = [param for param in dask_graph[node.key]]
-                if not base_node.key in params[1:]:
+                if base_node.key not in params[1:]:
                     tuple_value = tuple(params + [base_node.key])
                     dask_graph[node.key] = tuple_value
             else:
@@ -171,10 +170,17 @@ class Pipeline(PipelineABC):
                     dask_graph[node.key] = (node.func, base_node.key)
                 else:
                     dask_graph[node.key] = (node.func, node.with_values)
-            self._walk_graph(node, dask_graph)
+            self._walk(node, dask_graph)
+
+    @property
+    def key(self) -> str:
+        return self.root
 
     def __str__(self):
-        return "MAIN"
+        return "Pipeline"
+
+    def __repr__(self):
+        return self.key
         
 
 @PipelineABC.register_api()
@@ -184,9 +190,7 @@ class map(PipelineABC):
         self.func = func
         self.eval_task = None
         self.completed = False
-        self.fn_name = func.__name__
         self.with_values = with_values
-        self.input_value = '{}_x'.format(self.fn_name)
         PipelineABC.__init__(self, upstream)
 
     def __call__(self, *nodes):
@@ -205,12 +209,34 @@ class map(PipelineABC):
         self.completed = True
         return self
 
+    def get_root(self, node) -> Pipeline:
+        if len(node.upstreams) > 0:
+            parent = node.upstreams[-1]
+            ant = self.get_root(parent)
+            if ant.key == "root":
+                return ant
+        return node
+
     @property
-    def key(self):
+    def key(self) -> str:
         return self.task.key
 
+    @property
+    def placeholder(self) -> str:
+        return '{}_x'.format(self.func.__name__)
+
+    def compute(self, scheduler=None, **kwargs):
+        if scheduler is None:
+            scheduler = sync_get
+        root_node = self.get_root(self)
+        dask_graph = root_node.to_dask_graph()
+        return scheduler(dask_graph, self.key, **kwargs)
+
     def __str__(self):
-        return self.fn_name
+        return self.func.__name__
+
+    def __repr__(self):
+        return self.key
 
 
 @PipelineABC.register_api()
