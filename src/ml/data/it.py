@@ -1,7 +1,6 @@
 from itertools import chain, islice
 import numpy as np
 import pandas as pd
-import dask.dataframe as dd
 import types
 import logging
 
@@ -10,6 +9,7 @@ from ml.utils.config import get_settings
 from ml.utils.numeric_functions import max_type, num_splits, wsrj, max_dtype
 from ml.data.abc import AbsDataset
 from ml.utils.seq import grouper_chunk
+from ml.utils.basic import StructArray
 
 
 settings = get_settings("ml")
@@ -158,6 +158,11 @@ class Iterator(BaseIterator):
             self.is_ds = False
         elif isinstance(fn_iter, Iterator):
             pass
+        elif isinstance(fn_iter, dict):
+            self.data = StructArray(fn_iter.items())
+            dtypes = self.data.dtypes
+            length = self.data.shape[0]
+            self.is_ds = True
         elif isinstance(fn_iter, pd.DataFrame):
             self.data = fn_iter.itertuples(index=False)
             dtypes = list(zip(fn_iter.columns.values, fn_iter.dtypes.values))
@@ -265,11 +270,11 @@ class Iterator(BaseIterator):
         if batch_size > 0:
             if self.is_ds:
                 if batch_type == "df":
-                    return BatchDataFrame(self, batch_size=batch_size)
+                    return BatchDataFrame(self, batch_size=batch_size, batch_type=batch_type)
                 elif batch_type == "array":
-                    return BatchArray(self, batch_size=batch_size)
+                    return BatchArray(self, batch_size=batch_size, batch_type=batch_type)
                 else:
-                    return BatchStructured(self, batch_size=batch_size)
+                    return BatchStructured(self, batch_size=batch_size, batch_type=batch_type)
             else:
                 return BatchIt(self, batch_size=batch_size, batch_type=batch_type)
         else:
@@ -463,17 +468,3 @@ class BatchStructured(BatchIterator):
             init = end
             end += self.batch_size
             length = batch.shape[0]
-
-
-class DaskIterator(object):
-    def __init__(self, fn_iter) -> None:
-        if isinstance(fn_iter, dd.DataFrame):
-            self.data = fn_iter
-            self.length = None
-            self.dtype = None
-
-    def to_memory(self):
-        df = self.data.compute()
-        self.length = df.shape[0]
-        self.dtype = list(zip(df.columns.values, df.dtypes.values))
-        return df

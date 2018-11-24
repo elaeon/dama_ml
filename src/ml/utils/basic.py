@@ -43,6 +43,12 @@ class StructArray:
         else:
             return self.convert_from_index(key)
 
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self[0]
+
     def is_multidim(self) -> bool:
         return len(self.labels_data[0][1].shape) >= 2
 

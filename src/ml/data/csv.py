@@ -14,15 +14,6 @@ from ml.utils.decorators import cache
 from tqdm import tqdm
 
 
-# def get_compressed_file_manager(filepath):
-#    with file(filepath, 'r') as f:
-#        start_of_file = f.read(1024)
-#        f.seek(0)
-#        for cls in (ZIPFile,):
-#            if cls.is_magic(start_of_file):
-#                return cls(filepath)
-#        return File(filepath)
-
 
 def get_compressed_file_manager_ext(filepath, engine):
     ext = filepath.split(".").pop()

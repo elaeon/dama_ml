@@ -304,6 +304,16 @@ class TestDataset(unittest.TestCase):
             for e in it:
                 self.assertEqual(e.to_ndarray().shape, (1, 2))
 
+    def test_dataset_from_dict(self):
+        x = np.asarray([1, 2, 3, 4, 5])
+        y =  np.asarray(['a', 'b', 'c', 'd', 'e'], dtype="object")
+        data = Data(name="test0", dataset_path="/tmp", clean=True)
+        data.from_data({"x": x, "y": y})
+        with data:
+            df = data.to_df()
+            self.assertEqual((df["x"].values == x).all(), True)
+            self.assertEqual((df["y"].values == y).all(), True)
+
 
 class TestMemoryDs(unittest.TestCase):
     def test_memory_ds(self):

@@ -3,10 +3,10 @@ from skimage import filters
 from skimage import transform
 from skimage import img_as_ubyte
 from skimage import exposure
-# from pydoc import locate
 
 import logging
 import numpy as np
+import random
 
 from ml.utils.config import get_settings
 
@@ -19,11 +19,8 @@ handler.setFormatter(logFormatter)
 log.addHandler(handler)
 log.setLevel(int(settings["loglevel"]))
 
-# if not settings["class_path"] in sys.path:
-#    sys.path.insert(0, settings["class_path"])
 
-
-def pixelate_mode(mode):
+def pixelate_mode(mode: str):
     if mode == 'mean':
         return np.mean
     elif mode == 'min':
@@ -32,17 +29,7 @@ def pixelate_mode(mode):
         return max
 
 
-def resize(data, image_size_h=90, image_size_w=90):
-    """
-    :type data: array
-    :param data: data to be resized
-
-    :type image_size_h: int
-    :param image_size_h: reduce the image height to this size.
-
-    :type image_size_w: int
-    param image_size_w: reduce the image weight to this size.
-    """
+def resize(data: np.ndarray, image_size_h: int=90, image_size_w: int=90) -> np.ndarray:
     dim = (image_size_h, image_size_w)
     if dim < data.shape or data.shape <= dim:
         try:
@@ -52,19 +39,15 @@ def resize(data, image_size_h=90, image_size_w=90):
     return data
 
 
-def contrast(data):
+def contrast(data: np.array) -> np.array:
     """
-    :type data: array
-    :param data: data to transform
-
     add contrast stretching to the data.
     """
-    #contrast stretching
     p2, p98 = np.percentile(data, (2, 98))
     return exposure.rescale_intensity(data, in_range=(p2, p98))
 
 
-def upsample(data):
+def upsample(data: np.ndarray) -> np.array:
     """
     :type data: array
     :param data: data to transform
@@ -74,38 +57,16 @@ def upsample(data):
     return transform.pyramid_expand(data, upscale=2, sigma=None, order=1, 
                                     mode='reflect', cval=0)
 
-def rgb2gray(data):
-    """
-    :type data: array
-    :param data: data to transform
 
+def rgb2gray(data: np.ndarray) -> np.ndarray:
+    """
     convert an image to gray scale
     """
     return color.rgb2gray(data)
 
 
-def blur(data, level=.2):
-    """
-    :type data: array
-    :param data: data to transform
-
-    apply gaussian blur to the data.
-    """
+def blur(data: np.ndarray, level: float=.2) -> np.ndarray:
     return filters.gaussian(data, level)
-
-
-#def align_face(data):
-#    from ml.face_detector import FaceAlign
-#    dlibFacePredictor = "/home/sc/dlib-18.18/python_examples/shape_predictor_68_face_landmarks.dat"
-#    align = FaceAlign(dlibFacePredictor)
-#    return align.process_img(data)
-
-
-#def detector(data):
-#    from ml.face_detector import DetectorDlib
-#    dlibFacePredictor = "/home/sc/dlib-18.18/python_examples/shape_predictor_68_face_landmarks.dat"
-#    align = DetectorDlib(dlibFacePredictor)
-#    return align.process_img(data)
 
 
 def cut(data, rectangle=None):
@@ -126,32 +87,23 @@ def as_ubyte(data):
     return img_as_ubyte(data)
 
 
-def merge_offset(data, image_size=90, bg_color=1):
+def merge_offset(data: np.ndarray, image_size: int=90, bg_color: int=1) -> np.ndarray:
     """
-    :type data: array
-    :param data: data transform
-
-    :type image_size: int
-    :param image_size: the new image size
-
-    :type bg_color: float
-    :param bg_color: value in [0, 1] for backgroung color
-
     transform a rectangular image of (with, height) or (widh, height, channel) to 
     a squared image of size (image_size, image_size) 
     """
     if len(data.shape) == 3:
-        return merge_offset2(data, image_size=image_size, bg_color=bg_color)
+        return merge_offset2d(data, image_size=image_size, bg_color=bg_color)
     elif len(data.shape) == 4:
-        return merge_offset3(data, image_size=image_size, bg_color=bg_color)
+        return merge_offset3d(data, image_size=image_size, bg_color=bg_color)
 
 
-def merge_offset2(data, image_size=90, bg_color=1):
+def merge_offset2d(data: np.ndarray, image_size: int=90, bg_color: int=1):
     bg = np.ones((image_size, image_size))
     ndata = np.empty((data.shape[0], image_size, image_size), dtype=data.dtype)
     for i, image in enumerate(data):
-        offset = (int(round(abs(bg.shape[0] - image.shape[0]) / 2)), 
-                int(round(abs(bg.shape[1] - image.shape[1]) / 2)))
+        offset = (int(round(abs(bg.shape[0] - image.shape[0]) / 2)),
+                  int(round(abs(bg.shape[1] - image.shape[1]) / 2)))
         pos_v, pos_h = offset
         v_range1 = slice(max(0, pos_v), max(min(pos_v + image.shape[0], bg.shape[0]), 0))
         h_range1 = slice(max(0, pos_h), max(min(pos_h + image.shape[1], bg.shape[1]), 0))
@@ -169,13 +121,13 @@ def merge_offset2(data, image_size=90, bg_color=1):
     return ndata
 
 
-def merge_offset3(data, image_size=90, bg_color=1):
+def merge_offset3d(data: np.ndarray, image_size: int=90, bg_color: int=1):
     ndata = np.empty((data.shape[0], image_size, image_size, 3), dtype=data.dtype)
     for i, image in enumerate(data):
         bg = np.ones((image_size, image_size, 3))
-        offset = (int(round(abs(bg.shape[0] - image.shape[0]) / 2)), 
-                int(round(abs(bg.shape[1] - image.shape[1]) / 2)),
-                 int(round(abs(bg.shape[2] - image.shape[2]) / 2)))
+        offset = (int(round(abs(bg.shape[0] - image.shape[0]) / 2)),
+                  int(round(abs(bg.shape[1] - image.shape[1]) / 2)),
+                  int(round(abs(bg.shape[2] - image.shape[2]) / 2)))
         pos_v, pos_h, pos_w = offset
         v_range1 = slice(max(0, pos_v), max(min(pos_v + image.shape[0], bg.shape[0]), 0))
         h_range1 = slice(max(0, pos_h), max(min(pos_h + image.shape[1], bg.shape[1]), 0))
@@ -196,28 +148,16 @@ def merge_offset3(data, image_size=90, bg_color=1):
     return ndata
 
 
-def threshold(data, block_size=41):
+def threshold(data: np.ndarray, block_size: int=41) -> np.array:
     return filters.threshold_adaptive(data, block_size, offset=0)
 
 
-def pixelate(data, pixel_width=None, pixel_height=None, mode='mean'):
+def pixelate(data: np.ndarray, pixel_width: int=None, pixel_height: int=None, mode: str='mean') -> np.ndarray:
     """
-    :type data: array
-    :param data: data to pixelate
-
-    :type pixel_width: int
-    :param pixel_width: pixel with in the image
-
-    :type pixel_height: int
-    :param pixel_height: pixel height in the image
-
-    :type mode: string
-    :param mode: mean, min or max
-
-    add pixelation to the image in de data.
+    add pixelation to the image.
     """
-    #import time
-    #start_time = time.time()
+    # import time
+    # start_time = time.time()
     if len(data.shape) > 2:
         width, height, channels = data.shape
     else:
@@ -229,13 +169,12 @@ def pixelate(data, pixel_width=None, pixel_height=None, mode='mean'):
         minx, maxx = w, min(width, w + pixel_width)
         for h in range(0, height, pixel_height):
             miny, maxy = h, min(height, h + pixel_height)
-            color = tuple(modefunc([data[x][y]
-                    for x in range(minx, maxx)
-                    for y in range(miny, maxy)]))
+            color_p = tuple(modefunc([data[x][y]
+                                      for x in range(minx, maxx) for y in range(miny, maxy)]))
             for x in range(minx, maxx):
                 for y in range(miny, maxy):
-                    data[x][y] = color
-    #print("--- %s seconds ---" % (time.time() - start_time))
+                    data[x][y] = color_p
+    # print("--- %s seconds ---" % (time.time() - start_time))
     return data
 
 

@@ -1,7 +1,5 @@
 import numpy as np
 from ml.data.it import Iterator
-from ml.utils.numeric_functions import filter_sample
-from ml import ittools
 
 
 def sampling_size(sampling, stream):
@@ -26,4 +24,3 @@ def sampling_size(sampling, stream):
         sampling_n[y] = int(round(v, 0))
 
     return sampling_n
-

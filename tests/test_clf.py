@@ -1,8 +1,7 @@
 import unittest
 import numpy as np
 
-from ml.data.ds import DataLabel
-from ml.clf.ensemble import Grid
+from ml.data.ds import Data
 from ml.clf.extended.w_sklearn import RandomForest
 np.random.seed(0)
 
@@ -22,9 +21,9 @@ class TestSKL(unittest.TestCase):
     def setUp(self):
         self.X = np.random.rand(100, 10)
         self.Y = self.X[:,0] > .5
-        self.dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
+        self.dataset = Data(name="test", dataset_path="/tmp/", clean=True)
         with self.dataset:
-            self.dataset.from_data(self.X, self.Y)
+            self.dataset.from_data(self.X)
 
     def tearDown(self):
         self.dataset.destroy()

@@ -10,7 +10,6 @@ import pandas as pd
 from tqdm import tqdm
 from ml.data.abc import AbsDataset
 from ml.data.it import Iterator, BaseIterator
-from ml.random import downsample
 from ml.random import sampling_size
 from ml.utils.config import get_settings
 from ml.utils.files import build_path
@@ -137,13 +136,13 @@ class HDF5Dataset(AbsDataset):
             yield data[i]
             i += 1
 
-    def auto_dtype(self, ttype):
-        if ttype == np.dtype("O") or ttype.kind == "U":
+    def auto_dtype(self, ttype: np.dtype):
+        if ttype == np.dtype("O") or ttype.type == np.str_:
             return h5py.special_dtype(vlen=str)
         else:
             return ttype
 
-    def _set_space_shape(self, name, shape, dtype):
+    def _set_space_shape(self, name: str, shape: tuple, dtype: np.dtype) -> None:
         #with self:
             #self.f.require_group(key)
         dtype = self.auto_dtype(dtype)
@@ -173,7 +172,6 @@ class HDF5Dataset(AbsDataset):
     def batchs_writer(self, keys, data, init=0):
         log.info("Writing with batch size {}".format(getattr(data, 'batch_size', 0)))
         end = init
-        #with self:
         if getattr(data, 'batch_size', 0) > 0 and data.batch_type == "structured":
             for smx in tqdm(data, total=data.num_splits()):
                 end += smx.shape[0]
@@ -184,6 +182,7 @@ class HDF5Dataset(AbsDataset):
             for smx in tqdm(data, total=data.num_splits()):
                 end += smx.shape[0]
                 for key in keys:
+                    print(key, smx, data.batch_type)
                     self.f[key][init:end] = smx
                 init = end
         elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "df":
@@ -272,12 +271,12 @@ class HDF5Dataset(AbsDataset):
     def dtypes(self, value):
         if value is not None:
             with self:
-                self._set_space_shape("dtypes", (len(value), 2), 'object')
+                self._set_space_shape("dtypes", (len(value), 2), np.dtype('object'))
                 for i, (c, dtype) in enumerate(value):
-                    self.f["dtypes"][i] = (c, dtype.name)
+                    self.f["dtypes"][i] = (c, dtype.str)
         else:
             with self:
-                self._set_space_shape("dtypes", (1, 2), 'object')
+                self._set_space_shape("dtypes", (1, 2), np.dtype('object'))
 
     def num_features(self) -> int:
         """
@@ -427,7 +426,7 @@ class Data(HDF5Dataset):
             else:
                 shape = data.shape
             for label, dtype in self.dtypes:
-                self._set_space_shape(label, shape, dtype=dtype)  # data[col].shape
+                self._set_space_shape(label, shape, dtype)  # data[col].shape
                 labels.append(label)
             self.batchs_writer(labels, data)
             if with_hash is not None:
