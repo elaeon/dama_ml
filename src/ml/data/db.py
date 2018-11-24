@@ -2,13 +2,17 @@ import psycopg2
 import uuid
 import numpy as np
 import pandas as pd
+
 from tqdm import tqdm
 from collections import OrderedDict
+from psycopg2.extras import execute_values
+from ml.utils.seq import grouper_chunk
 from ml.data.it import BaseIterator
 from ml.data.abc import AbsDataset
 from ml.utils.decorators import cache
 from ml.utils.numeric_functions import max_dtype
 from ml.utils.basic import StructArray
+from ml.fmtypes import fmtypes_map
 
 
 class IteratorConn(BaseIterator):
@@ -21,9 +25,10 @@ class IteratorConn(BaseIterator):
 
     def __getitem__(self, key):
         cur = self.conn.cursor(uuid.uuid4().hex, scrollable=False, withhold=False)
+        start = 0
         stop = None
         if isinstance(key, tuple):
-            _columns = self.labels()[key[1]]
+            _columns = self.labels[key[1]]
             key = key[0]
         else:
             _columns = None
@@ -31,11 +36,9 @@ class IteratorConn(BaseIterator):
         if isinstance(key, str):
             if _columns is None:
                 _columns = [key]
-            start = 0
         elif isinstance(key, list):
             if _columns is None:
                 _columns = key
-            start = 0
         elif isinstance(key, int):
             if _columns is None:
                 _columns = self.labels
@@ -44,17 +47,13 @@ class IteratorConn(BaseIterator):
         elif isinstance(key, slice):
             if _columns is None:
                 _columns = self.labels
-            if key.start is None:
-                start = 0
-            else:
+            if key.start is not None:
                 start = key.start
 
             if key.stop is None:
                 stop = self.shape[0]
             else:
                 stop = key.stop
-        elif key is None:
-            start = 0
 
         if stop is None:
             limit_txt = ""
@@ -64,7 +63,7 @@ class IteratorConn(BaseIterator):
         length = abs(stop - start)
         shape = [length] + list(self.shape[1:])
         query = "SELECT {columns} FROM {table_name} ORDER BY {order_by} {limit}".format(
-            columns=self.format_columns(_columns), table_name=self.table_name,
+            columns=IteratorConn.format_columns(_columns), table_name=self.table_name,
             order_by="id",
             limit=limit_txt)
         cur.execute(query)
@@ -75,7 +74,8 @@ class IteratorConn(BaseIterator):
             smx[i] = row
         return smx
 
-    def format_columns(self, columns):
+    @staticmethod
+    def format_columns(columns):
         if columns is None:
             return "*"
         else:
@@ -89,7 +89,6 @@ class SQL(AbsDataset):
         self.db_name = db_name
         self.table_name = table_name
         self.order_by = ["id"]
-        # self._build_order_text()
         self.dtype = None
 
         if only is not None:
@@ -99,13 +98,13 @@ class SQL(AbsDataset):
 
     def __enter__(self):
         self.conn = psycopg2.connect(
-            "dbname={db_name} user={username}".format(db_name=self.db_name, 
-                                                        username=self.username))
+            "dbname={db_name} user={username}".format(db_name=self.db_name,
+                                                      username=self.username))
         self.conn.autocommit = False
         self.dtype = max_dtype(self.dtypes)
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, etype, value, traceback):
         self.close()
 
     def __next__(self):
@@ -139,30 +138,21 @@ class SQL(AbsDataset):
     def labels(self, value) -> None:
         with self:
             if len(value) == len(self.dtypes):
-                dtypes = [(col, dtypes[1]) for col, dtypes in zip(value, self.dtypes)]
+                self.dtypes = [(col, dtypes[1]) for col, dtypes in zip(value, self.dtypes)]
             else:
                 raise Exception
-        self.dtypes = dtypes
 
     def __getitem__(self, key):
         return self.data[key]
 
     def __setitem__(self, key, value):
         if isinstance(key, str):
-            #_columns = [key]
-            #num_features = len(_columns)
-            #size = self.shape[0]
-            #start = 0
             pass
         elif isinstance(key, list):
             pass
-            #_columns = key
-            #num_features = len(_columns)
-            #size = self.shape[0]
-            #start = 0
         elif isinstance(key, int):
             if key >= self.last_id():
-                self.insert([value])
+                self.from_data([value])
             else:
                 self.update(key, value)
         elif isinstance(key, slice):
@@ -182,22 +172,13 @@ class SQL(AbsDataset):
                 for row in value:
                     self.update(i, row)
                     i += 1
-            elif start <= last_id and stop >= last_id:
+            elif start <= last_id <= stop:
                 size = abs(start - last_id)
                 i = start
                 for row in value[:size]:
                     self.update(i, row)
                     i += 1
-                self.insert(value[size:])
-
-    # def _build_order_text(self):
-    #    if self.order_by is None:
-    #        self.order_by_txt = ""
-    #    else:
-    #        if "rand" in self.order_by:
-    #            self.order_by_txt = "ORDER BY random()"
-    #        else:
-    #            self.order_by_txt = "ORDER BY " + ",".join(self.order_by)
+                self.from_data(value[size:])
 
     def close(self):
         self.conn.close()
@@ -235,21 +216,18 @@ class SQL(AbsDataset):
         if "id" in dtypes:
             del dtypes["id"]
 
-        if len(dtypes) == 0:
-            return None
-        else:
+        if len(dtypes) > 0:
             return list(dtypes.items())
 
-    def format_columns(self, columns):
-        if columns is None:
-            return "*"
-        else:
-            return ",".join(columns)
+    @dtypes.setter
+    def dtypes(self, values):
+        pass
 
     def build_schema(self, columns, indexes=None):
         def build():
             columns_types = ["id serial PRIMARY KEY"]
-            for col, fmtype in columns:
+            for col, dtype in columns:
+                fmtype = fmtypes_map[dtype]
                 columns_types.append("{col} {type}".format(col=col, type=fmtype.db_type))
             cols = "("+", ".join(columns_types)+")"
             cur = self.conn.cursor()
@@ -273,27 +251,23 @@ class SQL(AbsDataset):
             build()
         self.conn.commit()
 
-    def insert(self, data, chunks_size=258):
-        from psycopg2.extras import execute_values
-        from ml.utils.seq import grouper_chunk
+    def from_data(self, data, batch_size: int=258):
         header = self.labels
-        columns = "("+", ".join(header)+")"
+        columns = "(" + ", ".join(header) + ")"
         insert_str = "INSERT INTO {name} {columns} VALUES".format(
             name=self.table_name, columns=columns)
-        #values_str = "("+", ".join(["%s" for _ in range(len(header))])+")"
-        #insert = insert_str+" "+values_str
         insert = insert_str + " %s"
         cur = self.conn.cursor()
-        for row in tqdm(grouper_chunk(chunks_size, data)):
-            #cur.execute(insert, cache_row)
-            execute_values(cur, insert, row, page_size=chunks_size)
+        for row in tqdm(grouper_chunk(batch_size, data)):
+            execute_values(cur, insert, row, page_size=batch_size)
         self.conn.commit()
 
-    def update(self, id, values):
+    def update(self, index, values):
         header = self.labels
         columns = "("+", ".join(header)+")"
-        update_str = "UPDATE {name} SET {columns} = {values} WHERE id = {id}".format(name=self.table_name, 
-            columns=columns, values=tuple(values), id=id+1)
+        update_str = "UPDATE {name} SET {columns} = {values} WHERE id = {id}".format(
+            name=self.table_name,
+            columns=columns, values=tuple(values), id=index+1)
         cur = self.conn.cursor()
         cur.execute(update_str)
         self.conn.commit()

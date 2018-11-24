@@ -5,7 +5,6 @@ import psycopg2
 
 from ml.data.db import SQL
 from ml.data.it import Iterator
-from ml.data.ds import Data
 from ml import fmtypes
 
 
@@ -34,9 +33,9 @@ class TestSQL(unittest.TestCase):
         ], dtype="|O")
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                sql.build_schema(columns=[("X0", fmtypes.TEXT), ("X1", fmtypes.ORDINAL),
-                    ("X2", fmtypes.DENSE)], indexes=["X1"])
-                sql.insert(self.data)
+                sql.build_schema(columns=[("X0", "text"), ("X1", "int"),
+                                          ("X2", "float")], indexes=["X1"])
+                sql.from_data(self.data)
         except psycopg2.OperationalError:
             pass
 
@@ -139,10 +138,7 @@ class TestSQL(unittest.TestCase):
             with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
                 it = Iterator(sql[["x0", "x2"]]).sample(5)
                 for e in it:
-                    print(e.to_ndarray())
-                #data = Data(name="test", driver="memory")
-                #data.from_data(it)
-                #self.assertEqual(len(sql.reader().sample(5).to_memory()), 5)
+                    self.assertEqual(e.to_ndarray().shape, (1, 2))
         except psycopg2.OperationalError:
             pass
 
@@ -161,8 +157,8 @@ class TestSQLDateTime(unittest.TestCase):
         ]
         try:
             with SQL(username="alejandro", db_name="ml", table_name="test_dt") as sql:
-                sql.build_schema(columns=[("A", fmtypes.TEXT), ("B", fmtypes.DATETIME)])
-                sql.insert(self.data)
+                sql.build_schema(columns=[("A", "text"), ("B", "datetime")])
+                sql.from_data(self.data)
         except psycopg2.OperationalError:
             pass
 

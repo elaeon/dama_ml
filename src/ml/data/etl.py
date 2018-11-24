@@ -63,7 +63,7 @@ class PipelineABC(object):
 
 
 class Pipeline(PipelineABC):
-    def __init__(self, data, upstream=None):
+    def __init__(self, data=None, upstream=None):
         super(Pipeline, self).__init__(upstream=upstream)
         self.data = data
         self.di_graph = None
@@ -148,10 +148,10 @@ class Pipeline(PipelineABC):
         dask_graph = {}
         for node in self.di_graph.neighbors(self.root):
             dask_graph[node.placeholder] = self.data
-            if node.with_values is None:
+            if node.data is None:
                 dask_graph[node.key] = (node.func, node.placeholder)
             else:
-                dask_graph[node.key] = (node.func, node.with_values)
+                dask_graph[node.key] = (node.func, node.data)
             self._walk(node, dask_graph)
         return dask_graph
 
@@ -166,11 +166,15 @@ class Pipeline(PipelineABC):
                     tuple_value = tuple(params + [base_node.key])
                     dask_graph[node.key] = tuple_value
             else:
-                if node.with_values is None:
+                if node.data is None:
                     dask_graph[node.key] = (node.func, base_node.key)
                 else:
-                    dask_graph[node.key] = (node.func, node.with_values)
+                    dask_graph[node.key] = (node.func, node.data)
             self._walk(node, dask_graph)
+
+    def feed(self, data) -> 'Pipeline':
+        self.data = data
+        return self
 
     @property
     def key(self) -> str:
@@ -185,12 +189,12 @@ class Pipeline(PipelineABC):
 
 @PipelineABC.register_api()
 class map(PipelineABC):
-    def __init__(self, upstream, func, with_values=None):
+    def __init__(self, upstream, func, data=None):
         self.task = dask.delayed(func)
         self.func = func
         self.eval_task = None
         self.completed = False
-        self.with_values = with_values
+        self.data = data
         PipelineABC.__init__(self, upstream)
 
     def __call__(self, *nodes):

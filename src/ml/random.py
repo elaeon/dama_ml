@@ -20,16 +20,10 @@ def sampling_size(sampling, stream):
         if 0 <= k <= 1:
             v = unique_v * k
         elif 1 < k < unique_v:
-             v = k % unique_v
+            v = k % unique_v
         else:
             v = unique_v % k
         sampling_n[y] = int(round(v, 0))
 
     return sampling_n
 
-
-def downsample(stream, sampling, col_index, size, exact=False):
-    iterators = []
-    for y, k in sampling.items():
-        iterators.append(Iterator(filter_sample(stream[:size], y, col_index)).sample(k))
-    return ittools.concat(iterators)

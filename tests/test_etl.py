@@ -157,12 +157,19 @@ class TestETL(unittest.TestCase):
         self.assertEqual(d.compute(), 8)
         self.assertEqual(pipeline.compute(), (9, 8))
 
+    def test_pipeline_distinct_sources(self):
+        pipeline = Pipeline(4)
+        a = pipeline.map(inc)
+        self.assertEqual(pipeline.compute()[0], 5)
+        pipeline.feed(5)
+        self.assertEqual(pipeline.compute()[0], 6)
+
     def test_dask_graph_map_values(self):
         data = 4
         values = np.asarray([1, 2, 3])
         pipeline = Pipeline(data)
         a = pipeline.map(inc)
-        b = pipeline.map(dec, with_values=values)
+        b = pipeline.map(dec, values)
         c = pipeline.zip(a, b).map(add)
         self.assertEqual((c.compute() == (values + 4)).all(), True)
 

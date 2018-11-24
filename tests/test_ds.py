@@ -302,7 +302,7 @@ class TestDataset(unittest.TestCase):
         with data:
             it = Iterator(data).sample(5)
             for e in it:
-                print(e.to_ndarray())
+                self.assertEqual(e.to_ndarray().shape, (1, 2))
 
 
 class TestMemoryDs(unittest.TestCase):
