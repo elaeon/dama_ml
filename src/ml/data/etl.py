@@ -1,10 +1,9 @@
 from collections import MutableSet, OrderedDict
-import weakref
+# import weakref
 import functools
 import dask
 import networkx as nx
 import matplotlib.pyplot as plt
-import json
 from pydoc import locate
 import sys
 from dask import get as sync_get
@@ -30,12 +29,17 @@ class OrderedSet(MutableSet):
         self._od.pop(value, None)
 
 
-class OrderedWeakrefSet(weakref.WeakSet):
+#class OrderedWeakrefSet(weakref.WeakSet):
+#    def __init__(self, values=()):
+#        super(OrderedWeakrefSet, self).__init__()
+#        self.data = OrderedSet()
+#        for elem in values:
+#            self.add(elem)
+
+
+class OrderedWeakrefSet(OrderedSet):
     def __init__(self, values=()):
         super(OrderedWeakrefSet, self).__init__()
-        self.data = OrderedSet()
-        for elem in values:
-            self.add(elem)
 
 
 class PipelineABC(object):
@@ -119,7 +123,7 @@ class Pipeline(PipelineABC):
                 node.eval_task = None
             self.clean_graph_eval(node)
 
-    def edges(self, downstreams, parent) -> list:
+    def edges(self, downstreams: OrderedWeakrefSet, parent) -> list:
         edges = []
         for fn in downstreams:
             if type(fn) == zip:
@@ -157,7 +161,6 @@ class Pipeline(PipelineABC):
         if self.di_graph is None:
             self.di_graph = self.graph()
         dask_graph = {}
-        print(self.di_graph.node)
         for node in self.di_graph.neighbors(self.root):
             dask_graph[node.placeholder] = self.data
             if node.data is None:
@@ -189,12 +192,12 @@ class Pipeline(PipelineABC):
         return self
 
     def to_text(self) -> str:
-        placeholder = "placeholder: {}".format(self.data)
+        placeholder = "placeholder: {}={}".format(type(self.data).__name__, self.data)
         text = [placeholder]
         text.extend(self._to_text(self.downstreams))
         return "\n".join(text)
 
-    def _to_text(self, downstreams):
+    def _to_text(self, downstreams: OrderedWeakrefSet) -> list:
         row = []
         for fn in downstreams:
             row.append(fn.node_ref())
@@ -202,23 +205,34 @@ class Pipeline(PipelineABC):
         return row
 
     @classmethod
-    def load(cls, text, path):
+    def load(cls, text, path) -> 'Pipeline':
         sys.path.append(path)
         elems = text.split("\n")
         tree_map = {}
         for elem in elems:
             if elem.startswith("placeholder"):
-                _, v = elem.split(":")
-                tree_map["placeholder"] = Pipeline(v.strip())
+                _, obj_str = elem.split(":")
+                type_elem, v = obj_str.split("=")
+                type_elem = type_elem.strip()
+                if type_elem == "int":
+                    cast = int
+                else:
+                    cast = lambda x: x
+                tree_map["placeholder"] = Pipeline(cast(v.strip()))
             elif elem.startswith("map"):
                 map_attrs, key = elem.split(" as ")
                 fn, ref = map_attrs.split(", ")
                 ref = ref.replace("ref:", "")
                 fn = fn[len("map: fn")+1:]
-                if ref in tree_map:
-                    tree_map[ref].map(locate(fn))
+                tree_map[key] = tree_map[ref].map(locate(fn))
             elif elem.startswith("zip"):
-                print(elem)
+                zip_attrs, zip_key = elem.split(" as ")
+                zip_args, ref_str = zip_attrs.split(" . ")
+                ref = ref_str.replace("ref:", "").strip()
+                args_keys = zip_args.split(", ")
+                args_keys[0] = args_keys[0][len("zip args:")+1:]
+                args = [tree_map[key] for key in args_keys]
+                tree_map[zip_key] = tree_map[ref].zip(*args)
         return tree_map["placeholder"]
 
     @property
@@ -302,12 +316,21 @@ class zip(PipelineABC):
         self.args = func
         PipelineABC.__init__(self, upstream)
 
+    @property
+    def placeholder(self) -> str:
+        return 'placeholder'
+
     def node_ref(self):
+        upstream = self.upstreams[-1]
+        if upstream.key == "root":
+            ref = self.placeholder
+        else:
+            ref = upstream.key
         args = []
         for arg in self.args:
             args.append(arg.key)
         args_str = ", ".join(args)
-        return "{} args: {} as {}".format(self.__class__.__name__, args_str, self.key)
+        return "{} args: {} . ref: {} as {}".format(self.__class__.__name__, args_str, ref, self.key)
 
     @property
     def key(self) -> str:

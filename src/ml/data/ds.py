@@ -10,10 +10,10 @@ import pandas as pd
 from tqdm import tqdm
 from ml.data.abc import AbsDataset
 from ml.data.it import Iterator, BaseIterator
-from ml.random import sampling_size
 from ml.utils.config import get_settings
 from ml.utils.files import build_path
 from ml.utils.basic import Hash, StructArray
+from sklearn.model_selection import train_test_split
 
 settings = get_settings("ml")
 
@@ -470,8 +470,6 @@ class Data(HDF5Dataset):
                 f.write("\n")
 
     def cv(self, train_size=.7, valid_size=.1, unbalanced=None):
-        from sklearn.model_selection import train_test_split
-
         train_size = round(train_size+valid_size, 2)
         X_train, X_test, y_train, y_test = train_test_split(
             self.data[:], self.labels[:], train_size=train_size, random_state=0)
@@ -483,22 +481,9 @@ class Data(HDF5Dataset):
         y_train = y_train[valid_size_index:]
 
         if unbalanced is not None:
-            X_unb = [X_train, X_validation]
-            y_unb = [y_train, y_validation]
-            log.debug("Unbalancing data")
-            for X_, y_ in [(X_test, y_test)]:
-                X = np.c_[X_, y_]
-                y_index = X_.shape[-1]
-                unbalanced = sampling_size(unbalanced, y_)
-                it = downsample(X, unbalanced, y_index, y_.shape[0])
-                v = it.to_memory()
-                if v.shape[0] == 0:
-                    X_unb.append(v)
-                    y_unb.append(v)
-                    continue
-                X_unb.append(v[:, :y_index])
-                y_unb.append(v[:, y_index])
-            return X_unb + y_unb
+            return NotImplemented
+        else:
+            return X_train, X_validation, X_test, y_train, y_validation, y_test
 
     def cv_ds(self, train_size=.7, valid_size=.1, dataset_path=None):
         data = self.cv(train_size=train_size, valid_size=valid_size)

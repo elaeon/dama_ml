@@ -62,19 +62,6 @@ class ClassifModel(SupervicedModel):
     #    measure.add(metrics.confusion_matrix, greater_is_better=None, uncertain=False)
     #    return measure.to_list()
 
-    #def only_is(self, op):
-    #    with self.test_ds:
-    #        test_data = self.test_ds.data[:]
-    #        test_labels = self.test_ds.labels[:]
-    #    predictions = np.asarray(list(self.predict(test_data, raw=False, transform=False)))
-    #    data = zip(*filter(
-    #                    lambda x: op(x[1], x[2]), 
-    #                    zip(test_data, 
-    #                        self.numerical_labels2classes(predictions), 
-    #                        self.numerical_labels2classes(test_labels))))
-    #    if len(data) > 0:
-    #        return np.array(data[0]), data[1], data[2]
-
     def erroneous_clf(self):
         import operator
         return self.only_is(operator.ne)
@@ -86,7 +73,7 @@ class ClassifModel(SupervicedModel):
     def reformat_labels(self, labels):
         return labels
 
-    def is_binary():
+    def is_binary(self):
         return self.num_labels == 2
 
     def labels_encode(self, labels):
@@ -131,19 +118,16 @@ class ClassifModel(SupervicedModel):
                 dataset_path=settings["dataset_model_path"],
                 compression_level=3,
                 clean=True)
-            dl_train.transforms = dataset.transforms
             dl_test = DataLabel(
                 name="{}.{}.{}".format(self.model_name, self.model_version, "test"),
                 dataset_path=settings["dataset_model_path"],
                 compression_level=3,
                 clean=True)
-            dl_test.transforms = dataset.transforms
             dl_validation = DataLabel(
                 name="{}.{}.{}".format(self.model_name, self.model_version, "validation"),
                 dataset_path=settings["dataset_model_path"],
                 compression_level=3,
                 clean=True)
-            dl_validation.transforms = dataset.transforms
 
             with dataset:
                 self.labels_encode(dataset.labels)
@@ -154,16 +138,14 @@ class ClassifModel(SupervicedModel):
                 validation_labels = self.reformat_labels(self.le.transform(validation_labels))
                 test_labels = self.reformat_labels(self.le.transform(test_labels))
                 with dl_train:
-                    dl_train.from_data(train_data, train_labels, chunks_size=chunks_size, 
-                        transform=False)
+                    dl_train.from_data(train_data, train_labels, chunks_size=chunks_size)
                     dl_train.columns = dataset.columns
                 with dl_test:
-                    dl_test.from_data(test_data, test_labels, chunks_size=chunks_size, 
-                        transform=False)
+                    dl_test.from_data(test_data, test_labels, chunks_size=chunks_size)
                     dl_test.columns = dataset.columns
                 with dl_validation:
                     dl_validation.from_data(validation_data, validation_labels, 
-                        chunks_size=chunks_size, transform=False)
+                        chunks_size=chunks_size)
                     dl_validation.columns = dataset.columns
 
             return dl_train, dl_test, dl_validation

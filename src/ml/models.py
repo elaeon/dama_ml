@@ -145,7 +145,7 @@ class BaseModel(DataDrive):
     def __init__(self, model_name=None, check_point_path=None, 
                 group_name=None, metrics=None):
         self.model = None
-        self.original_dataset_md5 = None
+        self.original_dataset_hash = None
         self.original_dataset_path = None
         self.original_dataset_name = None
         self.test_ds = None
@@ -200,7 +200,7 @@ class BaseModel(DataDrive):
                 "test_ds_path": self.test_ds.dataset_path,
                 "test_ds_name": self.test_ds.name,
                 "md5": self.test_ds.md5,
-                "original_dataset_md5": self.original_dataset_md5,
+                "original_dataset_md5": self.original_dataset_hash,
                 "original_dataset_path": self.original_dataset_path,
                 "original_dataset_name": self.original_dataset_name,
                 "group_name": self.group_name,
@@ -233,7 +233,7 @@ class BaseModel(DataDrive):
             self.model_version, self.check_point_path))
         meta = self.load_meta()["model"]
         dataset = Data.original_ds(name=meta["test_ds_name"], dataset_path=meta["test_ds_path"])
-        self.original_dataset_md5 = meta["original_dataset_md5"]
+        self.original_dataset_hash = meta["original_dataset_hash"]
         self.original_dataset_path = meta["original_dataset_path"]
         self.original_dataset_name = meta["original_dataset_name"]
     
@@ -302,12 +302,12 @@ class SupervicedModel(BaseModel):
         pass
 
     def set_dataset(self, dataset,  train_size=.7, valid_size=.1, unbalanced=None, chunks_size=30000):
-        #with dataset:
-        self.original_dataset_md5 = dataset.md5
-        self.original_dataset_path = dataset.dataset_path
-        self.original_dataset_name = dataset.name
-        self.train_ds, self.test_ds, self.validation_ds = self.reformat_all(dataset, 
-            train_size=train_size, valid_size=valid_size, unbalanced=unbalanced, chunks_size=chunks_size)
+        with dataset:
+            self.original_dataset_hash = dataset.hash
+            self.original_dataset_path = dataset.dataset_path
+            self.original_dataset_name = dataset.name
+            self.train_ds, self.test_ds, self.validation_ds = self.reformat_all(dataset,
+                train_size=train_size, valid_size=valid_size, unbalanced=unbalanced, chunks_size=chunks_size)
         self.save_meta(keys="model")
 
     def metadata_model(self):
@@ -320,7 +320,7 @@ class SupervicedModel(BaseModel):
                 "validation_ds_path": self.validation_ds.dataset_path,
                 "validation_ds_name": self.validation_ds.name,
                 "md5": self.test_ds.md5,
-                "original_dataset_md5": self.original_dataset_md5,
+                "original_dataset_hash": self.original_dataset_hash,
                 "original_dataset_path": self.original_dataset_path,
                 "original_dataset_name": self.original_dataset_name,
                 "group_name": self.group_name,
