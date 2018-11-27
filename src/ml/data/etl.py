@@ -4,6 +4,9 @@ import functools
 import dask
 import networkx as nx
 import matplotlib.pyplot as plt
+import json
+from pydoc import locate
+import sys
 from dask import get as sync_get
 
 
@@ -61,6 +64,13 @@ class PipelineABC(object):
     def key(self):
         return NotImplemented
 
+    def node_ref(self):
+        return NotImplemented
+
+    @staticmethod
+    def fn_name(fn):
+        return "{}.{}".format(fn.__module__, fn.__name__)
+
 
 class Pipeline(PipelineABC):
     def __init__(self, data=None, upstream=None):
@@ -71,9 +81,8 @@ class Pipeline(PipelineABC):
 
     def graph(self) -> nx.DiGraph:
         di_graph = nx.DiGraph()
-        nodes = []
-        self.maps(self.downstreams, nodes, self.root)
-        di_graph.add_edges_from(nodes)
+        edges = self.edges(self.downstreams, self.root)
+        di_graph.add_edges_from(edges)
         return di_graph
 
     def _eval(self, batch):
@@ -110,16 +119,18 @@ class Pipeline(PipelineABC):
                 node.eval_task = None
             self.clean_graph_eval(node)
 
-    def maps(self, downstreams, nodes, parent) -> None:
+    def edges(self, downstreams, parent) -> list:
+        edges = []
         for fn in downstreams:
             if type(fn) == zip:
                 for fn_zip in fn.args:
                     for map_zip_fn in fn.downstreams:
-                        nodes.append((fn_zip, map_zip_fn))
-            self.maps(fn.downstreams, nodes, fn)
+                        edges.append((fn_zip, map_zip_fn))
+            edges.extend(self.edges(fn.downstreams, fn))
             
             if type(fn) != zip and type(parent) != zip:
-                nodes.append((parent, fn))
+                edges.append((parent, fn))
+        return edges
 
     def visualize_graph(self) -> None:
         if self.di_graph is None:
@@ -146,6 +157,7 @@ class Pipeline(PipelineABC):
         if self.di_graph is None:
             self.di_graph = self.graph()
         dask_graph = {}
+        print(self.di_graph.node)
         for node in self.di_graph.neighbors(self.root):
             dask_graph[node.placeholder] = self.data
             if node.data is None:
@@ -176,14 +188,47 @@ class Pipeline(PipelineABC):
         self.data = data
         return self
 
+    def to_text(self) -> str:
+        placeholder = "placeholder: {}".format(self.data)
+        text = [placeholder]
+        text.extend(self._to_text(self.downstreams))
+        return "\n".join(text)
+
+    def _to_text(self, downstreams):
+        row = []
+        for fn in downstreams:
+            row.append(fn.node_ref())
+            row.extend(self._to_text(fn.downstreams))
+        return row
+
+    @classmethod
+    def load(cls, text, path):
+        sys.path.append(path)
+        elems = text.split("\n")
+        tree_map = {}
+        for elem in elems:
+            if elem.startswith("placeholder"):
+                _, v = elem.split(":")
+                tree_map["placeholder"] = Pipeline(v.strip())
+            elif elem.startswith("map"):
+                map_attrs, key = elem.split(" as ")
+                fn, ref = map_attrs.split(", ")
+                ref = ref.replace("ref:", "")
+                fn = fn[len("map: fn")+1:]
+                if ref in tree_map:
+                    tree_map[ref].map(locate(fn))
+            elif elem.startswith("zip"):
+                print(elem)
+        return tree_map["placeholder"]
+
     @property
     def key(self) -> str:
         return self.root
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Pipeline"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.key
         
 
@@ -227,7 +272,7 @@ class map(PipelineABC):
 
     @property
     def placeholder(self) -> str:
-        return '{}_x'.format(self.func.__name__)
+        return 'placeholder'.format(self.func.__name__)
 
     def compute(self, scheduler=None, **kwargs):
         if scheduler is None:
@@ -236,11 +281,19 @@ class map(PipelineABC):
         dask_graph = root_node.to_dask_graph()
         return scheduler(dask_graph, self.key, **kwargs)
 
+    def node_ref(self):
+        upstream = self.upstreams[-1]
+        if upstream.key == "root":
+            ref = self.placeholder
+        else:
+            ref = upstream.key
+        return "{}, ref:{} as {}".format(str(self), ref, self.key)
+
     def __str__(self):
-        return self.func.__name__
+        return "{} fn: {}".format(self.__class__.__name__, Pipeline.fn_name(self.func))
 
     def __repr__(self):
-        return self.key
+        return self.__str__()
 
 
 @PipelineABC.register_api()
@@ -249,6 +302,17 @@ class zip(PipelineABC):
         self.args = func
         PipelineABC.__init__(self, upstream)
 
-    def __str__(self):
+    def node_ref(self):
+        args = []
+        for arg in self.args:
+            args.append(arg.key)
+        args_str = ", ".join(args)
+        return "{} args: {} as {}".format(self.__class__.__name__, args_str, self.key)
+
+    @property
+    def key(self) -> str:
         return "zip"
+
+    def __str__(self):
+        return self.__class__.__name__
 

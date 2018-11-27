@@ -188,4 +188,13 @@ class TestETL(unittest.TestCase):
         pipeline.visualize(filename="/tmp/stream", format="svg")
         self.assertEqual(os.path.exists("/tmp/stream.svg"), True)
 
+    def test_to_json(self):
+        pipeline = Pipeline(1)
+        a = pipeline.map(ident)
+        b = pipeline.map(ident)
+        c = pipeline.zip(a, b).map(add)
+        pre_json_value = c.compute()
+        text = pipeline.to_text()
+        pipeline = Pipeline.load(text, os.path.dirname(__file__))
+        print(pre_json_value, pipeline.compute())
 

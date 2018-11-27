@@ -8,7 +8,7 @@ import numpy as np
 from io import StringIO, TextIOWrapper
 from ml.utils.files import rm
 from operator import itemgetter
-from ml.data.it import Iterator, DaskIterator, BatchIterator
+from ml.data.it import Iterator, BatchIterator
 from ml.data.abc import AbsDataset
 from ml.utils.decorators import cache
 from tqdm import tqdm
@@ -44,7 +44,7 @@ class DaskEngine:
     def read_csv(*args, **kwargs):
         import dask.dataframe as dd
         df = dd.read_csv(*args, **kwargs)
-        return DaskIterator(df)
+        return df # DaskIterator(df)
 
 
 class File(object):
