@@ -404,7 +404,7 @@ class Data(HDF5Dataset):
         hash_obj = Hash(hash_fn=with_hash)
         header = [getattr(self, attr) for attr in self.header_map]
         hash_obj.hash.update("".join(header).encode("utf-8"))
-        it = Iterator(self).batchs(batch_size=batch_size, batch_type="structured")
+        it = Iterator(self).batchs(batch_size=batch_size, batch_type="array")
         hash_obj.update(it)
         return str(hash_obj)
 
@@ -441,6 +441,9 @@ class Data(HDF5Dataset):
     def to_ndarray(self, dtype=None) -> np.ndarray:
         return self.data.to_ndarray(dtype=dtype)
 
+    def to_structured(self):
+        return self.data.to_xrds()
+
     def create_route(self):
         """
         create directories if the dataset_path does not exist
@@ -471,6 +474,7 @@ class Data(HDF5Dataset):
 
     def cv(self, train_size=.7, valid_size=.1, unbalanced=None):
         train_size = round(train_size+valid_size, 2)
+        print(self.data[self.labels].shape, self.labels)
         X_train, X_test, y_train, y_test = train_test_split(
             self.data[:], self.labels[:], train_size=train_size, random_state=0)
         size = self.data.shape[0]

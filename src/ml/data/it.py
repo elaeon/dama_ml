@@ -437,34 +437,41 @@ class BatchArray(BatchIterator):
         end = self.batch_size
         length = self.batch_size
         while length > 0:
-            batch = self.data.data[init:end].to_ndarray(dtype=self.dtype)
-            yield batch
+            batch = self.data.data[init:end]
             init = end
             end += self.batch_size
             length = batch.shape[0]
+            if length > 0:
+                yield batch.to_ndarray(dtype=self.dtype)
+            else:
+                break
 
 
 class BatchDataFrame(BatchIterator):
     def run(self):
         init = 0
         end = self.batch_size
-        length = self.batch_size
-        while length > 0:
-            batch = self.data.data[init:end].to_df(init_i=init, end_i=end)
-            yield batch
+        while True:
+            batch = self.data.data[init:end]
             init = end
             end += self.batch_size
             length = batch.shape[0]
+            if length > 0:
+                yield batch.to_df(init_i=init, end_i=end)
+            else:
+                break
 
 
 class BatchStructured(BatchIterator):
     def run(self):
         init = 0
         end = self.batch_size
-        length = self.batch_size
-        while length > 0:
-            batch = self.data.data[init:end].to_structured()
-            yield batch
+        while True:
+            batch = self.data.data[init:end]
             init = end
             end += self.batch_size
             length = batch.shape[0]
+            if length > 0:
+                yield batch.to_xrds()
+            else:
+                break

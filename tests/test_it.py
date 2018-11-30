@@ -400,6 +400,18 @@ class TestIterator(unittest.TestCase):
                 self.assertCountEqual(batch, array)
         data.destroy()
 
+    def test_batch_to_structured(self):
+        data = Data(name="test", driver="memory")
+        data.from_data(np.array([[1, 'x1'], [2, 'x2'], [3, 'x3'], [4, 'x4'],
+                                 [5, 'x5'], [6, 'x6'], [7, 'x7'], [8, 'x8'],
+                                 [9, 'x9'], [10, 'x10']]))
+        it = Iterator(data).batchs(batch_size=3, batch_type="structured")
+        counter = 0
+        for batch in it:
+            self.assertEqual(batch["c0"].shape, (3, 2))
+            if counter == 2:
+                break
+            counter += 1
 
 def chunk_sizes(seq):
     return [len(list(row)) for row in seq]

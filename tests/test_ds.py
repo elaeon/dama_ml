@@ -113,6 +113,16 @@ class TestDataset(unittest.TestCase):
             self.assertEqual((data0.to_ndarray() == array).all(), True)
         data0.destroy()
 
+    def test_to_structured(self):
+        data = Data(name="test", driver="memory")
+        array = np.array([[1, 'x1'], [2, 'x2'], [3, 'x3'], [4, 'x4'],
+                  [5, 'x5'], [6, 'x6'], [7, 'x7'], [8, 'x8'],
+                  [9, 'x9'], [10, 'x10']])
+        data.from_data(array)
+        with data:
+            self.assertEqual((data.to_structured()["c0"] == array).all(), True)
+        data.destroy()
+
     def test_ds_build(self):
         X = np.asarray([
             [1, 2, 3, 4, 5, 6],

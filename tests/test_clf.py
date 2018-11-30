@@ -23,7 +23,7 @@ class TestSKL(unittest.TestCase):
         self.Y = self.X[:,0] > .5
         self.dataset = Data(name="test", dataset_path="/tmp/", clean=True)
         with self.dataset:
-            self.dataset.from_data(self.X)
+            self.dataset.from_data({"x": self.X, "y": self.Y})
 
     def tearDown(self):
         self.dataset.destroy()

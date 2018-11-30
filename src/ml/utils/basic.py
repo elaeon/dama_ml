@@ -1,6 +1,7 @@
 import hashlib
 import numpy as np
 import pandas as pd
+import xarray as xr
 
 from collections import OrderedDict
 from .decorators import cache
@@ -27,6 +28,7 @@ class StructArray:
         self.dtype = max_dtype(self.dtypes)
         self.o_columns = OrderedDict(self.labels_data)
         self.labels = list(self.o_columns.keys())
+        self.counter = 0
 
     def __getitem__(self, key):
         if isinstance(key, slice):
@@ -47,7 +49,13 @@ class StructArray:
         return self
 
     def __next__(self):
-        return self[0]
+        try:
+            elem = self[self.counter]
+        except IndexError:
+            raise StopIteration
+        else:
+            self.counter += 1
+            return elem
 
     def is_multidim(self) -> bool:
         return len(self.labels_data[0][1].shape) >= 2
@@ -139,8 +147,16 @@ class StructArray:
                 return ndarray
         return ndarray
 
-    def to_structured(self):
-        return StructArray._array_builder(self.struct_shape, self.dtypes, self.labels_data, 0, self.length())
+    def to_xrds(self) -> xr.Dataset:
+        xr_data = {}
+        for label, data in self.labels_data:
+            if len(data.shape) >= 2:
+                dims = ["x{}".format(i) for i in range(data.shape[1])]
+                data_dims = (dims, data)
+                xr_data[label] = data_dims
+            else:
+                xr_data[label] = ("x0", data)
+        return xr.Dataset(xr_data)
 
 
 def unique_dtypes(dtypes) -> np.ndarray:
