@@ -7,7 +7,7 @@ import logging
 from collections import defaultdict, deque
 from ml.utils.config import get_settings
 from ml.utils.numeric_functions import max_type, num_splits, wsrj, max_dtype
-from ml.data.abc import AbsDataset
+from ml.abc.data import AbsDataset
 from ml.utils.seq import grouper_chunk
 from ml.utils.basic import StructArray
 

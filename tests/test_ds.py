@@ -5,7 +5,8 @@ import pandas as pd
 from ml.data.ds import Data
 from ml.data.it import Iterator
 from ml.random import sampling_size
-from ml.data.ds import Memory
+from ml.data.drivers import Zarr, HDF5
+from numcodecs import GZip
 
 
 class TestDataset(unittest.TestCase):
@@ -45,7 +46,7 @@ class TestDataset(unittest.TestCase):
         with dataset:
             self.assertCountEqual(dataset["X0"].to_ndarray(), X0)
             self.assertCountEqual(dataset["X1"].to_ndarray(), X1)
-            self.assertCountEqual(dataset["X2"].to_ndarray(), map(str, X2))
+            self.assertCountEqual(dataset["X2"].to_ndarray(), X2)
             self.assertEqual(dataset["X0"].dtype, int)
             self.assertEqual(dataset["X1"].dtype, float)
             self.assertEqual(dataset["X2"].dtype, object)
@@ -81,14 +82,14 @@ class TestDataset(unittest.TestCase):
             self.assertEqual((dataset["c0"][:, 0].to_ndarray() == XY[:, 0]).all(), True)
         dataset.destroy()
 
-    def test_labels(self):
+    def test_groups(self):
         dataset = Data(name="test_ds", dataset_path="/tmp/", clean=True)
         dataset.from_data(self.X)
         with dataset:
-            self.assertEqual(dataset.labels, ['c0'])
+            self.assertEqual(dataset.groups, ['c0'])
         dataset.destroy()
 
-    def test_labels_2(self):
+    def test_groups_df(self):
         dataset = Data(name="test_ds", dataset_path="/tmp/", clean=True)
         df = pd.DataFrame({"X": self.X[:, 0], "Y": self.Y})
         dataset.from_data(df)
@@ -114,7 +115,7 @@ class TestDataset(unittest.TestCase):
         data0.destroy()
 
     def test_to_structured(self):
-        data = Data(name="test", driver="memory")
+        data = Data(name="test")
         array = np.array([[1, 'x1'], [2, 'x2'], [3, 'x3'], [4, 'x4'],
                   [5, 'x5'], [6, 'x6'], [7, 'x7'], [8, 'x8'],
                   [9, 'x9'], [10, 'x10']])
@@ -137,11 +138,10 @@ class TestDataset(unittest.TestCase):
 
     def test_attrs(self):
         dsb = Data(name="test", dataset_path="/tmp", author="AGMR", clean=True,
-            description="description text", compression_level=5)
+            description="description text")
         with dsb:
             self.assertEqual(dsb.author, "AGMR")
             self.assertEqual(dsb.description, "description text")
-            self.assertEqual(dsb.zip_params["compression_opts"], 5)
             self.assertEqual(type(dsb.timestamp), type(''))
         dsb.destroy()
 
@@ -170,18 +170,26 @@ class TestDataset(unittest.TestCase):
         dataset.destroy()
         rm("/tmp/test.txt")
 
+    def test_filename(self):
+        dsb = Data(name="test", dataset_path="/tmp", driver=HDF5(GZip(level=5)), clean=True)
+        self.assertEqual(dsb.url, "/tmp/test.h5")
+        dsb.destroy()
+        dsb = Data(name="test", dataset_path="/tmp", driver=Zarr(GZip(level=5)), clean=True)
+        self.assertEqual(dsb.url, "/tmp/test.zarr")
+        dsb.destroy()
+
     def test_no_data(self):
         dsb = Data(name="test", dataset_path="/tmp",
             author="AGMR", clean=True,
-            description="description text", compression_level=5, mode='a')
+            description="description text", driver=HDF5(GZip(level=5)))
         with dsb:
             timestamp = dsb.timestamp
 
-        with Data(name="test", dataset_path="/tmp") as dsb2:
+        with Data(name="test", dataset_path="/tmp", driver=HDF5()) as dsb2:
             self.assertEqual(dsb2.author, "AGMR")
             self.assertEqual(dsb2.description, "description text")
             self.assertEqual(dsb2.timestamp, timestamp)
-            self.assertEqual(dsb2.zip_params["compression_opts"], 5)
+            self.assertEqual(dsb2.compressor_params["compression_opts"], 5)
         dsb.destroy()
 
     def test_text_ds(self):
@@ -213,19 +221,19 @@ class TestDataset(unittest.TestCase):
         data =  Data(name="test", dataset_path="/tmp/", clean=True)
         data.from_data(self.X)
         columns = ['a']
-        data.labels = columns
+        data.groups = columns
         with data:
-            self.assertCountEqual(data.labels, columns)
+            self.assertCountEqual(data.groups, columns)
         data.destroy()
 
-    def test_labels_rename_2(self):
+    def test_groups_rename_2(self):
         df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
         data =  Data(name="test", dataset_path="/tmp/", clean=True)
         data.from_data(df)
         columns = ['x0', 'x1']
-        data.labels = columns
+        data.groups = columns
         with data:
-            self.assertCountEqual(data.labels, columns)
+            self.assertCountEqual(data.groups, columns)
         data.destroy()
 
     def test_length(self):
@@ -271,11 +279,11 @@ class TestDataset(unittest.TestCase):
         data = Data(name="test", dataset_path="/tmp", clean=True)
         data.from_data(it, batch_size=20)
         with data:
-            self.assertCountEqual(data.labels, ["c0"])
+            self.assertCountEqual(data.groups, ["c0"])
         data.destroy()
 
     def test_group_name(self):
-        data = Data(name="test0", dataset_path="/tmp", clean=True, group_name="test_ds")
+        data = Data(name="test0", dataset_path="/tmp", clean=True, group_name="test_ds", driver=HDF5())
         self.assertEqual(data.exists(), True)
         data.destroy()
 
@@ -325,33 +333,32 @@ class TestDataset(unittest.TestCase):
             self.assertEqual((df["y"].values == y).all(), True)
 
 
-class TestMemoryDs(unittest.TestCase):
-    def test_memory_ds(self):
-        m = Memory()
-        m.require_group("data")
-        m["/data/data"] = "y"
-        self.assertEqual(m["data"]["data"], "y")
-        self.assertEqual(m["/data/data"], "y")
-        m["/data/label"] = "z"
-        self.assertEqual(m["data"]["label"], "z")
-        self.assertEqual(m["/data/label"], "z")
-        m.require_group("fmtypes")
-        m["fmtypes"].require_dataset("name", (10, 1))
-        self.assertEqual(m["fmtypes"]["name"].shape, (10, 1))
-        self.assertEqual(m["/fmtypes/name"].shape, (10, 1))
+class TestDataZarr(unittest.TestCase):
+    def test_ds(self):
+        data = Data(name="test", dataset_path="/tmp/", driver=Zarr())
+        array = [1, 2, 3, 4, 5]
+        data.from_data(array)
+        with data:
+            self.assertCountEqual(data.to_ndarray(), array)
+        data.destroy()
 
-    def test_memory_add(self):
-        m = Memory()
-        m.require_group("data")
-        m["/data"] = "y"
-        m.require_group("data")
-        self.assertEqual(m["data"], "y")
+    def test_load(self):
+        data = Data(name="test", dataset_path="/tmp/", driver=Zarr(), clean=True)
+        array = [1, 2, 3, 4, 5]
+        data.from_data(array)
 
-    def test_memory_shape(self):
-        m = Memory()
-        m.require_dataset("data", 10)
-        m.require_group("group")
-        self.assertEqual(list(m.keys()), ["data", "group"])
+        data = Data(name="test", dataset_path="/tmp/", driver=Zarr(), clean=False)
+        with data:
+            self.assertCountEqual(data.to_ndarray(), array)
+
+    def test_compressor(self):
+        data = Data(name="test", dataset_path="/tmp/", driver=Zarr(GZip(level=6)), clean=True)
+        array = [1, 2, 3, 4, 5]
+        data.from_data(array)
+        with data:
+            self.assertEqual(data.compressor_params["compression"], "gzip")
+            self.assertEqual(data.compressor_params["compression_opts"], 6)
+
 
 
 if __name__ == '__main__':

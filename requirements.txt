@@ -17,3 +17,5 @@ keras>=2.0.2
 seaborn>=0.7.1
 psycopg2>=2.7.3.2
 dask>=0.18.2
+xarray>=0.10.9
+zarr>=2.2.0

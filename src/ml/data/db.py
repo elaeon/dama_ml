@@ -8,7 +8,7 @@ from collections import OrderedDict
 from psycopg2.extras import execute_values
 from ml.utils.seq import grouper_chunk
 from ml.data.it import BaseIterator
-from ml.data.abc import AbsDataset
+from ml.abc.data import AbsDataset
 from ml.utils.decorators import cache
 from ml.utils.numeric_functions import max_dtype
 from ml.utils.basic import StructArray

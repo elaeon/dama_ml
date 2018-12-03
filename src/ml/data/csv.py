@@ -9,7 +9,7 @@ from io import StringIO, TextIOWrapper
 from ml.utils.files import rm
 from operator import itemgetter
 from ml.data.it import Iterator, BatchIterator
-from ml.data.abc import AbsDataset
+from ml.abc.data import AbsDataset
 from ml.utils.decorators import cache
 from tqdm import tqdm
 

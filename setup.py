@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-#import re
 from setuptools import find_packages, setup
 from os.path import abspath, dirname, join
 

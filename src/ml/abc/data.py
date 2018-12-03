@@ -32,7 +32,7 @@ class AbsDataset(ABC):
         return NotImplemented
 
     @abstractmethod
-    def batchs_writer(self, keys, data, init=0):
+    def batchs_writer(self, groups, data):
         return NotImplemented
 
     @abstractmethod
@@ -54,7 +54,12 @@ class AbsDataset(ABC):
 
     @property
     @abstractmethod
-    def labels(self):
+    def groups(self):
+        return NotImplemented
+
+    @property
+    @abstractmethod
+    def dtypes(self):
         return NotImplemented
 
     @abstractmethod
