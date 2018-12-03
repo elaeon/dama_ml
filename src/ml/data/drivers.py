@@ -9,6 +9,9 @@ class HDF5(AbsDriver):
     persistent = True
     ext = 'h5'
 
+    def __contains__(self, item):
+        return item in self.f
+
     def enter(self, url):
         if self.f is None:
             self.f = h5py.File(url, mode=self.mode)
@@ -37,6 +40,9 @@ class HDF5(AbsDriver):
 class Zarr(AbsDriver):
     persistent = True
     ext = "zarr"
+
+    def __contains__(self, item):
+        return item in self.f
 
     def enter(self, url):
         if self.f is None:

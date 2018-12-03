@@ -14,8 +14,12 @@ class Hash:
         self.hash = getattr(hashlib, hash_fn)()
 
     def update(self, it):
-        for chunk in it:
-            self.hash.update(chunk)
+        if it.dtype == np.dtype('<M8[ns]'):
+            for chunk in it:
+                self.hash.update(chunk.astype('object'))
+        else:
+            for chunk in it:
+                self.hash.update(chunk)
 
     def __str__(self):
         return "${hash_fn}${digest}".format(hash_fn=self.hash_fn, digest=self.hash.hexdigest())
@@ -58,11 +62,17 @@ class StructArray:
             return elem
 
     def is_multidim(self) -> bool:
-        return len(self.labels_data[0][1].shape) >= 2
+        if len(self.labels_data) > 0:
+            return len(self.labels_data[0][1].shape) >= 2
+        else:
+            return False
 
     @cache
     def length(self) -> int:
-        return max([a.shape[0] for _, a in self.labels_data])
+        if len(self.labels_data) > 0:
+            return max([a.shape[0] for _, a in self.labels_data])
+        else:
+            return 0
 
     @property
     def struct_shape(self) -> tuple:
@@ -72,11 +82,13 @@ class StructArray:
             return tuple([self.length()] + list(self.labels_data[0][1].shape[1:]))
 
     @property
-    def shape(self):
+    def shape(self) -> tuple:
         if len(self.labels_data) > 1:
             return tuple([self.length()] + [len(self.labels_data)])
-        else:
+        elif len(self.labels_data) == 1:
             return tuple([self.length()] + list(self.labels_data[0][1].shape[1:]))
+        else:
+            return (0,)
 
     def columns2dtype(self) -> list:
         return [(col_name, array.dtype) for col_name, array in self.labels_data]

@@ -314,11 +314,12 @@ class Data(AbsDataset):
         else:
             init = 0
             end = 0
-            group = groups[0]
-            for smx in tqdm(data, total=data.num_splits()):
-                end += 1
-                self.driver["data"][group][init:end] = smx
-                init = end
+            if len(groups) > 0:
+                group = groups[0]
+                for smx in tqdm(data, total=data.num_splits()):
+                    end += 1
+                    self.driver["data"][group][init:end] = smx
+                    init = end
 
     def destroy(self):
         """
@@ -364,7 +365,10 @@ class Data(AbsDataset):
 
     @property
     def dtypes(self) -> list:
-        return [(col, np.dtype(dtype)) for col, dtype in self.driver["meta"].get("dtypes", [])]
+        if "meta" in self.driver:
+            return [(col, np.dtype(dtype)) for col, dtype in self.driver["meta"].get("dtypes", [])]
+        else:
+            return []
 
     @dtypes.setter
     def dtypes(self, value):

@@ -38,6 +38,10 @@ class AbsDriver(ABC):
         self.f[key] = value
 
     @abstractmethod
+    def __contains__(self, item):
+        return NotImplemented
+
+    @abstractmethod
     def enter(self, url):
         return NotImplemented
 
