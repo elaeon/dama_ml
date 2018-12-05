@@ -41,7 +41,8 @@ def assign_struct_array(it, type_elem, start_i, end_i, dtype, dims):
 
 
 class BaseIterator(object):
-    def __init__(self, it, length=None, dtypes=None, shape=None, type_elem=None, pushedback=None) -> None:
+    def __init__(self, it, length: int=None, dtypes: list=None, shape: tuple=None,
+                 type_elem=None, pushedback=None) -> None:
         self.data = it
         self.pushedback = [] if pushedback is None else pushedback
         self.dtypes = dtypes
@@ -51,21 +52,28 @@ class BaseIterator(object):
         self.iter_init = True
         self._it = None
 
-    def length(self) -> int:
+    @property
+    def length(self):
         if self.shape is not None:
-            return self.shape[0]
+            if isinstance(self.shape, dict):
+                return max([v[0] for v in self.shape.values()])
+            elif self.shape[0] is not None:
+                return self.shape[0]
+        return np.inf
 
-    def calc_shape(self, length, shape) -> tuple:
+    @staticmethod
+    def calc_shape(length, shape):
         if shape is None:
             return tuple([length])
-        elif shape[0] is None and length is not None:
-            return tuple([length] + list(shape[1:]))
-        elif shape[0] is not None and length is not None:
-            return tuple([length] + list(shape[1:]))
-        return shape
+        elif (not isinstance(shape, tuple) and not isinstance(shape, dict)) and length is not None:
+            return tuple([length, shape])
+        elif isinstance(shape, tuple) and length is not None:
+            return tuple([length] + list(shape))
+        elif isinstance(shape, dict) and length is not None:
+            return shape
 
     @property
-    def labels(self) -> list:
+    def groups(self) -> list:
         return [c for c, _ in self.dtypes]
 
     def pushback(self, val) -> None:
@@ -104,10 +112,10 @@ class BaseIterator(object):
             raise Exception("Type of elem {} does not supported".format(self.type_elem))
 
     def flat(self) -> 'Iterator':
-        if self.length() is not None:
-            length = self.length() * sum(self.shape[1:])
+        if self.length != np.inf:
+            length = self.length * sum(self.shape[1:])
         else:
-            length = None
+            length = self.length
         return Iterator(self.flatter(), dtypes=self.dtypes, length=length)
 
     def sample(self, length: int, col=None, weight_fn=None) -> 'Iterator':
@@ -125,7 +133,7 @@ class BaseIterator(object):
                 yield row, 1
 
     def num_splits(self) -> int:
-        return self.length()
+        return self.length
 
     def unique(self) -> dict:
         values = defaultdict(lambda: 0)
@@ -135,11 +143,14 @@ class BaseIterator(object):
                 values[k] += v
         return values
 
+    def is_multidim(self):
+        return isinstance(self.shape, dict)
+
     def __iter__(self) -> 'BaseIterator':
         return self
 
     def __next__(self):
-        if self._it is None and self.length() is None:
+        if self._it is None and self.length == np.inf:
             self._it = self.data
         elif self._it is None:
             self._it = islice(self.data, self.num_splits() - len(self.pushedback))
@@ -151,7 +162,7 @@ class BaseIterator(object):
 
 
 class Iterator(BaseIterator):
-    def __init__(self, fn_iter, dtypes=None, length=None) -> None:
+    def __init__(self, fn_iter, dtypes: list=None, length: int=None) -> None:
         super(Iterator, self).__init__(fn_iter, dtypes=dtypes, length=length)
         if isinstance(fn_iter, types.GeneratorType):
             self.data = fn_iter
@@ -161,7 +172,7 @@ class Iterator(BaseIterator):
         elif isinstance(fn_iter, dict):
             self.data = StructArray(fn_iter.items())
             dtypes = self.data.dtypes
-            length = self.data.shape[0]
+            length = len(self.data)
             self.is_ds = True
         elif isinstance(fn_iter, pd.DataFrame):
             self.data = fn_iter.itertuples(index=False)
@@ -238,12 +249,12 @@ class Iterator(BaseIterator):
                 self.dtypes = self.default_dtypes(chunk.dtype)
 
         try:
-            shape = [None] + list(chunk.shape)
+            shape = chunk.shape
         except AttributeError:
             if hasattr(chunk, '__iter__') and not isinstance(chunk, str):
-                shape = (None, len(chunk))
+                shape = len(chunk)
             else:
-                shape = (None,)
+                shape = None
 
         self.shape = self.calc_shape(length, shape)
         self.dtype = max_dtype(self.dtypes)
@@ -303,7 +314,7 @@ class BatchIterator(BaseIterator):
             for chunk in self:
                 for row in chunk:
                     yield row
-        return Iterator(cleaner(), dtypes=self.dtypes, length=self.length())
+        return Iterator(cleaner(), dtypes=self.dtypes, length=self.length)
 
     def batch_shape(self) -> list:
         shape = self.data.shape
@@ -326,22 +337,13 @@ class BatchIterator(BaseIterator):
             yield batch
 
     def num_splits(self) -> int:
-        return num_splits(self.length(), self.batch_size)
-
-    def calc_shape(self, length, shape) -> tuple:
-        if shape is None:
-            return tuple([length])
-        elif shape[0] is None and length is not None:
-            return tuple([length] + list(shape[1:]))
-        elif shape[0] is not None and length is not None:
-            return tuple([length] + list(shape[1:]))
-        return shape
+        return num_splits(self.length, self.batch_size)
 
     def flat(self) -> Iterator:
-        if self.length() is not None:
-            length = self.length() * sum(self.shape[1:])
+        if self.length != np.inf:
+            length = self.length * sum(self.shape[1:])
         else:
-            length = None
+            length = self.length
         return Iterator(self.flatter(), dtypes=self.dtypes,
                         length=length).batchs(batch_size=self.batch_size, batch_type=self.batch_type)
 
@@ -396,7 +398,7 @@ class BatchIt(BatchIterator):
             dims = shape[1:]
         else:
             dims = 1
-        if self.length() is None:
+        if self.length is None:
             for smx in grouper_chunk(self.batch_size, self.data):
                 end_i += shape[0]
                 yield assign_struct_array(smx, self.data.type_elem, start_i, end_i, self.data.dtypes, dims)
@@ -404,15 +406,15 @@ class BatchIt(BatchIterator):
         else:
             for smx in grouper_chunk(self.batch_size, self.data):
                 end_i += shape[0]
-                if end_i > self.length():
-                    end_i = self.length()
+                if end_i > self.length:
+                    end_i = self.length
                 yield assign_struct_array(smx, self.data.type_elem, start_i, end_i, self.data.dtypes, dims)
                 start_i = end_i
 
     def batch_from_it_df(self, shape):
         start_i = 0
         end_i = 0
-        columns = self.data.labels
+        columns = self.data.groups
         for stc_array in self.batch_from_it_structured(shape):
             end_i += stc_array.shape[0]
             yield pd.DataFrame(stc_array, index=np.arange(start_i, end_i), columns=columns)
@@ -470,7 +472,7 @@ class BatchStructured(BatchIterator):
             batch = self.data.data[init:end]
             init = end
             end += self.batch_size
-            length = batch.shape[0]
+            length = len(batch)
             if length > 0:
                 yield batch.to_xrds()
             else:

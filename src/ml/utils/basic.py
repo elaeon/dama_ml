@@ -39,17 +39,18 @@ class StructArray:
             return self.convert(self.labels_data, key.start, key.stop)
         elif isinstance(key, str):
             columns = [(key, self.o_columns[key])]
-            return self.convert_from_columns(columns, 0, self.length())
+            return self.convert_from_columns(columns, 0, len(self))
         elif isinstance(key, list):
             try:
                 columns = [(col_name, self.o_columns[col_name]) for col_name in key]
             except KeyError:
                 columns = [(self.labels_data[i][0], self.labels_data[i][1]) for i in key]
-            return self.convert_from_columns(columns, 0, self.length())
+            return self.convert_from_columns(columns, 0, len(self))
         else:
             return self.convert_from_index(key)
 
     def __iter__(self):
+        self.counter = 0
         return self
 
     def __next__(self):
@@ -61,34 +62,38 @@ class StructArray:
             self.counter += 1
             return elem
 
-    def is_multidim(self) -> bool:
-        if len(self.labels_data) > 0:
-            return len(self.labels_data[0][1].shape) >= 2
-        else:
-            return False
-
     @cache
-    def length(self) -> int:
+    def __len__(self):
         if len(self.labels_data) > 0:
             return max([a.shape[0] for _, a in self.labels_data])
         else:
             return 0
 
+    def is_multidim(self) -> bool:
+        return isinstance(self.shape, dict)
+
     @property
     def struct_shape(self) -> tuple:
         if len(self.labels_data) > 1:
-            return tuple([self.length()])  # + [1])
+            return tuple([len(self)])
         else:
-            return tuple([self.length()] + list(self.labels_data[0][1].shape[1:]))
+            return tuple([len(self)] + list(self.labels_data[0][1].shape[1:]))
 
     @property
-    def shape(self) -> tuple:
-        if len(self.labels_data) > 1:
-            return tuple([self.length()] + [len(self.labels_data)])
-        elif len(self.labels_data) == 1:
-            return tuple([self.length()] + list(self.labels_data[0][1].shape[1:]))
-        else:
+    @cache
+    def shape(self):
+        shapes = {}
+        for group, data in self.labels_data:
+            shapes[group] = data.shape
+
+        if len(shapes) == 0:
             return (0,)
+        group_shape_0 = list(shapes.values())[0]
+        for group_shape in list(shapes.values())[1:]:
+            if group_shape != group_shape_0:
+                return shapes
+        num_groups = len(shapes)
+        return tuple([group_shape_0[0], num_groups]  + list(group_shape_0[1:]))
 
     def columns2dtype(self) -> list:
         return [(col_name, array.dtype) for col_name, array in self.labels_data]
@@ -98,7 +103,7 @@ class StructArray:
             start_i = 0
 
         if end_i is None:
-            end_i = self.length()
+            end_i = len(self)
 
         sub_labels_data = [(label, array[start_i:end_i]) for label, array in labels_data]
         return StructArray(sub_labels_data)
@@ -126,9 +131,9 @@ class StructArray:
         return stc_arr
 
     def to_df(self, init_i: int=0, end_i=None) -> pd.DataFrame:
-        data = StructArray._array_builder(self.struct_shape, self.dtypes, self.labels_data, 0, self.length())
+        data = StructArray._array_builder(self.struct_shape, self.dtypes, self.labels_data, 0, len(self))
         if end_i is None:
-            end_i = self.length()
+            end_i = len(self)
         size = abs(end_i - init_i)
         if size > data.shape[0]:
             end_i = init_i + data.shape[0]
@@ -146,28 +151,19 @@ class StructArray:
         if dtype is None:
             dtype = self.dtype
         ndarray = np.empty(self.shape, dtype=dtype)
-        if len(self.labels_data) == 1:
-            _, array = self.labels_data[0]
-            ndarray[:] = array[0:self.length()]
+        if not self.is_multidim():
+            for i, (group, array) in enumerate(self.labels_data):
+                ndarray[:, i] = array[0:len(self)]
         else:
-            if not self.is_multidim():
-                for i, (label, array) in enumerate(self.labels_data):
-                    ndarray[:, i] = array[0:self.length()]
-            else:
-                for i, (label, array) in enumerate(self.labels_data):
-                    ndarray[:, i] = array[0:self.length()].reshape(-1)
-                return ndarray
+            raise NotImplementedError
         return ndarray
 
     def to_xrds(self) -> xr.Dataset:
         xr_data = {}
-        for label, data in self.labels_data:
-            if len(data.shape) >= 2:
-                dims = ["x{}".format(i) for i in range(data.shape[1])]
-                data_dims = (dims, data)
-                xr_data[label] = data_dims
-            else:
-                xr_data[label] = ("x0", data)
+        for group, data in self.labels_data:
+            dims = ["x{}".format(i) for i in range(len(data.shape))]
+            data_dims = (dims, data)
+            xr_data[group] = data_dims
         return xr.Dataset(xr_data)
 
 
@@ -180,3 +176,8 @@ def labels2num(self):
     le = LabelEncoder()
     le.fit(self.labels)
     return le
+
+
+def isnamedtupleinstance(x):
+    f = getattr(x, '_fields', None)
+    return f is not None and x.__bases__[0] == tuple

@@ -6,6 +6,7 @@ import collections
 
 from ml.data.it import Iterator
 from ml.data.ds import Data
+from ml.data.drivers import HDF5
 
 
 def multi_round(matrix, *args):
@@ -29,13 +30,13 @@ class TestIterator(unittest.TestCase):
         result = data.to_ndarray()
         self.assertCountEqual(result, array, True)
 
-    def test_mixtype2(self):
-        array = [1, 2, 3, 4.0, 'xxx', [1], [[2, 3]]]
-        it = Iterator(array, dtypes=[("c0", np.dtype("object"))])
-        data = Data(name="test")
-        data.from_data(it[:7])
-        result = data.to_ndarray()
-        self.assertCountEqual(result, np.asarray([1, 2, 3, 4.0, 'xxx', 1, [2, 3]], dtype='object'), True)
+    # def test_mixtype_multidim(self):
+    #    array = [1, 2, 3, 4.0, 'xxx', [1], [[2, 3]]]
+    #    it = Iterator(array, dtypes=[("c0", np.dtype("object"))])
+    #    data = Data(name="test")#, driver=HDF5())
+    #    data.from_data(it[:7])
+    #    result = data.to_ndarray()
+    #    self.assertCountEqual(result, np.asarray([1, 2, 3, 4.0, 'xxx', 1, [2, 3]], dtype='object'), True)
 
     def test_length_array(self):
         array = np.zeros((20, 2)) + 1
@@ -43,8 +44,7 @@ class TestIterator(unittest.TestCase):
         data = Data(name="test")
         data.from_data(it[:10])
         result = data[:5].to_ndarray()
-        print(result)
-        #self.assertEqual((result == array[:5]).all(), True)
+        self.assertEqual((result == array[:5]).all(), True)
 
     def test_length_array_batch(self):
         array = np.zeros((20, 2)) + 1
@@ -55,21 +55,21 @@ class TestIterator(unittest.TestCase):
         self.assertEqual((result == array[:5]).all(), True)
 
     def test_flat_all(self):
-        array = np.zeros((20, 2))
+        array = np.zeros((20, 2)) + 1
         it = Iterator(array)
         x = it.flat()
         data = Data(name="test")
         data.from_data(x)
-        y = np.zeros((40,))
+        y = np.zeros((40,)) + 1
         self.assertCountEqual(data.to_ndarray(), y)
 
     def test_flat_all_batch(self):
-        data = np.zeros((20, 2))
+        data = np.zeros((20, 2)) + 1
         it = Iterator(data).batchs(batch_size=3, batch_type="array")
         x = it.flat()
         data = Data(name="test")
         data.from_data(x)
-        y = np.zeros((40,))
+        y = np.zeros((40,)) + 1
         self.assertCountEqual(data.to_ndarray(), y)
 
     def test_it_attrs(self):
@@ -304,7 +304,7 @@ class TestIterator(unittest.TestCase):
         array = np.zeros((num_items, 4)) + [1, 2, 3, 0]
         array[:, 3] = np.random.rand(1, num_items) > .5
         it = Iterator(array).sample(num_samples, col=3, weight_fn=fn)
-        data = Data(name="test")
+        data = Data(name="test", clean=True, dataset_path="/tmp")
         data.from_data(it)
         with data:
             c = collections.Counter(data.to_ndarray()[:, 3])

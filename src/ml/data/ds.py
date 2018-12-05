@@ -14,7 +14,7 @@ from ml.abc.data import AbsDataset
 from ml.data.it import Iterator, BaseIterator
 from ml.utils.config import get_settings
 from ml.utils.files import build_path
-from ml.utils.basic import Hash, StructArray
+from ml.utils.basic import Hash, StructArray, isnamedtupleinstance
 from ml.abc.driver import AbsDriver
 from ml.data.drivers import Memory
 from sklearn.model_selection import train_test_split
@@ -254,6 +254,7 @@ class Data(AbsDataset):
     def batchs_writer(self, groups, data):
         log.info("Writing with batch size {}".format(getattr(data, 'batch_size', 0)))
         if getattr(data, 'batch_size', 0) > 0 and data.batch_type == "structured":
+            log.debug("WRITING STRUCTURED BATCH")
             end = {}
             init = {}
             for group in groups:
@@ -265,6 +266,7 @@ class Data(AbsDataset):
                     self.driver["data"][group][init[group]:end[group]] = smx[group]
                     init[group] = end[group]
         elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "array":
+            log.debug("WRITING ARRAY BATCH")
             init = 0
             end = 0
             for smx in tqdm(data, total=data.num_splits()):
@@ -273,6 +275,7 @@ class Data(AbsDataset):
                     self.driver["data"][group][init:end] = smx
                 init = end
         elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "df":
+            log.debug("WRITING DF BATCH")
             init = 0
             end = 0
             for smx in tqdm(data, total=data.num_splits()):
@@ -285,6 +288,7 @@ class Data(AbsDataset):
                     self.driver["data"][group][init:end] = array
                 init = end
         elif getattr(data, 'batch_size', 0) > 0:
+            log.debug("WRITING GENERIC BATCH")
             init = 0
             end = 0
             for smx in tqdm(data, total=data.num_splits()):
@@ -295,15 +299,18 @@ class Data(AbsDataset):
                 for i, group in enumerate(groups):
                     self.driver["data"][group][init:end] = smx[i]
                 init = end
-        elif len(groups) > 1 and data.type_elem == tuple:
+        elif data.type_elem == tuple or data.type_elem == list or data.type_elem == np.ndarray and\
+                (data.type_elem != pd.DataFrame or not isnamedtupleinstance(data.type_elem)):
+            log.debug("WRITING ELEMS IN LIST")
             init = 0
             end = 0
             for smx in tqdm(data, total=data.num_splits()):
                 end += 1
                 for i, group in enumerate(groups):
-                    self.driver["data"][group][init:end] = smx[i]
+                    self.driver["data"][group][init:end] = [smx]
                 init = end
-        elif len(groups) > 1:
+        elif data.type_elem == pd.DataFrame or isnamedtupleinstance(data.type_elem):
+            log.debug("WRITING ELEMS IN TABULAR")
             init = 0
             end = 0
             for smx in tqdm(data, total=data.num_splits()):
@@ -312,6 +319,7 @@ class Data(AbsDataset):
                     self.driver["data"][group][init:end] = getattr(smx, group)
                 init = end
         else:
+            log.debug("WRITING SCALARS")
             init = 0
             end = 0
             if len(groups) > 0:
@@ -409,18 +417,28 @@ class Data(AbsDataset):
             print("ok")
         elif not isinstance(data, BaseIterator):
             data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
+        elif isinstance(data, Iterator):
+            data = data.batchs(batch_size=batch_size, batch_type="structured")
         self.dtypes = data.dtypes
         with self:
             groups = []
-            if len(self.groups) > 1:
-                shape = [data.shape[0]]  # int(data.shape[1] / len(self.dtypes))]
-            elif len(self.groups) == 1 and len(data.shape) == 2 and data.shape[1] == 1:
-                shape = [data.shape[0]]
+            # if len(self.groups) > 1:
+            #    shape = [data.shape[0]]  # int(data.shape[1] / len(self.dtypes))]
+            # elif len(self.groups) == 1 and len(data.shape) == 2 and data.shape[1] == 1:
+            #    shape = [data.shape[0]]
+            # else:
+            #    shape = data.shape
+            if data.is_multidim():
+                for group, dtype in self.dtypes:
+                    # print("SET", group, dtype, data.shape, data.length)
+                    self._set_group_shape(group, data.shape[group], dtype, group="data")
+                    groups.append(group)
             else:
-                shape = data.shape
-            for group, dtype in self.dtypes:
-                self._set_group_shape(group, shape, dtype, group="data")  # data[col].shape
-                groups.append(group)
+                raise NotImplementedError
+                # for group, dtype in self.dtypes:
+                #    print("SET", group, dtype, data.shape, data.length)
+                #    self._set_group_shape(group, data.shape, dtype, group="data") data.shape returns shape with groups size
+                #    groups.append(group)
             self.batchs_writer(groups, data)
             if with_hash is not None:
                 chash = self.calc_hash(with_hash=with_hash)

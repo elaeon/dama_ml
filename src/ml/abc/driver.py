@@ -24,7 +24,7 @@ class AbsDriver(ABC):
             self.compressor_params = {"compression": self.compressor.codec_id,
                                       "compression_opts": self.compressor.level}
         else:
-            self.compressor_params = {"compression": "", "compression_opts": 0}
+            self.compressor_params = {}
 
         self.mode = 'a'
         self.attrs = None

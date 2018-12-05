@@ -10,15 +10,32 @@ class TestStructArray(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_dtype(self):
+    def test_dtypes(self):
         columns = [("x", np.random.rand(10).astype('uint8')), ("y", np.random.rand(10))]
         str_array = StructArray(columns)
-        self.assertEqual(str_array.dtype, [('x', np.dtype('uint8')), ('y', np.dtype('float64'))])
+        self.assertEqual(str_array.dtypes, [('x', np.dtype('uint8')), ('y', np.dtype('float64'))])
+        self.assertEqual(str_array.dtype, np.dtype('float64'))
 
     def test_length(self):
         columns = [("x", np.random.rand(10).astype('uint8')), ("y", np.random.rand(10))]
         str_array = StructArray(columns)
-        self.assertEqual(str_array.length, 10)
+        self.assertEqual(len(str_array), 10)
+
+    def test_shape_multidim(self):
+        columns = [("x", np.random.rand(10).astype('uint8')), ("y", np.random.rand(10, 2))]
+        str_array = StructArray(columns)
+        self.assertEqual(str_array.shape["x"], (10,))
+        self.assertEqual(str_array.shape["y"], (10, 2))
+
+    def test_shape_null(self):
+        columns = []
+        str_array = StructArray(columns)
+        self.assertEqual(str_array.shape, (0,))
+
+    def test_shape(self):
+        columns = [("x", np.random.rand(10, 3, 1).astype('uint8')), ("y", np.random.rand(10, 3, 1))]
+        str_array = StructArray(columns)
+        self.assertEqual(str_array.shape, (10, 2, 3, 1))
 
     def test_slice(self):
         columns = [("x", np.array([1, 2, 3, 4, 5])), ("y", np.array([6, 7, 8, 9, 10]))]
@@ -46,17 +63,17 @@ class TestStructArray(unittest.TestCase):
         array = np.array([[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
         columns = [("x", array)]
         str_array = StructArray(columns)
-        self.assertEqual((str_array.to_ndarray() == array).all(), True)
+        self.assertEqual((str_array.to_ndarray().reshape(2, 5) == array).all(), True)
 
     def test_is_multidim(self):
         array = np.array([[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
         columns = [("x", array)]
         str_array = StructArray(columns)
-        self.assertEqual(str_array.is_multidim(), True)
-
-        columns = [("x", np.array([1, 2, 3, 4, 5])), ("y", np.array([6, 7, 8, 9, 10]))]
-        str_array = StructArray(columns)
         self.assertEqual(str_array.is_multidim(), False)
+
+        columns = [("x", np.array([1, 2, 3, 4, 5])), ("y", np.array([6, 7, 8, 9]))]
+        str_array = StructArray(columns)
+        self.assertEqual(str_array.is_multidim(), True)
 
     def test_multindex_str(self):
         array = np.empty(5, dtype=[("x", "uint8"), ("y", "uint8"), ("z", "object")])
