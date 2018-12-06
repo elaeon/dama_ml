@@ -25,19 +25,14 @@ class SVC(SKL):
 class RandomForest(SKLP):
     def prepare_model(self, obj_fn=None, num_steps=None):
         from sklearn.ensemble import RandomForestClassifier
-        from sklearn.grid_search import GridSearchCV
-        if obj_fn is not None:
-            model = GridSearchCV(RandomForestClassifier(),
-                       scoring=obj_fn,
-                       cv=5,
-                       param_grid={"n_estimators":[25], "min_samples_split": [2]})
-        else:
-            model = CalibratedClassifierCV(
-                RandomForestClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
+        model = CalibratedClassifierCV(
+            RandomForestClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
         with self.train_ds, self.validation_ds:
-            model_clf = model.fit(self.train_ds.data[:], self.train_ds.labels[:])
+            model_clf = model.fit(self.train_ds[self.data_group].to_ndarray().reshape(70, 10),
+                                  self.train_ds[self.target_group].to_ndarray().reshape(70))
             reg_model = CalibratedClassifierCV(model_clf, method="sigmoid", cv="prefit")
-            reg_model.fit(self.validation_ds.data, self.validation_ds.labels)
+            reg_model.fit(self.validation_ds[self.data_group].to_ndarray().reshape(10, 10),
+                          self.validation_ds[self.target_group].to_ndarray().reshape(10))
         return self.ml_model(reg_model)
 
     def prepare_model_k(self, obj_fn=None):

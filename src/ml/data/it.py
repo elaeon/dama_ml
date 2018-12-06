@@ -41,7 +41,7 @@ def assign_struct_array(it, type_elem, start_i, end_i, dtype, dims):
 
 
 class BaseIterator(object):
-    def __init__(self, it, length: int=None, dtypes: list=None, shape: tuple=None,
+    def __init__(self, it, length: int=np.inf, dtypes: list=None, shape: tuple=None,
                  type_elem=None, pushedback=None) -> None:
         self.data = it
         self.pushedback = [] if pushedback is None else pushedback
@@ -65,12 +65,13 @@ class BaseIterator(object):
     def calc_shape(length, shape):
         if shape is None:
             return tuple([length])
-        elif (not isinstance(shape, tuple) and not isinstance(shape, dict)) and length is not None:
-            return tuple([length, shape])
-        elif isinstance(shape, tuple) and length is not None:
+        elif isinstance(shape, tuple):
             return tuple([length] + list(shape))
-        elif isinstance(shape, dict) and length is not None:
-            return shape
+        elif isinstance(shape, dict) and length != np.inf: #****
+            length_shape = {}
+            for group, g_shape in shape.items():
+                length_shape[group] = tuple([length] + list(g_shape[1:]))
+            return length_shape
 
     @property
     def groups(self) -> list:
@@ -143,7 +144,7 @@ class BaseIterator(object):
                 values[k] += v
         return values
 
-    def is_multidim(self):
+    def is_multidim(self) -> bool:
         return isinstance(self.shape, dict)
 
     def __iter__(self) -> 'BaseIterator':
@@ -162,7 +163,7 @@ class BaseIterator(object):
 
 
 class Iterator(BaseIterator):
-    def __init__(self, fn_iter, dtypes: list=None, length: int=None) -> None:
+    def __init__(self, fn_iter, dtypes: list=None, length: int=np.inf) -> None:
         super(Iterator, self).__init__(fn_iter, dtypes=dtypes, length=length)
         if isinstance(fn_iter, types.GeneratorType):
             self.data = fn_iter
@@ -177,15 +178,19 @@ class Iterator(BaseIterator):
         elif isinstance(fn_iter, pd.DataFrame):
             self.data = fn_iter.itertuples(index=False)
             dtypes = list(zip(fn_iter.columns.values, fn_iter.dtypes.values))
-            length = fn_iter.shape[0] if length is None else length
+            length = fn_iter.shape[0] if length == np.inf else length
             self.is_ds = False
         elif isinstance(fn_iter, np.ndarray):
             self.data = iter(fn_iter)
-            length = fn_iter.shape[0] if length is None else length
+            length = fn_iter.shape[0] if length == np.inf else length
             self.is_ds = False
         elif isinstance(fn_iter, AbsDataset):
             self.data = fn_iter
-            length = fn_iter.shape[0] if length is None else length
+            length = len(fn_iter) if length == np.inf else length
+            self.is_ds = True
+        elif isinstance(fn_iter, StructArray):
+            self.data = fn_iter
+            length = len(fn_iter) if length == np.inf else length
             self.is_ds = True
         else:
             self.data = iter(fn_iter)
@@ -195,7 +200,7 @@ class Iterator(BaseIterator):
 
         if isinstance(fn_iter, Iterator):
             self.data = fn_iter.data
-            length = fn_iter.length if length is None else length
+            length = fn_iter.length if length == np.inf else length
             self.is_ds = False
             self.shape = self.calc_shape(length, fn_iter.shape)
             self.dtype = fn_iter.dtype
@@ -306,7 +311,7 @@ class BatchIterator(BaseIterator):
         super(BatchIterator, self).__init__(it, dtypes=it.dtypes, length=it.length)
         self.batch_size = batch_size
         self.shape = it.shape
-        self.type_elem = pd.DataFrame if batch_type is "df" else np.ndarray
+        # self.type_elem = pd.DataFrame if batch_type is "df" else np.ndarray
         self.batch_type = batch_type
 
     def clean_batchs(self) -> Iterator:
@@ -442,7 +447,7 @@ class BatchArray(BatchIterator):
             batch = self.data.data[init:end]
             init = end
             end += self.batch_size
-            length = batch.shape[0]
+            length = len(batch)
             if length > 0:
                 yield batch.to_ndarray(dtype=self.dtype)
             else:
@@ -457,7 +462,7 @@ class BatchDataFrame(BatchIterator):
             batch = self.data.data[init:end]
             init = end
             end += self.batch_size
-            length = batch.shape[0]
+            length = len(batch)
             if length > 0:
                 yield batch.to_df(init_i=init, end_i=end)
             else:

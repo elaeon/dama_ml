@@ -34,16 +34,17 @@ class MLModel:
         return self.fit_fn(*args, **kwargs)
 
     def predict(self, data):
-        if data.has_chunks:
-            for chunk in data:
-                yield self.predictors(self.transform_data(chunk))
-        else:
-            for row in data:
-                predict = self.predictors(self.transform_data(row.reshape(1, -1)))
-                if len(predict.shape) > 1:
-                    yield predict[0]
-                else:
-                    yield predict
+        #if data:
+        #    for chunk in data:
+        #        yield self.predictors(self.transform_data(chunk))
+        #else:
+        for row in data:
+            predict = self.predictors(self.transform_data(row.reshape(1, -1)))
+            print(predict)
+            if len(predict.shape) > 1:
+                yield predict[0]
+            else:
+                yield predict
 
     def load(self, path):
         return self.load_fn(path)
@@ -61,6 +62,7 @@ class DataDrive(object):
             self.check_point_path = check_point_path
         self.model_name = model_name
         self.group_name = group_name
+        self.model_version = None
         self.path_m = None
         self.path_mv = None
 
@@ -154,6 +156,7 @@ class BaseModel(DataDrive):
         self.model_params = None
         self.num_steps = None
         self.model_version = None
+        self.target = None
 
         super(BaseModel, self).__init__(
             check_point_path=check_point_path,
@@ -186,20 +189,15 @@ class BaseModel(DataDrive):
         with self.test_ds:
             return self.test_ds.num_features()
 
-    def predict(self, data, output=None, transform=True, chunks_size=258):
-        def fn(x, t=True):
-            with self.test_ds:
-                return self.test_ds.processing(x, apply_transforms=t, chunks_size=chunks_size)
-
-        return Iterator(self._predict(fn(data, t=transform), output=output), 
-            chunks_size=chunks_size)
+    def predict(self, data, output=None, batch_size=258):
+        return Iterator(self._predict(data, output=output)).batchs(batch_size=batch_size)
 
     def metadata_model(self):
         with self.test_ds:
             return {
                 "test_ds_path": self.test_ds.dataset_path,
                 "test_ds_name": self.test_ds.name,
-                "md5": self.test_ds.md5,
+                "hash": self.test_ds.hash,
                 "original_dataset_md5": self.original_dataset_hash,
                 "original_dataset_path": self.original_dataset_path,
                 "original_dataset_name": self.original_dataset_name,
@@ -292,25 +290,30 @@ class SupervicedModel(BaseModel):
             metrics=None):
         self.train_ds = None
         self.validation_ds = None
+        self.target_group = None
+        self.data_group = None
         super(SupervicedModel, self).__init__(
             check_point_path=check_point_path,
             model_name=model_name,
             group_name=group_name,
             metrics=metrics)
 
-    def load(self):
+    def load(self, model_version):
         pass
 
-    def set_dataset(self, dataset,  train_size=.7, valid_size=.1, unbalanced=None, chunks_size=30000):
-        with dataset:
-            self.original_dataset_hash = dataset.hash
-            self.original_dataset_path = dataset.dataset_path
-            self.original_dataset_name = dataset.name
-            self.train_ds, self.test_ds, self.validation_ds = self.reformat_all(dataset,
-                train_size=train_size, valid_size=valid_size, unbalanced=unbalanced, chunks_size=chunks_size)
+    def set_dataset(self, train_ds:Data, test_ds:Data, validation_ds: Data=None, pipeline=None):
+       # with dataset:
+       #     self.original_dataset_hash = dataset.hash
+       #     self.original_dataset_path = dataset.dataset_path
+       #     self.original_dataset_name = dataset.name
+        self.train_ds = train_ds
+        self.test_ds = test_ds
+        self.validation_ds = validation_ds
+        self.pipeline = pipeline
         self.save_meta(keys="model")
 
     def metadata_model(self):
+        print(self.target_group)
         with self.test_ds, self.train_ds, self.validation_ds:
             return {
                 "test_ds_path": self.test_ds.dataset_path,
@@ -319,10 +322,12 @@ class SupervicedModel(BaseModel):
                 "train_ds_name": self.train_ds.name,
                 "validation_ds_path": self.validation_ds.dataset_path,
                 "validation_ds_name": self.validation_ds.name,
-                "md5": self.test_ds.md5,
-                "original_dataset_hash": self.original_dataset_hash,
-                "original_dataset_path": self.original_dataset_path,
-                "original_dataset_name": self.original_dataset_name,
+                "hash": self.test_ds.hash,
+                "target_group": self.target_group,
+                "data_group": self.data_group,
+                #"original_dataset_hash": self.original_dataset_hash,
+                #"original_dataset_path": self.original_dataset_path,
+                #"original_dataset_name": self.original_dataset_name,
                 "group_name": self.group_name,
                 "model_module": self.module_cls_name(),
                 "model_name": self.model_name,
@@ -353,10 +358,13 @@ class SupervicedModel(BaseModel):
                 print("fold ", k)
         return model
 
-    def train(self, batch_size=0, num_steps=0, n_splits=None, obj_fn=None, model_params={}):
+    def train(self, batch_size=0, num_steps=0, n_splits=None, obj_fn=None, model_params={},
+              data_group=None, target_group=None):
         log.info("Training")
         self.model_params = model_params
         self.num_steps = num_steps
+        self.target_group = target_group
+        self.data_group = data_group
         if n_splits is not None:
             self.model = self.train_kfolds(batch_size=batch_size, num_steps=num_steps, 
                             n_splits=n_splits, obj_fn=obj_fn, model_params=model_params)

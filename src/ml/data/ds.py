@@ -17,7 +17,6 @@ from ml.utils.files import build_path
 from ml.utils.basic import Hash, StructArray, isnamedtupleinstance
 from ml.abc.driver import AbsDriver
 from ml.data.drivers import Memory
-from sklearn.model_selection import train_test_split
 
 settings = get_settings("ml")
 
@@ -223,7 +222,7 @@ class Data(AbsDataset):
     def run(self):
         i = 0
         data = self.data
-        while i < data.length():
+        while i < len(data):
             yield data[i]
             i += 1
 
@@ -354,8 +353,11 @@ class Data(AbsDataset):
         else:
             return False
 
+    def __len__(self):
+        return len(self.data)
+
     @property
-    def shape(self) -> tuple:
+    def shape(self):
         return self.data.shape
 
     @property
@@ -405,15 +407,16 @@ class Data(AbsDataset):
         hash_obj = Hash(hash_fn=with_hash)
         header = [getattr(self, attr) for attr in self.header_map]
         hash_obj.hash.update("".join(header).encode("utf-8"))
-        it = Iterator(self).batchs(batch_size=batch_size, batch_type="array")
-        hash_obj.update(it)
+        for group in self.groups:
+            it = Iterator(self.data[group]).batchs(batch_size=batch_size, batch_type="array")
+            hash_obj.update(it)
         return str(hash_obj)
 
     def from_data(self, data, batch_size: int=258, with_hash: str="sha1"):
         """
         build a datalabel dataset from data and labels
         """
-        if isinstance(data, AbsDataset):
+        if isinstance(data, AbsDataset) or isinstance(data, StructArray):
             print("ok")
         elif not isinstance(data, BaseIterator):
             data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
@@ -430,7 +433,6 @@ class Data(AbsDataset):
             #    shape = data.shape
             if data.is_multidim():
                 for group, dtype in self.dtypes:
-                    # print("SET", group, dtype, data.shape, data.length)
                     self._set_group_shape(group, data.shape[group], dtype, group="data")
                     groups.append(group)
             else:
@@ -483,36 +485,6 @@ class Data(AbsDataset):
                 f.write(" ".join(row))
                 f.write("\n")
 
-    def cv(self, train_size=.7, valid_size=.1, unbalanced=None):
-        train_size = round(train_size+valid_size, 2)
-        print(self.data[self.labels].shape, self.labels)
-        X_train, X_test, y_train, y_test = train_test_split(
-            self.data[:], self.labels[:], train_size=train_size, random_state=0)
-        size = self.data.shape[0]
-        valid_size_index = int(round(size * valid_size, 0))
-        X_validation = X_train[:valid_size_index]
-        y_validation = y_train[:valid_size_index]
-        X_train = X_train[valid_size_index:]
-        y_train = y_train[valid_size_index:]
-
-        if unbalanced is not None:
-            return NotImplemented
-        else:
-            return X_train, X_validation, X_test, y_train, y_validation, y_test
-
-    def cv_ds(self, train_size=.7, valid_size=.1, dataset_path=None):
-        data = self.cv(train_size=train_size, valid_size=valid_size)
-        train_ds = Data(name="train", dataset_path=dataset_path)
-        with train_ds:
-            train_ds.from_data(data[0], data[3], data[0].shape[0])
-        validation_ds = Data(name="validation", dataset_path=dataset_path)
-        with validation_ds:
-            validation_ds.from_data(data[1], data[4], data[1].shape[0])
-        test_ds = Data(name="test", dataset_path=dataset_path)
-        with test_ds:
-            test_ds.from_data(data[2], data[5], data[2].shape[0])
-
-        return train_ds, validation_ds, test_ds
 
 
 class DataLabel(Data):

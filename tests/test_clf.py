@@ -3,6 +3,7 @@ import numpy as np
 
 from ml.data.ds import Data
 from ml.clf.extended.w_sklearn import RandomForest
+from ml.data.etl import Pipeline
 np.random.seed(0)
 
 
@@ -15,6 +16,32 @@ def multi_int(X):
         return np.asarray([int(x) for x in X])
     except TypeError:
         return X
+
+
+class CV(object):
+    def __init__(self, group_data, group_target, train_size=.7, valid_size=.1, unbalanced=None):
+        self.train_size = train_size
+        self.valid_size = valid_size
+        self.unbalanced = unbalanced
+        self.group_target = group_target
+        self.group_data = group_data
+
+    def apply(self, data):
+        from sklearn.model_selection import train_test_split
+        train_size = round(self.train_size + self.valid_size, 2)
+        X_train, X_test, y_train, y_test = train_test_split(
+            data[self.group_data], data[self.group_target], train_size=train_size, random_state=0)
+        size = len(data)
+        valid_size_index = int(round(size * self.valid_size, 0))
+        X_validation = X_train[:valid_size_index]
+        y_validation = y_train[:valid_size_index]
+        X_train = X_train[valid_size_index:]
+        y_train = y_train[valid_size_index:]
+
+        if self.unbalanced is not None:
+            return NotImplemented
+        else:
+            return X_train, X_validation, X_test, y_train, y_validation, y_test
 
 
 class TestSKL(unittest.TestCase):
@@ -32,13 +59,23 @@ class TestSKL(unittest.TestCase):
         classif = RandomForest(
             model_name="test_model",
             check_point_path="/tmp/")
-        classif.set_dataset(self.dataset)
-        classif.train(num_steps=1)
+        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
+        # pipeline = Pipeline(self.dataset)
+        # pipeline.map(cv.apply)
+        X_train, X_validation, X_test, y_train, y_validation, y_test = cv.apply(self.dataset)#pipeline.compute()[0]
+        train_ds = Data(name="train")
+        train_ds.from_data({"x": X_train.to_ndarray().reshape(70,10), "y": y_train.to_ndarray().reshape(70)})
+        test_ds = Data(name="test")
+        test_ds.from_data({"x": X_test.to_ndarray().reshape(20, 10), "y": y_test.to_ndarray().reshape(20)})
+        validation_ds = Data(name="validation")
+        validation_ds.from_data({"x": X_validation.to_ndarray().reshape(10, 10), "y": y_validation.to_ndarray().reshape(10)})
+        classif.set_dataset(train_ds=train_ds, test_ds=test_ds, validation_ds=validation_ds, pipeline=None)
+        classif.train(num_steps=1, data_group="x", target_group='y')
         classif.save(model_version="1")
-        meta = classif.load_meta()
-        self.assertEqual(meta["model"]["original_dataset_path"], "/tmp/")
-        self.assertEqual(meta["train"]["model_version"], "1")
-        classif.destroy()
+        #meta = classif.load_meta()
+        #self.assertEqual(meta["model"]["original_dataset_path"], "/tmp/")
+        #self.assertEqual(meta["train"]["model_version"], "1")
+        #classif.destroy()
 
     def test_empty_load(self):
         classif = RandomForest(

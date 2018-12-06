@@ -3,10 +3,12 @@ import tensorflow as tf
 import logging
 
 from sklearn.preprocessing import LabelEncoder
+from sklearn.externals import joblib
 from ml.utils.config import get_settings
 from ml.models import MLModel, SupervicedModel
-from ml.data.ds import DataLabel, Data
+from ml.data.ds import Data
 from ml import measures as metrics
+
 
 settings = get_settings("ml")
 log = logging.getLogger(__name__)
@@ -22,29 +24,27 @@ class ClassifModel(SupervicedModel):
         self.le = LabelEncoder()
         self.base_labels = None
         self.labels_dim = 1
+        self.target = None
         super(ClassifModel, self).__init__(**params)
 
     def load(self, model_version):
         self.model_version = model_version
         self.test_ds = self.get_dataset()
         self.get_train_validation_ds()
-        with self.load_original_ds() as ds:
-            if isinstance(ds, DataLabel):
-                self.labels_encode(ds.labels)
         self.load_model()
 
-    def scores(self, measures=None, chunks_size=2000):
+    def scores(self, measures=None, batch_size=2000):
         if measures is None or isinstance(measures, str):
             measures = metrics.Measure.make_metrics(measures, name=self.model_name)
         with self.test_ds:
-            test_data = self.test_ds.data[:]
-            test_labels = self.test_ds.labels[:]
-            length = self.test_ds.shape[0]
+            test_data = self.test_ds[self.data_group]
+            test_labels = self.test_ds[self.target_group]
 
         for output in measures.outputs():
-            predictions = self.predict(test_data, output=output, 
-                transform=False, chunks_size=chunks_size).to_memory(length)
-            measures.set_data(predictions, test_labels, output=output)
+            predictions = self.predict(test_data, output=output, batch_size=batch_size)
+            for pred in predictions:
+                print("PPPP", pred, batch_size)
+                measures.set_data(pred, test_labels, output=output)
         return measures.to_list()
 
     #def confusion_matrix(self):
@@ -99,56 +99,13 @@ class ClassifModel(SupervicedModel):
                         nchunk[i] = self.le.inverse_transform(int(round(label, 0)))
                     yield nchunk
                 else:
-                    yield self.le.inverse_transform(self.position_index(chunk.reshape(1, -1)))
+                    yield self.position_index(chunk.reshape(1, -1))
 
     def numerical_labels2classes(self, labels):
         if len(labels.shape) > 1 and labels.shape[1] > 1:
             return self.le.inverse_transform(np.argmax(labels, axis=1))
         else:
             return self.le.inverse_transform(labels.astype('int'))
-
-    def reformat_all(self, dataset, train_size=.7, valid_size=.1, unbalanced=None, chunks_size=30000):
-        if isinstance(dataset, list):
-            dl_train, dl_test, dl_validation = dataset
-            return dl_train, dl_test, dl_validation
-        else:
-            log.info("Reformating {}...".format(self.cls_name()))
-            dl_train = DataLabel(
-                name="{}.{}.{}".format(self.model_name, self.model_version, "train"),
-                dataset_path=settings["dataset_model_path"],
-                compression_level=3,
-                clean=True)
-            dl_test = DataLabel(
-                name="{}.{}.{}".format(self.model_name, self.model_version, "test"),
-                dataset_path=settings["dataset_model_path"],
-                compression_level=3,
-                clean=True)
-            dl_validation = DataLabel(
-                name="{}.{}.{}".format(self.model_name, self.model_version, "validation"),
-                dataset_path=settings["dataset_model_path"],
-                compression_level=3,
-                clean=True)
-
-            with dataset:
-                self.labels_encode(dataset.labels)
-                log.info("Labels encode finished")
-                train_data, validation_data, test_data, train_labels, validation_labels, test_labels = dataset.cv(
-                    train_size=train_size, valid_size=valid_size, unbalanced=unbalanced)
-                train_labels = self.reformat_labels(self.le.transform(train_labels))
-                validation_labels = self.reformat_labels(self.le.transform(validation_labels))
-                test_labels = self.reformat_labels(self.le.transform(test_labels))
-                with dl_train:
-                    dl_train.from_data(train_data, train_labels, chunks_size=chunks_size)
-                    dl_train.columns = dataset.columns
-                with dl_test:
-                    dl_test.from_data(test_data, test_labels, chunks_size=chunks_size)
-                    dl_test.columns = dataset.columns
-                with dl_validation:
-                    dl_validation.from_data(validation_data, validation_labels, 
-                        chunks_size=chunks_size)
-                    dl_validation.columns = dataset.columns
-
-            return dl_train, dl_test, dl_validation
 
     def _predict(self, data, output=None):
         prediction = self.model.predict(data)
@@ -188,7 +145,6 @@ class SKLP(ClassifModel):
                             save_fn=lambda path: joblib.dump(model, '{}'.format(path)))
 
     def load_fn(self, path):
-        from sklearn.externals import joblib
         model = joblib.load('{}'.format(path))
         self.model = self.ml_model(model)
 

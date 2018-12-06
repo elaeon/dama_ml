@@ -46,6 +46,8 @@ class StructArray:
             except KeyError:
                 columns = [(self.labels_data[i][0], self.labels_data[i][1]) for i in key]
             return self.convert_from_columns(columns, 0, len(self))
+        elif isinstance(key, np.ndarray) and key.dtype == np.dtype('int'):
+            return self.convert_from_array(self.labels_data, key)
         else:
             return self.convert_from_index(key)
 
@@ -108,6 +110,10 @@ class StructArray:
         sub_labels_data = [(label, array[start_i:end_i]) for label, array in labels_data]
         return StructArray(sub_labels_data)
 
+    def convert_from_array(self, labels_data, index_array):
+        sub_labels_data = [(label, array[index_array]) for label, array in labels_data]
+        return StructArray(sub_labels_data)
+
     def convert_from_index(self, index: int):
         sub_labels_data = []
         dtypes = dict(self.dtypes)
@@ -150,8 +156,8 @@ class StructArray:
     def to_ndarray(self, dtype: list=None) -> np.ndarray:
         if dtype is None:
             dtype = self.dtype
-        ndarray = np.empty(self.shape, dtype=dtype)
         if not self.is_multidim():
+            ndarray = np.empty(self.shape, dtype=dtype)
             for i, (group, array) in enumerate(self.labels_data):
                 ndarray[:, i] = array[0:len(self)]
         else:
