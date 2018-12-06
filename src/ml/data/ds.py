@@ -425,17 +425,13 @@ class Data(AbsDataset):
         self.dtypes = data.dtypes
         with self:
             groups = []
-            # if len(self.groups) > 1:
-            #    shape = [data.shape[0]]  # int(data.shape[1] / len(self.dtypes))]
-            # elif len(self.groups) == 1 and len(data.shape) == 2 and data.shape[1] == 1:
-            #    shape = [data.shape[0]]
-            # else:
-            #    shape = data.shape
             if data.is_multidim():
                 for group, dtype in self.dtypes:
                     self._set_group_shape(group, data.shape[group], dtype, group="data")
                     groups.append(group)
             else:
+                for e in data:
+                    print(e)
                 raise NotImplementedError
                 # for group, dtype in self.dtypes:
                 #    print("SET", group, dtype, data.shape, data.length)
@@ -443,10 +439,10 @@ class Data(AbsDataset):
                 #    groups.append(group)
             self.batchs_writer(groups, data)
             if with_hash is not None:
-                chash = self.calc_hash(with_hash=with_hash)
+                c_hash = self.calc_hash(with_hash=with_hash)
             else:
-                chash = None
-        self.hash = chash
+                c_hash = None
+        self.hash = c_hash
 
     def to_df(self) -> pd.DataFrame:
         return self.data.to_df()

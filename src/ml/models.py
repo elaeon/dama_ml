@@ -39,8 +39,7 @@ class MLModel:
         #        yield self.predictors(self.transform_data(chunk))
         #else:
         for row in data:
-            predict = self.predictors(self.transform_data(row.reshape(1, -1)))
-            print(predict)
+            predict = self.predictors(row.to_ndarray())
             if len(predict.shape) > 1:
                 yield predict[0]
             else:
@@ -189,8 +188,10 @@ class BaseModel(DataDrive):
         with self.test_ds:
             return self.test_ds.num_features()
 
-    def predict(self, data, output=None, batch_size=258):
-        return Iterator(self._predict(data, output=output)).batchs(batch_size=batch_size)
+    def predict(self, data, output=None, batch_size: int=258):
+        plain_prediction = self.model.predict(data)
+        prediction = self.output_format(plain_prediction, output=output)
+        return Iterator(prediction).batchs(batch_size=batch_size)
 
     def metadata_model(self):
         with self.test_ds:
@@ -264,9 +265,6 @@ class BaseModel(DataDrive):
         if self.check_point_path is not None and self.model_version is not None:
             self.path_mv = self.make_model_version_file()
             self.model.load('{}.{}'.format(self.path_mv, self.ext))
-
-    def _predict(self, data, output=None):
-        pass
 
     def train(self, batch_size=0, num_steps=0, n_splits=None, obj_fn=None, model_params={}):
         log.info("Training")
@@ -366,7 +364,7 @@ class SupervicedModel(BaseModel):
         self.target_group = target_group
         self.data_group = data_group
         if n_splits is not None:
-            self.model = self.train_kfolds(batch_size=batch_size, num_steps=num_steps, 
+            self.model = self.train_kfolds(batch_size=batch_size, num_steps=num_steps,
                             n_splits=n_splits, obj_fn=obj_fn, model_params=model_params)
         else:
             self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, **model_params)

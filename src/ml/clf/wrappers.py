@@ -38,29 +38,13 @@ class ClassifModel(SupervicedModel):
             measures = metrics.Measure.make_metrics(measures, name=self.model_name)
         with self.test_ds:
             test_data = self.test_ds[self.data_group]
-            test_labels = self.test_ds[self.target_group]
+            test_labels = self.test_ds[self.target_group].to_ndarray()
 
         for output in measures.outputs():
             predictions = self.predict(test_data, output=output, batch_size=batch_size)
             for pred in predictions:
-                print("PPPP", pred, batch_size)
                 measures.set_data(pred, test_labels, output=output)
         return measures.to_list()
-
-    #def confusion_matrix(self):
-    #    from tqdm import tqdm
-    #    with self.test_ds:
-    #        test_data = self.test_ds.data[:]
-    #        test_labels = self.test_ds.labels[:]
-    #    predictions = self.predict(test_data, raw=False, 
-    #        transform=False, chunks_size=0)
-    #    measure = metrics.Measure(np.asarray(list(tqdm(predictions, 
-    #                    total=test_labels.shape[0]))),
-    #                    test_labels, 
-    #                    labels2classes=self.numerical_labels2classes,
-    #                    name=self.__class__.__name__)
-    #    measure.add(metrics.confusion_matrix, greater_is_better=None, uncertain=False)
-    #    return measure.to_list()
 
     def erroneous_clf(self):
         import operator
@@ -87,7 +71,7 @@ class ClassifModel(SupervicedModel):
         else:
             return labels
 
-    def convert_labels(self, labels, output=None):
+    def output_format(self, labels, output=None):
         if output == 'uncertain' or output == 'n_dim':
             for chunk in labels:
                 yield chunk
@@ -99,17 +83,13 @@ class ClassifModel(SupervicedModel):
                         nchunk[i] = self.le.inverse_transform(int(round(label, 0)))
                     yield nchunk
                 else:
-                    yield self.position_index(chunk.reshape(1, -1))
+                    yield self.position_index(chunk.reshape(1, -1))[0]
 
     def numerical_labels2classes(self, labels):
         if len(labels.shape) > 1 and labels.shape[1] > 1:
             return self.le.inverse_transform(np.argmax(labels, axis=1))
         else:
             return self.le.inverse_transform(labels.astype('int'))
-
-    def _predict(self, data, output=None):
-        prediction = self.model.predict(data)
-        return self.convert_labels(prediction, output=output)
 
 
 class SKL(ClassifModel):

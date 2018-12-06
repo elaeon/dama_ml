@@ -4,7 +4,7 @@ import pandas as pd
 
 from ml.data.ds import Data
 from ml.data.it import Iterator
-from ml.random import sampling_size
+from ml.utils.basic import StructArray
 from ml.data.drivers import Zarr, HDF5
 from numcodecs import GZip
 
@@ -242,37 +242,12 @@ class TestDataset(unittest.TestCase):
         with data:
             self.assertCountEqual(data[:3].shape, self.X[:3].shape)
 
-    def test_cv_ds(self):
-        dl = Data(name="test", dataset_path="/tmp/", clean=True)
-        XY = np.hstack((self.X, self.Y.reshape(-1, 1)))
-        dl.from_data(XY)
-        #with dl:
-        #    train_ds, validation_ds, test_ds = dl.cv_ds(train_size=.6, valid_size=.2)
-        #with train_ds:
-        #    self.assertEqual(train_ds.shape, (6, 10))
-        #with validation_ds:
-        #    self.assertEqual(validation_ds.shape, (2, 10))
-        #with test_ds:
-        #    self.assertEqual(test_ds.shape, (2, 10))
+    def test_from_struct(self):
+        X = StructArray([("x", np.random.rand(10, 2)), ("y", np.random.rand(10))])
+        Y = StructArray([("y", np.random.rand(10))])
+        data = Data(name="test", dataset_path="/tmp", clean=True)
+        data.from_data({"x": X, "y": Y})
 
-        dl.destroy()
-        #train_ds.destroy()
-        #validation_ds.destroy()
-        #test_ds.destroy()
-
-    def test_cv_unbalanced(self):
-        X = np.random.rand(1000, 2)
-        Y = np.asarray([str(e) for e in (X[:, 1] < .5)], dtype="|O")
-        ds = Data(name="test", dataset_path="/tmp/", clean=True)
-        unbalanced = sampling_size({u'True': .2, u'False': 350}, Y)
-        #ds.from_data(X, Y, X.shape[0])
-        #with ds:
-        #    X_train, X_validation, X_test, y_train, y_validation, y_test = ds.cv(train_size=.7, valid_size=0, unbalanced=unbalanced)
-        #counter = np.unique(Y, return_counts=True)
-        #un = np.unique(y_test, return_counts=True)
-        #self.assertEqual(np.unique(y_test, return_counts=True)[1][1] - 4 <= round(counter[1][1]*.2, 0), True)
-        ds.destroy()
-    
     def test_from_it(self):
         seq = [1, 2, 3, 4, 4, 4, 5, 6, 3, 8, 1]
         it = Iterator(seq)

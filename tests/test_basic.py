@@ -27,6 +27,21 @@ class TestStructArray(unittest.TestCase):
         self.assertEqual(str_array.shape["x"], (10,))
         self.assertEqual(str_array.shape["y"], (10, 2))
 
+    def test_shape_item(self):
+        columns = [("x", np.random.rand(10)), ("y", np.random.rand(10)), ("z", np.random.rand(10))]
+        str_array = StructArray(columns)
+        self.assertEqual(str_array["x"].shape, (10,))
+        self.assertEqual(str_array[["x", "y"]].shape, (10, 2))
+        self.assertEqual(str_array[["x", "y", "z"]].shape, (10, 3))
+
+        columns = [("x", np.random.rand(10, 2)), ("y", np.random.rand(10, 2))]
+        str_array = StructArray(columns)
+        self.assertEqual(str_array["x"].shape, (10, 2))
+        self.assertEqual(str_array[["x", "y"]].shape, (10, 2, 2))
+
+        self.assertEqual(str_array["x"].to_ndarray().shape, (10, 2))
+        self.assertEqual(str_array[["x", "y"]].to_ndarray().shape, (10, 2, 2))
+
     def test_shape_null(self):
         columns = []
         str_array = StructArray(columns)
@@ -51,6 +66,17 @@ class TestStructArray(unittest.TestCase):
         str_array = StructArray(columns)
         self.assertEqual(str_array[0]["x"].to_ndarray(), 1)
         self.assertEqual(str_array[0]["y"].to_ndarray(), 6)
+        self.assertEqual((str_array[3].to_ndarray() == [4, 9]).all(), True)
+
+    def test_index_multi(self):
+        x = np.array([[1, 2], [3, 4]])
+        y = np.array([6, 7, 8, 9, 10])
+        columns = [("x", x), ("y", y)]
+        str_array = StructArray(columns)
+        xrds = str_array.to_xrds()
+        dict_ = xrds.to_dict()
+        self.assertEqual((dict_["data_vars"]["x"]["data"] == x).all(), True)
+        self.assertEqual((dict_["data_vars"]["y"]["data"] == y).all(), True)
 
     def test_to_df(self):
         columns = [("x", np.array([1, 2, 3, 4, 5])), ("y", np.array([6, 7, 8, 9, 10]))]

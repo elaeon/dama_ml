@@ -57,6 +57,7 @@ def stream():
         yield i
         i += 1
 
+
 def temperature_sensor_stream():
     while True:
         temp = np.random.uniform(20, 3)
@@ -81,19 +82,9 @@ def mov_avg_fn(window):
     return avg
 
 
-def calc_hash(it):
-    h = Hash()
-    for batch in it:
-        h.update(batch)
-    return str(h)
+def styles(value):
+    return int(value), str(value), float(value), [value]
 
-
-def write_csv(it):
-    filepath = "/tmp/test.csv"
-    print("IT", it, type(it))
-    csv_writer = CSVDataset(filepath=filepath, delimiter=",")
-    csv_writer.from_data(it, header=["A", "B", "C", "D", "F"])
-    return True
 
 
 class TestETL(unittest.TestCase):
@@ -197,4 +188,10 @@ class TestETL(unittest.TestCase):
         text = pipeline.to_text()
         pipeline = Pipeline.load(text, os.path.dirname(__file__))
         self.assertEqual(pre_json_value, pipeline.compute())
+
+    def test_multioutput(self):
+        pipeline = Pipeline(1)
+        a = pipeline.map(styles)
+        print(a.func)
+        print(pipeline.compute()[0])
 

@@ -31,7 +31,7 @@ class StructArray:
         self.dtypes = self.columns2dtype()
         self.dtype = max_dtype(self.dtypes)
         self.o_columns = OrderedDict(self.labels_data)
-        self.labels = list(self.o_columns.keys())
+        self.groups = list(self.o_columns.keys())
         self.counter = 0
 
     def __getitem__(self, key):
@@ -67,7 +67,11 @@ class StructArray:
     @cache
     def __len__(self):
         if len(self.labels_data) > 0:
-            return max([a.shape[0] for _, a in self.labels_data])
+            values = [len(a) for _, a in self.labels_data if hasattr(a, '__len__')]
+            if len(values) > 0:
+                return max(values)
+            else:
+                return 1
         else:
             return 0
 
@@ -95,7 +99,16 @@ class StructArray:
             if group_shape != group_shape_0:
                 return shapes
         num_groups = len(shapes)
-        return tuple([group_shape_0[0], num_groups]  + list(group_shape_0[1:]))
+        if num_groups > 1:
+            if len(group_shape_0) > 0:
+                return tuple([group_shape_0[0], num_groups]  + list(group_shape_0[1:]))
+            else:
+                return (num_groups,)
+        else:
+            if len(group_shape_0) > 0:
+                return tuple([group_shape_0[0]] + list(group_shape_0[1:]))
+            else:
+                return (1,)
 
     def columns2dtype(self) -> list:
         return [(col_name, array.dtype) for col_name, array in self.labels_data]
@@ -116,17 +129,21 @@ class StructArray:
 
     def convert_from_index(self, index: int):
         sub_labels_data = []
-        dtypes = dict(self.dtypes)
-        for label, array in self.labels_data:
-            shape = [1] + list(array.shape[1:])
-            tmp_array = np.empty(shape, dtype=dtypes[label])
-            tmp_array[0] = array[index]
-            sub_labels_data.append((label, tmp_array))
+        for group, array in self.labels_data:
+            try:
+                sub_labels_data.append((group, array[index]))
+            except IndexError:
+                sub_labels_data.append((group, array))
         return StructArray(sub_labels_data)
 
     @staticmethod
     def convert_from_columns(labels_data: list, start_i: int, end_i: int):
-        sub_labels_data = [(label, array[start_i:end_i]) for label, array in labels_data]
+        sub_labels_data = []
+        for label, array in labels_data:
+            try:
+                sub_labels_data.append((label, array[start_i:end_i]))
+            except IndexError:
+                sub_labels_data.append((label, array))
         return StructArray(sub_labels_data)
 
     @staticmethod
@@ -144,22 +161,30 @@ class StructArray:
         if size > data.shape[0]:
             end_i = init_i + data.shape[0]
         if len(self.dtypes) == 1 and len(data.shape) == 2:
-            if self.labels is None:
-                self.labels = ["c"+str(i) for i in range(data.shape[1])]
-            label, _ = self.dtypes[0]
-            return pd.DataFrame(data[label], index=np.arange(init_i, end_i), columns=self.labels)
+            columns = ["c"+str(i) for i in range(data.shape[1])]
+            group, _ = self.dtypes[0]
+            return pd.DataFrame(data[group], index=np.arange(init_i, end_i), columns=columns)
         else:
-            if self.labels is None:
-                self.labels = [col_name for col_name, _ in self.dtypes]
-            return pd.DataFrame(data, index=np.arange(init_i, end_i), columns=self.labels)
+            return pd.DataFrame(data, index=np.arange(init_i, end_i), columns=self.groups)
 
     def to_ndarray(self, dtype: list=None) -> np.ndarray:
         if dtype is None:
             dtype = self.dtype
         if not self.is_multidim():
             ndarray = np.empty(self.shape, dtype=dtype)
-            for i, (group, array) in enumerate(self.labels_data):
-                ndarray[:, i] = array[0:len(self)]
+            if len(self.labels_data) == 1:
+                if self.shape[0] == 1:
+                    ndarray[0] = self.o_columns[self.groups[0]]
+                else:
+                    for i, (_, array) in enumerate(self.labels_data):
+                        ndarray[:] = array[0:len(self)]
+            else:
+                if len(self.shape) == 1:
+                    for i, (_, array) in enumerate(self.labels_data):
+                        ndarray[i] = array
+                else:
+                    for i, (_, array) in enumerate(self.labels_data):
+                        ndarray[:, i] = array[0:len(self)]
         else:
             raise NotImplementedError
         return ndarray
@@ -167,8 +192,8 @@ class StructArray:
     def to_xrds(self) -> xr.Dataset:
         xr_data = {}
         for group, data in self.labels_data:
-            dims = ["x{}".format(i) for i in range(len(data.shape))]
-            data_dims = (dims, data)
+            index_dims = ["{}_{}".format(group, i) for i in range(len(data.shape))]
+            data_dims = (index_dims, data)
             xr_data[group] = data_dims
         return xr.Dataset(xr_data)
 
@@ -177,10 +202,10 @@ def unique_dtypes(dtypes) -> np.ndarray:
     return np.unique([dtype.name for _, dtype in dtypes])
 
 
-def labels2num(self):
+def labels2num(self, labels):
     from sklearn.preprocessing import LabelEncoder
     le = LabelEncoder()
-    le.fit(self.labels)
+    le.fit(labels)
     return le
 
 

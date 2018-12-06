@@ -64,18 +64,19 @@ class TestSKL(unittest.TestCase):
         # pipeline.map(cv.apply)
         X_train, X_validation, X_test, y_train, y_validation, y_test = cv.apply(self.dataset)#pipeline.compute()[0]
         train_ds = Data(name="train")
-        train_ds.from_data({"x": X_train.to_ndarray().reshape(70,10), "y": y_train.to_ndarray().reshape(70)})
+        train_ds.from_data({"x": X_train.to_ndarray(), "y": y_train.to_ndarray()})
         test_ds = Data(name="test")
-        test_ds.from_data({"x": X_test.to_ndarray().reshape(20, 10), "y": y_test.to_ndarray().reshape(20)})
+        test_ds.from_data({"x": X_test.to_ndarray(), "y": y_test.to_ndarray()})
         validation_ds = Data(name="validation")
-        validation_ds.from_data({"x": X_validation.to_ndarray().reshape(10, 10), "y": y_validation.to_ndarray().reshape(10)})
+        validation_ds.from_data({"x": X_validation.to_ndarray(), "y": y_validation.to_ndarray()})
         classif.set_dataset(train_ds=train_ds, test_ds=test_ds, validation_ds=validation_ds, pipeline=None)
         classif.train(num_steps=1, data_group="x", target_group='y')
         classif.save(model_version="1")
-        #meta = classif.load_meta()
+        meta = classif.load_meta()
+        print(meta)
         #self.assertEqual(meta["model"]["original_dataset_path"], "/tmp/")
         #self.assertEqual(meta["train"]["model_version"], "1")
-        #classif.destroy()
+        classif.destroy()
 
     def test_empty_load(self):
         classif = RandomForest(
