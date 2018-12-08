@@ -1,15 +1,7 @@
 import numpy as np
-import logging
+from ml.utils.logger import log_config
 
-from ml.utils.config import get_settings
-
-settings = get_settings("ml")
-log = logging.getLogger(__name__)
-logFormatter = logging.Formatter("[%(name)s] - [%(levelname)s] %(message)s")
-handler = logging.StreamHandler()
-handler.setFormatter(logFormatter)
-log.addHandler(handler)
-log.setLevel(int(settings["loglevel"]))
+log = log_config(__name__)
 
 
 def greater_is_better_fn(reverse, output):
@@ -21,8 +13,17 @@ def greater_is_better_fn(reverse, output):
 
 
 class MeasureBase(object):
+    __slots__ = ['name', 'measures', 'target']
+
+    def __init__(self, name: str=None):
+        self.name = name
+        self.measures = []
+
     def __iter__(self):
         return iter(self.measures)
+
+    def scores(self):
+        return []
 
     def add(self, measure, greater_is_better: bool=True, output=None):
         self.measures.append(greater_is_better_fn(greater_is_better, output)(measure))
@@ -35,8 +36,8 @@ class MeasureBase(object):
 
     def to_list(self):
         list_measure = ListMeasure(headers=[""]+[fn.__name__ for fn in self.measures],
-                    order=[True]+[fn.reverse for fn in self.measures],
-                    measures=[[self.name] + list(self.scores())])
+                                   order=[True]+[fn.reverse for fn in self.measures],
+                                   measures=[[self.name] + list(self.scores())])
         return list_measure
 
     @staticmethod
@@ -53,25 +54,22 @@ class MeasureBase(object):
             m = sys.modules['ml.measures']
             if hasattr(m, measures) and measures != 'logloss':
                 measure_cls.add(getattr(m, measures), greater_is_better=True,
-                            output='discrete')
+                                output='discrete')
             elif measures == 'logloss':
                 measure_cls.add(getattr(m, measures), greater_is_better=False,
-                            output='n_dim')
+                                output='n_dim')
         return measure_cls
 
 
 class Measure(MeasureBase):
     __slots__ = ['predictions', 'name', 'measures', 'target']
 
-    def __init__(self, predictions=None, target=None, name: str=None):
+    def __init__(self, target, name: str=None):
+        super(Measure, self).__init__(name=name)
         self.predictions = {}
-        self.set_data(predictions, target)
-        self.name = name
-        self.measures = []
-        self.target = None
-
-    def set_data(self, predictions, target, output=None):
         self.target = target
+
+    def set_data(self, predictions, output=None):
         self.predictions[output] = predictions
 
     def scores(self):
@@ -83,22 +81,21 @@ class Measure(MeasureBase):
 
 
 class MeasureBatch(MeasureBase):
-    __slots__ = ['score', 'name', 'measures', 'counter', 'batch_size']
+    __slots__ = ['score', 'name', 'measures', 'batch_size']
 
     def __init__(self, name: str=None, batch_size: int=0):
+        super(MeasureBatch, self).__init__(name=name)
         self.score = {}
         self.name = name
         self.measures = []
         self.batch_size = batch_size
 
-    def add(self, measure, greater_is_better: bool=True, output=None):
-        self.measures.append(greater_is_better_fn(greater_is_better, output)(measure))
-
-    def set_data(self, predictions, target) -> None:
+    def update(self, predictions, target) -> None:
         for measure_fn in self:
-            self.set_data_fn(predictions, target, measure_fn)
+            self.update_fn(predictions, target, measure_fn)
 
-    def set_data_fn(self, predictions, target, measure_fn):
+    def update_fn(self, predictions, target, measure_fn):
+        log.debug("Set measure {}".format(measure_fn.__name__))
         try:
             self.score[measure_fn.__name__][0] += measure_fn(target, predictions) * (len(predictions) / self.batch_size)
             self.score[measure_fn.__name__][1] += (len(predictions) / self.batch_size)
@@ -202,14 +199,7 @@ class ListMeasure(object):
         self.measures = measures
         self.order = order
 
-    def add_measure(self, name, value, i=0, reverse=False):
-        """
-        :type name: string
-        :param name: column name
-
-        :type value: float
-        :param value: value to add
-        """
+    def add_measure(self, name: str, value, i: int=0, reverse: bool=False):
         self.headers.append(name)
         try:
             self.measures[i].append(value)
@@ -218,11 +208,7 @@ class ListMeasure(object):
             self.measures[len(self.measures) - 1].append(value)
         self.order.append(reverse)
 
-    def get_measure(self, name):
-        """
-        :type name: string
-        :param name: by name of the column you can get his values. 
-        """
+    def get_measure(self, name: str):
         return self.measures_to_dict().get(name, None)
 
     def measures_to_dict(self):
@@ -238,26 +224,17 @@ class ListMeasure(object):
         return measures
              
     @classmethod
-    def dict_to_measures(self, data_dict):
+    def dict_to_measures(cls, data_dict):
         headers = data_dict.keys()
         measures = [[v["values"][0] for k, v in data_dict.items()]]
         order = [v["reverse"] for k, v in data_dict.items()]
         return ListMeasure(headers=headers, measures=measures, order=order)
 
-    def to_tabulate(self, order_column=None):
-        """
-        :type order_column: string
-        :param order_column: order the matrix by the order_column name that you pass
-        
-        :type reverse: bool
-        :param reverse: if False the order is ASC else DESC
-
-        print the matrix
-        """
+    def to_tabulate(self, order_column: str=None):
         from ml.utils.order import order_table
         self.drop_empty_columns()
-        return order_table(self.headers, self.measures, order_column, 
-            natural_order=self.order)
+        return order_table(self.headers, self.measures, order_column,
+                           natural_order=self.order)
 
     def __str__(self):
         return self.to_tabulate()
@@ -332,6 +309,3 @@ class ListMeasure(object):
             measures=this_measures+other_measures,
             order=order)
         return list_measure
-
-    #def __iadd__(self, other):
-    #    return self.__add__(other)

@@ -31,39 +31,41 @@ class TestListMeasure(unittest.TestCase):
 
     def test_list_measure_to_dict(self):
         list_measure_1_2 = self.list_measure1 + self.list_measure2
-        self.assertEqual(list_measure_1_2.measures_to_dict(), 
-            {'M1': {'values': [1, 0.5], 'reverse': False}, 
-            'Name': {'values': ['Row1', 'Row2'], 'reverse': False}})
+        self.assertEqual(list_measure_1_2.measures_to_dict(),
+                         {'M1': {'values': [1, 0.5], 'reverse': False},
+                          'Name': {'values': ['Row1', 'Row2'], 'reverse': False}})
 
     def test_list_measure_empty(self):
-        list_measure = ListMeasure(headers=["Name", "M1", "M2", "M3"], 
-            measures=[["Row1", None, 0, ""], ["Row2", None, None, ""]])
-        self.assertEqual(list_measure.empty_columns(), set([1, 3]))
+        list_measure = ListMeasure(headers=["Name", "M1", "M2", "M3"],
+                                   measures=[["Row1", None, 0, ""], ["Row2", None, None, ""]])
+        self.assertEqual(list_measure.empty_columns(), {1, 3})
         list_measure.drop_empty_columns()
         self.assertEqual(list_measure.headers, ["Name", "M2"])
         self.assertEqual(list_measure.measures, [["Row1", 0], ["Row2", None]])
 
     def test_add_list_empty(self):
-        pred = np.asarray([0,0,0,1,0,0,1,1,1,1,1,1,0,0,1,1,0,0,1,1,1,1,1,0,1,0,1,0,1,0,1])
-        labels = np.asarray([0,0,0,1,1,1,0,0,1,1,1,1,0,0,1,1,0,1,1,1,1,1,1,0,1,0,1,0,1,0,1])
-        measure = Measure(name="test")
+        pred = np.asarray([0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1,
+                           1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1])
+        target = np.asarray([0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1,
+                             1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1])
+        measure = Measure(target, name="test")
         measure.add(accuracy)
         list_measure = ListMeasure()
-        measure.set_data(pred, labels, output=None)
+        measure.set_data(pred, output=None)
         list_measure += measure.to_list()
         self.assertCountEqual(list_measure.headers, ['', 'accuracy'])
         self.assertEqual(len(list_measure.measures) == 1, True)
         self.assertEqual(list_measure.measures[0][0], "test")
 
     def test_add_list(self):
-        pred = [0,0,0,1,0,0,1,1,1,1,1,1,0,0,1,1,0,0,1,1,1,1,1,0,1,0,1,0,1,0,1]
-        labels = [0,0,0,1,1,1,0,0,1,1,1,1,0,0,1,1,0,1,1,1,1,1,1,0,1,0,1,0,1,0,1]
-        measure0 = Measure(name="test0")
+        pred = [0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1]
+        target = [0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1]
+        measure0 = Measure(target, name="test0")
         measure0.add(accuracy)
-        measure1 = Measure(name="test1")
+        measure1 = Measure(target, name="test1")
         measure1.add(accuracy)
-        measure0.set_data(pred, labels, output=None)
-        measure1.set_data(pred, labels, output=None)
+        measure0.set_data(pred, output=None)
+        measure1.set_data(pred, output=None)
         list_measure = measure0.to_list()
         list_measure += measure1.to_list()
         self.assertCountEqual(list_measure.headers, ['', 'accuracy'])
@@ -73,26 +75,27 @@ class TestListMeasure(unittest.TestCase):
 
 class TestMeasure(unittest.TestCase):
     def setUp(self):
-        self.pred_l = np.asarray([0,0,0,1,0,0,1,1,1,1,1,1,0,0,1,1,0,0,1,1,1,1,1,0,1,0,1,0,1,0,1])
-        self.labels = np.asarray([0,0,0,1,1,1,0,0,1,1,1,1,0,0,1,1,0,1,1,1,1,1,1,0,1,0,1,0,1,0,1])
+        self.pred_l = np.asarray([0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0,
+                                  0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1])
+        self.target = np.asarray([0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0,
+                                  1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1])
 
     def test_metrics(self):
-        measure = Measure(self.pred_l, self.labels, name="test")
+        measure = Measure(self.target, name="test")
         measure.add(accuracy)
         measure.add(precision)
         measure.add(f1)
+        measure.set_data(self.pred_l)
         metrics = [round(v, 2) for v in list(measure.scores())]
         self.assertEqual(metrics, [0.84, 0.83, 0.83])
 
     def test_metrics_batch(self):
-        measure = Measure(name="test")
-        measure.set_data(self.pred_l, self.labels)
+        measure = Measure(self.target, name="test")
+        measure.set_data(self.pred_l)
         measure.add(accuracy)
         measure.add(precision)
         measure.add(f1)
         measure.add(logloss)
-        metrics = [round(v, 2) for v in list(measure.scores())]
-        print(metrics)
         batch_size = 28
         measure_b = MeasureBatch(name="test", batch_size=batch_size)
         measure_b.add(accuracy)
@@ -100,14 +103,12 @@ class TestMeasure(unittest.TestCase):
         measure_b.add(f1)
         measure_b.add(logloss)
         it_p = Iterator(self.pred_l).batchs(batch_size=batch_size)
-        it_t = Iterator(self.labels).batchs(batch_size=batch_size)
+        it_t = Iterator(self.target).batchs(batch_size=batch_size)
         for pred, target in zip(it_p, it_t):
-            measure_b.set_data(pred, target)
-        #metrics = [round(v, 2) for v in list(measure_b.scores())]
-        #print(metrics)
-        print(measure_b.to_list())
-        print(measure.to_list())
-        #self.assertEqual(metrics, [0.84, 0.83, 0.83])
+            measure_b.update(pred, target)
+        m0 = [round(score, 2) for score in measure.scores()]
+        mb = [round(score, 2) for score in measure_b.scores()]
+        self.assertEqual(m0, mb)
 
     def test_metrics_fn(self):
         batch_size = 10
@@ -115,45 +116,54 @@ class TestMeasure(unittest.TestCase):
         measure.add(accuracy, output='discrete')
         measure.add(precision, output='discrete')
         it_p = Iterator(self.pred_l).batchs(batch_size=batch_size)
-        it_t = Iterator(self.labels).batchs(batch_size=batch_size)
+        it_t = Iterator(self.target).batchs(batch_size=batch_size)
         for pred, target in zip(it_p, it_t):
-            measure.set_data(pred, target)
+            measure.update(pred, target)
         print(measure.to_list())
 
     def test_tolist(self):
-        measure0 = Measure(self.pred_l, self.labels, name="test0")
+        measure0 = Measure(self.target, name="test0")
         measure0.add(accuracy)
         measure0.add(precision)
         measure0.add(f1)
-        measure1 = Measure(self.pred_l, self.labels, name="test1")
+        measure0.set_data(self.pred_l)
+        measure1 = Measure(self.target, name="test1")
         measure1.add(accuracy)
         measure1.add(precision)
         measure1.add(f1)
-        measure2 = Measure(self.pred_l, self.labels, name="test2")
+        measure1.set_data(self.pred_l)
+        measure2 = Measure(self.target, name="test2")
         measure2.add(accuracy)
         measure2.add(precision)
         measure2.add(f1)
+        measure2.set_data(self.pred_l)
         list_measure = measure0.to_list() + measure1.to_list() + measure2.to_list()
-        self.assertEqual(list_measure.measures[0], 
-            ['test0', 0.83870967741935487, 0.829059829059829, 0.83243243243243248])
-        self.assertEqual(list_measure.measures[1], 
-            ['test1', 0.83870967741935487, 0.829059829059829, 0.83243243243243248])
-        self.assertEqual(list_measure.measures[2], 
-            ['test2', 0.83870967741935487, 0.829059829059829, 0.83243243243243248])
+        self.assertEqual(list_measure.measures[0],
+                         ['test0', 0.83870967741935487, 0.829059829059829, 0.83243243243243248])
+        self.assertEqual(list_measure.measures[1],
+                         ['test1', 0.83870967741935487, 0.829059829059829, 0.83243243243243248])
+        self.assertEqual(list_measure.measures[2],
+                         ['test2', 0.83870967741935487, 0.829059829059829, 0.83243243243243248])
 
     def test_gini(self):
-        measure = Measure(self.pred_l, self.labels, name="test")
+        measure = Measure(self.target, name="test")
         measure.add(gini_normalized)
+        measure.set_data(self.pred_l)
         metrics = [round(v, 2) for v in list(measure.scores())]
         self.assertEqual(metrics, [0.59])
 
     def test_output(self):
-        measure = Measure(self.pred_l, self.labels, name="test0")
+        measure = Measure(self.target, name="test0")
+        measure.set_data(self.pred_l, output="discrete")
+        measure.set_data(self.pred_l, output="uncertain")
+        measure.set_data(self.pred_l)
         measure.add(accuracy, output="discrete")
         measure.add(precision, output="discrete")
         measure.add(gini_normalized, output="uncertain")
         measure.add(f1, output=None)
         self.assertCountEqual(measure.outputs(), ['discrete', None, 'uncertain'])
+        self.assertEqual(list(measure.scores()),
+                         [0.83870967741935487, 0.829059829059829, 0.5877192982456142, 0.83243243243243248])
 
 
 if __name__ == '__main__':

@@ -1,22 +1,14 @@
 import numpy as np
 import tensorflow as tf
-import logging
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.externals import joblib
-from ml.utils.config import get_settings
 from ml.models import MLModel, SupervicedModel
 from ml.data.it import Iterator
 from ml import measures as metrics
+from ml.utils.logger import log_config
 
-
-settings = get_settings("ml")
-log = logging.getLogger(__name__)
-logFormatter = logging.Formatter("[%(name)s] - [%(levelname)s] %(message)s")
-handler = logging.StreamHandler()
-handler.setFormatter(logFormatter)
-log.addHandler(handler)
-log.setLevel(int(settings["loglevel"]))
+log = log_config(__name__)
 
 
 class ClassifModel(SupervicedModel):
@@ -43,7 +35,7 @@ class ClassifModel(SupervicedModel):
                 test_target = Iterator(self.test_ds[self.target_group]).batchs(batch_size=batch_size)
                 predictions = self.predict(test_data, output=measure_fn.output, batch_size=batch_size)
                 for pred, target in zip(predictions, test_target):
-                    measures.set_data_fn(pred, target, measure_fn)
+                    measures.update_fn(pred, target, measure_fn)
         return measures.to_list()
 
     def erroneous_clf(self):
