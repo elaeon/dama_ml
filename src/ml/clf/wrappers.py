@@ -6,7 +6,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.externals import joblib
 from ml.utils.config import get_settings
 from ml.models import MLModel, SupervicedModel
-from ml.data.ds import Data
+from ml.data.it import Iterator
 from ml import measures as metrics
 
 
@@ -33,17 +33,17 @@ class ClassifModel(SupervicedModel):
         self.get_train_validation_ds()
         self.load_model()
 
-    def scores(self, measures=None, batch_size=2000):
+    def scores(self, measures=None, batch_size: int=2000):
         if measures is None or isinstance(measures, str):
-            measures = metrics.Measure.make_metrics(measures, name=self.model_name)
+            measure = metrics.MeasureBatch(name=self.model_name, batch_size=batch_size)
+            measures = measure.make_metrics(measures=measures)
         with self.test_ds:
             test_data = self.test_ds[self.data_group]
-            test_labels = self.test_ds[self.target_group].to_ndarray()
-
-        for output in measures.outputs():
-            predictions = self.predict(test_data, output=output, batch_size=batch_size)
-            for pred in predictions:
-                measures.set_data(pred, test_labels, output=output)
+            for measure_fn in measures:
+                test_target = Iterator(self.test_ds[self.target_group]).batchs(batch_size=batch_size)
+                predictions = self.predict(test_data, output=measure_fn.output, batch_size=batch_size)
+                for pred, target in zip(predictions, test_target):
+                    measures.set_data_fn(pred, target, measure_fn)
         return measures.to_list()
 
     def erroneous_clf(self):

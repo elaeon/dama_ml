@@ -2,6 +2,7 @@ import hashlib
 import numpy as np
 import pandas as pd
 import xarray as xr
+import numbers
 
 from collections import OrderedDict
 from .decorators import cache
@@ -133,7 +134,10 @@ class StructArray:
             try:
                 sub_labels_data.append((group, array[index]))
             except IndexError:
-                sub_labels_data.append((group, array))
+                if isinstance(array, str) or isinstance(array, numbers.Number):
+                    sub_labels_data.append((group, array))
+                else:
+                    raise IndexError
         return StructArray(sub_labels_data)
 
     @staticmethod
@@ -143,7 +147,10 @@ class StructArray:
             try:
                 sub_labels_data.append((label, array[start_i:end_i]))
             except IndexError:
-                sub_labels_data.append((label, array))
+                if isinstance(array, str) or isinstance(array, numbers.Number):
+                    sub_labels_data.append((label, array))
+                else:
+                    raise IndexError
         return StructArray(sub_labels_data)
 
     @staticmethod

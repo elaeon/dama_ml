@@ -48,7 +48,7 @@ class BaseIterator(object):
         self.dtypes = dtypes
         self.dtype = max_dtype(dtypes)
         self.type_elem = type_elem
-        self.shape = self.calc_shape(length, shape)
+        self.shape = self.calc_shape(length, shape[1:] if shape is not None else shape)
         self.iter_init = True
         self._it = None
 
@@ -67,10 +67,10 @@ class BaseIterator(object):
             return tuple([length])
         elif isinstance(shape, tuple):
             return tuple([length] + list(shape))
-        elif isinstance(shape, dict) and length != np.inf: #****
+        elif isinstance(shape, dict) and length != np.inf:
             length_shape = {}
             for group, g_shape in shape.items():
-                length_shape[group] = tuple([length] + list(g_shape[1:]))
+                length_shape[group] = tuple([length] + list(g_shape))
             return length_shape
 
     @property
@@ -184,10 +184,10 @@ class Iterator(BaseIterator):
             self.data = iter(fn_iter)
             length = fn_iter.shape[0] if length == np.inf else length
             self.is_ds = False
-        elif isinstance(fn_iter, AbsDataset):
-            self.data = fn_iter
-            length = len(fn_iter) if length == np.inf else length
-            self.is_ds = True
+        # elif isinstance(fn_iter, AbsDataset):
+        #    self.data = fn_iter
+        #    length = len(fn_iter) if length == np.inf else length
+        #    self.is_ds = True
         elif isinstance(fn_iter, StructArray):
             self.data = fn_iter
             length = len(fn_iter) if length == np.inf else length
@@ -202,7 +202,7 @@ class Iterator(BaseIterator):
             self.data = fn_iter.data
             length = fn_iter.length if length == np.inf else length
             self.is_ds = False
-            self.shape = self.calc_shape(length, fn_iter.shape)
+            self.shape = self.calc_shape(length, fn_iter.shape[1:])
             self.dtype = fn_iter.dtype
             self.type_elem = fn_iter.type_elem
             self.pushedback = fn_iter.pushedback
@@ -311,7 +311,6 @@ class BatchIterator(BaseIterator):
         super(BatchIterator, self).__init__(it, dtypes=it.dtypes, length=it.length)
         self.batch_size = batch_size
         self.shape = it.shape
-        # self.type_elem = pd.DataFrame if batch_type is "df" else np.ndarray
         self.batch_type = batch_type
 
     def clean_batchs(self) -> Iterator:
@@ -356,8 +355,21 @@ class BatchIterator(BaseIterator):
         data = self.clean_batchs()
         return Iterator(wsrj(self.weights_gen(data, col, weight_fn), length), dtypes=self.dtypes, length=length)
 
-    def run(self) -> Iterator:
-        return self.data
+    def run(self):
+        for batch in self.prerun():
+            yield batch
+
+    def prerun(self):
+        init = 0
+        end = self.batch_size
+        while True:
+            batch = self.data.data[init:end]
+            init = end
+            end += self.batch_size
+            if len(batch) > 0:
+                yield batch
+            else:
+                break
 
     def __next__(self):
         if self._it is None:
@@ -440,45 +452,22 @@ class BatchIt(BatchIterator):
 
 class BatchArray(BatchIterator):
     def run(self):
-        init = 0
-        end = self.batch_size
-        length = self.batch_size
-        while length > 0:
-            batch = self.data.data[init:end]
-            init = end
-            end += self.batch_size
-            length = len(batch)
-            if length > 0:
-                yield batch.to_ndarray(dtype=self.dtype)
-            else:
-                break
+        for batch in self.prerun():
+            yield batch.to_ndarray(dtype=self.dtype)
 
 
 class BatchDataFrame(BatchIterator):
     def run(self):
         init = 0
         end = self.batch_size
-        while True:
-            batch = self.data.data[init:end]
+        for batch in self.prerun():
+            yield batch.to_df(init_i=init, end_i=end)
             init = end
             end += self.batch_size
-            length = len(batch)
-            if length > 0:
-                yield batch.to_df(init_i=init, end_i=end)
-            else:
-                break
 
 
 class BatchStructured(BatchIterator):
     def run(self):
-        init = 0
-        end = self.batch_size
-        while True:
-            batch = self.data.data[init:end]
-            init = end
-            end += self.batch_size
-            length = len(batch)
-            if length > 0:
-                yield batch.to_xrds()
-            else:
-                break
+        for batch in self.prerun():
+            yield batch.to_xrds()
+

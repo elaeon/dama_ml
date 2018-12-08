@@ -120,10 +120,14 @@ class TestStructArray(unittest.TestCase):
         array["x"] = [1, 2, 3, 4, 5]
         array["y"] = [6, 7, 8, 9, 10]
         array["z"] = ["a", "b", "c", "d", "e"]
-        columns = [("x", array["x"]),
-                   ("y", array["y"]),
-                    ("z", array["z"])]
+        columns = [("x", array["x"]), ("y", array["y"]), ("z", array["z"])]
         str_array = StructArray(columns)
         self.assertCountEqual(str_array[[0]].to_ndarray(), array["x"])
         array_h = np.hstack((array["x"].reshape(-1, 1), array["z"].reshape(-1, 1)))
-        self.assertEqual((str_array[[0,2]].to_ndarray() == array_h).all(), True)
+        self.assertEqual((str_array[[0, 2]].to_ndarray() == array_h).all(), True)
+
+    def test_index_iter(self):
+        columns = [("x", np.asarray([1, 2, 3, 4, 5]))]
+        str_array = StructArray(columns)
+        for e in str_array:
+            self.assertEqual(e.shape, (1,))

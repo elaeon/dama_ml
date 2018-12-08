@@ -20,32 +20,12 @@ def greater_is_better_fn(reverse, output):
     return view
 
 
-class Measure(object):
-    """
-    For measure the results of the predictors, distincts measures are defined in this class
-    
-    :type predictions: array
-    :param predictions: array of predictions
+class MeasureBase(object):
+    def __iter__(self):
+        return iter(self.measures)
 
-    :type labels: array
-    :param labels: array of correct labels of type float for compare with the predictions
-
-    :type labels2classes_fn: function
-    :param labels2classes_fn: function for transform the labels to classes
-    """
-
-    def __init__(self, predictions=None, labels=None, name=None):
-        self.predictions = {}
-        self.set_data(predictions, labels)
-        self.name = name
-        self.measures = []
-
-    def add(self, measure, greater_is_better=True, output=None):
+    def add(self, measure, greater_is_better: bool=True, output=None):
         self.measures.append(greater_is_better_fn(greater_is_better, output)(measure))
-
-    def set_data(self, predictions, labels, output=None):
-        self.labels = labels
-        self.predictions[output] = predictions
 
     def outputs(self):
         groups = {}
@@ -53,36 +33,85 @@ class Measure(object):
             groups[str(measure.output)] = measure.output
         return groups.values()
 
-    def scores(self):
-        for measure in self.measures:
-            yield measure(self.labels, self.predictions[measure.output])
-
     def to_list(self):
         list_measure = ListMeasure(headers=[""]+[fn.__name__ for fn in self.measures],
                     order=[True]+[fn.reverse for fn in self.measures],
                     measures=[[self.name] + list(self.scores())])
         return list_measure
 
-    @classmethod
-    def make_metrics(self, measures=None, name=None):
-        measure = Measure(name=name)
+    @staticmethod
+    def make_metrics(measure_cls, measures=None):
         if measures is None:
-            measure.add(accuracy, greater_is_better=True, output='discrete')
-            measure.add(precision, greater_is_better=True, output='discrete')
-            measure.add(recall, greater_is_better=True, output='discrete')
-            measure.add(f1, greater_is_better=True, output='discrete')
-            measure.add(auc, greater_is_better=True, output='discrete')
-            measure.add(logloss, greater_is_better=False, output='n_dim')
+            measure_cls.add(accuracy, greater_is_better=True, output='discrete')
+            measure_cls.add(precision, greater_is_better=True, output='discrete')
+            measure_cls.add(recall, greater_is_better=True, output='discrete')
+            measure_cls.add(f1, greater_is_better=True, output='discrete')
+            measure_cls.add(auc, greater_is_better=True, output='discrete')
+            measure_cls.add(logloss, greater_is_better=False, output='n_dim')
         elif isinstance(measures, str):
             import sys
             m = sys.modules['ml.measures']
             if hasattr(m, measures) and measures != 'logloss':
-                measure.add(getattr(m, measures), greater_is_better=True, 
+                measure_cls.add(getattr(m, measures), greater_is_better=True,
                             output='discrete')
             elif measures == 'logloss':
-                measure.add(getattr(m, measures), greater_is_better=False, 
+                measure_cls.add(getattr(m, measures), greater_is_better=False,
                             output='n_dim')
-        return measure
+        return measure_cls
+
+
+class Measure(MeasureBase):
+    __slots__ = ['predictions', 'name', 'measures', 'target']
+
+    def __init__(self, predictions=None, target=None, name: str=None):
+        self.predictions = {}
+        self.set_data(predictions, target)
+        self.name = name
+        self.measures = []
+        self.target = None
+
+    def set_data(self, predictions, target, output=None):
+        self.target = target
+        self.predictions[output] = predictions
+
+    def scores(self):
+        for measure in self.measures:
+            yield measure(self.target, self.predictions[measure.output])
+
+    def make_metrics(self, measures=None):
+        return MeasureBase.make_metrics(self, measures=measures)
+
+
+class MeasureBatch(MeasureBase):
+    __slots__ = ['score', 'name', 'measures', 'counter', 'batch_size']
+
+    def __init__(self, name: str=None, batch_size: int=0):
+        self.score = {}
+        self.name = name
+        self.measures = []
+        self.batch_size = batch_size
+
+    def add(self, measure, greater_is_better: bool=True, output=None):
+        self.measures.append(greater_is_better_fn(greater_is_better, output)(measure))
+
+    def set_data(self, predictions, target) -> None:
+        for measure_fn in self:
+            self.set_data_fn(predictions, target, measure_fn)
+
+    def set_data_fn(self, predictions, target, measure_fn):
+        try:
+            self.score[measure_fn.__name__][0] += measure_fn(target, predictions) * (len(predictions) / self.batch_size)
+            self.score[measure_fn.__name__][1] += (len(predictions) / self.batch_size)
+        except KeyError:
+            self.score[measure_fn.__name__] = [measure_fn(target, predictions), 1]
+
+    def scores(self):
+        for measure in self.measures:
+            value, size = self.score[measure.__name__]
+            yield value / size
+
+    def make_metrics(self, measures=None):
+        return MeasureBase.make_metrics(self, measures=measures)
 
 
 def accuracy(labels, predictions):

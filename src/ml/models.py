@@ -39,7 +39,7 @@ class MLModel:
         #        yield self.predictors(self.transform_data(chunk))
         #else:
         for row in data:
-            predict = self.predictors(row.to_ndarray())
+            predict = self.predictors(row.to_ndarray().reshape(1, -1))
             if len(predict.shape) > 1:
                 yield predict[0]
             else:

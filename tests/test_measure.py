@@ -1,9 +1,10 @@
 import unittest
 import numpy as np
 
-from ml.measures import ListMeasure, Measure
-from ml.measures import accuracy, precision, f1
+from ml.measures import ListMeasure, Measure, MeasureBatch
+from ml.measures import accuracy, precision, f1, logloss
 from ml.utils.numeric_functions import gini_normalized
+from ml.data.it import Iterator
 
 
 class TestListMeasure(unittest.TestCase):
@@ -82,6 +83,42 @@ class TestMeasure(unittest.TestCase):
         measure.add(f1)
         metrics = [round(v, 2) for v in list(measure.scores())]
         self.assertEqual(metrics, [0.84, 0.83, 0.83])
+
+    def test_metrics_batch(self):
+        measure = Measure(name="test")
+        measure.set_data(self.pred_l, self.labels)
+        measure.add(accuracy)
+        measure.add(precision)
+        measure.add(f1)
+        measure.add(logloss)
+        metrics = [round(v, 2) for v in list(measure.scores())]
+        print(metrics)
+        batch_size = 28
+        measure_b = MeasureBatch(name="test", batch_size=batch_size)
+        measure_b.add(accuracy)
+        measure_b.add(precision)
+        measure_b.add(f1)
+        measure_b.add(logloss)
+        it_p = Iterator(self.pred_l).batchs(batch_size=batch_size)
+        it_t = Iterator(self.labels).batchs(batch_size=batch_size)
+        for pred, target in zip(it_p, it_t):
+            measure_b.set_data(pred, target)
+        #metrics = [round(v, 2) for v in list(measure_b.scores())]
+        #print(metrics)
+        print(measure_b.to_list())
+        print(measure.to_list())
+        #self.assertEqual(metrics, [0.84, 0.83, 0.83])
+
+    def test_metrics_fn(self):
+        batch_size = 10
+        measure = MeasureBatch(name="test", batch_size=batch_size)
+        measure.add(accuracy, output='discrete')
+        measure.add(precision, output='discrete')
+        it_p = Iterator(self.pred_l).batchs(batch_size=batch_size)
+        it_t = Iterator(self.labels).batchs(batch_size=batch_size)
+        for pred, target in zip(it_p, it_t):
+            measure.set_data(pred, target)
+        print(measure.to_list())
 
     def test_tolist(self):
         measure0 = Measure(self.pred_l, self.labels, name="test0")

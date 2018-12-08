@@ -430,8 +430,6 @@ class Data(AbsDataset):
                     self._set_group_shape(group, data.shape[group], dtype, group="data")
                     groups.append(group)
             else:
-                for e in data:
-                    print(e)
                 raise NotImplementedError
                 # for group, dtype in self.dtypes:
                 #    print("SET", group, dtype, data.shape, data.length)
