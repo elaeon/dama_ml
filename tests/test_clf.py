@@ -64,7 +64,7 @@ class TestSKL(unittest.TestCase):
         # pipeline.map(cv.apply)
         X_train, X_validation, X_test, y_train, y_validation, y_test = cv.apply(self.dataset)#pipeline.compute()[0]
         train_ds = Data(name="train")
-        train_ds.from_data({"x": X_train.to_ndarray(), "y": y_train.to_ndarray()})
+        train_ds.from_data({"x": X_train, "y": y_train})
         test_ds = Data(name="test")
         test_ds.from_data({"x": X_test.to_ndarray(), "y": y_test.to_ndarray()})
         validation_ds = Data(name="validation")

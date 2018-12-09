@@ -13,10 +13,11 @@ log = log_config(__name__)
 
 class ClassifModel(SupervicedModel):
     def __init__(self, **params):
-        self.le = LabelEncoder()
-        self.base_labels = None
-        self.labels_dim = 1
+        # self.le = LabelEncoder()
+        # self.base_labels = None
+        self.target_dim = None
         self.target = None
+        self.num_classes = None
         super(ClassifModel, self).__init__(**params)
 
     def load(self, model_version):
@@ -46,16 +47,16 @@ class ClassifModel(SupervicedModel):
         import operator
         return self.only_is(operator.eq)
 
-    def reformat_labels(self, labels):
-        return labels
+    def reformat_target(self, target):
+        return target
 
     def is_binary(self):
-        return self.num_labels == 2
+        return self.num_classes == 2
 
-    def labels_encode(self, labels):
-        self.le.fit(labels)
-        self.num_labels = self.le.classes_.shape[0]
-        self.base_labels = self.le.classes_
+    # def labels_encode(self, labels):
+    #    self.le.fit(labels)
+    #    self.num_labels = self.le.classes_.shape[0]
+    #    self.base_labels = self.le.classes_
 
     def position_index(self, labels):
         if len(labels.shape) >= 2:
@@ -63,35 +64,29 @@ class ClassifModel(SupervicedModel):
         else:
             return labels
 
-    def output_format(self, labels, output=None):
+    def output_format(self, prediction, output=None):
         if output == 'uncertain' or output == 'n_dim':
-            for chunk in labels:
+            for chunk in prediction:
                 yield chunk
         else:
-            for chunk in labels:
-                if len(chunk.shape) > 1:
-                    nchunk = np.empty(chunk.shape[0], dtype=chunk.dtype)
-                    for i, label in enumerate(self.position_index(chunk)):
-                        nchunk[i] = self.le.inverse_transform(int(round(label, 0)))
-                    yield nchunk
-                else:
-                    yield self.position_index(chunk.reshape(1, -1))[0]
+            for chunk in prediction:
+                yield self.position_index(chunk.reshape(1, -1))[0]
 
-    def numerical_labels2classes(self, labels):
-        if len(labels.shape) > 1 and labels.shape[1] > 1:
-            return self.le.inverse_transform(np.argmax(labels, axis=1))
-        else:
-            return self.le.inverse_transform(labels.astype('int'))
+    # def numerical_labels2classes(self, labels):
+    #    if len(labels.shape) > 1 and labels.shape[1] > 1:
+    #        return self.le.inverse_transform(np.argmax(labels, axis=1))
+    #    else:
+    #        return self.le.inverse_transform(labels.astype('int'))
 
 
 class SKL(ClassifModel):
-    def convert_label(self, label, output=None):
+    def convert_label(self, target, output=None):
         if output is 'n_dim':
-            return (np.arange(self.num_labels) == label).astype(np.float32)
+            return (np.arange(self.num_classes) == target).astype(np.float32)
         elif output is None:
-            return self.position_index(label)
+            return self.position_index(target)
         else:
-            return self.le.inverse_transform(self.position_index(label))
+            return self.le.inverse_transform(self.position_index(target))
 
     def ml_model(self, model):        
         from sklearn.externals import joblib
@@ -164,7 +159,7 @@ class TFL(ClassifModel):
     def reformat_labels(self, labels):
         #data = self.transform_shape(data)
         # Map 0 to [1.0, 0.0, 0.0 ...], 1 to [0.0, 1.0, 0.0 ...]
-        return (np.arange(self.num_labels) == labels[:,None]).astype(np.float)
+        return (np.arange(self.num_classes) == labels[:,None]).astype(np.float)
 
     def load_fn(self, path):
         model = self.prepare_model()
@@ -207,8 +202,8 @@ class Keras(ClassifModel):
                         save_fn=model.save)
 
     def reformat_labels(self, labels):
-        self.labels_dim = self.num_labels
-        return (np.arange(self.num_labels) == labels[:, None]).astype(np.float)
+        self.target_dim = self.num_classes
+        return (np.arange(self.num_classes) == labels[:, None]).astype(np.float)
 
     def train_kfolds(self, batch_size=10, num_steps=100, n_splits=None):
         from sklearn.model_selection import StratifiedKFold
