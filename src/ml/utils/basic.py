@@ -91,28 +91,47 @@ class StructArray:
     def shape(self):
         shapes = {}
         for group, data in self.labels_data:
-            shapes[group] = data.shape
+            if hasattr(data, 'shape'):
+                shape = data.shape
+                if isinstance(shape, dict):
+                    shapes[group] = shape[group]
+                elif len(shape) > 0:
+                    shapes[group] = shape
+                else:
+                    shapes[group] = (1,)
+            else:
+                shapes[group] = (1,)
 
         if len(shapes) == 0:
             return (0,)
+
+        # if we have different lengths return dict of shapes
         group_shape_0 = list(shapes.values())[0]
         for group_shape in list(shapes.values())[1:]:
             if group_shape != group_shape_0:
                 return shapes
+
         num_groups = len(shapes)
         if num_groups > 1:
             if len(group_shape_0) > 0:
-                return tuple([group_shape_0[0], num_groups]  + list(group_shape_0[1:]))
-            else:
-                return (num_groups,)
+                return tuple([group_shape_0[0], num_groups] + list(group_shape_0[1:]))
+            # else:
+            #    return (num_groups,)
         else:
             if len(group_shape_0) > 0:
                 return tuple([group_shape_0[0]] + list(group_shape_0[1:]))
-            else:
-                return (1,)
+            # else:
+            #    return (1,)
+        return (num_groups, )
 
     def columns2dtype(self) -> list:
-        return [(col_name, array.dtype) for col_name, array in self.labels_data]
+        dtypes = []
+        for col_name, array in self.labels_data:
+            try:
+                dtypes.append((col_name, array.dtype))
+            except AttributeError:
+                dtypes.append((col_name, np.dtype(type(array))))
+        return dtypes
 
     def convert(self, labels_data, start_i, end_i):
         if start_i is None:
@@ -121,7 +140,7 @@ class StructArray:
         if end_i is None:
             end_i = len(self)
 
-        sub_labels_data = [(label, array[start_i:end_i]) for label, array in labels_data]
+        sub_labels_data = [(group, array[start_i:end_i]) for group, array in labels_data]
         return StructArray(sub_labels_data)
 
     def convert_from_array(self, labels_data, index_array):
@@ -131,13 +150,14 @@ class StructArray:
     def convert_from_index(self, index: int):
         sub_labels_data = []
         for group, array in self.labels_data:
-            try:
-                sub_labels_data.append((group, array[index]))
-            except IndexError:
-                if isinstance(array, str) or isinstance(array, numbers.Number):
-                    sub_labels_data.append((group, array))
-                else:
-                    raise IndexError
+            #try:
+            sub_labels_data.append((group, array[index]))
+            #except IndexError:
+                #raise Exception
+                #print(array)
+                #if isinstance(array, str) or isinstance(array, numbers.Number):
+                #    sub_labels_data.append((group, array))
+                #    raise IndexError
         return StructArray(sub_labels_data)
 
     @staticmethod
@@ -189,10 +209,14 @@ class StructArray:
                 if len(self.shape) == 1:
                     for i, (_, array) in enumerate(self.labels_data):
                         ndarray[i] = array
+                elif self.shape[0] == 1:
+                    for i, (_, array) in enumerate(self.labels_data):
+                        ndarray[:, i] = array
                 else:
                     for i, (_, array) in enumerate(self.labels_data):
                         ndarray[:, i] = array[0:len(self)]
         else:
+            #print(self.o_columns)
             raise NotImplementedError
         return ndarray
 
@@ -200,7 +224,10 @@ class StructArray:
         xr_data = {}
         for group, data in self.labels_data:
             index_dims = ["{}_{}".format(group, i) for i in range(len(data.shape))]
-            data_dims = (index_dims, data)
+            if isinstance(data, StructArray):
+                data_dims = (index_dims, data.to_ndarray())
+            else:
+                data_dims = (index_dims, data)
             xr_data[group] = data_dims
         return xr.Dataset(xr_data)
 
@@ -218,4 +245,5 @@ def labels2num(self, labels):
 
 def isnamedtupleinstance(x):
     f = getattr(x, '_fields', None)
-    return f is not None and x.__bases__[0] == tuple
+    shape = getattr(x, 'shape', None)
+    return f is not None and shape is None  # x.__bases__[0] == tuple

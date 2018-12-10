@@ -190,7 +190,7 @@ def swap_noise(x, y, p=.15, cols=1):
     return matrix
 
 
-def max_type(items):
+def max_type(items: list):
     sizeof = [np.dtype(type(e)).num for e in items]
     types = [type(e) for e in items]
     if len(sizeof) == 0:
@@ -199,9 +199,9 @@ def max_type(items):
     return v[1]
 
 
-def max_dtype(dtype):
-    if dtype is not None:
-        sizeof_dtype = [(dtype_obj, dtype_obj.num) for _, dtype_obj in dtype]
+def max_dtype(dtypes: list) -> np.dtype:
+    if dtypes is not None:
+        sizeof_dtype = [(dtype_obj, dtype_obj.num) for _, dtype_obj in dtypes]
         if len(sizeof_dtype) > 0:
             return max(sizeof_dtype, key=lambda x: x[1])[0]
 

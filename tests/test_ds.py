@@ -243,10 +243,11 @@ class TestDataset(unittest.TestCase):
             self.assertCountEqual(data[:3].shape, self.X[:3].shape)
 
     def test_from_struct(self):
-        X = StructArray([("x", np.random.rand(10, 2)), ("y", np.random.rand(10))])
-        Y = StructArray([("y", np.random.rand(10))])
+        XY = StructArray([("x0", np.random.rand(10, 2)), ("x1", np.random.rand(10))])
         data = Data(name="test", dataset_path="/tmp", clean=True)
-        data.from_data({"x": X, "y": Y})
+        data.from_data(XY)
+        with data:
+            print(data["x0"].to_ndarray())
 
     def test_from_it(self):
         seq = [1, 2, 3, 4, 4, 4, 5, 6, 3, 8, 1]
@@ -282,7 +283,7 @@ class TestDataset(unittest.TestCase):
         with data:
             self.assertCountEqual(data["a"].to_ndarray(), df["a"].values)
             self.assertEqual((data[["a", "b"]].to_ndarray() == df[["a", "b"]].values).all(), True)
-            self.assertEqual((data[0].to_ndarray() == df.iloc[0].values).all(), True)
+            self.assertEqual((data[0].to_ndarray(dtype=np.dtype("O")) == df.iloc[0].values).all(), True)
             self.assertEqual((data[0:1].to_ndarray() == df.iloc[0:1].values).all(), True)
             self.assertEqual((data[3:].to_ndarray() == df.iloc[3:].values).all(), True)
             self.assertEqual((data[:3].to_ndarray() == df.iloc[:3].values).all(), True)

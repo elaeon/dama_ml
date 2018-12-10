@@ -252,7 +252,10 @@ class Data(AbsDataset):
 
     def batchs_writer(self, groups, data):
         log.info("Writing with batch size {}".format(getattr(data, 'batch_size', 0)))
-        if getattr(data, 'batch_size', 0) > 0 and data.batch_type == "structured":
+        if isinstance(data, StructArray):
+            for group in data.groups:
+                self.driver["data"][group] = data[group].to_ndarray()
+        elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "structured":
             log.debug("WRITING STRUCTURED BATCH")
             end = {}
             init = {}
@@ -416,8 +419,10 @@ class Data(AbsDataset):
         """
         build a datalabel dataset from data and labels
         """
-        if isinstance(data, AbsDataset) or isinstance(data, StructArray):
+        if isinstance(data, AbsDataset):
             print("ok")
+        elif isinstance(data, StructArray):
+            data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
         elif not isinstance(data, BaseIterator):
             data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
         elif isinstance(data, Iterator):
@@ -430,11 +435,9 @@ class Data(AbsDataset):
                     self._set_group_shape(group, data.shape[group], dtype, group="data")
                     groups.append(group)
             else:
-                raise NotImplementedError
-                # for group, dtype in self.dtypes:
-                #    print("SET", group, dtype, data.shape, data.length)
-                #    self._set_group_shape(group, data.shape, dtype, group="data") data.shape returns shape with groups size
-                #    groups.append(group)
+                for group, dtype in self.dtypes:
+                    self._set_group_shape(group, data.shape, dtype, group="data")
+                    groups.append(group)
             self.batchs_writer(groups, data)
             if with_hash is not None:
                 c_hash = self.calc_hash(with_hash=with_hash)

@@ -3,13 +3,13 @@ import numpy as np
 import pandas as pd
 import types
 import logging
+import numbers
 
 from collections import defaultdict, deque
 from ml.utils.config import get_settings
 from ml.utils.numeric_functions import max_type, num_splits, wsrj, max_dtype
-from ml.abc.data import AbsDataset
 from ml.utils.seq import grouper_chunk
-from ml.utils.basic import StructArray
+from ml.utils.basic import StructArray, isnamedtupleinstance
 
 
 settings = get_settings("ml")
@@ -62,16 +62,24 @@ class BaseIterator(object):
         return np.inf
 
     @staticmethod
-    def calc_shape(length, shape):
+    def calc_shape(length: int, shape):
         if shape is None:
             return tuple([length])
         elif isinstance(shape, tuple):
-            return tuple([length] + list(shape))
+            if len(shape) == 0 or shape[0] == 1:
+                return tuple([length])
+            else:
+                return tuple([length] + list(shape))
         elif isinstance(shape, dict) and length != np.inf:
             length_shape = {}
             for group, g_shape in shape.items():
                 length_shape[group] = tuple([length] + list(g_shape))
             return length_shape
+        elif isinstance(shape, numbers.Number):
+            if shape == 1:
+                return tuple([length])
+            else:
+                return tuple([length, shape])
 
     @property
     def groups(self) -> list:
@@ -190,6 +198,7 @@ class Iterator(BaseIterator):
         #    self.is_ds = True
         elif isinstance(fn_iter, StructArray):
             self.data = fn_iter
+            dtypes = fn_iter.dtypes
             length = len(fn_iter) if length == np.inf else length
             self.is_ds = True
         else:
@@ -224,9 +233,17 @@ class Iterator(BaseIterator):
         """Check for the dtype and global dtype in a chunk"""
         try:
             chunk = next(self)
+            shape = chunk.shape
         except StopIteration:
             self.shape = (0,)
             return
+        except AttributeError:
+            if isnamedtupleinstance(chunk):
+                shape = (1,)
+            elif hasattr(chunk, '__iter__') and not isinstance(chunk, str):
+                shape = len(chunk)
+            else:
+                shape = None
 
         if isinstance(dtypes, list):
             self.dtypes = self.replace_str_type_to_obj(dtypes)
@@ -253,14 +270,6 @@ class Iterator(BaseIterator):
             else:
                 self.dtypes = self.default_dtypes(chunk.dtype)
 
-        try:
-            shape = chunk.shape
-        except AttributeError:
-            if hasattr(chunk, '__iter__') and not isinstance(chunk, str):
-                shape = len(chunk)
-            else:
-                shape = None
-
         self.shape = self.calc_shape(length, shape)
         self.dtype = max_dtype(self.dtypes)
         self.pushback(chunk)
@@ -272,7 +281,7 @@ class Iterator(BaseIterator):
             dtype_tmp = []
             for c, dtp in dtype:
                 if dtp == "str" or dtp == str:
-                    dtype_tmp.append((c, "|O"))
+                    dtype_tmp.append((c, np.dtype("O")))
                 else:
                     dtype_tmp.append((c, dtp))
         else:
