@@ -65,6 +65,17 @@ class StructArray:
             self.counter += 1
             return elem
 
+    def __add__(self, other: 'StructArray') -> 'StructArray':
+        if other == 0:
+            return self
+        groups = {}
+        groups.update(self.o_columns)
+        groups.update(other.o_columns)
+        return StructArray(groups.items())
+
+    def __radd__(self, other):
+        return self.__add__(other)
+
     @cache
     def __len__(self):
         if len(self.labels_data) > 0:
@@ -150,14 +161,7 @@ class StructArray:
     def convert_from_index(self, index: int):
         sub_labels_data = []
         for group, array in self.labels_data:
-            #try:
             sub_labels_data.append((group, array[index]))
-            #except IndexError:
-                #raise Exception
-                #print(array)
-                #if isinstance(array, str) or isinstance(array, numbers.Number):
-                #    sub_labels_data.append((group, array))
-                #    raise IndexError
         return StructArray(sub_labels_data)
 
     @staticmethod
@@ -216,7 +220,6 @@ class StructArray:
                     for i, (_, array) in enumerate(self.labels_data):
                         ndarray[:, i] = array[0:len(self)]
         else:
-            #print(self.o_columns)
             raise NotImplementedError
         return ndarray
 
@@ -236,7 +239,7 @@ def unique_dtypes(dtypes) -> np.ndarray:
     return np.unique([dtype.name for _, dtype in dtypes])
 
 
-def labels2num(self, labels):
+def labels2num(labels):
     from sklearn.preprocessing import LabelEncoder
     le = LabelEncoder()
     le.fit(labels)

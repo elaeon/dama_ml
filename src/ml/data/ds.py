@@ -419,10 +419,20 @@ class Data(AbsDataset):
             print("ok")
         elif isinstance(data, StructArray):
             data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
-        elif not isinstance(data, BaseIterator):
-            data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
         elif isinstance(data, Iterator):
             data = data.batchs(batch_size=batch_size, batch_type="structured")
+        elif isinstance(data, dict):
+            str_arrays = []
+            for elem in data.values():
+                if isinstance(elem, StructArray):
+                    str_arrays.append(elem)
+                else:
+                    if len(str_arrays) > 0:
+                        raise NotImplementedError
+            data = sum(str_arrays)
+            data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
+        elif not isinstance(data, BaseIterator):
+            data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
         self.dtypes = data.dtypes
         with self:
             groups = []

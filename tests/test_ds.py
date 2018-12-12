@@ -321,6 +321,17 @@ class TestDataset(unittest.TestCase):
         with data:
             self.assertEqual((data.to_ndarray() == x).all(), True)
 
+    def test_from_struct_dict(self):
+        x = np.random.rand(10, 2)
+        y = (np.random.rand(10) * 10).astype(int)
+        x_train = StructArray([("x", x)])
+        y_train = StructArray([("y", y)])
+        train_ds = Data(name="train")
+        train_ds.from_data({"x": x_train, "y": y_train})
+        with train_ds:
+            self.assertEqual((train_ds["x"].to_ndarray() == x).all(), True)
+            self.assertEqual((train_ds["y"].to_ndarray() == y).all(), True)
+
 
 class TestDataZarr(unittest.TestCase):
     def test_ds(self):
