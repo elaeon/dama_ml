@@ -2,23 +2,16 @@ from itertools import chain, islice
 import numpy as np
 import pandas as pd
 import types
-import logging
 import numbers
 
 from collections import defaultdict, deque
-from ml.utils.config import get_settings
 from ml.utils.numeric_functions import max_type, num_splits, wsrj, max_dtype
 from ml.utils.seq import grouper_chunk
 from ml.utils.basic import StructArray, isnamedtupleinstance
+from ml.utils.logger import log_config
+from ml.abc.data import AbsDataset
 
-
-settings = get_settings("ml")
-log = logging.getLogger(__name__)
-logFormatter = logging.Formatter("[%(name)s] - [%(levelname)s] %(message)s")
-handler = logging.StreamHandler()
-handler.setFormatter(logFormatter)
-log.addHandler(handler)
-log.setLevel(int(settings["loglevel"]))
+log = log_config(__name__)
 
 
 def assign_struct_array(it, type_elem, start_i, end_i, dtype, dims):
@@ -41,7 +34,7 @@ def assign_struct_array(it, type_elem, start_i, end_i, dtype, dims):
 
 
 class BaseIterator(object):
-    def __init__(self, it, length: int=np.inf, dtypes: list=None, shape: tuple=None,
+    def __init__(self, it, length: int = np.inf, dtypes: list = None, shape: tuple = None,
                  type_elem=None, pushedback=None) -> None:
         self.data = it
         self.pushedback = [] if pushedback is None else pushedback
@@ -73,7 +66,10 @@ class BaseIterator(object):
         elif isinstance(shape, dict) and length != np.inf:
             length_shape = {}
             for group, g_shape in shape.items():
-                length_shape[group] = tuple([length] + list(g_shape))
+                if g_shape[0] == 1:
+                    length_shape[group] = tuple([length])
+                else:
+                    length_shape[group] = tuple([length] + list(g_shape))
             return length_shape
         elif isinstance(shape, numbers.Number):
             if shape == 1:
@@ -95,7 +91,7 @@ class BaseIterator(object):
         else:
             return dtype
 
-    def window(self, win_size: int=2):
+    def window(self, win_size: int = 2):
         win = deque((next(self.data, None) for _ in range(win_size)), maxlen=win_size)
         yield win
         for e in self.data:
@@ -171,7 +167,7 @@ class BaseIterator(object):
 
 
 class Iterator(BaseIterator):
-    def __init__(self, fn_iter, dtypes: list=None, length: int=np.inf) -> None:
+    def __init__(self, fn_iter, dtypes: list = None, length: int = np.inf) -> None:
         super(Iterator, self).__init__(fn_iter, dtypes=dtypes, length=length)
         if isinstance(fn_iter, types.GeneratorType):
             self.data = fn_iter
@@ -192,11 +188,7 @@ class Iterator(BaseIterator):
             self.data = iter(fn_iter)
             length = fn_iter.shape[0] if length == np.inf else length
             self.is_ds = False
-        # elif isinstance(fn_iter, AbsDataset):
-        #    self.data = fn_iter
-        #    length = len(fn_iter) if length == np.inf else length
-        #    self.is_ds = True
-        elif isinstance(fn_iter, StructArray):
+        elif isinstance(fn_iter, StructArray) or isinstance(fn_iter, AbsDataset):
             self.data = fn_iter
             dtypes = fn_iter.dtypes
             length = len(fn_iter) if length == np.inf else length
@@ -220,23 +212,18 @@ class Iterator(BaseIterator):
             # obtain dtypes, shape, dtype, type_elem and length
             self.chunk_taste(length, dtypes)
 
-    def chunk_type_elem(self):
-        try:
-            chunk = next(self)
-        except StopIteration:
-            return
-        else:
-            self.pushback(chunk)
-            return type(chunk)
-
     def chunk_taste(self, length, dtypes) -> None:
         """Check for the dtype and global dtype in a chunk"""
         try:
             chunk = next(self)
-            shape = chunk.shape
         except StopIteration:
             self.shape = (0,)
+            self.dtypes = None
+            self.dtype = None
             return
+
+        try:
+            shape = chunk.shape
         except AttributeError:
             if isnamedtupleinstance(chunk):
                 shape = (1,)
@@ -291,17 +278,22 @@ class Iterator(BaseIterator):
                 dtype_tmp = dtype
         return dtype_tmp
 
-    def batchs(self, batch_size: int, batch_type: str="array") -> BaseIterator:
+    def batchs(self, batch_size: int, batch_type: str = "array") -> 'BatchIterator':
         if batch_size > 0:
             if self.is_ds:
                 if batch_type == "df":
-                    return BatchDataFrame(self, batch_size=batch_size, batch_type=batch_type)
+                    return BatchDataFrame(self, batch_size=batch_size)
                 elif batch_type == "array":
-                    return BatchArray(self, batch_size=batch_size, batch_type=batch_type)
+                    return BatchArray(self, batch_size=batch_size)
                 else:
-                    return BatchStructured(self, batch_size=batch_size, batch_type=batch_type)
+                    return BatchStructured(self, batch_size=batch_size)
             else:
-                return BatchIt(self, batch_size=batch_size, batch_type=batch_type)
+                if batch_type == "df":
+                    return BatchItDataFrame(self, batch_size=batch_size)
+                elif batch_type == "array":
+                    return BatchItArray(self, batch_size=batch_size)
+                else:
+                    return BatchItStructured(self, batch_size=batch_size)
         else:
             return self
 
@@ -316,11 +308,11 @@ class Iterator(BaseIterator):
 
 
 class BatchIterator(BaseIterator):
-    def __init__(self, it: Iterator, batch_size: int=258, batch_type: str='array'):
-        super(BatchIterator, self).__init__(it, dtypes=it.dtypes, length=it.length)
+    def __init__(self, it: Iterator, batch_size: int = 258, static: bool = False):
+        super(BatchIterator, self).__init__(it, dtypes=it.dtypes, length=it.length, type_elem=it.type_elem)
         self.batch_size = batch_size
         self.shape = it.shape
-        self.batch_type = batch_type
+        self.static = static
 
     def clean_batchs(self) -> Iterator:
         def cleaner():
@@ -332,10 +324,16 @@ class BatchIterator(BaseIterator):
     def batch_shape(self) -> list:
         shape = self.data.shape
         if len(shape) == 1:
-            return [self.batch_size]
+            if self.length != np.inf and self.length < self.batch_size:
+                return [self.length]
+            else:
+                return [self.batch_size]
         else:
             i_features = shape[1:]
-            return [self.batch_size] + list(i_features)
+            if self.length != np.inf and self.length < self.batch_size:
+                return [self.length] + list(i_features)
+            else:
+                return [self.batch_size] + list(i_features)
 
     def cut_batch(self, length: int):
         end = 0
@@ -344,8 +342,7 @@ class BatchIterator(BaseIterator):
             if end > length:
                 mod = length % self.batch_size
                 if mod > 0:
-                    batch = batch[:mod]
-                yield batch
+                    yield batch[:mod]
                 break
             yield batch
 
@@ -357,28 +354,11 @@ class BatchIterator(BaseIterator):
             length = self.length * sum(self.shape[1:])
         else:
             length = self.length
-        return Iterator(self.flatter(), dtypes=self.dtypes,
-                        length=length).batchs(batch_size=self.batch_size, batch_type=self.batch_type)
+        return Iterator(self.flatter(), dtypes=self.dtypes, length=length)
 
-    def sample(self, length: int, col: list=None, weight_fn=None) -> Iterator:
+    def sample(self, length: int, col: list = None, weight_fn=None) -> Iterator:
         data = self.clean_batchs()
         return Iterator(wsrj(self.weights_gen(data, col, weight_fn), length), dtypes=self.dtypes, length=length)
-
-    def run(self):
-        for batch in self.prerun():
-            yield batch
-
-    def prerun(self):
-        init = 0
-        end = self.batch_size
-        while True:
-            batch = self.data.data[init:end]
-            init = end
-            end += self.batch_size
-            if len(batch) > 0:
-                yield batch
-            else:
-                break
 
     def __next__(self):
         if self._it is None:
@@ -394,13 +374,45 @@ class BatchIterator(BaseIterator):
     def __getitem__(self, key) -> 'BatchIterator':
         if isinstance(key, slice):
             if key.stop is not None:
-                return BatchIterator(BaseIterator(self.cut_batch(key.stop), dtypes=self.dtypes,
-                                                  length=key.stop, shape=self.shape),
-                                     batch_type=self.batch_type, batch_size=self.batch_size)
+                return self.builder(BaseIterator(self.cut_batch(key.stop), dtypes=self.dtypes,
+                                                 length=key.stop, shape=self.shape),
+                                    batch_size=self.batch_size)
         return NotImplemented
 
+    @classmethod
+    def builder(cls, it, batch_size):
+        return cls(it, batch_size=batch_size, static=True)
 
-class BatchIt(BatchIterator):
+
+class BatchGen(BatchIterator):
+    def batch_from_it(self, batch_shape):
+        pass
+
+    def run(self):
+        if self.static is True:
+            return self.data
+        else:
+            batch_shape = self.batch_shape()
+            return self.batch_from_it(batch_shape)
+
+
+class BatchSlice(BatchIterator):
+    def batch_from_it(self):
+        init = 0
+        end = self.batch_size
+        while True:
+            batch = self.data.data[init:end]
+            init = end
+            end += self.batch_size
+            if len(batch) > 0:
+                yield batch
+            else:
+                break
+
+
+class BatchItArray(BatchGen):
+    batch_type = 'array'
+
     def batch_from_it_flat(self, shape):
         for smx in grouper_chunk(self.batch_size, self.data):
             smx_a = np.empty(shape, dtype=self.data.dtypes)
@@ -409,7 +421,7 @@ class BatchIt(BatchIterator):
                 smx_a[i] = row[0]
             yield smx_a[:i+1]
 
-    def batch_from_it_array(self, shape):
+    def batch_from_it(self, shape):
         for smx in grouper_chunk(self.batch_size, self.data):
             smx_a = np.empty(shape, dtype=self.data.dtype)
             i = 0
@@ -417,66 +429,77 @@ class BatchIt(BatchIterator):
                 smx_a[i] = row
             yield smx_a[:i+1]
 
-    def batch_from_it_structured(self, shape):
+    def run(self):
+        if self.static is True:
+            return self.data
+        else:
+            batch_shape = self.batch_shape()
+            if len(self.data.shape) == 2 and self.data.shape[1] == 1:
+                return self.batch_from_it_flat(batch_shape)
+            else:
+                return self.batch_from_it(batch_shape)
+
+
+class BatchItStructured(BatchGen):
+    batch_type = 'structured'
+
+    def batch_from_it(self, shape):
+        for start_i, end_i, stc_array in BatchItDataFrame.str_array(shape, self.batch_size, self.data):
+            group_array = []
+            for group in self.groups:
+                group_array.append((group, stc_array[group]))
+            yield StructArray(group_array)
+
+
+class BatchItDataFrame(BatchGen):
+    batch_type = 'df'
+
+    @staticmethod
+    def str_array(shape, batch_size, data):
         start_i = 0
         end_i = 0
         if len(shape) > 1:
             dims = shape[1:]
         else:
             dims = 1
-        if self.length is None:
-            for smx in grouper_chunk(self.batch_size, self.data):
-                end_i += shape[0]
-                yield assign_struct_array(smx, self.data.type_elem, start_i, end_i, self.data.dtypes, dims)
-                start_i = end_i
-        else:
-            for smx in grouper_chunk(self.batch_size, self.data):
-                end_i += shape[0]
-                if end_i > self.length:
-                    end_i = self.length
-                yield assign_struct_array(smx, self.data.type_elem, start_i, end_i, self.data.dtypes, dims)
-                start_i = end_i
 
-    def batch_from_it_df(self, shape):
-        start_i = 0
-        end_i = 0
-        columns = self.data.groups
-        for stc_array in self.batch_from_it_structured(shape):
-            end_i += stc_array.shape[0]
-            yield pd.DataFrame(stc_array, index=np.arange(start_i, end_i), columns=columns)
+        for smx in grouper_chunk(batch_size, data):
+            end_i += shape[0]
+            if data.length is not None and data.length < end_i:
+                end_i = data.length
+            array = assign_struct_array(smx, data.type_elem, start_i, end_i, data.dtypes, dims)
+            yield start_i, end_i, array
             start_i = end_i
 
-    def run(self):
-        batch_shape = self.batch_shape()
-        if self.batch_type == "df":
-            return self.batch_from_it_df(batch_shape)
-        elif self.batch_type == "array":
-            if len(self.data.shape) == 2 and self.data.shape[1] == 1:
-                return self.batch_from_it_flat(batch_shape)
-            else:
-                return self.batch_from_it_array(batch_shape)
-        else:
-            return self.batch_from_it_structured(batch_shape)
+    def batch_from_it(self, shape):
+        columns = self.groups
+        for start_i, end_i, stc_array in BatchItDataFrame.str_array(shape, self.batch_size, self.data):
+            yield pd.DataFrame(stc_array, index=np.arange(start_i, end_i), columns=columns)
 
 
-class BatchArray(BatchIterator):
+class BatchArray(BatchSlice):
+    batch_type = "array"
+
     def run(self):
-        for batch in self.prerun():
+        for batch in self.batch_from_it():
             yield batch.to_ndarray(dtype=self.dtype)
 
 
-class BatchDataFrame(BatchIterator):
+class BatchDataFrame(BatchSlice):
+    batch_type = "df"
+
     def run(self):
         init = 0
         end = self.batch_size
-        for batch in self.prerun():
+        for batch in self.batch_from_it():
             yield batch.to_df(init_i=init, end_i=end)
             init = end
             end += self.batch_size
 
 
-class BatchStructured(BatchIterator):
-    def run(self):
-        for batch in self.prerun():
-            yield batch.to_xrds()
+class BatchStructured(BatchSlice):
+    batch_type = "structured"
 
+    def run(self):
+        for batch in self.batch_from_it():
+            yield batch#.to_xrds()

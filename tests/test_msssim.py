@@ -4,7 +4,7 @@ import tensorflow as tf
 import os
 
 from ml.utils.tf_functions import ssim, msssim
-from ml.processing import Transforms, rgb2gray, merge_offset
+from ml.processing import rgb2gray, merge_offset
 from ml.data.etl import Pipeline
 
 

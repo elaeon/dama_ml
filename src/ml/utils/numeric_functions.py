@@ -1,6 +1,7 @@
 import numpy as np
 import heapq as hq
 from collections import defaultdict
+from sklearn.model_selection import train_test_split
 
 
 def pearsoncc(x, y):
@@ -218,7 +219,7 @@ def filter_sample(stream, label, col_index):
 
 
 def num_splits(length: int, batch_size: int) -> int:
-    if length is None or batch_size is None:
+    if isinstance(length, float) or batch_size is None:
         return 0
     elif 0 < batch_size <= length:
         if length % batch_size > 0:
@@ -279,3 +280,29 @@ def wsrj(stream, k):
 
     while len(reservoir) > 0:
         yield hq.heappop(reservoir)[1]
+
+
+class CV(object):
+    def __init__(self, group_data, group_target, train_size: float = .7,
+                 valid_size: float = .1, unbalanced=None):
+        self.train_size = train_size
+        self.valid_size = valid_size
+        self.unbalanced = unbalanced
+        self.group_target = group_target
+        self.group_data = group_data
+
+    def apply(self, data):
+        train_size = round(self.train_size + self.valid_size, 2)
+        x_train, x_test, y_train, y_test = train_test_split(
+            data[self.group_data], data[self.group_target], train_size=train_size, random_state=0)
+        size = len(data)
+        valid_size_index = int(round(size * self.valid_size, 0))
+        x_validation = x_train[:valid_size_index]
+        y_validation = y_train[:valid_size_index]
+        x_train = x_train[valid_size_index:]
+        y_train = y_train[valid_size_index:]
+
+        if self.unbalanced is not None:
+            return NotImplemented
+        else:
+            return x_train, x_validation, x_test, y_train, y_validation, y_test

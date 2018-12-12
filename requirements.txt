@@ -19,3 +19,4 @@ psycopg2>=2.7.3.2
 dask>=0.18.2
 xarray>=0.10.9
 zarr>=2.2.0
+numcodecs>=0.6.1

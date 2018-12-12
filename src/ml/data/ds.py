@@ -107,8 +107,8 @@ class Data(AbsDataset):
     Base class for dataset build. Get data from memory.
     create the initial values for the dataset.
     """
-    def __init__(self, name: str=None, dataset_path: str=None, description: str='', author: str='',
-                 clean: bool=False, driver: AbsDriver=None, group_name: str=None):
+    def __init__(self, name: str = None, dataset_path: str = None, description: str = '', author: str = '',
+                 clean: bool = False, driver: AbsDriver = None, group_name: str = None):
 
         if name is None:
             raise Exception("I can't build a dataset without a name, plese add a name to this dataset.")
@@ -265,7 +265,7 @@ class Data(AbsDataset):
             for smx in tqdm(data, total=data.num_splits()):
                 for group in groups:
                     end[group] += smx[group].shape[0]
-                    self.driver["data"][group][init[group]:end[group]] = smx[group]
+                    self.driver["data"][group][init[group]:end[group]] = smx[group].to_ndarray()
                     init[group] = end[group]
         elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "array":
             log.debug("WRITING ARRAY BATCH")
@@ -281,13 +281,9 @@ class Data(AbsDataset):
             init = 0
             end = 0
             for smx in tqdm(data, total=data.num_splits()):
-                if len(self.groups) == 1:
-                    array = smx.values.reshape(-1)
-                else:
-                    array = smx.values
                 end += smx.shape[0]
                 for group in groups:
-                    self.driver["data"][group][init:end] = array
+                    self.driver["data"][group][init:end] = smx[group]
                 init = end
         elif getattr(data, 'batch_size', 0) > 0:
             log.debug("WRITING GENERIC BATCH")
@@ -406,7 +402,7 @@ class Data(AbsDataset):
         print(order_table(headers, table, "shape"))
         # print columns
 
-    def calc_hash(self, with_hash: str='sha1', batch_size: int=1080) -> str:
+    def calc_hash(self, with_hash: str = 'sha1', batch_size: int = 1080) -> str:
         hash_obj = Hash(hash_fn=with_hash)
         header = [getattr(self, attr) for attr in self.header_map]
         hash_obj.hash.update("".join(header).encode("utf-8"))
@@ -415,7 +411,7 @@ class Data(AbsDataset):
             hash_obj.update(it)
         return str(hash_obj)
 
-    def from_data(self, data, batch_size: int=258, with_hash: str="sha1"):
+    def from_data(self, data, batch_size: int = 258, with_hash: str = "sha1"):
         """
         build a datalabel dataset from data and labels
         """
@@ -451,7 +447,7 @@ class Data(AbsDataset):
     def to_ndarray(self, dtype=None) -> np.ndarray:
         return self.data.to_ndarray(dtype=dtype)
 
-    def to_structured(self) -> xr.Dataset:
+    def to_xrds(self) -> xr.Dataset:
         return self.data.to_xrds()
 
     def create_route(self):
