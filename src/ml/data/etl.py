@@ -6,6 +6,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from pydoc import locate
 import sys
+import json
 from dask import get as sync_get
 
 
@@ -191,48 +192,37 @@ class Pipeline(PipelineABC):
         self.data = data
         return self
 
-    def to_text(self) -> str:
-        placeholder = "placeholder: {}={}".format(type(self.data).__name__, self.data)
+    def to_json(self) -> str:
+        placeholder = {"fn": ["placeholder"],  "input": [type(self.data).__name__, self.data]}
         text = [placeholder]
-        text.extend(self._to_text(self.downstreams))
-        return "\n".join(text)
+        text.extend(self._to_json(self.downstreams))
+        return json.dumps(text)
 
-    def _to_text(self, downstreams: OrderedWeakrefSet) -> list:
+    def _to_json(self, downstreams: OrderedWeakrefSet) -> list:
         row = []
         for fn in downstreams:
             row.append(fn.node_ref())
-            row.extend(self._to_text(fn.downstreams))
+            row.extend(self._to_json(fn.downstreams))
         return row
 
     @classmethod
-    def load(cls, text, path) -> 'Pipeline':
+    def load(cls, json_text: str, path: str) -> 'Pipeline':
         sys.path.append(path)
-        elems = text.split("\n")
+        json_stc = json.loads(json_text)
         tree_map = {}
-        for elem in elems:
-            if elem.startswith("placeholder"):
-                _, obj_str = elem.split(":")
-                type_elem, v = obj_str.split("=")
-                type_elem = type_elem.strip()
-                if type_elem == "int":
+        for lvl in json_stc:
+            if lvl["fn"][0] == "placeholder":
+                if lvl["input"][0] == "int":
                     cast = int
                 else:
                     cast = lambda x: x
-                tree_map["placeholder"] = Pipeline(cast(v.strip()))
-            elif elem.startswith("map"):
-                map_attrs, key = elem.split(" as ")
-                fn, ref = map_attrs.split(", ")
-                ref = ref.replace("ref:", "")
-                fn = fn[len("map: fn")+1:]
-                tree_map[key] = tree_map[ref].map(locate(fn))
-            elif elem.startswith("zip"):
-                zip_attrs, zip_key = elem.split(" as ")
-                zip_args, ref_str = zip_attrs.split(" . ")
-                ref = ref_str.replace("ref:", "").strip()
-                args_keys = zip_args.split(", ")
-                args_keys[0] = args_keys[0][len("zip args:")+1:]
-                args = [tree_map[key] for key in args_keys]
-                tree_map[zip_key] = tree_map[ref].zip(*args)
+                tree_map["placeholder"] = Pipeline(cast(lvl["input"][1]))
+            elif lvl["fn"][0] == "map":
+                fn = lvl["fn"][1]
+                tree_map[lvl["id"]] = tree_map[lvl["input"]].map(locate(fn))
+            elif lvl["fn"][0] == "zip":
+                args = [tree_map[name] for name in lvl["args"]]
+                tree_map[lvl["id"]] = tree_map[lvl["input"]].zip(*args)
         return tree_map["placeholder"]
 
     @property
@@ -302,7 +292,8 @@ class map(PipelineABC):
             ref = self.placeholder
         else:
             ref = upstream.key
-        return "{}, ref:{} as {}".format(str(self), ref, self.key)
+        return {"fn": [self.__class__.__name__, Pipeline.fn_name(self.func)],
+                "input": ref, "id": self.key, "kwargs": self.func_params}
 
     def __str__(self):
         return "{} fn: {}".format(self.__class__.__name__, Pipeline.fn_name(self.func))
@@ -327,11 +318,8 @@ class zip(PipelineABC):
             ref = self.placeholder
         else:
             ref = upstream.key
-        args = []
-        for arg in self.args:
-            args.append(arg.key)
-        args_str = ", ".join(args)
-        return "{} args: {} . ref: {} as {}".format(self.__class__.__name__, args_str, ref, self.key)
+        args = [arg.key for arg in self.args]
+        return {"fn": [self.__class__.__name__], "input": ref, "id": self.key, "args": args}
 
     @property
     def key(self) -> str:

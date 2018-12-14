@@ -178,26 +178,29 @@ class TestETL(unittest.TestCase):
         pipeline.visualize(filename="/tmp/stream", format="svg")
         self.assertEqual(os.path.exists("/tmp/stream.svg"), True)
 
-    def test_to_text(self):
+    def test_to_json(self):
         pipeline = Pipeline(1)
         a = pipeline.map(ident)
         b = pipeline.map(ident)
         c = pipeline.zip(a, b).map(add)
         pre_json_value = pipeline.compute()
-        text = pipeline.to_text()
-        pipeline = Pipeline.load(text, os.path.dirname(__file__))
+        json_stc = pipeline.to_json()
+        pipeline = Pipeline.load(json_stc, os.path.dirname(__file__))
         self.assertEqual(pre_json_value, pipeline.compute())
 
     def test_static_keyword_args(self):
         pipeline = Pipeline(1)
-        a = pipeline.map(line, a=1, b=1)
-        #b = pipeline.map(ident)
-        #c = pipeline.zip(a, b).map(add)
+        a = pipeline.map(line, a=2, b=1)
+        print(a.compute(), pipeline.to_dask_graph())
+        #c = pipeline.map(inc)
+        #b = a.map(ident)
+        #d = pipeline.zip(b, c).map(add)
         #pre_json_value = pipeline.compute()
-        text = pipeline.to_text()
-        print(text)
-        print(pipeline.to_dask_graph())
-        #pipeline = Pipeline.load(text, os.path.dirname(__file__))
+        #print(pre_json_value, a.compute())
+        #json = pipeline.to_json()
+        #print(json)
+        #print(pipeline.to_dask_graph())
+        #pipeline = Pipeline.load(json, os.path.dirname(__file__))
         #self.assertEqual(pre_json_value, pipeline.compute())
 
 
