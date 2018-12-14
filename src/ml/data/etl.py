@@ -248,12 +248,13 @@ class Pipeline(PipelineABC):
 
 @PipelineABC.register_api()
 class map(PipelineABC):
-    def __init__(self, upstream, func, data=None):
+    def __init__(self, upstream, func, data=None, **kwargs):
         self.task = dask.delayed(func)
         self.func = func
         self.eval_task = None
         self.completed = False
         self.data = data
+        self.func_params = kwargs
         PipelineABC.__init__(self, upstream)
 
     def __call__(self, *nodes):

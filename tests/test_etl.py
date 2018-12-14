@@ -82,9 +82,8 @@ def mov_avg_fn(window):
     return avg
 
 
-def styles(value):
-    return int(value), str(value), float(value), [value]
-
+def line(x, a=0, b=1):
+    return a*x + b
 
 
 class TestETL(unittest.TestCase):
@@ -189,9 +188,16 @@ class TestETL(unittest.TestCase):
         pipeline = Pipeline.load(text, os.path.dirname(__file__))
         self.assertEqual(pre_json_value, pipeline.compute())
 
-    def test_multioutput(self):
+    def test_static_keyword_args(self):
         pipeline = Pipeline(1)
-        a = pipeline.map(styles)
-        print(a.func)
-        print(pipeline.compute()[0])
+        a = pipeline.map(line, a=1, b=1)
+        #b = pipeline.map(ident)
+        #c = pipeline.zip(a, b).map(add)
+        #pre_json_value = pipeline.compute()
+        text = pipeline.to_text()
+        print(text)
+        print(pipeline.to_dask_graph())
+        #pipeline = Pipeline.load(text, os.path.dirname(__file__))
+        #self.assertEqual(pre_json_value, pipeline.compute())
+
 

@@ -194,6 +194,7 @@ class Iterator(BaseIterator):
             length = len(fn_iter) if length == np.inf else length
             self.is_ds = True
         else:
+            print("***", fn_iter)
             self.data = iter(fn_iter)
             if hasattr(fn_iter, '__len__'):
                 length = len(fn_iter)
@@ -501,5 +502,4 @@ class BatchStructured(BatchSlice):
     batch_type = "structured"
 
     def run(self):
-        for batch in self.batch_from_it():
-            yield batch#.to_xrds()
+        return self.batch_from_it()

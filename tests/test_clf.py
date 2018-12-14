@@ -19,6 +19,17 @@ def multi_int(X):
         return X
 
 
+def to_data(cv):
+    X_train, X_validation, X_test, y_train, y_validation, y_test = cv
+    train_ds = Data(name="train")
+    train_ds.from_data({"x": X_train, "y": y_train})
+    test_ds = Data(name="test")
+    test_ds.from_data({"x": X_test, "y": y_test})
+    validation_ds = Data(name="validation")
+    validation_ds.from_data({"x": X_validation, "y": y_validation})
+    return train_ds, test_ds, validation_ds
+
+
 class TestSKL(unittest.TestCase):
     def setUp(self):
         self.X = np.random.rand(100, 10)
@@ -35,15 +46,10 @@ class TestSKL(unittest.TestCase):
             model_name="test_model",
             check_point_path="/tmp/")
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
-        # pipeline = Pipeline(self.dataset)
-        # pipeline.map(cv.apply)
-        X_train, X_validation, X_test, y_train, y_validation, y_test = cv.apply(self.dataset)#pipeline.compute()[0]
-        train_ds = Data(name="train")
-        train_ds.from_data({"x": X_train, "y": y_train})
-        test_ds = Data(name="test")
-        test_ds.from_data({"x": X_test, "y": y_test})
-        validation_ds = Data(name="validation")
-        validation_ds.from_data({"x": X_validation, "y": y_validation})
+        pipeline = Pipeline(self.dataset)
+        a = pipeline.map(cv.apply)
+        a.map(to_data)
+        train_ds, test_ds, validation_ds = pipeline.compute()[0]
         classif.set_dataset(train_ds=train_ds, test_ds=test_ds, validation_ds=validation_ds, pipeline=None)
         classif.train(num_steps=1, data_group="x", target_group='y')
         classif.save(model_version="1")
