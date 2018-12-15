@@ -1,13 +1,13 @@
 from collections import MutableSet, OrderedDict
-# import weakref
 import functools
 import dask
 import networkx as nx
 import matplotlib.pyplot as plt
-from pydoc import locate
 import sys
 import json
+from pydoc import locate
 from dask import get as sync_get
+from dask.compatibility import apply
 
 
 class OrderedSet(MutableSet):
@@ -30,22 +30,9 @@ class OrderedSet(MutableSet):
         self._od.pop(value, None)
 
 
-#class OrderedWeakrefSet(weakref.WeakSet):
-#    def __init__(self, values=()):
-#        super(OrderedWeakrefSet, self).__init__()
-#        self.data = OrderedSet()
-#        for elem in values:
-#            self.add(elem)
-
-
-class OrderedWeakrefSet(OrderedSet):
-    def __init__(self, values=()):
-        super(OrderedWeakrefSet, self).__init__()
-
-
 class PipelineABC(object):
     def __init__(self, upstream=None):
-        self.downstreams = OrderedWeakrefSet()
+        self.downstreams = OrderedSet()
 
         if upstream is None:
             self.upstreams = []
@@ -124,7 +111,7 @@ class Pipeline(PipelineABC):
                 node.eval_task = None
             self.clean_graph_eval(node)
 
-    def edges(self, downstreams: OrderedWeakrefSet, parent) -> list:
+    def edges(self, downstreams: OrderedSet, parent) -> list:
         edges = []
         for fn in downstreams:
             if type(fn) == zip:
@@ -165,9 +152,15 @@ class Pipeline(PipelineABC):
         for node in self.di_graph.neighbors(self.root):
             dask_graph[node.placeholder] = self.data
             if node.data is None:
-                dask_graph[node.key] = (node.func, node.placeholder)
+                if len(node.func_kwargs) > 0:
+                    dask_graph[node.key] = (apply, node.func, [node.placeholder], node.func_kwargs)
+                else:
+                    dask_graph[node.key] = (node.func, node.placeholder)
             else:
-                dask_graph[node.key] = (node.func, node.data)
+                if len(node.func_kwargs) > 0:
+                    dask_graph[node.key] = (apply, node.func, [node.data], node.func_kwargs)
+                else:
+                    dask_graph[node.key] = (node.func, node.data)
             self._walk(node, dask_graph)
         return dask_graph
 
@@ -198,7 +191,7 @@ class Pipeline(PipelineABC):
         text.extend(self._to_json(self.downstreams))
         return json.dumps(text)
 
-    def _to_json(self, downstreams: OrderedWeakrefSet) -> list:
+    def _to_json(self, downstreams: OrderedSet) -> list:
         row = []
         for fn in downstreams:
             row.append(fn.node_ref())
@@ -206,8 +199,8 @@ class Pipeline(PipelineABC):
         return row
 
     @classmethod
-    def load(cls, json_text: str, path: str) -> 'Pipeline':
-        sys.path.append(path)
+    def load(cls, json_text: str, classpath: str) -> 'Pipeline':
+        sys.path.append(classpath)
         json_stc = json.loads(json_text)
         tree_map = {}
         for lvl in json_stc:
@@ -219,7 +212,7 @@ class Pipeline(PipelineABC):
                 tree_map["placeholder"] = Pipeline(cast(lvl["input"][1]))
             elif lvl["fn"][0] == "map":
                 fn = lvl["fn"][1]
-                tree_map[lvl["id"]] = tree_map[lvl["input"]].map(locate(fn))
+                tree_map[lvl["id"]] = tree_map[lvl["input"]].map(locate(fn), **lvl["kwargs"])
             elif lvl["fn"][0] == "zip":
                 args = [tree_map[name] for name in lvl["args"]]
                 tree_map[lvl["id"]] = tree_map[lvl["input"]].zip(*args)
@@ -244,7 +237,7 @@ class map(PipelineABC):
         self.eval_task = None
         self.completed = False
         self.data = data
-        self.func_params = kwargs
+        self.func_kwargs = kwargs
         PipelineABC.__init__(self, upstream)
 
     def __call__(self, *nodes):
@@ -293,7 +286,7 @@ class map(PipelineABC):
         else:
             ref = upstream.key
         return {"fn": [self.__class__.__name__, Pipeline.fn_name(self.func)],
-                "input": ref, "id": self.key, "kwargs": self.func_params}
+                "input": ref, "id": self.key, "kwargs": self.func_kwargs}
 
     def __str__(self):
         return "{} fn: {}".format(self.__class__.__name__, Pipeline.fn_name(self.func))
@@ -327,4 +320,3 @@ class zip(PipelineABC):
 
     def __str__(self):
         return self.__class__.__name__
-

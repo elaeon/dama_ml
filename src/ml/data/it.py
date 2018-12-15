@@ -194,7 +194,6 @@ class Iterator(BaseIterator):
             length = len(fn_iter) if length == np.inf else length
             self.is_ds = True
         else:
-            print("***", fn_iter)
             self.data = iter(fn_iter)
             if hasattr(fn_iter, '__len__'):
                 length = len(fn_iter)

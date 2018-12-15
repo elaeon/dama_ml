@@ -4,10 +4,8 @@ import datetime
 import dask.array as da
 import os
 
-from ml.data.csv import CSVDataset
 from ml.data.it import Iterator
 from ml.data.etl import Pipeline
-from ml.utils.basic import Hash
 from ml.utils.files import rm
 
 
@@ -94,7 +92,7 @@ class TestETL(unittest.TestCase):
         f = c.map(lambda x: x*4)
         b = pipeline.map(ident)
         d = pipeline.zip(c, b).map(add).map(str).map(float)
-        g = pipeline.zip(d, f).map(add)
+        pipeline.zip(d, f).map(add)
 
         for result in pipeline.compute():
             self.assertEqual(result, 24.0)
@@ -102,8 +100,8 @@ class TestETL(unittest.TestCase):
     def test_pipeline_02(self):
         it = [4, 1, 3]
         pipeline = Pipeline(it)
-        a = pipeline.map(inc_it)
-        d = pipeline.map(sum_it).map(str)
+        pipeline.map(inc_it)
+        pipeline.map(sum_it).map(str)
 
         results = pipeline.compute()
         self.assertEqual(list(results[0]), [5, 2, 4])
@@ -112,21 +110,21 @@ class TestETL(unittest.TestCase):
     def test_pipeline_03(self):
         it = Iterator([1, 2, 3, 4, 5])
         pipeline = Pipeline(it)
-        a = pipeline.map(str_it)
+        pipeline.map(str_it)
         results = list(pipeline.compute()[0])
         self.assertCountEqual(results, ['1', '2', '3', '4', '5'])
 
     def test_stream(self):
         it = Iterator(stream())
         pipeline = Pipeline(it[:10])
-        a = pipeline.map(str_it)
+        pipeline.map(str_it)
         results = list(pipeline.compute()[0])
         self.assertCountEqual(results, [e for e in list(map(str, np.arange(0, 10)))])
 
     def test_temperature_sensor_stream(self):
         it = Iterator(temperature_sensor_stream()).window(200)
         pipeline = Pipeline(it)
-        a = pipeline.map(mov_avg_it)
+        pipeline.map(mov_avg_it)
         counter = 0
         for avg in pipeline.compute()[0]:
             self.assertEqual(10 <= avg <= 13, True)
@@ -149,7 +147,7 @@ class TestETL(unittest.TestCase):
 
     def test_pipeline_distinct_sources(self):
         pipeline = Pipeline(4)
-        a = pipeline.map(inc)
+        pipeline.map(inc)
         self.assertEqual(pipeline.compute()[0], 5)
         pipeline.feed(5)
         self.assertEqual(pipeline.compute()[0], 6)
@@ -173,7 +171,7 @@ class TestETL(unittest.TestCase):
 
     def test_graph(self):
         pipeline = Pipeline(None)
-        a = pipeline.map(ident)
+        pipeline.map(ident)
         rm("/tmp/stream.svg")
         pipeline.visualize(filename="/tmp/stream", format="svg")
         self.assertEqual(os.path.exists("/tmp/stream.svg"), True)
@@ -188,19 +186,20 @@ class TestETL(unittest.TestCase):
         pipeline = Pipeline.load(json_stc, os.path.dirname(__file__))
         self.assertEqual(pre_json_value, pipeline.compute())
 
-    def test_static_keyword_args(self):
+    def test_static_kwargs(self):
         pipeline = Pipeline(1)
-        a = pipeline.map(line, a=2, b=1)
-        print(a.compute(), pipeline.to_dask_graph())
-        #c = pipeline.map(inc)
-        #b = a.map(ident)
-        #d = pipeline.zip(b, c).map(add)
-        #pre_json_value = pipeline.compute()
-        #print(pre_json_value, a.compute())
-        #json = pipeline.to_json()
-        #print(json)
-        #print(pipeline.to_dask_graph())
-        #pipeline = Pipeline.load(json, os.path.dirname(__file__))
-        #self.assertEqual(pre_json_value, pipeline.compute())
+        a = pipeline.map(line, a=2, b=1).map(inc)
+        b = pipeline.map(inc)
+        c = pipeline.zip(a, b).map(add)
+        self.assertEqual(a.compute(), 4)
+        self.assertEqual(b.compute(), 2)
+        self.assertEqual(c.compute(), 6)
 
-
+    def test_to_json_kwargs(self):
+        pipeline = Pipeline(1)
+        a = pipeline.map(line, a=2, b=1).map(inc)
+        b = pipeline.map(inc)
+        pipeline.zip(a, b).map(add)
+        json_stc = pipeline.to_json()
+        pipeline_cl = Pipeline.load(json_stc, os.path.dirname(__file__))
+        self.assertEqual(pipeline.compute()[0], pipeline_cl.compute()[0])
