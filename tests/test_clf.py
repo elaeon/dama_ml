@@ -4,8 +4,9 @@ import numpy as np
 from ml.data.ds import Data
 from ml.clf.extended.w_sklearn import RandomForest
 from ml.data.etl import Pipeline
-from ml.utils.numeric_functions import CV
+from ml.utils.numeric_functions import CV, gini_normalized
 from ml.data.drivers import HDF5
+from ml.measures import Measure
 np.random.seed(0)
 
 
@@ -51,7 +52,7 @@ class TestSKL(unittest.TestCase):
             check_point_path="/tmp/")
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         pipeline = Pipeline(self.dataset)
-        a = pipeline.map(cv.apply).map(to_data)
+        a = pipeline.map(cv.apply).map(to_data, kwargs=dict(driver=HDF5()))
         b = a.map(classif.train, kwargs=dict(num_steps=1,
                   data_train_group="train_x", target_train_group='train_y',
                   data_test_group="test_x", target_test_group='test_y',
@@ -74,20 +75,27 @@ class TestSKL(unittest.TestCase):
                   data_test_group="test_x", target_test_group='test_y',
                   data_validation_group="validation_x", target_validation_group="validation_y")
         classif.save(model_version="1")
+        meta = classif.load_meta()
+        ds_hash = meta["model"]["hash"]
 
         classif = RandomForest(
             model_name="test",
             check_point_path="/tmp/")
         classif.load(model_version="1")
-        #self.assertEqual(classif.original_dataset_path, "/tmp/")
+        with classif.ds:
+            self.assertEqual(classif.ds.hash, ds_hash)
         classif.destroy()
 
-    def test_scores(self):        
+    def test_scores(self):
         classif = RandomForest(
             model_name="test", 
             check_point_path="/tmp/")
-        classif.set_dataset(self.dataset)
-        classif.train(num_steps=1)
+        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
+        stc = cv.apply(self.dataset)
+        ds = to_data(stc, driver=HDF5())
+        classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
+                      data_test_group="test_x", target_test_group='test_y',
+                      data_validation_group="validation_x", target_validation_group="validation_y")
         classif.save(model_version="1")
         scores_table = classif.scores2table()
         classif.destroy()
@@ -96,16 +104,18 @@ class TestSKL(unittest.TestCase):
         self.assertEqual(scores_table.measures[0][5] <= 1, True)
 
     def test_new_scores(self):
-        from ml.utils.numeric_functions import gini_normalized
-        from ml.measures import Measure
-        metrics = Measure.make_metrics(None)
+        metrics = Measure().make_metrics()
         metrics.add(gini_normalized, greater_is_better=True, output='uncertain')
         classif = RandomForest(
             model_name="test", 
             check_point_path="/tmp/",
             metrics=metrics)
-        classif.set_dataset(self.dataset)
-        classif.train(num_steps=1)
+        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
+        stc = cv.apply(self.dataset)
+        ds = to_data(stc, driver=HDF5())
+        classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
+                      data_test_group="test_x", target_test_group='test_y',
+                      data_validation_group="validation_x", target_validation_group="validation_y")
         classif.save(model_version="1")
         scores_table = classif.scores2table()
         self.assertCountEqual(list(scores_table.headers), ['', 'f1', 'auc', 'recall', 'precision', 

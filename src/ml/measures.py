@@ -13,19 +13,19 @@ def greater_is_better_fn(reverse, output):
 
 
 class MeasureBase(object):
-    __slots__ = ['name', 'measures', 'target']
+    __slots__ = ['name', 'measures']
 
     def __init__(self, name: str = None):
         self.name = name
         self.measures = []
 
-    def __iter__(self):
+    def __iter__(self) -> iter:
         return iter(self.measures)
 
     def scores(self):
         return []
 
-    def add(self, measure, greater_is_better: bool = True, output=None):
+    def add(self, measure, greater_is_better: bool = True, output=None) -> None:
         self.measures.append(greater_is_better_fn(greater_is_better, output)(measure))
 
     def outputs(self):
@@ -34,14 +34,14 @@ class MeasureBase(object):
             groups[str(measure.output)] = measure.output
         return groups.values()
 
-    def to_list(self):
+    def to_list(self) -> 'ListMeasure':
         list_measure = ListMeasure(headers=[""]+[fn.__name__ for fn in self.measures],
                                    order=[True]+[fn.reverse for fn in self.measures],
                                    measures=[[self.name] + list(self.scores())])
         return list_measure
 
     @staticmethod
-    def make_metrics(measure_cls, measures=None):
+    def make_metrics(measure_cls, measures: str = None):
         if measures is None:
             measure_cls.add(accuracy, greater_is_better=True, output='discrete')
             measure_cls.add(precision, greater_is_better=True, output='discrete')
@@ -62,21 +62,24 @@ class MeasureBase(object):
 
 
 class Measure(MeasureBase):
-    __slots__ = ['predictions', 'name', 'measures', 'target']
+    __slots__ = ['score', 'name', 'measures']
 
-    def __init__(self, target, name: str = None):
+    def __init__(self, name: str = None):
         super(Measure, self).__init__(name=name)
-        self.predictions = {}
-        self.target = target
+        self.score = {}
 
-    def set_data(self, predictions, output=None):
-        self.predictions[output] = predictions
+    def update(self, predictions, target) -> None:
+        for measure_fn in self:
+            self.update_fn(predictions, target, measure_fn)
+
+    def update_fn(self, predictions, target, measure_fn) -> None:
+        self.score[measure_fn.__name__] = measure_fn(target, predictions)
 
     def scores(self):
         for measure in self.measures:
-            yield measure(self.target, self.predictions[measure.output])
+            yield self.score[measure.__name__]
 
-    def make_metrics(self, measures=None):
+    def make_metrics(self, measures=None) -> 'Measure':
         return MeasureBase.make_metrics(self, measures=measures)
 
 
@@ -86,15 +89,13 @@ class MeasureBatch(MeasureBase):
     def __init__(self, name: str = None, batch_size: int = 0):
         super(MeasureBatch, self).__init__(name=name)
         self.score = {}
-        self.name = name
-        self.measures = []
         self.batch_size = batch_size
 
     def update(self, predictions, target) -> None:
         for measure_fn in self:
             self.update_fn(predictions, target, measure_fn)
 
-    def update_fn(self, predictions, target, measure_fn):
+    def update_fn(self, predictions, target, measure_fn) -> None:
         log.debug("Set measure {}".format(measure_fn.__name__))
         try:
             self.score[measure_fn.__name__][0] += measure_fn(target, predictions) * (len(predictions) / self.batch_size)
@@ -107,7 +108,7 @@ class MeasureBatch(MeasureBase):
             value, size = self.score[measure.__name__]
             yield value / size
 
-    def make_metrics(self, measures=None):
+    def make_metrics(self, measures=None) -> 'MeasureBatch':
         return MeasureBase.make_metrics(self, measures=measures)
 
 
