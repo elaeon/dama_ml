@@ -351,6 +351,17 @@ class TestDataZarr(unittest.TestCase):
         with data:
             self.assertCountEqual(data.to_ndarray(), array)
 
+    def test_load_compression(self):
+        data = Data(name="test", dataset_path="/tmp/", driver=Zarr(GZip(level=6)), clean=True)
+        array = [1, 2, 3, 4, 5]
+        data.from_data(array)
+
+        data = Data(name="test", dataset_path="/tmp/", driver=Zarr(), clean=False)
+        with data:
+            self.assertEqual(data.compressor_params["compression"], "gzip")
+            self.assertEqual(data.compressor_params["compression_opts"], 6)
+            self.assertCountEqual(data.to_ndarray(), array)
+
     def test_compressor(self):
         data = Data(name="test", dataset_path="/tmp/", driver=Zarr(GZip(level=6)), clean=True)
         array = [1, 2, 3, 4, 5]

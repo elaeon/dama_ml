@@ -31,6 +31,10 @@ def add(x, y):
     return x + y
 
 
+def add_many(x, y, z):
+    return x + y + z
+
+
 def sum_it(x):
     return sum(x)
 
@@ -188,7 +192,7 @@ class TestETL(unittest.TestCase):
 
     def test_static_kwargs(self):
         pipeline = Pipeline(1)
-        a = pipeline.map(line, a=2, b=1).map(inc)
+        a = pipeline.map(line, kwargs=dict(a=2, b=1)).map(inc)
         b = pipeline.map(inc)
         c = pipeline.zip(a, b).map(add)
         self.assertEqual(a.compute(), 4)
@@ -197,7 +201,7 @@ class TestETL(unittest.TestCase):
 
     def test_to_json_kwargs(self):
         pipeline = Pipeline(1)
-        a = pipeline.map(line, a=2, b=1).map(inc)
+        a = pipeline.map(line, kwargs=dict(a=2, b=1)).map(inc)
         b = pipeline.map(inc)
         pipeline.zip(a, b).map(add)
         json_stc = pipeline.to_json()

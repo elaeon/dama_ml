@@ -15,7 +15,7 @@ def greater_is_better_fn(reverse, output):
 class MeasureBase(object):
     __slots__ = ['name', 'measures', 'target']
 
-    def __init__(self, name: str=None):
+    def __init__(self, name: str = None):
         self.name = name
         self.measures = []
 
@@ -25,7 +25,7 @@ class MeasureBase(object):
     def scores(self):
         return []
 
-    def add(self, measure, greater_is_better: bool=True, output=None):
+    def add(self, measure, greater_is_better: bool = True, output=None):
         self.measures.append(greater_is_better_fn(greater_is_better, output)(measure))
 
     def outputs(self):
@@ -64,7 +64,7 @@ class MeasureBase(object):
 class Measure(MeasureBase):
     __slots__ = ['predictions', 'name', 'measures', 'target']
 
-    def __init__(self, target, name: str=None):
+    def __init__(self, target, name: str = None):
         super(Measure, self).__init__(name=name)
         self.predictions = {}
         self.target = target
@@ -83,7 +83,7 @@ class Measure(MeasureBase):
 class MeasureBatch(MeasureBase):
     __slots__ = ['score', 'name', 'measures', 'batch_size']
 
-    def __init__(self, name: str=None, batch_size: int=0):
+    def __init__(self, name: str = None, batch_size: int = 0):
         super(MeasureBatch, self).__init__(name=name)
         self.score = {}
         self.name = name
@@ -199,7 +199,7 @@ class ListMeasure(object):
         self.measures = measures
         self.order = order
 
-    def add_measure(self, name: str, value, i: int=0, reverse: bool=False):
+    def add_measure(self, name: str, value, i: int = 0, reverse: bool = False):
         self.headers.append(name)
         try:
             self.measures[i].append(value)
@@ -230,7 +230,7 @@ class ListMeasure(object):
         order = [v["reverse"] for k, v in data_dict.items()]
         return ListMeasure(headers=headers, measures=measures, order=order)
 
-    def to_tabulate(self, order_column: str=None):
+    def to_tabulate(self, order_column: str = None):
         from ml.utils.order import order_table
         self.drop_empty_columns()
         return order_table(self.headers, self.measures, order_column,

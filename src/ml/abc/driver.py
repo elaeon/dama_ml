@@ -1,23 +1,16 @@
-import logging
 from abc import ABC, abstractmethod
 from numcodecs.abc import Codec
-from ml.utils.config import get_settings
+from ml.utils.logger import log_config
 
-settings = get_settings("ml")
 
-log = logging.getLogger(__name__)
-logFormatter = logging.Formatter("[%(name)s] - [%(levelname)s] %(message)s")
-handler = logging.StreamHandler()
-handler.setFormatter(logFormatter)
-log.addHandler(handler)
-log.setLevel(int(settings["loglevel"]))
+log = log_config(__name__)
 
 
 class AbsDriver(ABC):
     persistent = None
     ext = None
 
-    def __init__(self, compressor: Codec=None):
+    def __init__(self, compressor: Codec = None):
         self.f = None
         self.compressor = compressor
         if compressor is not None:
@@ -29,13 +22,17 @@ class AbsDriver(ABC):
         self.mode = 'a'
         self.attrs = None
         log.debug("Driver: {}, mode: {}, compressor: {}".format(self.__class__.__name__,
-                                                                    self.mode, self.compressor))
+                                                                self.mode, self.compressor))
 
     def __getitem__(self, item):
         return self.f[item]
 
     def __setitem__(self, key, value):
         self.f[key] = value
+
+    @classmethod
+    def module_cls_name(cls):
+        return "{}.{}".format(cls.__module__, cls.__name__)
 
     @abstractmethod
     def __contains__(self, item):

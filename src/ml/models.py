@@ -1,20 +1,16 @@
-from ml.utils.config import get_settings
 import os
-import logging
 
 from ml.data.ds import Data
 from ml.data.it import Iterator
 from ml.utils.files import check_or_create_path_dir
 from ml.measures import ListMeasure
+from ml.utils.logger import log_config
+from pydoc import locate
+from ml.utils.config import get_settings
 
 
 settings = get_settings("ml")
-log = logging.getLogger(__name__)
-logFormatter = logging.Formatter("[%(name)s] - [%(levelname)s] %(message)s")
-handler = logging.StreamHandler()
-handler.setFormatter(logFormatter)
-log.addHandler(handler)
-log.setLevel(int(settings["loglevel"]))
+log = log_config(__name__)
 
 
 class MLModel:
@@ -38,7 +34,7 @@ class MLModel:
         #    for chunk in data:
         #        yield self.predictors(self.transform_data(chunk))
         #else:
-        for row in data:
+        for row in data:  # fixme add batch_size
             predict = self.predictors(row.to_ndarray().reshape(1, -1))
             if len(predict.shape) > 1:
                 yield predict[0]
@@ -74,7 +70,9 @@ class DataDrive(object):
             metadata_tmp = self.load_meta()
             if "model" in keys:
                 self.path_m = self.make_model_file()
-                metadata = self._metadata(["model"])   
+                metadata = self._metadata(["model"])
+                if len(metadata["model"]["versions"]) == 0:
+                    metadata["model"]["versions"] = self.model_version
                 if not self.model_version in metadata["model"]["versions"] and\
                     self.model_version is not None:
                     metadata_tmp["model"]["versions"].append(self.model_version)
@@ -120,14 +118,10 @@ class DataDrive(object):
         if self.path_mv is not None:
             rm(self.path_mv+"."+self.ext)
             rm(self.path_mv+".xmeta")
-        if hasattr(self, 'dataset'):
-            self.dataset.destroy()
-        if hasattr(self, 'test_ds'):
-            self.test_ds.destroy()
-        if hasattr(self, 'train_ds'):
-            self.train_ds.destroy()
-        if hasattr(self, 'validation_ds'):
-            self.validation_ds.destroy()
+        #if hasattr(self, 'dataset'):
+        #    self.dataset.destroy()
+        if hasattr(self, 'ds'):
+            self.ds.destroy()
 
     @classmethod
     def cls_name(cls):
@@ -194,14 +188,8 @@ class BaseModel(DataDrive):
         return Iterator(prediction).batchs(batch_size=batch_size)
 
     def metadata_model(self):
-        with self.test_ds:
+        with self.ds:
             return {
-                "test_ds_path": self.test_ds.dataset_path,
-                "test_ds_name": self.test_ds.name,
-                "hash": self.test_ds.hash,
-                "original_dataset_md5": self.original_dataset_hash,
-                "original_dataset_path": self.original_dataset_path,
-                "original_dataset_name": self.original_dataset_name,
                 "group_name": self.group_name,
                 "model_module": self.module_cls_name(),
                 "model_name": self.model_name,
@@ -227,19 +215,18 @@ class BaseModel(DataDrive):
         return metadata_model_train
 
     def get_dataset(self):
-        from ml.data.ds import Data
         log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name, 
             self.model_version, self.check_point_path))
         meta = self.load_meta()["model"]
-        dataset = Data.original_ds(name=meta["test_ds_name"], dataset_path=meta["test_ds_path"])
-        self.original_dataset_hash = meta["original_dataset_hash"]
-        self.original_dataset_path = meta["original_dataset_path"]
-        self.original_dataset_name = meta["original_dataset_name"]
-    
+        driver = locate(meta["ds_basic_params"]["driver"])
+        dataset = Data(name=meta["ds_basic_params"]["name"], group_name=meta["ds_basic_params"]["group_name"],
+                       dataset_path=meta["ds_basic_params"]["dataset_path"],
+                       driver=driver())
         self.group_name = meta.get('group_name', None)
-        if meta.get('md5', None) != dataset.md5:
-            log.info("The dataset md5 is not equal to the model '{}'".format(
-                self.__class__.__name__))
+        with dataset:
+            if meta.get('hash', None) != dataset.hash:
+                log.info("The dataset hash is not equal to the model '{}'".format(
+                    self.__class__.__name__))
         return dataset
 
     def preload_model(self):
@@ -286,10 +273,8 @@ class BaseModel(DataDrive):
 class SupervicedModel(BaseModel):
     def __init__(self, model_name=None, check_point_path=None, group_name=None, 
             metrics=None):
-        self.train_ds = None
-        self.validation_ds = None
-        self.target_group = None
-        self.data_group = None
+        self.ds = None
+        self.data_groups = None
         super(SupervicedModel, self).__init__(
             check_point_path=check_point_path,
             model_name=model_name,
@@ -299,33 +284,12 @@ class SupervicedModel(BaseModel):
     def load(self, model_version):
         pass
 
-    def set_dataset(self, train_ds:Data, test_ds:Data, validation_ds: Data=None, pipeline=None):
-       # with dataset:
-       #     self.original_dataset_hash = dataset.hash
-       #     self.original_dataset_path = dataset.dataset_path
-       #     self.original_dataset_name = dataset.name
-        self.train_ds = train_ds
-        self.test_ds = test_ds
-        self.validation_ds = validation_ds
-        self.pipeline = pipeline
-        self.save_meta(keys="model")
-
     def metadata_model(self):
-        print(self.target_group)
-        with self.test_ds, self.train_ds, self.validation_ds:
+        with self.ds:
             return {
-                "test_ds_path": self.test_ds.dataset_path,
-                "test_ds_name": self.test_ds.name,
-                "train_ds_path": self.train_ds.dataset_path,
-                "train_ds_name": self.train_ds.name,
-                "validation_ds_path": self.validation_ds.dataset_path,
-                "validation_ds_name": self.validation_ds.name,
-                "hash": self.test_ds.hash,
-                "target_group": self.target_group,
-                "data_group": self.data_group,
-                #"original_dataset_hash": self.original_dataset_hash,
-                #"original_dataset_path": self.original_dataset_path,
-                #"original_dataset_name": self.original_dataset_name,
+                "ds_basic_params": self.ds.basic_params,
+                "hash": self.ds.hash,
+                "data_groups": self.data_groups,
                 "group_name": self.group_name,
                 "model_module": self.module_cls_name(),
                 "model_name": self.model_name,
@@ -333,15 +297,15 @@ class SupervicedModel(BaseModel):
                 "versions": []
             }
 
-    def get_train_validation_ds(self):
-        from ml.data.ds import Data
-        log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name, 
-            self.model_version, self.check_point_path))
-        meta = self.load_meta()["model"]
-        self.train_ds = Data.original_ds(name=meta["train_ds_name"], 
-            dataset_path=meta["train_ds_path"])
-        self.validation_ds = Data.original_ds(name=meta["validation_ds_name"], 
-            dataset_path=meta["validation_ds_path"])
+    # def get_train_validation_ds(self):
+    #    from ml.data.ds import Data
+    #    log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name,
+    #        self.model_version, self.check_point_path))
+    #    meta = self.load_meta()["model"]
+    #    self.train_ds = Data.original_ds(name=meta["train_ds_name"],
+    #        dataset_path=meta["train_ds_path"])
+    #    self.validation_ds = Data.original_ds(name=meta["validation_ds_name"],
+    #        dataset_path=meta["validation_ds_path"])
 
     def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2, obj_fn=None, 
                     model_params={}):
@@ -356,13 +320,19 @@ class SupervicedModel(BaseModel):
                 print("fold ", k)
         return model
 
-    def train(self, batch_size=0, num_steps=0, n_splits=None, obj_fn=None, model_params={},
-              data_group=None, target_group=None):
+    def train(self, ds: Data, batch_size=0, num_steps=0, n_splits=None, obj_fn=None, model_params={},
+              data_train_group="train_x", target_train_group='train_y',
+              data_test_group="test_x", target_test_group='test_y',
+              data_validation_group="validation_x", target_validation_group="validation_y"):
+        self.ds = ds
         log.info("Training")
         self.model_params = model_params
         self.num_steps = num_steps
-        self.target_group = target_group
-        self.data_group = data_group
+        self.data_groups = {
+            "data_train_group": data_train_group, "target_train_group": target_train_group,
+            "data_test_group": data_test_group, "target_test_group": target_test_group,
+            "data_validation_group": data_validation_group, "target_validation_group": target_validation_group
+        }
         if n_splits is not None:
             self.model = self.train_kfolds(batch_size=batch_size, num_steps=num_steps,
                             n_splits=n_splits, obj_fn=obj_fn, model_params=model_params)

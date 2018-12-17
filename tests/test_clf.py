@@ -5,6 +5,7 @@ from ml.data.ds import Data
 from ml.clf.extended.w_sklearn import RandomForest
 from ml.data.etl import Pipeline
 from ml.utils.numeric_functions import CV
+from ml.data.drivers import HDF5
 np.random.seed(0)
 
 
@@ -19,15 +20,18 @@ def multi_int(X):
         return X
 
 
-def to_data(cv):
+def to_data(cv, driver=None):
     X_train, X_validation, X_test, y_train, y_validation, y_test = cv
-    train_ds = Data(name="train")
-    train_ds.from_data({"x": X_train, "y": y_train})
-    test_ds = Data(name="test")
-    test_ds.from_data({"x": X_test, "y": y_test})
-    validation_ds = Data(name="validation")
-    validation_ds.from_data({"x": X_validation, "y": y_validation})
-    return train_ds, test_ds, validation_ds
+    X_train.rename_group("x", "train_x")
+    y_train.rename_group("y", "train_y")
+    X_test.rename_group("x", "test_x")
+    y_test.rename_group("y", "test_y")
+    X_validation.rename_group("x", "validation_x")
+    y_validation.rename_group("y", "validation_y")
+    stc = X_train + y_train + X_test + y_test + X_validation + y_validation
+    cv_ds = Data(name="cv", driver=driver, clean=True)
+    cv_ds.from_data(stc)
+    return cv_ds
 
 
 class TestSKL(unittest.TestCase):
@@ -47,31 +51,35 @@ class TestSKL(unittest.TestCase):
             check_point_path="/tmp/")
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         pipeline = Pipeline(self.dataset)
-        a = pipeline.map(cv.apply)
-        a.map(to_data)
-        train_ds, test_ds, validation_ds = pipeline.compute()[0]
-        classif.set_dataset(train_ds=train_ds, test_ds=test_ds, validation_ds=validation_ds, pipeline=None)
-        classif.train(num_steps=1, data_group="x", target_group='y')
+        a = pipeline.map(cv.apply).map(to_data)
+        b = a.map(classif.train, kwargs=dict(num_steps=1,
+                  data_train_group="train_x", target_train_group='train_y',
+                  data_test_group="test_x", target_test_group='test_y',
+                  data_validation_group="validation_x", target_validation_group="validation_y"))
+        b.compute()
         classif.save(model_version="1")
         meta = classif.load_meta()
-        print(meta)
-        #self.assertEqual(meta["model"]["original_dataset_path"], "/tmp/")
-        #self.assertEqual(meta["train"]["model_version"], "1")
+        self.assertEqual(meta["model"]["hash"], "$sha1$02c47d2a7c11ccbc47b5dd8dd0cf451941bcd3a2")
+        self.assertEqual(meta["train"]["model_version"], "1")
         classif.destroy()
 
     def test_empty_load(self):
         classif = RandomForest(
             model_name="test", 
             check_point_path="/tmp/")
-        classif.set_dataset(self.dataset)
-        classif.train(num_steps=1)
+        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
+        stc = cv.apply(self.dataset)
+        ds = to_data(stc, driver=HDF5())
+        classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
+                  data_test_group="test_x", target_test_group='test_y',
+                  data_validation_group="validation_x", target_validation_group="validation_y")
         classif.save(model_version="1")
 
         classif = RandomForest(
-            model_name="test", 
+            model_name="test",
             check_point_path="/tmp/")
         classif.load(model_version="1")
-        self.assertEqual(classif.original_dataset_path, "/tmp/")
+        #self.assertEqual(classif.original_dataset_path, "/tmp/")
         classif.destroy()
 
     def test_scores(self):        

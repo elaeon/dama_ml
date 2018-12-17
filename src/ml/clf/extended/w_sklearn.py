@@ -1,6 +1,5 @@
 from sklearn.calibration import CalibratedClassifierCV
 from ml.clf.wrappers import SKL, SKLP
-from ml.models import MLModel
 
 
 class SVC(SKL):
@@ -27,12 +26,12 @@ class RandomForest(SKLP):
         from sklearn.ensemble import RandomForestClassifier
         model = CalibratedClassifierCV(
             RandomForestClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
-        with self.train_ds, self.validation_ds:
-            model_clf = model.fit(self.train_ds[self.data_group].to_ndarray(),
-                                  self.train_ds[self.target_group].to_ndarray())
+        with self.ds:
+            model_clf = model.fit(self.ds[self.data_groups["data_train_group"]].to_ndarray(),
+                                  self.ds[self.data_groups["target_train_group"]].to_ndarray())
             reg_model = CalibratedClassifierCV(model_clf, method="sigmoid", cv="prefit")
-            reg_model.fit(self.validation_ds[self.data_group].to_ndarray(),
-                          self.validation_ds[self.target_group].to_ndarray())
+            reg_model.fit(self.ds[self.data_groups["data_validation_group"]].to_ndarray(),
+                          self.ds[self.data_groups["target_validation_group"]].to_ndarray())
         return self.ml_model(reg_model)
 
     def prepare_model_k(self, obj_fn=None):

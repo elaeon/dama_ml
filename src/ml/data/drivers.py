@@ -25,7 +25,7 @@ class HDF5(AbsDriver):
     def require_group(self, *args, **kwargs):
         return self.f.require_group(*args, **kwargs)
 
-    def require_dataset(self, group:str, name:str, shape: tuple, dtype: np.dtype) -> None:
+    def require_dataset(self, group: str, name: str, shape: tuple, dtype: np.dtype) -> None:
         self.f[group].require_dataset(name, shape, dtype=dtype, chunks=True,
                                       exact=True,
                                       **self.compressor_params)
@@ -56,7 +56,7 @@ class Zarr(AbsDriver):
     def require_group(self, *args, **kwargs):
         return self.f.require_group(*args, **kwargs)
 
-    def require_dataset(self, group:str, name:str, shape: tuple, dtype: np.dtype) -> None:
+    def require_dataset(self, group: str, name: str, shape: tuple, dtype: np.dtype) -> None:
         if dtype == np.dtype("O"):
             object_codec = MsgPack()
         else:

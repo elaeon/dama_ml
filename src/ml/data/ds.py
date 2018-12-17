@@ -1,10 +1,7 @@
 import datetime
-import logging
 import os
 import json
-
 import dill as pickle
-
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -12,20 +9,16 @@ import xarray as xr
 from tqdm import tqdm
 from ml.abc.data import AbsDataset
 from ml.data.it import Iterator, BaseIterator
-from ml.utils.config import get_settings
 from ml.utils.files import build_path
 from ml.utils.basic import Hash, StructArray, isnamedtupleinstance
 from ml.abc.driver import AbsDriver
 from ml.data.drivers import Memory
+from ml.utils.logger import log_config
+from ml.utils.config import get_settings
+
 
 settings = get_settings("ml")
-
-log = logging.getLogger(__name__)
-logFormatter = logging.Formatter("[%(name)s] - [%(levelname)s] %(message)s")
-handler = logging.StreamHandler()
-handler.setFormatter(logFormatter)
-log.addHandler(handler)
-log.setLevel(int(settings["loglevel"]))
+log = log_config(__name__)
 
 
 def save_metadata(file_path, data):
@@ -43,74 +36,13 @@ def load_metadata(path):
         return {}
     except Exception as e:
         log.error("{} {}".format(e, path))
-    
-
-# class Memory:
-#    def __init__(self):
-#        self.spaces = {}
-#        self.attrs = {}
-
-#    def __contains__(self, item):
-#        return item in self.spaces
-
-#    def __getitem__(self, key):
-#        if key is not None:
-#            levels = [e for e in key.split("/") if e != ""]
-#        else:
-#            levels = ["c0"]
-#        v =  self._get_level(self.spaces, levels)
-#        return v
-
-#    def __setitem__(self, key, value):
-#        if key is not None:
-#            levels = [e for e in key.split("/") if e != ""]
-#        else:
-#            levels = ["c0"]
-#        v = self._get_level(self.spaces, levels[:-1])
-#        if v is None:
-#            self.spaces[levels[-1]] = value
-#        else:
-#            v[levels[-1]] = value
-
-#    def require_group(self, name):
-#        if name not in self:
-#            self[name] = Memory()
-
-#    def require_dataset(self, name, shape, dtype='float', **kwargs):
-#        logging.info(kwargs)
-#        if name not in self:
-#            self[name] = np.empty(shape, dtype=dtype)
-
-#    def get(self, name, value):
-#        try:
-#            return self[name]
-#        except KeyError:
-#            return value
-
-#    def _get_level(self, spaces, levels):
-#        if len(levels) == 1:
-#            return spaces[levels[0]]
-#        elif len(levels) == 0:
-#            return None
-#        else:
-#            return self._get_level(spaces[levels[0]], levels[1:])
-
-#    def close(self):
-#        pass
-
-#    def keys(self):
-#        return self.spaces.keys()
 
 
 class Data(AbsDataset):
-    """
-    Base class for dataset build. Get data from memory.
-    create the initial values for the dataset.
-    """
     def __init__(self, name: str = None, dataset_path: str = None, description: str = '', author: str = '',
                  clean: bool = False, driver: AbsDriver = None, group_name: str = None):
 
-        if name is None:
+        if name is None and not isinstance(self.driver, Memory):
             raise Exception("I can't build a dataset without a name, plese add a name to this dataset.")
 
         self.name = name
@@ -218,6 +150,11 @@ class Data(AbsDataset):
         if self._it is None:
             self._it = self.run()
         return next(self._it)
+
+    @property
+    def basic_params(self):
+        return {"name": self.name, "dataset_path": self.dataset_path,
+                "driver": self.driver.module_cls_name(), "group_name": self.group_name}
 
     def run(self):
         i = 0
@@ -488,10 +425,6 @@ class Data(AbsDataset):
             for row in libsvm_row(target_t, self.data[groups].to_ndarray()):
                 f.write(" ".join(row))
                 f.write("\n")
-
-
-
-class DataLabel(Data):
 
     def stadistics(self):
         from tabulate import tabulate

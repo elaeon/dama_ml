@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow as tf
 
-from sklearn.preprocessing import LabelEncoder
 from sklearn.externals import joblib
 from ml.models import MLModel, SupervicedModel
 from ml.data.it import Iterator
@@ -13,27 +12,23 @@ log = log_config(__name__)
 
 class ClassifModel(SupervicedModel):
     def __init__(self, **params):
-        # self.le = LabelEncoder()
-        # self.base_labels = None
         self.target_dim = None
-        self.target = None
         self.num_classes = None
         super(ClassifModel, self).__init__(**params)
 
     def load(self, model_version):
         self.model_version = model_version
-        self.test_ds = self.get_dataset()
-        self.get_train_validation_ds()
+        self.ds = self.get_dataset()
         self.load_model()
 
     def scores(self, measures=None, batch_size: int=2000):
         if measures is None or isinstance(measures, str):
             measure = metrics.MeasureBatch(name=self.model_name, batch_size=batch_size)
             measures = measure.make_metrics(measures=measures)
-        with self.test_ds:
-            test_data = self.test_ds[self.data_group]
+        with self.ds:
+            test_data = self.ds[self.data_groups["data_test_group"]]
             for measure_fn in measures:
-                test_target = Iterator(self.test_ds[self.target_group]).batchs(batch_size=batch_size)
+                test_target = Iterator(self.ds[self.data_groups["target_test_group"]]).batchs(batch_size=batch_size)
                 predictions = self.predict(test_data, output=measure_fn.output, batch_size=batch_size)
                 for pred, target in zip(predictions, test_target):
                     measures.update_fn(pred, target, measure_fn)
@@ -50,14 +45,6 @@ class ClassifModel(SupervicedModel):
     def reformat_target(self, target):
         return target
 
-    def is_binary(self):
-        return self.num_classes == 2
-
-    # def labels_encode(self, labels):
-    #    self.le.fit(labels)
-    #    self.num_labels = self.le.classes_.shape[0]
-    #    self.base_labels = self.le.classes_
-
     def position_index(self, labels):
         if len(labels.shape) >= 2:
             return np.argmax(labels, axis=1)
@@ -72,12 +59,6 @@ class ClassifModel(SupervicedModel):
             for chunk in prediction:
                 yield self.position_index(chunk.reshape(1, -1))[0]
 
-    # def numerical_labels2classes(self, labels):
-    #    if len(labels.shape) > 1 and labels.shape[1] > 1:
-    #        return self.le.inverse_transform(np.argmax(labels, axis=1))
-    #    else:
-    #        return self.le.inverse_transform(labels.astype('int'))
-
 
 class SKL(ClassifModel):
     def convert_label(self, target, output=None):
@@ -85,15 +66,13 @@ class SKL(ClassifModel):
             return (np.arange(self.num_classes) == target).astype(np.float32)
         elif output is None:
             return self.position_index(target)
-        else:
-            return self.le.inverse_transform(self.position_index(target))
 
     def ml_model(self, model):        
         from sklearn.externals import joblib
-        return MLModel(fit_fn=model.fit, 
-                            predictors=model.predict,
-                            load_fn=self.load_fn,
-                            save_fn=lambda path: joblib.dump(model, '{}'.format(path)))
+        return MLModel(fit_fn=model.fit,
+                       predictors=model.predict,
+                       load_fn=self.load_fn,
+                       save_fn=lambda path: joblib.dump(model, '{}'.format(path)))
 
     def load_fn(self, path):
         model = joblib.load('{}'.format(path))
@@ -101,15 +80,13 @@ class SKL(ClassifModel):
 
 
 class SKLP(ClassifModel):
-    def __init__(self, *args, **kwargs):
-        super(SKLP, self).__init__(*args, **kwargs)
 
     def ml_model(self, model):        
         from sklearn.externals import joblib
-        return MLModel(fit_fn=model.fit, 
-                            predictors=model.predict_proba,
-                            load_fn=self.load_fn,
-                            save_fn=lambda path: joblib.dump(model, '{}'.format(path)))
+        return MLModel(fit_fn=model.fit,
+                       predictors=model.predict_proba,
+                       load_fn=self.load_fn,
+                       save_fn=lambda path: joblib.dump(model, '{}'.format(path)))
 
     def load_fn(self, path):
         model = joblib.load('{}'.format(path))
@@ -119,11 +96,11 @@ class SKLP(ClassifModel):
 class XGB(ClassifModel):
     def ml_model(self, model, bst=None):
         self.bst = bst
-        return MLModel(fit_fn=model.train, 
-                            predictors=self.bst.predict,
-                            load_fn=self.load_fn,
-                            save_fn=self.bst.save_model,
-                            transform_data=self.array2dmatrix)
+        return MLModel(fit_fn=model.train,
+                       predictors=self.bst.predict,
+                       load_fn=self.load_fn,
+                       save_fn=self.bst.save_model,
+                       transform_data=XGB.array2dmatrix)
 
     def load_fn(self, path):
         import xgboost as xgb
@@ -131,7 +108,8 @@ class XGB(ClassifModel):
         bst.load_model(path)
         self.model = self.ml_model(xgb, bst=bst)
 
-    def array2dmatrix(self, data):
+    @staticmethod
+    def array2dmatrix(data):
         import xgboost as xgb
         return xgb.DMatrix(data)
 
@@ -139,17 +117,18 @@ class XGB(ClassifModel):
 class LGB(ClassifModel):
     def ml_model(self, model, bst=None):
         self.bst = bst
-        return MLModel(fit_fn=model.train, 
-                            predictors=self.bst.predict,
-                            load_fn=self.load_fn,
-                            save_fn=self.bst.save_model)
+        return MLModel(fit_fn=model.train,
+                       predictors=self.bst.predict,
+                       load_fn=self.load_fn,
+                       save_fn=self.bst.save_model)
 
     def load_fn(self, path):
         import lightgbm as lgb
         bst = lgb.Booster(model_file=path)
         self.model = self.ml_model(lgb, bst=bst)
 
-    def array2dmatrix(self, data):
+    @staticmethod
+    def array2dmatrix(data):
         import lightgbm as lgb
         return lgb.Dataset(data)
 
@@ -157,7 +136,6 @@ class LGB(ClassifModel):
 class TFL(ClassifModel):
 
     def reformat_labels(self, labels):
-        #data = self.transform_shape(data)
         # Map 0 to [1.0, 0.0, 0.0 ...], 1 to [0.0, 1.0, 0.0 ...]
         return (np.arange(self.num_classes) == labels[:,None]).astype(np.float)
 
@@ -170,8 +148,7 @@ class TFL(ClassifModel):
 
     def predict(self, data, output=None, transform=True, chunks_size=1):
         with tf.Graph().as_default():
-            return super(TFL, self).predict(data, output=output, transform=transform, 
-                chunks_size=chunks_size)
+            return super(TFL, self).predict(data, output=output)
 
     def train(self, batch_size=10, num_steps=1000, n_splits=None):
         with tf.Graph().as_default():

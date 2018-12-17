@@ -52,6 +52,11 @@ class StructArray:
         else:
             return self.convert_from_index(key)
 
+    def rename_group(self, old, new):
+        self.o_columns[new] = self.o_columns[old]
+        del self.o_columns[old]
+        self.labels_data = list(self.o_columns.items())
+
     def __iter__(self):
         self.counter = 0
         return self

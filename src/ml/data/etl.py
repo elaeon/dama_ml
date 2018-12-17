@@ -152,12 +152,12 @@ class Pipeline(PipelineABC):
         for node in self.di_graph.neighbors(self.root):
             dask_graph[node.placeholder] = self.data
             if node.data is None:
-                if len(node.func_kwargs) > 0:
+                if node.func_kwargs is not None and len(node.func_kwargs) > 0:
                     dask_graph[node.key] = (apply, node.func, [node.placeholder], node.func_kwargs)
                 else:
                     dask_graph[node.key] = (node.func, node.placeholder)
             else:
-                if len(node.func_kwargs) > 0:
+                if node.func_kwargs is not None and len(node.func_kwargs) > 0:
                     dask_graph[node.key] = (apply, node.func, [node.data], node.func_kwargs)
                 else:
                     dask_graph[node.key] = (node.func, node.data)
@@ -176,9 +176,15 @@ class Pipeline(PipelineABC):
                     dask_graph[node.key] = tuple_value
             else:
                 if node.data is None:
-                    dask_graph[node.key] = (node.func, base_node.key)
+                    if node.func_kwargs is not None and len(node.func_kwargs) > 0:
+                        dask_graph[node.key] = (apply, node.func, [base_node.key], node.func_kwargs)
+                    else:
+                        dask_graph[node.key] = (node.func, base_node.key)
                 else:
-                    dask_graph[node.key] = (node.func, node.data)
+                    if node.func_kwargs is not None and len(node.func_kwargs) > 0:
+                        dask_graph[node.key] = (apply, node.func, [base_node.data], node.func_kwargs)
+                    else:
+                        dask_graph[node.key] = (node.func, node.data)
             self._walk(node, dask_graph)
 
     def feed(self, data) -> 'Pipeline':
@@ -212,7 +218,7 @@ class Pipeline(PipelineABC):
                 tree_map["placeholder"] = Pipeline(cast(lvl["input"][1]))
             elif lvl["fn"][0] == "map":
                 fn = lvl["fn"][1]
-                tree_map[lvl["id"]] = tree_map[lvl["input"]].map(locate(fn), **lvl["kwargs"])
+                tree_map[lvl["id"]] = tree_map[lvl["input"]].map(locate(fn), kwargs=lvl["kwargs"])
             elif lvl["fn"][0] == "zip":
                 args = [tree_map[name] for name in lvl["args"]]
                 tree_map[lvl["id"]] = tree_map[lvl["input"]].zip(*args)
@@ -231,7 +237,7 @@ class Pipeline(PipelineABC):
 
 @PipelineABC.register_api()
 class map(PipelineABC):
-    def __init__(self, upstream, func, data=None, **kwargs):
+    def __init__(self, upstream, func, data=None, kwargs: dict=None):
         self.task = dask.delayed(func)
         self.func = func
         self.eval_task = None
