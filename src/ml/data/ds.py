@@ -201,7 +201,7 @@ class Data(AbsDataset):
                 init[group] = 0
             for smx in tqdm(data, total=data.num_splits()):
                 for group in groups:
-                    end[group] += smx[group].shape[0]
+                    end[group] += len(smx[group])
                     self.driver["data"][group][init[group]:end[group]] = smx[group].to_ndarray()
                     init[group] = end[group]
         elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "array":
@@ -374,14 +374,9 @@ class Data(AbsDataset):
         self.dtypes = data.dtypes
         with self:
             groups = []
-            if data.is_multidim():
-                for group, dtype in self.dtypes:
-                    self._set_group_shape(group, data.shape[group], dtype, group="data")
-                    groups.append(group)
-            else:
-                for group, dtype in self.dtypes:
-                    self._set_group_shape(group, data.shape, dtype, group="data")
-                    groups.append(group)
+            for group, dtype in self.dtypes:
+                self._set_group_shape(group, data.shape[group], dtype, group="data")
+                groups.append(group)
             self.batchs_writer(groups, data)
             if with_hash is not None:
                 c_hash = self.calc_hash(with_hash=with_hash)

@@ -7,7 +7,7 @@ import numbers
 from collections import defaultdict, deque
 from ml.utils.numeric_functions import max_type, num_splits, wsrj, max_dtype
 from ml.utils.seq import grouper_chunk
-from ml.utils.basic import StructArray, isnamedtupleinstance
+from ml.utils.basic import StructArray, isnamedtupleinstance, Shape
 from ml.utils.logger import log_config
 from ml.abc.data import AbsDataset
 
@@ -41,36 +41,40 @@ class BaseIterator(object):
         self.dtypes = dtypes
         self.dtype = max_dtype(dtypes)
         self.type_elem = type_elem
-        self.shape = self.calc_shape(length, shape[1:] if shape is not None else shape)
+        if isinstance(it, StructArray):
+            self.shape = self.calc_shape_stc(length, it.shape)
+        #else:
+        #    self.shape = self.calc_shape(length, shape[1:] if shape is not None else shape)
+        self.shape = None
         self.iter_init = True
         self._it = None
 
     @property
     def length(self):
         if self.shape is not None:
-            if isinstance(self.shape, dict):
-                return max([v[0] for v in self.shape.values()])
+            if isinstance(self.shape, Shape):
+                return self.shape.max_length
             elif self.shape[0] is not None:
                 return self.shape[0]
         return np.inf
 
     @staticmethod
+    def calc_shape_stc(length: int, shape: Shape) -> Shape:
+        length_shape = {}
+        for group, g_shape in shape.items():
+            group_length = length if shape[group][0] > length else shape[group][0]
+            length_shape[group] = tuple([group_length] + list(g_shape[1:]))
+        return Shape(length_shape)
+
+    @staticmethod
     def calc_shape(length: int, shape):
         if shape is None:
-            return tuple([length])
+            return Shape({"c0": tuple([length])})
         elif isinstance(shape, tuple):
             if len(shape) == 0 or shape[0] == 1:
                 return tuple([length])
             else:
-                return tuple([length] + list(shape))
-        elif isinstance(shape, dict) and length != np.inf:
-            length_shape = {}
-            for group, g_shape in shape.items():
-                if g_shape[0] == 1:
-                    length_shape[group] = tuple([length])
-                else:
-                    length_shape[group] = tuple([length] + list(g_shape))
-            return length_shape
+                return Shape({"c0": tuple([length] + list(shape))})
         elif isinstance(shape, numbers.Number):
             if shape == 1:
                 return tuple([length])
@@ -257,7 +261,8 @@ class Iterator(BaseIterator):
             else:
                 self.dtypes = self.default_dtypes(chunk.dtype)
 
-        self.shape = self.calc_shape(length, shape)
+        if not isinstance(self.shape, Shape):
+            self.shape = self.calc_shape(length, shape)
         self.dtype = max_dtype(self.dtypes)
         self.pushback(chunk)
         self.type_elem = type(chunk)
@@ -323,6 +328,10 @@ class BatchIterator(BaseIterator):
 
     def batch_shape(self) -> list:
         shape = self.data.shape
+        if isinstance(shape, Shape):
+            if len(shape) == 1:
+                return list(shape.to_tuple())
+
         if len(shape) == 1:
             if self.length != np.inf and self.length < self.batch_size:
                 return [self.length]

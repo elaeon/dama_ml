@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from ml.utils.basic import StructArray
+from ml.utils.basic import StructArray, Shape
 
 
 class TestStructArray(unittest.TestCase):
@@ -140,3 +140,23 @@ class TestStructArray(unittest.TestCase):
         xy_train = x_train + y_train
         self.assertEqual((xy_train["x"].to_ndarray() == x).all(), True)
         self.assertEqual((xy_train["y"].to_ndarray() == y).all(), True)
+
+
+class TestShape(unittest.TestCase):
+
+    def test_get_item_shape(self):
+        shape = Shape({"x": (10,), "y": (5,), "z": (10, 8)})
+        self.assertEqual(shape[0], 10)
+        self.assertEqual(shape["z"], (10, 8))
+
+    def test_to_tuple(self):
+        shape = Shape({"x": (10, 2), "y": (3, 2), "z": (11, 1, 1)})
+        self.assertEqual(shape.to_tuple(), ())
+        shape = Shape({"x": (10, 2), "y": (3, 2)})
+        print(shape.to_tuple())
+
+    def test_length(self):
+        shape = Shape({"x": (10, 2), "y": (3, 2), "z": (11, 1, 1)})
+        self.assertEqual(shape.max_length, 11)
+        shape = Shape({})
+        self.assertEqual(shape.max_length, 0)

@@ -93,7 +93,7 @@ class StructArray:
             return 0
 
     def is_multidim(self) -> bool:
-        return isinstance(self.shape, dict)
+        return len(self.ushape) == 0
 
     @property
     def struct_shape(self) -> tuple:
@@ -104,41 +104,38 @@ class StructArray:
 
     @property
     @cache
-    def shape(self):
+    def shape(self) -> 'Shape':
         shapes = {}
         for group, data in self.labels_data:
             if hasattr(data, 'shape'):
                 shape = data.shape
-                if isinstance(shape, dict):
+                if isinstance(shape, Shape):
                     shapes[group] = shape[group]
-                elif len(shape) > 0:
+                elif len(shape) >= 1:
                     shapes[group] = shape
                 else:
-                    shapes[group] = (1,)
+                    shapes[group] = ()
             else:
-                shapes[group] = (1,)
+                shapes[group] = ()
+        return Shape(shapes)
 
-        if len(shapes) == 0:
-            return (0,)
-
+    @property
+    def ushape(self) -> tuple:
         # if we have different lengths return dict of shapes
+        shapes = self.shape
         group_shape_0 = list(shapes.values())[0]
         for group_shape in list(shapes.values())[1:]:
             if group_shape != group_shape_0:
-                return shapes
+                return ()
 
         num_groups = len(shapes)
         if num_groups > 1:
             if len(group_shape_0) > 0:
                 return tuple([group_shape_0[0], num_groups] + list(group_shape_0[1:]))
-            # else:
-            #    return (num_groups,)
         else:
             if len(group_shape_0) > 0:
                 return tuple([group_shape_0[0]] + list(group_shape_0[1:]))
-            # else:
-            #    return (1,)
-        return (num_groups, )
+        return (num_groups,)
 
     def columns2dtype(self) -> list:
         dtypes = []
@@ -207,18 +204,19 @@ class StructArray:
         if dtype is None:
             dtype = self.dtype
         if not self.is_multidim():
-            ndarray = np.empty(self.shape, dtype=dtype)
+            ushape = self.ushape
+            ndarray = np.empty(ushape, dtype=dtype)
             if len(self.labels_data) == 1:
-                if self.shape[0] == 1:
+                if ushape[0] == 1:
                     ndarray[0] = self.o_columns[self.groups[0]]
                 else:
                     for i, (_, array) in enumerate(self.labels_data):
                         ndarray[:] = array[0:len(self)]
             else:
-                if len(self.shape) == 1:
+                if len(ushape) == 1:
                     for i, (_, array) in enumerate(self.labels_data):
                         ndarray[i] = array
-                elif self.shape[0] == 1:
+                elif ushape[0] == 1:
                     for i, (_, array) in enumerate(self.labels_data):
                         ndarray[:, i] = array
                 else:
@@ -238,6 +236,56 @@ class StructArray:
                 data_dims = (index_dims, data)
             xr_data[group] = data_dims
         return xr.Dataset(xr_data)
+
+
+class Shape(object):
+    def __init__(self, shape: dict):
+        self._shape = shape
+
+    def __getitem__(self, item):
+        if isinstance(item, numbers.Number) and item == 0:
+            return self.max_length
+        elif isinstance(item, str):
+            return self._shape[item]
+
+    def __len__(self):
+        return len(self._shape)
+
+    def __eq__(self, other):
+        return self.to_tuple() == other
+
+    def items(self):
+        return self._shape.items()
+
+    def values(self):
+        return self._shape.values()
+
+    def to_tuple(self):
+        # if we have different lengths return dict of shapes
+        shapes = list(self._shape.values())
+        group_shape_0 = shapes[0]
+        for shape0, shape1 in zip(shapes, shapes[1:]):
+            print(shape0, shape1)
+            #if group_shape != group_shape_0:
+            #    return ()
+
+        size = self.max_length
+        num_groups = len(self._shape)
+        if num_groups > 1:
+            if len(group_shape_0) > 0:
+                return tuple([size, num_groups] + list(group_shape_0[1:]))
+        else:
+            if len(group_shape_0) > 0:
+                return tuple([size] + list(group_shape_0[1:]))
+        return (num_groups,)
+
+    @property
+    def max_length(self):
+        if len(self._shape) > 0:
+            values = [a[0] for a in self._shape.values()]
+            return max(values)
+        else:
+            return 0
 
 
 def unique_dtypes(dtypes) -> np.ndarray:
