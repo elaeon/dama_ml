@@ -247,12 +247,17 @@ class Shape(object):
             return self.max_length
         elif isinstance(item, str):
             return self._shape[item]
+        elif isinstance(item, slice):
+            return self.to_tuple()[item.start:item.stop]
+        else:
+            raise IndexError
 
     def __len__(self):
         return len(self._shape)
 
     def __eq__(self, other):
         return self.to_tuple() == other
+
 
     def items(self):
         return self._shape.items()
