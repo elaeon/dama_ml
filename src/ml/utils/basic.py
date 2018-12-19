@@ -123,8 +123,12 @@ class StructArray:
     def ushape(self) -> tuple:
         # if we have different lengths return dict of shapes
         shapes = self.shape
-        group_shape_0 = list(shapes.values())[0]
-        for group_shape in list(shapes.values())[1:]:
+        shape_values = list(shapes.values())
+        if len(shape_values) == 0:
+            return (0,)
+
+        group_shape_0 = shape_values[0]
+        for group_shape in shape_values[1:]:
             if group_shape != group_shape_0:
                 return ()
 
@@ -268,6 +272,9 @@ class Shape(object):
     def to_tuple(self):
         # if we have different lengths return dict of shapes
         shapes = list(self._shape.values())
+        if len(shapes) == 0:
+            return (0,)
+
         group_shape_0 = shapes[0]
         for shape0, shape1 in zip(shapes, shapes[1:]):
             print(shape0, shape1)
@@ -287,8 +294,11 @@ class Shape(object):
     @property
     def max_length(self):
         if len(self._shape) > 0:
-            values = [a[0] for a in self._shape.values()]
-            return max(values)
+            values = [a[0] for a in self._shape.values() if len(a) > 0]
+            if len(values) == 0:
+                return 0
+            else:
+                return max(values)
         else:
             return 0
 

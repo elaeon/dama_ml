@@ -2,7 +2,6 @@ from itertools import chain, islice
 import numpy as np
 import pandas as pd
 import types
-import numbers
 
 from collections import defaultdict, deque
 from ml.utils.numeric_functions import max_type, num_splits, wsrj, max_dtype
@@ -10,6 +9,7 @@ from ml.utils.seq import grouper_chunk
 from ml.utils.basic import StructArray, isnamedtupleinstance, Shape
 from ml.utils.logger import log_config
 from ml.abc.data import AbsDataset
+import numbers
 
 log = log_config(__name__)
 
@@ -41,13 +41,18 @@ class BaseIterator(object):
         self.dtypes = dtypes
         self.dtype = max_dtype(dtypes)
         self.type_elem = type_elem
+        print("BBB", length, it, shape)
         if isinstance(it, StructArray):
             print("BUILD ****", length)
             self.shape = self.calc_shape_stc(length, it.shape)
         else:
-            self.shape = (np.inf,)
-        #else:
-        #    self.shape = self.calc_shape(length, shape[1:] if shape is not None else shape)
+            if isinstance(shape, Shape):
+                self.shape = self.calc_shape_stc(length, shape)
+            elif length != np.inf:
+                self.shape = (length,)
+            else:
+                self.shape = (np.inf,)
+        print(self.shape, "+++", length)
         self.iter_init = True
         self._it = None
 
@@ -71,22 +76,6 @@ class BaseIterator(object):
             length_shape[group] = tuple([group_length] + list(g_shape[1:]))
             print("NEW", length_shape)
         return Shape(length_shape)
-
-    #@staticmethod
-    #def calc_shape(length: int, shape):
-    #    print("IT calc shape", length, shape)
-    #    if shape is None:
-    #        return Shape({"c0": tuple([length])})
-    #    elif isinstance(shape, tuple):
-    #        if len(shape) == 0 or shape[0] == 1:
-    #            return tuple([length])
-    #        else:
-    #            return Shape({"c0": tuple([length] + list(shape))})
-    #    elif isinstance(shape, numbers.Number):
-    #        if shape == 1:
-    #            return tuple([length])
-    #        else:
-    #            return tuple([length, shape])
 
     @property
     def groups(self) -> list:
@@ -214,8 +203,8 @@ class Iterator(BaseIterator):
             self.data = fn_iter.data
             length = fn_iter.length if length == np.inf else length
             self.is_ds = False
-            print("IT instance it", fn.shape)
-            self.shape = fn_iter.shape#self.calc_shape(length, fn_iter.shape[1:])
+            print("IT instance it", fn_iter.shape._shape, length)
+            self.shape = self.calc_shape_stc(length, fn_iter.shape)
             self.dtype = fn_iter.dtype
             self.type_elem = fn_iter.type_elem
             self.pushedback = fn_iter.pushedback
@@ -240,7 +229,7 @@ class Iterator(BaseIterator):
             if isnamedtupleinstance(chunk):
                 shape = ()
             elif hasattr(chunk, '__iter__') and not isinstance(chunk, str):
-                shape = len(chunk)
+                shape = (len(chunk),)
             else:
                 shape = None
 
@@ -258,6 +247,8 @@ class Iterator(BaseIterator):
                     type_e = max_type(chunk)
                     if type_e == list or type_e == tuple or type_e == str or type_e == np.ndarray:
                         self.dtypes = self.default_dtypes(np.dtype("|O"))
+                    elif type_e == float or type_e == int:
+                        self.dtypes = self.default_dtypes(np.dtype(type_e))
                 else:
                     if dtypes is not None:
                         self.dtypes = dtypes
@@ -476,7 +467,8 @@ class BatchItStructured(BatchGen):
     batch_type = 'structured'
 
     def batch_from_it(self, shape):
-        for start_i, end_i, stc_array in BatchItDataFrame.str_array(shape, self.batch_size, self.data):
+        for start_i, end_i, stc_array in BatchItDataFrame.str_array(shape, self.batch_size,
+                                                                    self.data, self.data.dtypes):
             group_array = []
             for group in self.groups:
                 group_array.append((group, stc_array[group]))
@@ -487,7 +479,7 @@ class BatchItDataFrame(BatchGen):
     batch_type = 'df'
 
     @staticmethod
-    def str_array(shape, batch_size, data):
+    def str_array(shape, batch_size, data, dtypes):
         start_i = 0
         end_i = 0
         if len(shape) > 1:
@@ -499,13 +491,18 @@ class BatchItDataFrame(BatchGen):
             end_i += shape[0]
             if data.length is not None and data.length < end_i:
                 end_i = data.length
-            array = assign_struct_array(smx, data.type_elem, start_i, end_i, data.dtypes, dims)
+            array = assign_struct_array(smx, data.type_elem, start_i, end_i, dtypes, dims)
             yield start_i, end_i, array
             start_i = end_i
 
     def batch_from_it(self, shape):
-        columns = self.groups
-        for start_i, end_i, stc_array in BatchItDataFrame.str_array(shape, self.batch_size, self.data):
+        if len(shape) > 1 and len(self.groups) < shape[1]:
+            self.dtypes = [("c{}".format(i), self.dtype) for i in range(shape[1])]
+            columns = self.groups
+        else:
+            columns = self.groups
+
+        for start_i, end_i, stc_array in BatchItDataFrame.str_array(shape[:1], self.batch_size, self.data, self.dtypes):
             yield pd.DataFrame(stc_array, index=np.arange(start_i, end_i), columns=columns)
 
 

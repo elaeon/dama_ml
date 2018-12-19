@@ -108,12 +108,12 @@ class TestIterator(unittest.TestCase):
         it = Iterator(stream()).batchs(batch_size=3, batch_type="df")[:10]
         self.assertEqual(it.dtype, int)
         self.assertEqual(it.dtypes, [('c0', np.dtype('int64'))])
-        #self.assertEqual(it.length, 10)
-        #self.assertEqual(it.shape, (10,))
-        #self.assertEqual(it.batch_size, 3)
-        #self.assertEqual(it.num_splits(), 4)
-        #self.assertEqual(it.batch_shape(), [3])
-        #self.assertEqual(it.groups, ["c0"])
+        self.assertEqual(it.length, 10)
+        self.assertEqual(it.shape, (10,))
+        self.assertEqual(it.batch_size, 3)
+        self.assertEqual(it.num_splits(), 4)
+        self.assertEqual(it.batch_shape(), [3])
+        self.assertEqual(it.groups, ["c0"])
 
     def test_stream(self):
         it = Iterator(stream())
@@ -348,7 +348,7 @@ class TestIterator(unittest.TestCase):
 
     def test_df_index_chunks(self):
         array = np.random.rand(10, 2)
-        it = Iterator(array, dtypes=[("a", np.dtype("float")), ("b", np.dtype("float"))]).batchs(3, batch_type="df")
+        it = Iterator(array).batchs(3, batch_type="df")
         df = next(it)
         self.assertCountEqual(df.index.values, np.array([0, 1, 2]))
         df = next(it)
