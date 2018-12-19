@@ -85,7 +85,7 @@ class TestStructArray(unittest.TestCase):
         self.assertCountEqual(df["x"], columns[0][1])
         self.assertCountEqual(df["y"], columns[1][1])
 
-    def test_multi_dim(self):
+    def test_multidim(self):
         array = np.array([[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
         columns = [("x", array)]
         str_array = StructArray(columns)
@@ -130,6 +130,7 @@ class TestStructArray(unittest.TestCase):
         columns = [("x", np.asarray([1, 2, 3, 4, 5]))]
         str_array = StructArray(columns)
         for e in str_array:
+            print(e.shape.to_tuple())
             self.assertEqual(e.shape, (1,))
 
     def test_add(self):
@@ -150,11 +151,12 @@ class TestShape(unittest.TestCase):
         self.assertEqual(shape["z"], (10, 8))
 
     def test_to_tuple(self):
+        shape = Shape({"x": (10, 2), "y": (10,)})
+        self.assertEqual(shape.to_tuple(), (10, 2, 2))
+        shape = Shape({"x": (10, 2)})
+        self.assertEqual(shape.to_tuple(), (10, 2))
         shape = Shape({"x": (10, 2), "y": (3, 2), "z": (11, 1, 1)})
-        print("****", shape.to_tuple())
-        #self.assertEqual(shape.to_tuple(), ())
-        #shape = Shape({"x": (10, 2), "y": (3, 2)})
-        #print(shape.to_tuple())
+        self.assertEqual(shape.to_tuple(), (11, 3, 2, 1))
 
     def test_length(self):
         shape = Shape({"x": (10, 2), "y": (3, 2), "z": (11, 1, 1)})

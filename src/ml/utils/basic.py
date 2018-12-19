@@ -93,7 +93,15 @@ class StructArray:
             return 0
 
     def is_multidim(self) -> bool:
-        return len(self.ushape) == 0
+        shape_values = list(self.shape.values())
+        if len(shape_values) == 0:
+            return False
+
+        group_shape_0 = shape_values[0]
+        for group_shape in shape_values[1:]:
+            if group_shape != group_shape_0:
+                return True
+        return False
 
     @property
     def struct_shape(self) -> tuple:
@@ -121,25 +129,7 @@ class StructArray:
 
     @property
     def ushape(self) -> tuple:
-        # if we have different lengths return dict of shapes
-        shapes = self.shape
-        shape_values = list(shapes.values())
-        if len(shape_values) == 0:
-            return (0,)
-
-        group_shape_0 = shape_values[0]
-        for group_shape in shape_values[1:]:
-            if group_shape != group_shape_0:
-                return ()
-
-        num_groups = len(shapes)
-        if num_groups > 1:
-            if len(group_shape_0) > 0:
-                return tuple([group_shape_0[0], num_groups] + list(group_shape_0[1:]))
-        else:
-            if len(group_shape_0) > 0:
-                return tuple([group_shape_0[0]] + list(group_shape_0[1:]))
-        return (num_groups,)
+        return self.shape.to_tuple()
 
     def columns2dtype(self) -> list:
         dtypes = []
@@ -269,27 +259,32 @@ class Shape(object):
     def values(self):
         return self._shape.values()
 
+    def get_dim_shape(self, dim, shapes):
+        values = []
+        for shape in shapes:
+            try:
+                values.append(shape[dim])
+            except IndexError:
+                pass
+        return values
+
     def to_tuple(self):
         # if we have different lengths return dict of shapes
         shapes = list(self._shape.values())
         if len(shapes) == 0:
             return (0,)
 
-        group_shape_0 = shapes[0]
-        for shape0, shape1 in zip(shapes, shapes[1:]):
-            print(shape0, shape1)
-            #if group_shape != group_shape_0:
-            #    return ()
-
-        size = self.max_length
+        dim = 0
+        nshape = []
+        while dim < len(max(shapes)):
+            nshape.append(max(self.get_dim_shape(dim, shapes)))
+            dim += 1
         num_groups = len(self._shape)
         if num_groups > 1:
-            if len(group_shape_0) > 0:
-                return tuple([size, num_groups] + list(group_shape_0[1:]))
-        else:
-            if len(group_shape_0) > 0:
-                return tuple([size] + list(group_shape_0[1:]))
-        return (num_groups,)
+            nshape.insert(1, num_groups)
+        elif num_groups == 1 and len(nshape) == 0:
+            nshape.append(num_groups)
+        return tuple(nshape)
 
     @property
     def max_length(self):
