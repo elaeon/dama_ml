@@ -41,9 +41,7 @@ class BaseIterator(object):
         self.dtypes = dtypes
         self.dtype = max_dtype(dtypes)
         self.type_elem = type_elem
-        print("BBB", length, it, shape)
         if isinstance(it, StructArray):
-            print("BUILD ****", length)
             self.shape = self.calc_shape_stc(length, it.shape)
         else:
             if isinstance(shape, Shape):
@@ -52,7 +50,6 @@ class BaseIterator(object):
                 self.shape = (length,)
             else:
                 self.shape = (np.inf,)
-        print(self.shape, "+++", length)
         self.iter_init = True
         self._it = None
 
@@ -67,14 +64,11 @@ class BaseIterator(object):
 
     @staticmethod
     def calc_shape_stc(length: int, shape: Shape) -> Shape:
-        print("IT calc shape stc", length, shape._shape)
         length_shape = {}
         for group, g_shape in shape.items():
             group_length = shape[group][0]
-            print("GROUP_LENGTH", group_length, length, group)
             group_length = length if group_length > length else shape[group][0]
             length_shape[group] = tuple([group_length] + list(g_shape[1:]))
-            print("NEW", length_shape)
         return Shape(length_shape)
 
     @property
@@ -203,7 +197,6 @@ class Iterator(BaseIterator):
             self.data = fn_iter.data
             length = fn_iter.length if length == np.inf else length
             self.is_ds = False
-            print("IT instance it", fn_iter.shape._shape, length)
             self.shape = self.calc_shape_stc(length, fn_iter.shape)
             self.dtype = fn_iter.dtype
             self.type_elem = fn_iter.type_elem
@@ -260,10 +253,8 @@ class Iterator(BaseIterator):
             else:
                 self.dtypes = self.default_dtypes(chunk.dtype)
 
-        print("IT TASTE", length, "******")
         if not isinstance(self.shape, Shape) and not isinstance(shape, Shape):
             shapes = {}
-            print("IT TASTE TUPLE", self.shape, shape, self.dtypes)
             if shape is None:
                 shape = []
             for group, _ in self.dtypes:
@@ -271,7 +262,6 @@ class Iterator(BaseIterator):
             self.shape = self.calc_shape_stc(length, Shape(shapes))
         elif not isinstance(self.shape, Shape) and isinstance(shape, Shape):
             shapes = {}
-            print("IT TASTE SHAPE", self.shape, shape._shape, self.dtypes)
             for group, _ in self.dtypes:
                 shapes[group] = tuple([length] + list(shape[group]))
             self.shape = self.calc_shape_stc(length, Shape(shapes))
