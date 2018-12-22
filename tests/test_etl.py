@@ -127,14 +127,14 @@ class TestETL(unittest.TestCase):
 
     def test_temperature_sensor_stream(self):
         it = Iterator(temperature_sensor_stream()).window(200)
-        #pipeline = Pipeline(it)
-        #pipeline.map(mov_avg_it)
-        #counter = 0
-        #for avg in pipeline.compute()[0]:
-        #    self.assertEqual(10 <= avg <= 13, True)
-        #    if counter == 1:
-        #        break
-        #    counter += 1
+        pipeline = Pipeline(it)
+        pipeline.map(mov_avg_it)
+        counter = 0
+        for avg in pipeline.compute()[0]:
+            self.assertEqual(10 <= avg <= 13, True)
+            if counter == 1:
+                break
+            counter += 1
 
     def test_dask_graph(self):
         data = 4
@@ -207,3 +207,21 @@ class TestETL(unittest.TestCase):
         json_stc = pipeline.to_json()
         pipeline_cl = Pipeline.load(json_stc, os.path.dirname(__file__))
         self.assertEqual(pipeline.compute()[0], pipeline_cl.compute()[0])
+
+    def test_darray(self):
+        import dask.array as da
+        from ml.data.ds import Data
+        from dask import get # single thread
+        #from dask.multiprocessing import get
+        #from dask.threaded import get
+        array = da.from_array(np.random.rand(10), chunks=(4))
+        #print(list(array.dask.items()))
+        #pipeline = Pipeline(array)
+        #a = pipeline.map(inc)
+        #b = a.map(inc)
+        #g = pipeline.to_dask_graph()
+        print(array.dask)
+        #print(pipeline.compute(scheduler=get)[0].compute())
+        with Data(name="test") as ds:
+            array.store(ds)
+        #print(ds.to_ndarray())

@@ -16,12 +16,12 @@ log = log_config(__name__)
 
 def assign_struct_array(it, type_elem, start_i, end_i, dtype, dims):
     length = end_i - start_i
-    if dims == 1 or len(dims) == 1 and dims[0] == 1:
+    if isinstance(dims, list) and len(dims) == 1 and len(dtype) == dims[0] and dims[0] > 1:
         shape = length
-    elif len(dims) == 1 and len(dtype) == dims[0]:
-        shape = length
-    else:
+    elif isinstance(dims, list):
         shape = [length] + dims
+    else:
+        shape = length
 
     stc_arr = np.empty(shape, dtype=dtype)
     if type_elem == np.ndarray and len(stc_arr.shape) == 1:

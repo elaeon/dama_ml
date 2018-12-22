@@ -141,6 +141,7 @@ class Data(AbsDataset):
 
     def __setitem__(self, key, value):
         # self.data[key] = value
+        print(key, value)
         return NotImplemented
 
     def __iter__(self):
@@ -377,7 +378,6 @@ class Data(AbsDataset):
             for group, dtype in self.dtypes:
                 self._set_group_shape(group, data.shape[group], dtype, group="data")
                 groups.append(group)
-            print("DS from data", groups, data.shape._shape)
             self.batchs_writer(groups, data)
             if with_hash is not None:
                 c_hash = self.calc_hash(with_hash=with_hash)

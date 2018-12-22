@@ -60,8 +60,10 @@ class TestSKL(unittest.TestCase):
         b.compute()
         classif.save(model_version="1")
         meta = classif.load_meta()
-        self.assertEqual(meta["model"]["hash"], "$sha1$02c47d2a7c11ccbc47b5dd8dd0cf451941bcd3a2")
+        print(meta)
+        self.assertEqual(meta["model"]["hash"], "$sha1$b791e5ab2da782eeb47c811f1d7ec742f5ac0c1a")
         self.assertEqual(meta["train"]["model_version"], "1")
+        self.assertEqual(meta["model"]["ds_basic_params"]["driver"], "ml.data.drivers.HDF5")
         classif.destroy()
         dataset.destroy()
 
@@ -142,7 +144,7 @@ class TestSKL(unittest.TestCase):
         X = np.random.rand(100)
         Y = X > .5
         dataset = Data(name="test", dataset_path="/tmp", driver=HDF5(), clean=True)
-        dataset.from_data({"x": X, "y": Y.reshape(-1, 1)})
+        dataset.from_data({"x": X, "y": Y})
         classif = RandomForest(
             model_name="test",
             check_point_path="/tmp/")
@@ -154,12 +156,15 @@ class TestSKL(unittest.TestCase):
                       data_test_group="test_x", target_test_group='test_y',
                       data_validation_group="validation_x", target_validation_group="validation_y")
             classif.save(model_version="1")
-        #values = np.asarray([[1], [2], [.4], [.1], [0], [1]])
-        #self.assertCountEqual(classif.predict(values).to_memory(6), [True, True, False, False, False, True])
-        #self.assertEqual(len(classif.predict(values).to_memory(6)), 6)
-        #self.assertEqual(len(classif.predict(np.asarray(values), chunks_size=0).to_memory(6)), 6)
-        #dataset.destroy()
-        #classif.destroy()
+        values = np.asarray([1, 2, .4, .1, 0, 1])
+        ds = Data(name="test2")
+        ds.from_data(values)
+        with ds:
+            for pred in classif.predict(ds):
+                self.assertCountEqual(pred, [True, True, False, False, False, True])
+        dataset.destroy()
+        classif.destroy()
+        ds.destroy()
 
     def test_load(self):
         classif = RandomForest(
@@ -207,38 +212,6 @@ class TestSKL(unittest.TestCase):
             output='uncertain', chunks_size=10).shape
         self.assertEqual(predict_shape, (None, 2))
         rf.destroy()
-
-#class TestGpy(unittest.TestCase):
-#    def setUp(self):
-#        from ml.ds import DataSetBuilder
-#        from ml.clf.extended.w_gpy import SVGPC, GPC
-
-#        X = np.random.rand(100, 10)
-#        Y = (X[:,0] > .5).astype(int)
-#        self.dataset = DataSetBuilder(name="test", dataset_path="/tmp/", 
-#            ltype='int', rewrite=True)
-#        self.dataset.from_data(X, Y)
-#        self.classif = SVGPC(dataset=self.dataset, 
-#            model_name="test", 
-#            model_version="1",
-#            check_point_path="/tmp/")
-#        self.classif2 = GPC(dataset=self.dataset, 
-#            model_name="test2", 
-#            model_version="1",
-#            check_point_path="/tmp/")
-#        self.classif.train(num_steps=2, batch_size=128)
-#        self.classif2.train(num_steps=2, batch_size=128)
-
-#    def tearDown(self):
-#        self.dataset.destroy()
-#        self.classif.destroy()
-#        self.classif2.destroy()
-
-#    def test_load_meta(self):
-#        list(self.classif.predict(self.dataset.data[:2]))
-#        list(self.classif2.predict(self.dataset.data[:2]))
-#        self.assertEqual(type(self.classif.load_meta()), type({}))
-#        self.assertEqual(type(self.classif2.load_meta()), type({}))
 
 
 class TestGrid(unittest.TestCase):

@@ -27,11 +27,13 @@ class RandomForest(SKLP):
         model = CalibratedClassifierCV(
             RandomForestClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")
         with self.ds:
-            model_clf = model.fit(self.ds[self.data_groups["data_train_group"]].to_ndarray(),
-                                  self.ds[self.data_groups["target_train_group"]].to_ndarray())
+            print("*******", self.ds[self.data_groups["target_train_group"]].to_ndarray().reshape(-1, 1).shape)
+            print(self.ds[self.data_groups["target_train_group"]].to_ndarray().shape)
+            model_clf = model.fit(self.ds[self.data_groups["data_train_group"]].to_ndarray().reshape(-1, 1),
+                                  self.ds[self.data_groups["target_train_group"]].to_ndarray().reshape(-1,1))
             reg_model = CalibratedClassifierCV(model_clf, method="sigmoid", cv="prefit")
-            reg_model.fit(self.ds[self.data_groups["data_validation_group"]].to_ndarray(),
-                          self.ds[self.data_groups["target_validation_group"]].to_ndarray())
+            reg_model.fit(self.ds[self.data_groups["data_validation_group"]].to_ndarray().reshape(-1, 1),
+                          self.ds[self.data_groups["target_validation_group"]].to_ndarray().reshape(-1, 1))
         return self.ml_model(reg_model)
 
     def prepare_model_k(self, obj_fn=None):

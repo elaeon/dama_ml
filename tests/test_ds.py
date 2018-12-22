@@ -320,8 +320,8 @@ class TestDataset(unittest.TestCase):
         it = Iterator(x).batchs(batch_size=10, batch_type="df")
         data = Data(name="test")
         data.from_data(it)
-        #with data:
-        #    self.assertEqual((data.to_ndarray() == x).all(), True)
+        with data:
+            self.assertEqual((data.to_ndarray() == x).all(), True)
 
     def test_from_struct_dict(self):
         x = np.random.rand(10, 2)
@@ -347,6 +347,13 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(data["y"].shape, y.shape)
         self.assertEqual(data["z"].shape, z.shape)
         self.assertEqual(data["a"].shape, a.shape)
+
+    def test_nested_array(self):
+        values = np.asarray([[1], [2], [.4], [.1], [0], [1]])
+        ds = Data(name="test2")
+        ds.from_data(values)
+        self.assertEqual((ds.to_ndarray() == values).all(), True)
+        ds.destroy()
 
 
 class TestDataZarr(unittest.TestCase):

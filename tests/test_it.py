@@ -209,7 +209,7 @@ class TestIterator(unittest.TestCase):
         batch_size = 2
         it = Iterator(data)
         for smx in it.batchs(batch_size, batch_type='structured'):
-            self.assertEqual(smx.shape, (2,))
+            self.assertEqual(smx.shape, (2, 1))
         it = Iterator(data)
         for smx in it.batchs(batch_size, batch_type='array'):
             self.assertEqual(smx.shape, (2, 1))
