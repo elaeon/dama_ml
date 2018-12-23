@@ -27,13 +27,17 @@ class Xgboost(XGB):
                 yield self.le.inverse_transform(tmp_chunk)
 
     def prepare_model(self, obj_fn=None, num_steps=None, **params):
-        with self.train_ds, self.validation_ds:
-            d_train = xgb.DMatrix(self.train_ds.data[:], self.train_ds.labels[:]) 
-            d_valid = xgb.DMatrix(self.validation_ds.data[:], self.validation_ds.labels[:]) 
+        with self.ds:
+            data_train = self.ds[self.data_groups["data_train_group"]].to_ndarray()
+            target_train = self.ds[self.data_groups["target_train_group"]].to_ndarray()
+            data_val = self.ds[self.data_groups["data_validation_group"]].to_ndarray()
+            target_val = self.ds[self.data_groups["target_validation_group"]].to_ndarray()
+            d_train = xgb.DMatrix(data_train, target_train)
+            d_valid = xgb.DMatrix(data_val, target_val)
         watchlist = [(d_train, 'train'), (d_valid, 'valid')]
         nrounds = 200
         xgb_model = xgb.train(params, d_train, nrounds, watchlist, early_stopping_rounds=100, 
-                          feval=obj_fn, maximize=True, verbose_eval=100)#, tree_method="hist")
+                          feval=obj_fn, maximize=True, verbose_eval=100)
         return self.ml_model(xgb, bst=xgb_model)
     
     def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2, obj_fn=None, model_params={}):

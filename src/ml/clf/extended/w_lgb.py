@@ -26,14 +26,17 @@ class LightGBM(LGB):
                 yield self.le.inverse_transform(tmp_chunk)
 
     def prepare_model(self, obj_fn=None, num_steps=0, **params):
-        with self.train_ds, self.validation_ds:
-            columns = list(self.train_ds.columns[:])
-            train_data = lgb.Dataset(self.train_ds.data[:], 
-                label=self.train_ds.labels[:], feature_name=columns)
-            valid_data = lgb.Dataset(self.validation_ds.data[:], 
-                label=self.validation_ds.labels[:], feature_name=columns)
+        with self.ds:
+            data_train = self.ds[self.data_groups["data_train_group"]].to_ndarray()
+            target_train = self.ds[self.data_groups["target_train_group"]].to_ndarray()
+            data_val = self.ds[self.data_groups["data_validation_group"]].to_ndarray()
+            target_val = self.ds[self.data_groups["target_validation_group"]].to_ndarray()
+            columns = None
+            data_train_ds = lgb.Dataset(data_train, label=target_train, feature_name=columns)
+            data_valid_ds = lgb.Dataset(data_val, label=target_val, feature_name=columns)
+
         num_round = num_steps
-        bst = lgb.train(params, train_data, num_round, valid_sets=[valid_data], 
+        bst = lgb.train(params, data_train_ds, num_round, valid_sets=[data_valid_ds],
             early_stopping_rounds=num_round/2, feval=obj_fn, verbose_eval=True)
         return self.ml_model(lgb, bst=bst)
     

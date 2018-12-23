@@ -252,6 +252,8 @@ class Shape(object):
     def __eq__(self, other):
         return self.to_tuple() == other
 
+    def __str__(self):
+        return str(self._shape)
 
     def items(self):
         return self._shape.items()

@@ -53,11 +53,9 @@ class ClassifModel(SupervicedModel):
 
     def output_format(self, prediction, output=None):
         if output == 'uncertain' or output == 'n_dim':
-            for chunk in prediction:
-                yield chunk
+            return prediction
         else:
-            for chunk in prediction:
-                yield self.position_index(chunk.reshape(1, -1))[0]
+            return (prediction > .5).astype(int)
 
 
 class SKL(ClassifModel):
@@ -100,7 +98,7 @@ class XGB(ClassifModel):
                        predictors=self.bst.predict,
                        load_fn=self.load_fn,
                        save_fn=self.bst.save_model,
-                       transform_data=XGB.array2dmatrix)
+                       input_transform=XGB.array2dmatrix)
 
     def load_fn(self, path):
         import xgboost as xgb
@@ -111,7 +109,7 @@ class XGB(ClassifModel):
     @staticmethod
     def array2dmatrix(data):
         import xgboost as xgb
-        return xgb.DMatrix(data)
+        return xgb.DMatrix(data.to_ndarray())
 
 
 class LGB(ClassifModel):
@@ -120,7 +118,8 @@ class LGB(ClassifModel):
         return MLModel(fit_fn=model.train,
                        predictors=self.bst.predict,
                        load_fn=self.load_fn,
-                       save_fn=self.bst.save_model)
+                       save_fn=self.bst.save_model,
+                       input_transform=None)
 
     def load_fn(self, path):
         import lightgbm as lgb
@@ -130,7 +129,7 @@ class LGB(ClassifModel):
     @staticmethod
     def array2dmatrix(data):
         import lightgbm as lgb
-        return lgb.Dataset(data)
+        return lgb.Dataset(data.to_ndarray())
 
 
 class TFL(ClassifModel):

@@ -15,31 +15,37 @@ log = log_config(__name__)
 
 class MLModel:
     def __init__(self, fit_fn=None, predictors=None, load_fn=None, save_fn=None,
-                transform_data=None, model=None):
+                 input_transform=None, model=None):
         self.fit_fn = fit_fn
         self.predictors = predictors
         self.load_fn = load_fn
         self.save_fn = save_fn
-        if transform_data is None:
-            self.transform_data = lambda x: x
+        if input_transform is None:
+            self.input_transform = lambda x: x
         else:
-            self.transform_data = transform_data
+            self.input_transform = input_transform
         self.model = model
 
     def fit(self, *args, **kwargs):
         return self.fit_fn(*args, **kwargs)
 
-    def predict(self, data):
-        #if data:
-        #    for chunk in data:
-        #        yield self.predictors(self.transform_data(chunk))
-        #else:
-        for row in data:  # fixme add batch_size
-            predict = self.predictors(row.to_ndarray().reshape(1, -1))
-            if len(predict.shape) > 1:
-                yield predict[0]
-            else:
-                yield predict
+    def predict(self, data, output_format_fn=None, output=None, batch_size: int = 258) -> Iterator:
+        data = self.input_transform(data)
+        if hasattr(data, '__iter__'):
+            #if data:
+            #    for chunk in data:
+            #        yield self.predictors(self.transform_data(chunk))
+            #else:
+            def _it():
+                for row in data:  # fixme add batch_size
+                    predict = self.predictors(row.to_ndarray().reshape(1, -1))
+                    #if len(predict.shape) > 1:
+                    #    yield output_format_fn(predict[0], output=output)
+                    #else:
+                    yield output_format_fn(predict, output=output)[0]
+            return Iterator(_it()).batchs(batch_size=batch_size)
+        else:
+            return Iterator(output_format_fn(self.predictors(data), output=output)).batchs(batch_size=batch_size)
 
     def load(self, path):
         return self.load_fn(path)
@@ -118,8 +124,6 @@ class DataDrive(object):
         if self.path_mv is not None:
             rm(self.path_mv+"."+self.ext)
             rm(self.path_mv+".xmeta")
-        #if hasattr(self, 'dataset'):
-        #    self.dataset.destroy()
         if hasattr(self, 'ds'):
             self.ds.destroy()
 
@@ -183,9 +187,7 @@ class BaseModel(DataDrive):
             return self.test_ds.num_features()
 
     def predict(self, data, output=None, batch_size: int=258):
-        plain_prediction = self.model.predict(data)
-        prediction = self.output_format(plain_prediction, output=output)
-        return Iterator(prediction).batchs(batch_size=batch_size)
+        return self.model.predict(data, output_format_fn=self.output_format, output=output, batch_size=batch_size)
 
     def metadata_model(self):
         with self.ds:
@@ -255,6 +257,8 @@ class BaseModel(DataDrive):
 
     def train(self, batch_size=0, num_steps=0, n_splits=None, obj_fn=None, model_params={}):
         log.info("Training")
+        self.model_params = model_params
+        self.num_steps = num_steps
         self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, **model_params)
 
     def scores2table(self):
@@ -296,16 +300,6 @@ class SupervicedModel(BaseModel):
                 "model_path": self.path_m,
                 "versions": []
             }
-
-    # def get_train_validation_ds(self):
-    #    from ml.data.ds import Data
-    #    log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name,
-    #        self.model_version, self.check_point_path))
-    #    meta = self.load_meta()["model"]
-    #    self.train_ds = Data.original_ds(name=meta["train_ds_name"],
-    #        dataset_path=meta["train_ds_path"])
-    #    self.validation_ds = Data.original_ds(name=meta["validation_ds_name"],
-    #        dataset_path=meta["validation_ds_path"])
 
     def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2, obj_fn=None, 
                     model_params={}):
