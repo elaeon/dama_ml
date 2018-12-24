@@ -59,11 +59,7 @@ class ClassifModel(SupervicedModel):
 
 
 class SKL(ClassifModel):
-    def convert_label(self, target, output=None):
-        if output is 'n_dim':
-            return (np.arange(self.num_classes) == target).astype(np.float32)
-        elif output is None:
-            return self.position_index(target)
+    # (np.arange(self.num_classes) == target).astype(np.float32)
 
     def ml_model(self, model):        
         from sklearn.externals import joblib
@@ -89,6 +85,12 @@ class SKLP(ClassifModel):
     def load_fn(self, path):
         model = joblib.load('{}'.format(path))
         self.model = self.ml_model(model)
+
+    def output_format(self, prediction, output=None):
+        if output == 'uncertain' or output == 'n_dim':
+            return prediction
+        else:
+            return np.argmax(prediction, axis=1)
 
 
 class XGB(ClassifModel):
@@ -126,10 +128,10 @@ class LGB(ClassifModel):
         bst = lgb.Booster(model_file=path)
         self.model = self.ml_model(lgb, bst=bst)
 
-    @staticmethod
-    def array2dmatrix(data):
-        import lightgbm as lgb
-        return lgb.Dataset(data.to_ndarray())
+    # @staticmethod
+    # def array2dmatrix(data):
+    #    import lightgbm as lgb
+    #    return lgb.Dataset(data.to_ndarray())
 
 
 class TFL(ClassifModel):

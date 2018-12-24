@@ -22,7 +22,7 @@ class SVC(SKL):
 
 
 class RandomForest(SKLP):
-    def prepare_model(self, obj_fn=None, num_steps=None):
+    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None):
         from sklearn.ensemble import RandomForestClassifier
         model = CalibratedClassifierCV(
             RandomForestClassifier(n_estimators=25, min_samples_split=2), method="sigmoid")

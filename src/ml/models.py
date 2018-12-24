@@ -7,10 +7,28 @@ from ml.measures import ListMeasure
 from ml.utils.logger import log_config
 from pydoc import locate
 from ml.utils.config import get_settings
-
+import json
 
 settings = get_settings("ml")
 log = log_config(__name__)
+
+
+def save_metadata(file_path, data):
+    print(file_path, data)
+    with open(file_path, "w") as f:
+        json.dump(data, f)
+
+
+def load_metadata(path):
+    try:
+        with open(path, 'r') as f:
+            data = json.load(f)
+        return data
+    except IOError as e:
+        log.info(e)
+        return {}
+    except Exception as e:
+        log.error("{} {}".format(e, path))
 
 
 class MLModel:
@@ -71,7 +89,6 @@ class DataDrive(object):
         pass
 
     def save_meta(self, keys=None):
-        from ml.data.ds import save_metadata
         if self.check_point_path is not None and keys is not None:
             metadata_tmp = self.load_meta()
             if "model" in keys:
@@ -89,7 +106,6 @@ class DataDrive(object):
                 save_metadata(self.path_mv+".xmeta", metadata["train"])
 
     def load_meta(self):
-        from ml.data.ds import load_metadata
         if self.check_point_path is not None:
             metadata = {}
             self.path_m = self.make_model_file()
@@ -241,7 +257,9 @@ class BaseModel(DataDrive):
         self.model_version = model_version
         if self.check_point_path is not None:
             self.path_mv = self.make_model_version_file()
+            log.debug("SAVING model")
             self.model.save('{}.{}'.format(self.path_mv, self.ext))
+            log.debug("SAVING model metadata")
             self.save_meta(keys=["model", "train"])
 
     def has_model_file(self):
@@ -331,7 +349,7 @@ class SupervicedModel(BaseModel):
             self.model = self.train_kfolds(batch_size=batch_size, num_steps=num_steps,
                             n_splits=n_splits, obj_fn=obj_fn, model_params=model_params)
         else:
-            self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, **model_params)
+            self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, model_params=model_params)
 
 
 class UnsupervisedModel(BaseModel):

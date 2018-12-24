@@ -1,7 +1,6 @@
 import datetime
 import os
 import json
-import dill as pickle
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -19,23 +18,6 @@ from ml.utils.config import get_settings
 
 settings = get_settings("ml")
 log = log_config(__name__)
-
-
-def save_metadata(file_path, data):
-    with open(file_path, 'wb') as f:
-        pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
-
-
-def load_metadata(path):
-    try:
-        with open(path, 'rb') as f:
-            data = pickle.load(f)
-        return data
-    except IOError as e:
-        log.info(e)
-        return {}
-    except Exception as e:
-        log.error("{} {}".format(e, path))
 
 
 class Data(AbsDataset):
