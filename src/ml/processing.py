@@ -29,7 +29,7 @@ def pixelate_mode(mode: str):
         return max
 
 
-def resize(data: np.ndarray, image_size_h: int=90, image_size_w: int=90) -> np.ndarray:
+def resize(data: np.ndarray, image_size_h: int = 90, image_size_w: int = 90) -> np.ndarray:
     dim = (image_size_h, image_size_w)
     if dim < data.shape or data.shape <= dim:
         try:
@@ -65,7 +65,7 @@ def rgb2gray(data: np.ndarray) -> np.ndarray:
     return color.rgb2gray(data)
 
 
-def blur(data: np.ndarray, level: float=.2) -> np.ndarray:
+def blur(data: np.ndarray, level: float = .2) -> np.ndarray:
     return filters.gaussian(data, level)
 
 
@@ -87,7 +87,7 @@ def as_ubyte(data):
     return img_as_ubyte(data)
 
 
-def merge_offset(data: np.ndarray, image_size: int=90, bg_color: int=1) -> np.ndarray:
+def merge_offset(data: np.ndarray, image_size: int = 90, bg_color: int = 1) -> np.ndarray:
     """
     transform a rectangular image of (with, height) or (widh, height, channel) to 
     a squared image of size (image_size, image_size) 
@@ -98,7 +98,7 @@ def merge_offset(data: np.ndarray, image_size: int=90, bg_color: int=1) -> np.nd
         return merge_offset3d(data, image_size=image_size, bg_color=bg_color)
 
 
-def merge_offset2d(data: np.ndarray, image_size: int=90, bg_color: int=1):
+def merge_offset2d(data: np.ndarray, image_size: int = 90, bg_color: int = 1) -> np.ndarray:
     bg = np.ones((image_size, image_size))
     ndata = np.empty((data.shape[0], image_size, image_size), dtype=data.dtype)
     for i, image in enumerate(data):
@@ -121,7 +121,7 @@ def merge_offset2d(data: np.ndarray, image_size: int=90, bg_color: int=1):
     return ndata
 
 
-def merge_offset3d(data: np.ndarray, image_size: int=90, bg_color: int=1):
+def merge_offset3d(data: np.ndarray, image_size: int = 90, bg_color: int = 1) -> np.ndarray:
     ndata = np.empty((data.shape[0], image_size, image_size, 3), dtype=data.dtype)
     for i, image in enumerate(data):
         bg = np.ones((image_size, image_size, 3))
@@ -148,11 +148,11 @@ def merge_offset3d(data: np.ndarray, image_size: int=90, bg_color: int=1):
     return ndata
 
 
-def threshold(data: np.ndarray, block_size: int=41) -> np.array:
+def threshold(data: np.ndarray, block_size: int = 41) -> np.array:
     return filters.threshold_adaptive(data, block_size, offset=0)
 
 
-def pixelate(data: np.ndarray, pixel_width: int=None, pixel_height: int=None, mode: str='mean') -> np.ndarray:
+def pixelate(data: np.ndarray, pixel_width: int = None, pixel_height: int = None, mode: str = 'mean') -> np.ndarray:
     """
     add pixelation to the image.
     """
@@ -178,7 +178,7 @@ def pixelate(data: np.ndarray, pixel_width: int=None, pixel_height: int=None, mo
     return data
 
 
-def drop_columns(row, exclude_cols=None, include_cols=None):
+def drop_columns(row, exclude_cols=None, include_cols=None) -> np.ndarray:
     if include_cols is not None:
         return row[:, include_cols]
     elif exclude_cols is not None:

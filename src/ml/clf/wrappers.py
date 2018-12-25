@@ -16,11 +16,6 @@ class ClassifModel(SupervicedModel):
         self.num_classes = None
         super(ClassifModel, self).__init__(**params)
 
-    def load(self, model_version):
-        self.model_version = model_version
-        self.ds = self.get_dataset()
-        self.load_model()
-
     def scores(self, measures=None, batch_size: int=2000):
         if measures is None or isinstance(measures, str):
             measure = metrics.MeasureBatch(name=self.model_name, batch_size=batch_size)
@@ -127,11 +122,6 @@ class LGB(ClassifModel):
         import lightgbm as lgb
         bst = lgb.Booster(model_file=path)
         self.model = self.ml_model(lgb, bst=bst)
-
-    # @staticmethod
-    # def array2dmatrix(data):
-    #    import lightgbm as lgb
-    #    return lgb.Dataset(data.to_ndarray())
 
 
 class TFL(ClassifModel):

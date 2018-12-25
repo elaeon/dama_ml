@@ -305,42 +305,45 @@ class TestLightGBM(unittest.TestCase):
 
 class TestModelVersion(unittest.TestCase):
     def test_load_add_version(self):
-        pass
-        #dataset = Data(name="test", dataset_path="/tmp", driver=HDF5(), clean=True)
-        #dataset.from_data({"x": self.X, "y": self.Y})
+        x = np.random.rand(100)
+        y = x > .5
+        dataset = Data(name="test", dataset_path="/tmp", driver=HDF5(), clean=True)
+        dataset.from_data({"x": x.reshape(-1, 1), "y": y})
 
-        #classif = RandomForest(
-        #    model_name="test",
-        #    check_point_path="/tmp/")
-        #cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
-        #with dataset:
-        #    stc = cv.apply(dataset)
-        #    ds = to_data(stc, driver=HDF5())
-        #    classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
-        #                  data_test_group="test_x", target_test_group='test_y',
-        #                  data_validation_group="validation_x", target_validation_group="validation_y")
-        #    classif.save(model_version="1")
+        classif = RandomForest(
+            model_name="test",
+            check_point_path="/tmp/")
+        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
+        with dataset:
+            stc = cv.apply(dataset)
+            ds = to_data(stc, driver=HDF5())
+            classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
+                          data_test_group="test_x", target_test_group='test_y',
+                          data_validation_group="validation_x", target_validation_group="validation_y")
+            classif.save(model_version="1")
 
-        #classif = RandomForest(
-        #    model_name="test",
-        #    check_point_path="/tmp/")
-        #classif.load(model_version="1")
-        #classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
-        #              data_test_group="test_x", target_test_group='test_y',
-        #              data_validation_group="validation_x", target_validation_group="validation_y")
-        #classif.save(model_version="2")
+        classif2 = RandomForest(
+            model_name="test",
+            check_point_path="/tmp/")
+        classif2.load(model_version="1")
+        classif2.train(ds, num_steps=10, data_train_group="train_x", target_train_group='train_y',
+                      data_test_group="test_x", target_test_group='test_y',
+                      data_validation_group="validation_x", target_validation_group="validation_y")
+        classif2.save(model_version="2")
 
-        #classif = RandomForest(
-        #    model_name="test",
-        #    check_point_path="/tmp/")
-        #classif.load(model_version="1")
+        classif = RandomForest(
+            model_name="test",
+            check_point_path="/tmp/")
+        classif.load(model_version="2")
+        #print(classif.lo)
         #with dataset:
         #    values = dataset["x"][:6]
         #    for pred in classif.predict(values):
         #        print(pred)
         #        self.assertEqual((pred == [True, True, True, False, False, True]).all(), True)
-        #classif.destroy()
-        #dataset.destroy()
+        classif.destroy()
+        classif2.destroy()
+        dataset.destroy()
 
 
 if __name__ == '__main__':
