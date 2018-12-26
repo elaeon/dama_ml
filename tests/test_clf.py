@@ -310,9 +310,7 @@ class TestModelVersion(unittest.TestCase):
         dataset = Data(name="test", dataset_path="/tmp", driver=HDF5(), clean=True)
         dataset.from_data({"x": x.reshape(-1, 1), "y": y})
 
-        classif = RandomForest(
-            model_name="test",
-            check_point_path="/tmp/")
+        classif = RandomForest()
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         with dataset:
             stc = cv.apply(dataset)
@@ -320,27 +318,19 @@ class TestModelVersion(unittest.TestCase):
             classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                           data_test_group="test_x", target_test_group='test_y',
                           data_validation_group="validation_x", target_validation_group="validation_y")
-            classif.save(model_version="1")
+            classif.save("test", path="/tmp/", model_version="1")
 
-        classif2 = RandomForest(
-            model_name="test",
-            check_point_path="/tmp/")
-        classif2.load(model_version="1")
-        classif2.train(ds, num_steps=10, data_train_group="train_x", target_train_group='train_y',
+        classif = RandomForest.load("test", path="/tmp/", model_version="1")
+        classif.train(ds, num_steps=10, data_train_group="train_x", target_train_group='train_y',
                       data_test_group="test_x", target_test_group='test_y',
                       data_validation_group="validation_x", target_validation_group="validation_y")
-        classif2.save(model_version="2")
+        classif.save("test", path="/tmp/", model_version="2")
 
-        classif = RandomForest(
-            model_name="test",
-            check_point_path="/tmp/")
-        classif.load(model_version="2")
-        #print(classif.lo)
-        #with dataset:
-        #    values = dataset["x"][:6]
-        #    for pred in classif.predict(values):
-        #        print(pred)
-        #        self.assertEqual((pred == [True, True, True, False, False, True]).all(), True)
+        classif2 = RandomForest.load("test", path="/tmp/", model_version="2")
+        self.assertEqual(classif2.model_version, "2")
+        self.assertEqual(classif2.base_path, "/tmp/")
+        self.assertEqual(classif2.num_steps, 10)
+        self.assertEqual(classif2.model_name, "test")
         classif.destroy()
         classif2.destroy()
         dataset.destroy()
