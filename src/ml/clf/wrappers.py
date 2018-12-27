@@ -1,11 +1,11 @@
 import numpy as np
 import tensorflow as tf
-
 from sklearn.externals import joblib
 from ml.models import MLModel, SupervicedModel
 from ml.data.it import Iterator
 from ml import measures as metrics
 from ml.utils.logger import log_config
+
 
 log = log_config(__name__)
 
@@ -28,23 +28,6 @@ class ClassifModel(SupervicedModel):
                 for pred, target in zip(predictions, test_target):
                     measures.update_fn(pred, target, measure_fn)
         return measures.to_list()
-
-    def erroneous_clf(self):
-        import operator
-        return self.only_is(operator.ne)
-
-    def correct_clf(self):
-        import operator
-        return self.only_is(operator.eq)
-
-    def reformat_target(self, target):
-        return target
-
-    def position_index(self, labels):
-        if len(labels.shape) >= 2:
-            return np.argmax(labels, axis=1)
-        else:
-            return labels
 
     def output_format(self, prediction, output=None):
         if output == 'uncertain' or output == 'n_dim':

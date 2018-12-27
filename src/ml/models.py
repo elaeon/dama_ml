@@ -1,5 +1,5 @@
 import os
-
+from abc import ABC, abstractmethod
 from ml.data.ds import Data
 from ml.data.it import Iterator
 from ml.utils.files import check_or_create_path_dir
@@ -67,7 +67,6 @@ class Metadata(object):
 
     @staticmethod
     def save_json(file_path, data):
-        print(file_path, data)
         with open(file_path, "w") as f:
             json.dump(data, f)
 
@@ -86,8 +85,7 @@ class Metadata(object):
     @staticmethod
     def get_metadata(path_metamodel, path_metamodel_version=None):
         if path_metamodel is not None:
-            metadata = {}
-            metadata["model"] = Metadata.load_json(path_metamodel)
+            metadata = {"model": Metadata.load_json(path_metamodel)}
             if path_metamodel_version is not None:
                 metadata["train"] = Metadata.load_json(path_metamodel_version)
             else:
@@ -133,7 +131,7 @@ class Metadata(object):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
 
-class BaseModel(Metadata):
+class BaseModel(Metadata, ABC):
     def __init__(self, metrics=None):
         self.model = None
         self.ext = "ckpt.pkl"
@@ -148,13 +146,28 @@ class BaseModel(Metadata):
         self.target = None
         super(BaseModel, self).__init__()
 
+    @abstractmethod
     def scores(self, measures=None, chunks_size=2000):
-        pass
+        return NotImplemented
 
-    def load(self, model_version: str = None):
-        pass
+    @classmethod
+    @abstractmethod
+    def load(cls, model_name: str, model_version: str, group_name: str = None, path: str = None):
+        return NotImplemented
 
-    def predict(self, data, output=None, batch_size: int=258):
+    @abstractmethod
+    def output_format(self, prediction, output=None):
+        return NotImplemented
+
+    @abstractmethod
+    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None):
+        return NotImplemented
+
+    @abstractmethod
+    def load_fn(self):
+        return NotImplemented
+
+    def predict(self, data, output=None, batch_size: int = 258):
         return self.model.predict(data, output_format_fn=self.output_format, output=output, batch_size=batch_size)
 
     def metadata_model(self):
@@ -182,8 +195,8 @@ class BaseModel(Metadata):
         }
 
     def get_dataset(self):
-        log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name, 
-            self.model_version, self.base_path))
+        log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name,
+                                                             self.model_version, self.base_path))
         meta = Metadata.get_metadata(self.path_metamodel).get("model", {})
         driver = locate(meta["ds_basic_params"]["driver"])
         dataset = Data(name=meta["ds_basic_params"]["name"], group_name=meta["ds_basic_params"]["group_name"],
@@ -205,7 +218,7 @@ class BaseModel(Metadata):
             self.base_path = settings["checkpoints_path"]
         else:
             self.base_path = path
-        self.path_metamodel = Metadata.make_model_file(name, path, self.cls_name(), self.metaext)
+        self.path_metamodel = Metadata.make_model_file(name, self.base_path, self.cls_name(), self.metaext)
         self.path_metamodel_version = self.make_model_version_file(name, path, self.cls_name(), self.metaext,
                                                                    self.model_version)
         self.path_model_version = Metadata.make_model_version_file(name, path, self.cls_name(), self.ext,
@@ -215,10 +228,9 @@ class BaseModel(Metadata):
         log.debug("SAVING model metadata")
         metadata_tmp = Metadata.get_metadata(self.path_metamodel)
         metadata_model = self.metadata_model()
-        print(metadata_model, "*****")
         if len(metadata_model["versions"]) == 0:
             metadata_model["versions"] = self.model_version
-        if not self.model_version in metadata_model["versions"]:
+        if self.model_version not in metadata_model["versions"]:
             metadata_tmp["model"]["versions"].append(model_version)
             metadata_model["versions"] = metadata_tmp["model"]["versions"]
         Metadata.save_json(self.path_metamodel, metadata_model)
@@ -242,11 +254,12 @@ class BaseModel(Metadata):
         self.num_steps = metadata["train"]["num_steps"]
         self.base_path = metadata["model"]["base_path"]
 
-    def train(self, batch_size=0, num_steps=0, n_splits=None, obj_fn=None, model_params=None):
-        log.info("Training")
-        self.model_params = model_params
-        self.num_steps = num_steps
-        self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, model_params=model_params)
+    @abstractmethod
+    def train(self, ds: Data, batch_size: int = 0, num_steps: int = 0, n_splits=None, obj_fn=None,
+              model_params: dict = None, data_train_group="train_x", target_train_group='train_y',
+              data_test_group="test_x", target_test_group='test_y',
+              data_validation_group="validation_x", target_validation_group="validation_y"):
+        return NotImplemented
 
     def scores2table(self):
         meta = Metadata.get_metadata(self.path_metamodel, self.path_metamodel_version)
@@ -273,21 +286,8 @@ class SupervicedModel(BaseModel):
         model.load_model()
         return model
 
-    # def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2, obj_fn=None,
-    #                model_params={}):
-    #    from sklearn.model_selection import StratifiedKFold
-    #    model = self.prepare_model_k(obj_fn=obj_fn)
-    #    cv = StratifiedKFold(n_splits=n_splits)
-    #    with self.train_ds:
-    #        data = self.train_ds.data[:]
-    #        labels = self.train_ds.labels[:]
-    #        for k, (train, test) in enumerate(cv.split(data, labels), 1):
-    #            model.fit(data[train], labels[train])
-    #            print("fold ", k)
-    #    return model
-
-    def train(self, ds: Data, batch_size=0, num_steps=0, n_splits=None, obj_fn=None, model_params=None,
-              data_train_group="train_x", target_train_group='train_y',
+    def train(self, ds: Data, batch_size: int = 0, num_steps: int = 0, n_splits=None, obj_fn=None,
+              model_params: dict = None, data_train_group="train_x", target_train_group='train_y',
               data_test_group="test_x", target_test_group='test_y',
               data_validation_group="validation_x", target_validation_group="validation_y"):
         self.ds = ds
@@ -299,15 +299,14 @@ class SupervicedModel(BaseModel):
             "data_test_group": data_test_group, "target_test_group": target_test_group,
             "data_validation_group": data_validation_group, "target_validation_group": target_validation_group
         }
-        if n_splits is not None:
-            self.model = self.train_kfolds(batch_size=batch_size, num_steps=num_steps,
-                            n_splits=n_splits, obj_fn=obj_fn, model_params=model_params)
-        else:
-            self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, model_params=model_params)
+        self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, model_params=model_params)
 
 
 class UnsupervisedModel(BaseModel):
-    def train(self, batch_size=0, num_steps=0, num_epochs=0, model_params=None):
+    def train(self, ds: Data, batch_size: int = 0, num_steps: int = 0, n_splits=None, obj_fn=None,
+              model_params: dict = None, data_train_group="train_x", target_train_group='train_y',
+              data_test_group="test_x", target_test_group='test_y', num_epochs: int = 0,
+              data_validation_group="validation_x", target_validation_group="validation_y"):
         log.info("Training")
-        self.model = self.prepare_model(obj_fn=None, num_steps=num_steps,
-            num_epochs=num_epochs, **model_params)
+        self.model = self.prepare_model(obj_fn=None, num_steps=num_steps, num_epochs=num_epochs,
+                                        model_params=model_params)
