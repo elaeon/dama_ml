@@ -15,28 +15,10 @@ class Xgboost(XGB):
             d_train = xgb.DMatrix(data_train, target_train)
             d_valid = xgb.DMatrix(data_val, target_val)
         watchlist = [(d_train, 'train'), (d_valid, 'valid')]
-        nrounds = 200
-        xgb_model = xgb.train(model_params, d_train, nrounds, watchlist, early_stopping_rounds=100,
+        nrounds = num_steps
+        xgb_model = xgb.train(model_params, d_train, nrounds, watchlist, early_stopping_rounds=nrounds/2,
                               feval=obj_fn, maximize=True, verbose_eval=100)
         return self.ml_model(xgb, bst=xgb_model)
-    
-    # def train_kfolds(self, batch_size=0, num_steps=0, n_splits=2, obj_fn=None, model_params={}):
-    #    from sklearn.model_selection import StratifiedKFold
-    #    nrounds = num_steps
-    #    cv = StratifiedKFold(n_splits=n_splits)
-    #    with self.train_ds, self.validation_ds:
-    #        data = np.concatenate((self.train_ds.data[:], self.validation_ds.data[:]),
-    #                        axis=0)
-    #        labels = np.concatenate((self.train_ds.labels[:], self.validation_ds.labels[:]),
-    #                        axis=0)
-    #    for k, (train, test) in enumerate(cv.split(data, labels), 1):
-    #        d_train = xgb.DMatrix(data[train], labels[train])
-    #        d_valid = xgb.DMatrix(data[test], labels[test])
-    #        watchlist = [(d_train, 'train'), (d_valid, 'valid')]
-    #        xgb_model = xgb.train(model_params, d_train, nrounds, watchlist, early_stopping_rounds=100,
-    #                      feval=obj_fn, maximize=True, verbose_eval=100)
-    #        print("fold ", k)
-    #    return self.ml_model(xgb, bst=xgb_model)
 
 
 # class XgboostSKL(SKLP):

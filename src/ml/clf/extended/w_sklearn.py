@@ -2,8 +2,8 @@ from sklearn.calibration import CalibratedClassifierCV
 from ml.clf.wrappers import SKL, SKLP
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import ExtraTreesClassifier
-from sklearn.linear_model import LogisticRegression as LR
-from sklearn.linear_model import SGDClassifier as SGD
+from sklearn.linear_model import LogisticRegression as LReg
+from sklearn.linear_model import SGDClassifier as SGDClassif
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.neighbors import KNeighborsClassifier
@@ -50,7 +50,7 @@ class ExtraTrees(SKLP):
 
 class LogisticRegression(SKLP):
     def prepare_model(self, obj_fn=None, num_steps=None, model_params=None):
-        model = CalibratedClassifierCV(LR(**model_params), method="sigmoid")
+        model = CalibratedClassifierCV(LReg(**model_params), method="sigmoid")
         with self.ds:
             model_clf = model.fit(self.ds[self.data_groups["data_train_group"]].to_ndarray(),
                                   self.ds[self.data_groups["target_train_group"]].to_ndarray())
@@ -62,7 +62,7 @@ class LogisticRegression(SKLP):
 
 class SGDClassifier(SKLP):
     def prepare_model(self, obj_fn=None, num_steps=None, model_params=None):
-        model = CalibratedClassifierCV(SGD(**model_params), method="sigmoid")
+        model = CalibratedClassifierCV(SGDClassif(**model_params), method="sigmoid")
         with self.ds:
             model_clf = model.fit(self.ds[self.data_groups["data_train_group"]].to_ndarray(),
                                   self.ds[self.data_groups["target_train_group"]].to_ndarray())

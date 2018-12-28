@@ -5,7 +5,8 @@ from ml.data.ds import Data
 from ml.clf.extended.w_sklearn import RandomForest, SVC, ExtraTrees, LogisticRegression, SGDClassifier
 from ml.clf.extended.w_sklearn import AdaBoost, GradientBoost, KNN
 from ml.data.etl import Pipeline
-from ml.utils.numeric_functions import CV, gini_normalized
+from ml.utils.numeric_functions import CV
+from ml.measures import gini_normalized
 from ml.data.drivers import HDF5
 from ml.measures import Measure
 

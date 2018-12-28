@@ -147,22 +147,6 @@ def features2rows(data):
     return ndata
 
 
-def gini(actual, pred):
-    assert(len(actual) == len(pred))
-    actual = np.asarray(actual, dtype=np.float)
-    n = actual.shape[0]
-    a_s = actual[np.argsort(pred)]
-    a_c = a_s.cumsum()
-    gini_sum = a_c.sum() / a_s.sum() - (n + 1) / 2.0
-    return gini_sum / n
- 
-
-def gini_normalized(a, p):
-    if p.ndim == 2:
-        p = p[:, 1]  # just pick class 1 if is a binary array
-    return gini(a, p) / gini(a, a)
-
-
 def missing(column):
     return (np.count_nonzero(np.isnan(column)) / float(column.size)) * 100
 

@@ -164,7 +164,7 @@ class BaseModel(Metadata, ABC):
         return NotImplemented
 
     @abstractmethod
-    def load_fn(self):
+    def load_fn(self, path):
         return NotImplemented
 
     def predict(self, data, output=None, batch_size: int = 258):

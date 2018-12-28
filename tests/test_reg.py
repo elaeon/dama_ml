@@ -2,7 +2,9 @@ import unittest
 import numpy as np
 
 from ml.data.ds import Data
-from ml.reg.extended.w_sklearn import RandomForestRegressor
+from ml.reg.extended.w_sklearn import RandomForestRegressor, GradientBoostingRegressor
+from ml.reg.extended.w_xgboost import Xgboost
+from ml.reg.extended.w_lgb import LightGBM
 from ml.utils.numeric_functions import CV
 from ml.data.drivers import HDF5
 
@@ -42,10 +44,11 @@ class TestRegSKL(unittest.TestCase):
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         stc = cv.apply(dataset)
         ds = to_data(stc, driver=HDF5())
+        model_params = dict(n_estimators=25, min_samples_split=2)
         reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
-                      data_test_group="test_x", target_test_group='test_y',
+                      data_test_group="test_x", target_test_group='test_y', model_params=model_params,
                       data_validation_group="validation_x", target_validation_group="validation_y")
-        reg.save(name="test", path="/tmp/", model_version="1")
+        reg.save(name="test_model", path="/tmp/", model_version="1")
         reg = RandomForestRegressor.load(model_name="test_model", path="/tmp/", model_version="1")
         self.assertEqual(reg.model_version, "1")
         self.assertEqual(reg.ds.driver.module_cls_name(), "ml.data.drivers.HDF5")
@@ -53,80 +56,169 @@ class TestRegSKL(unittest.TestCase):
         dataset.destroy()
 
     def test_empty_load(self):
-        dl = DataLabel(name="reg0", dataset_path="/tmp/", clean=True)
-        with dl:
-            dl.from_data(self.X, self.Y)
-        reg = RandomForestRegressor(
-            model_name="test",
-            check_point_path="/tmp/")
-        reg.set_dataset(dl)
-        reg.train(num_steps=1)
-        reg.save(model_version="1")
-
-        reg = RandomForestRegressor(
-            model_name="test", 
-            check_point_path="/tmp/")
-        reg.load(model_version="1")
-        self.assertEqual(reg.original_dataset_path, "/tmp/")
+        dataset = Data(name="reg0", dataset_path="/tmp/", clean=True)
+        with dataset:
+            dataset.from_data({"x": self.X, "y": self.Y})
+        reg = RandomForestRegressor()
+        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
+        stc = cv.apply(dataset)
+        ds = to_data(stc, driver=HDF5())
+        model_params = dict(n_estimators=25, min_samples_split=2)
+        reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
+                  data_test_group="test_x", target_test_group='test_y', model_params=model_params,
+                  data_validation_group="validation_x", target_validation_group="validation_y")
+        reg.save(name="test_model", path="/tmp/", model_version="1")
+        reg = RandomForestRegressor.load(model_name="test_model", path="/tmp/", model_version="1")
+        self.assertEqual(reg.base_path, "/tmp/")
         reg.destroy()
-        dl.destroy()
+        dataset.destroy()
 
     def test_scores(self):
-        dl = DataLabel(name="reg0", dataset_path="/tmp/", clean=True)
-        with dl:
-            dl.from_data(self.X, self.Y)
-        reg = RandomForestRegressor(
-            model_name="test", 
-            check_point_path="/tmp/")
-        reg.set_dataset(dl)
-        reg.train(num_steps=1)
-        reg.save(model_version="1")
+        dataset = Data(name="test", dataset_path="/tmp/", clean=True)
+        with dataset:
+            dataset.from_data({"x": self.X, "y": self.Y})
+
+        reg = RandomForestRegressor()
+        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
+        stc = cv.apply(dataset)
+        ds = to_data(stc, driver=HDF5())
+        model_params = dict(n_estimators=25, min_samples_split=2)
+        reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
+                      data_test_group="test_x", target_test_group='test_y', model_params=model_params,
+                      data_validation_group="validation_x", target_validation_group="validation_y")
+        reg.save(name="test", path="/tmp/", model_version="1")
         scores_table = reg.scores2table()
         reg.destroy()
-        dl.destroy()
-        self.assertEqual(list(scores_table.headers), ['', 'msle'])
+        dataset.destroy()
+        self.assertCountEqual(list(scores_table.headers), ['', 'mse', 'msle', 'gini_normalized'])
+        self.assertEqual(scores_table.measures[0][1] <= 1, True)
 
     def test_predict(self):
-        from ml.processing import Transforms
-        t = Transforms()
-        t.add(mulp)
-        X = np.random.rand(100, 1)
-        Y = np.random.rand(100)
-        dataset = DataLabel(name="test_0", dataset_path="/tmp/", 
-            clean=True)
-        dataset.transforms = t
+        np.random.seed(0)
+        x = np.random.rand(100)
+        y = np.random.rand(100)
+        dataset = Data(name="test", dataset_path="/tmp", driver=HDF5(), clean=True)
+        dataset.from_data({"x": x.reshape(-1, 1), "y": y})
+        reg = RandomForestRegressor()
+        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         with dataset:
-            dataset.from_data(X, Y)
-        reg = RandomForestRegressor(
-            model_name="test", 
-            check_point_path="/tmp/")
-        reg.set_dataset(dataset)
-        reg.train()
-        reg.save(model_version="1")
-        values = np.asarray([[1], [2], [.4], [.1], [0], [1]])
-        self.assertEqual(reg.predict(values).to_memory(6).shape[0], 6)
-        self.assertEqual(reg.predict(values, chunks_size=0).to_memory(6).shape[0], 6)
+            stc = cv.apply(dataset)
+            ds = to_data(stc, driver=HDF5())
+            model_params = dict(n_estimators=25, min_samples_split=2)
+            reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
+                          data_test_group="test_x", target_test_group='test_y', model_params=model_params,
+                          data_validation_group="validation_x", target_validation_group="validation_y")
+            reg.save(name="test", path="/tmp/", model_version="1")
+        values = np.asarray([1, 2, .4, .1, 0, 1])
+        ds = Data(name="test2", clean=True)
+        ds.from_data(values)
+        with ds:
+            for pred in reg.predict(ds):
+                self.assertCountEqual(pred > .5, [False, False, True, False, True, False])
         dataset.destroy()
+        reg.destroy()
+        ds.destroy()
+
+
+class TestXgboost(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        x = np.random.rand(100, 10)
+        y = (x[:, 0] > .5).astype(int)
+        self.dataset = Data(name="test", dataset_path="/tmp/", clean=True)
+        self.dataset.from_data({"x": x, "y": y})
+        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
+        with self.dataset:
+            stc = cv.apply(self.dataset)
+            ds = to_data(stc, driver=HDF5())
+
+        params = {'max_depth': 2, 'eta': 1, 'silent': 1, 'objective': 'binary:logistic'}
+        reg = Xgboost()
+        reg.train(ds, num_steps=100, data_train_group="train_x", target_train_group='train_y',
+                      data_test_group="test_x", target_test_group='test_y', model_params=params,
+                      data_validation_group="validation_x", target_validation_group="validation_y")
+        reg.save(name="test", path="/tmp/", model_version="1")
+
+    def tearDown(self):
+        self.dataset.destroy()
+
+    def test_predict(self):
+        reg = Xgboost.load(model_name="test", path="/tmp/", model_version="1")
+        with self.dataset:
+            predict = reg.predict(self.dataset["x"], batch_size=1)
+            for pred in predict:
+                print(pred)
+                self.assertEqual(pred[0] < 1, True)
+                break
         reg.destroy()
 
-    def test_add_version(self):
-        X = np.random.rand(100, 1)
-        Y = np.random.rand(100)
-        dataset = DataLabel(name="test", dataset_path="/tmp/", clean=True)
-        with dataset:
-            dataset.from_data(X, Y)
-        reg = RandomForestRegressor(
-            model_name="test", 
-            check_point_path="/tmp/")
-        reg.set_dataset(dataset)
-        reg.train()
-        reg.save(model_version="1")
-        reg.save(model_version="2")
-        reg.save(model_version="3")
-        metadata = reg.load_meta()
-        self.assertCountEqual(metadata["model"]["versions"], ["1", "2", "3"])
-        dataset.destroy()
+
+class TestLightGBM(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        x = np.random.rand(100, 10)
+        y = (x[:, 0] > .5).astype(int)
+        self.dataset = Data(name="test", dataset_path="/tmp/", clean=True)
+        self.dataset.from_data({"x": x, "y": y})
+        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
+        with self.dataset:
+            stc = cv.apply(self.dataset)
+            ds = to_data(stc, driver=HDF5())
+
+        reg = LightGBM()
+        self.params={'max_depth': 4, 'subsample': 0.9, 'colsample_bytree': 0.9,
+                     'objective': 'regression', 'seed': 99, "verbosity": 0, "learning_rate": 0.1,
+                     'boosting_type': "gbdt", 'max_bin': 255, 'num_leaves': 25,
+                     'metric': 'mse'}
+        self.num_steps = 10
+        self.model_version = "1"
+        reg.train(ds, num_steps=self.num_steps, data_train_group="train_x", target_train_group='train_y',
+                      data_test_group="test_x", target_test_group='test_y', model_params=self.params,
+                      data_validation_group="validation_x", target_validation_group="validation_y")
+        reg.save(name="test", path="/tmp/", model_version=self.model_version)
+
+    def tearDown(self):
+        self.dataset.destroy()
+
+    def test_predict(self):
+        reg = LightGBM.load(model_name="test", path="/tmp/", model_version=self.model_version)
+        with self.dataset:
+            predict = reg.predict(self.dataset["x"], batch_size=1)[:1]
+            for pred in predict:
+                self.assertEqual(pred[0] < 1, True)
         reg.destroy()
+
+    def test_feature_importance(self):
+        reg = LightGBM.load(model_name="test", path="/tmp/", model_version=self.model_version)
+        with self.dataset:
+            self.assertEqual(reg.feature_importance()["gain"].iloc[0], 100)
+
+
+class TestWrappers(unittest.TestCase):
+    def train(self, clf, model_params=None):
+        np.random.seed(0)
+        x = np.random.rand(100)
+        y = x > .5
+        dataset = Data(name="test", dataset_path="/tmp", driver=HDF5(), clean=True)
+        dataset.from_data({"x": x.reshape(-1, 1), "y": y})
+
+        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
+        with dataset:
+            stc = cv.apply(dataset)
+            ds = to_data(stc, driver=HDF5())
+            clf.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
+                          data_test_group="test_x", target_test_group='test_y', model_params=model_params,
+                          data_validation_group="validation_x", target_validation_group="validation_y")
+            clf.save("test", path="/tmp/", model_version="1")
+        dataset.destroy()
+        return clf
+
+    def test_gbr(self):
+        clf = GradientBoostingRegressor()
+        clf = self.train(clf, model_params=dict(learning_rate=0.2, random_state=3))
+        with clf.ds:
+            self.assertEqual(clf.ds.hash, "$sha1$fb894bc728ca9a70bad40b856bc8e37bf67f74b6")
+        clf.destroy()
 
 
 if __name__ == '__main__':

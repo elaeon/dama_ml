@@ -1,6 +1,7 @@
 import numpy as np
 from ml.utils.logger import log_config
 
+
 log = log_config(__name__)
 
 
@@ -41,14 +42,18 @@ class MeasureBase(object):
         return list_measure
 
     @staticmethod
-    def make_metrics(measure_cls, measures: str = None):
-        if measures is None:
+    def make_metrics(measure_cls, measures: str = None, discrete: bool = True):
+        if measures is None and discrete is True:
             measure_cls.add(accuracy, greater_is_better=True, output='discrete')
             measure_cls.add(precision, greater_is_better=True, output='discrete')
             measure_cls.add(recall, greater_is_better=True, output='discrete')
             measure_cls.add(f1, greater_is_better=True, output='discrete')
             measure_cls.add(auc, greater_is_better=True, output='discrete')
             measure_cls.add(logloss, greater_is_better=False, output='n_dim')
+        elif measures is None and discrete is False:
+            measure_cls.add(mse, greater_is_better=False, output='n_dim')
+            measure_cls.add(msle, greater_is_better=False, output='n_dim')
+            measure_cls.add(gini_normalized, greater_is_better=True, output='n_dim')
         elif isinstance(measures, str):
             import sys
             m = sys.modules['ml.measures']
@@ -79,8 +84,8 @@ class Measure(MeasureBase):
         for measure in self.measures:
             yield self.score[measure.__name__]
 
-    def make_metrics(self, measures=None) -> 'Measure':
-        return MeasureBase.make_metrics(self, measures=measures)
+    def make_metrics(self, measures=None, discrete: bool = True) -> 'Measure':
+        return MeasureBase.make_metrics(self, measures=measures, discrete=discrete)
 
 
 class MeasureBatch(MeasureBase):
@@ -108,8 +113,8 @@ class MeasureBatch(MeasureBase):
             value, size = self.score[measure.__name__]
             yield value / size
 
-    def make_metrics(self, measures=None) -> 'MeasureBatch':
-        return MeasureBase.make_metrics(self, measures=measures)
+    def make_metrics(self, measures=None, discrete: bool = True) -> 'MeasureBatch':
+        return MeasureBase.make_metrics(self, measures=measures, discrete=discrete)
 
 
 def accuracy(labels, predictions):
@@ -170,9 +175,30 @@ def logloss(labels, predictions):
     return log_loss(labels, predictions)
 
 
-def msle(labels, predictions):
+def mse(labels, predictions):
     from sklearn.metrics import mean_squared_error
     return mean_squared_error(labels, predictions)
+
+
+def msle(labels, predicitions):
+    from sklearn.metrics import mean_squared_log_error
+    return mean_squared_log_error(labels, predicitions)
+
+
+def gini(actual, pred):
+    assert (len(actual) == len(pred))
+    actual = np.asarray(actual, dtype=np.float)
+    n = actual.shape[0]
+    a_s = actual[np.argsort(pred)]
+    a_c = a_s.cumsum()
+    gini_sum = a_c.sum() / a_s.sum() - (n + 1) / 2.0
+    return gini_sum / n
+
+
+def gini_normalized(a, p):
+    if p.ndim == 2:
+        p = p[:, 1]  # just pick class 1 if is a binary array
+    return gini(a, p) / gini(a, a)
 
 
 class ListMeasure(object):
