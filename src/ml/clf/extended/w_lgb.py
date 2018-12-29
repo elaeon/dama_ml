@@ -1,6 +1,6 @@
 from ml.clf.wrappers import LGB
-
 import lightgbm as lgb
+import pandas as pd
 
 
 class LightGBM(LGB):
@@ -22,7 +22,7 @@ class LightGBM(LGB):
     #                tmp_chunk.append(int(round(e, 0)))
     #            yield self.le.inverse_transform(tmp_chunk)
 
-    def prepare_model(self, obj_fn=None, num_steps=0, model_params=None):
+    def prepare_model(self, obj_fn=None, num_steps: int = 0, model_params=None):
         with self.ds:
             data_train = self.ds[self.data_groups["data_train_group"]].to_ndarray()
             target_train = self.ds[self.data_groups["target_train_group"]].to_ndarray()
@@ -37,8 +37,7 @@ class LightGBM(LGB):
                         early_stopping_rounds=num_round/2, feval=obj_fn, verbose_eval=True)
         return self.ml_model(lgb, bst=bst)
 
-    def feature_importance(self):
-        import pandas as pd
+    def feature_importance(self) -> pd.DataFrame:
         gain = self.bst.feature_importance('gain')
         df = pd.DataFrame({'feature': self.bst.feature_name(),
                            'split': self.bst.feature_importance('split'),

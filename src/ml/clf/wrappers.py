@@ -3,6 +3,7 @@ import tensorflow as tf
 from sklearn.externals import joblib
 from ml.models import MLModel, SupervicedModel
 from ml.data.it import Iterator
+from ml.data.ds import Data
 from ml import measures as metrics
 from ml.utils.logger import log_config
 
@@ -29,12 +30,6 @@ class ClassifModel(SupervicedModel):
                     measures.update_fn(pred, target, measure_fn)
         return measures.to_list()
 
-    def output_format(self, prediction, output=None):
-        if output == 'uncertain' or output == 'n_dim':
-            return prediction
-        else:
-            return (prediction > .5).astype(int)
-
 
 class SKL(ClassifModel):
     # (np.arange(self.num_classes) == target).astype(np.float32)
@@ -49,6 +44,12 @@ class SKL(ClassifModel):
     def load_fn(self, path):
         model = joblib.load('{}'.format(path))
         self.model = self.ml_model(model)
+
+    def output_format(self, prediction, output=None):
+        if output == 'uncertain' or output == 'n_dim':
+            return prediction
+        else:
+            return (prediction > .5).astype(int)
 
 
 class SKLP(ClassifModel):
@@ -91,6 +92,12 @@ class XGB(ClassifModel):
         import xgboost as xgb
         return xgb.DMatrix(data.to_ndarray())
 
+    def output_format(self, prediction, output=None):
+        if output == 'uncertain' or output == 'n_dim':
+            return prediction
+        else:
+            return (prediction > .5).astype(int)
+
 
 class LGB(ClassifModel):
     def ml_model(self, model, bst=None):
@@ -105,6 +112,12 @@ class LGB(ClassifModel):
         import lightgbm as lgb
         bst = lgb.Booster(model_file=path)
         self.model = self.ml_model(lgb, bst=bst)
+
+    def output_format(self, prediction, output=None):
+        if output == 'uncertain' or output == 'n_dim':
+            return prediction
+        else:
+            return (prediction > .5).astype(int)
 
 
 class TFL(ClassifModel):
@@ -152,38 +165,31 @@ class Keras(ClassifModel):
                         load_fn=self.load_fn,
                         save_fn=model.save)
 
-    def reformat_labels(self, labels):
-        self.target_dim = self.num_classes
-        return (np.arange(self.num_classes) == labels[:, None]).astype(np.float)
-
-    def train_kfolds(self, batch_size=10, num_steps=100, n_splits=None):
-        from sklearn.model_selection import StratifiedKFold
-        self.model = self.prepare_model_k()
-        cv = StratifiedKFold(n_splits=n_splits)
-        
-        with self.train_ds:
-            labels = self.position_index(self.train_ds.labels[:])
-            for k, (train, test) in enumerate(cv.split(self.train_ds.data, labels), 1):
-                train = list(train)
-                test = list(test)
-                self.model.fit(self.train_ds.data[train], 
-                    self.train_ds.labels[train],
-                    epochs=num_steps,
-                    batch_size=batch_size,
-                    shuffle="batch",
-                    validation_data=(self.train_ds.data[test], self.train_ds.labels[test]))
-                print("fold ", k)
-
-    def train(self, batch_size=0, num_steps=0, n_splits=None):
-        if n_splits is not None:
-            self.train_kfolds(batch_size=batch_size, num_steps=num_steps, n_splits=n_splits)
+    def output_format(self, prediction, output=None):
+        if output == 'uncertain' or output == 'n_dim':
+            return prediction
         else:
-            self.model = self.prepare_model()
-            with self.train_ds, self.validation_ds:
-                self.model.fit(self.train_ds.data, 
-                    self.train_ds.labels,
-                    epochs=num_steps,
-                    batch_size=batch_size,
-                    shuffle="batch",
-                    validation_data=(self.validation_ds.data, self.validation_ds.labels))
+            return np.argmax(prediction, axis=1)
+
+    #def train(self, ds: Data, batch_size: int = 0, num_steps: int = 0, n_splits=None, obj_fn=None,
+    #          model_params: dict = None, data_train_group="train_x", target_train_group='train_y',
+    #          data_test_group="test_x", target_test_group='test_y',
+    #          data_validation_group="validation_x", target_validation_group="validation_y"):
+    #    self.ds = ds
+    #    log.info("Training")
+    #    self.model_params = model_params
+    #    self.num_steps = num_steps
+    #    self.data_groups = {
+    #        "data_train_group": data_train_group, "target_train_group": target_train_group,
+    #        "data_test_group": data_test_group, "target_test_group": target_test_group,
+    #        "data_validation_group": data_validation_group, "target_validation_group": target_validation_group
+    #    }
+    #    self.model = self.prepare_model()
+    #    with self.ds:
+    #        self.model.fit(self.train_ds.data,
+    #            self.train_ds.labels,
+    #            epochs=num_steps,
+    #            batch_size=batch_size,
+    #            shuffle="batch",
+    #            validation_data=(self.validation_ds.data, self.validation_ds.labels))
 

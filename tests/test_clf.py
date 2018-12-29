@@ -4,6 +4,7 @@ import numpy as np
 from ml.data.ds import Data
 from ml.clf.extended.w_sklearn import RandomForest, SVC, ExtraTrees, LogisticRegression, SGDClassifier
 from ml.clf.extended.w_sklearn import AdaBoost, GradientBoost, KNN
+from ml.clf.extended.w_keras import FCNet
 from ml.data.etl import Pipeline
 from ml.utils.numeric_functions import CV
 from ml.measures import gini_normalized
@@ -300,6 +301,32 @@ class TestModelVersion(unittest.TestCase):
         classif.destroy()
         classif2.destroy()
         dataset.destroy()
+
+
+class TestKeras(unittest.TestCase):
+    def train(self, clf, model_params=None):
+        np.random.seed(0)
+        x = np.random.rand(100)
+        y = x > .5
+        dataset = Data(name="test", dataset_path="/tmp", driver=HDF5(), clean=True)
+        dataset.from_data({"x": x.reshape(-1, 1), "y": y})
+
+        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
+        with dataset:
+            stc = cv.apply(dataset)
+            ds = to_data(stc, driver=HDF5())
+            clf.train(ds, num_steps=2, data_train_group="train_x", target_train_group='train_y', batch_size=10,
+                          data_test_group="test_x", target_test_group='test_y', model_params=model_params,
+                          data_validation_group="validation_x", target_validation_group="validation_y")
+            clf.save("test", path="/tmp/", model_version="1")
+        dataset.destroy()
+        return clf
+
+    def test_predict(self):
+        clf = FCNet()
+        clf = self.train(clf, model_params=None)
+        self.assertEqual(len(clf.scores2table().measures[0]), 7)
+        clf.destroy()
 
 
 class TestWrappers(unittest.TestCase):

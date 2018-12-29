@@ -191,7 +191,8 @@ class BaseModel(Metadata, ABC):
             "num_steps": self.num_steps,
             "score": self.scores(measures=self.metrics).measures_to_dict(),
             "meta_path": self.path_metamodel_version,
-            "model_path": self.path_model_version
+            "model_path": self.path_model_version,
+            "batch_size": self.batch_size
         }
 
     def get_dataset(self):
@@ -253,6 +254,7 @@ class BaseModel(Metadata, ABC):
         self.path_model_version = metadata["train"]["model_path"]
         self.num_steps = metadata["train"]["num_steps"]
         self.base_path = metadata["model"]["base_path"]
+        self.batch_size = metadata["train"]["batch_size"]
 
     @abstractmethod
     def train(self, ds: Data, batch_size: int = 0, num_steps: int = 0, n_splits=None, obj_fn=None,
@@ -294,12 +296,14 @@ class SupervicedModel(BaseModel):
         log.info("Training")
         self.model_params = model_params
         self.num_steps = num_steps
+        self.batch_size = batch_size
         self.data_groups = {
             "data_train_group": data_train_group, "target_train_group": target_train_group,
             "data_test_group": data_test_group, "target_test_group": target_test_group,
             "data_validation_group": data_validation_group, "target_validation_group": target_validation_group
         }
-        self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, model_params=model_params)
+        self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, model_params=model_params,
+                                        batch_size=batch_size)
 
 
 class UnsupervisedModel(BaseModel):
