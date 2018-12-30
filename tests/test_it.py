@@ -6,7 +6,6 @@ import collections
 
 from ml.data.it import Iterator
 from ml.data.ds import Data
-from ml.data.drivers import HDF5
 
 
 def multi_round(matrix, *args):
@@ -412,6 +411,24 @@ class TestIterator(unittest.TestCase):
             if counter == 2:
                 break
             counter += 1
+
+    def test_shape_list(self):
+        def _it():
+            for x in range(100):
+                e = np.random.rand(3, 3)
+                yield (x, e, [1, 2])
+        it = Iterator(_it(), dtypes=[("x", np.dtype("float")), ("y", np.dtype("float")), ("z", np.dtype("int"))])
+        self.assertEqual(it.shape["x"], (np.inf, ))
+        self.assertEqual(it.shape["y"], (np.inf, 3, 3))
+        self.assertEqual(it.shape["z"], (np. inf, 2))
+
+    def test_shape_list_one_group(self):
+        def _it():
+            for x in range(100):
+                yield ([1], [2], [3])
+        it = Iterator(_it(), dtypes=[("x", np.dtype("float"))])
+        self.assertEqual(it.shape["x"], (np.inf, 3, 1))
+
 
 def chunk_sizes(seq):
     return [len(list(row)) for row in seq]

@@ -195,7 +195,7 @@ class TestLightGBM(unittest.TestCase):
 
 
 class TestWrappers(unittest.TestCase):
-    def train(self, clf, model_params=None):
+    def train(self, reg, model_params=None):
         np.random.seed(0)
         x = np.random.rand(100)
         y = x > .5
@@ -206,19 +206,19 @@ class TestWrappers(unittest.TestCase):
         with dataset:
             stc = cv.apply(dataset)
             ds = to_data(stc, driver=HDF5())
-            clf.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
+            reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                           data_test_group="test_x", target_test_group='test_y', model_params=model_params,
                           data_validation_group="validation_x", target_validation_group="validation_y")
-            clf.save("test", path="/tmp/", model_version="1")
+            reg.save("test", path="/tmp/", model_version="1")
         dataset.destroy()
-        return clf
+        return reg
 
     def test_gbr(self):
-        clf = GradientBoostingRegressor()
-        clf = self.train(clf, model_params=dict(learning_rate=0.2, random_state=3))
-        with clf.ds:
-            self.assertEqual(clf.ds.hash, "$sha1$fb894bc728ca9a70bad40b856bc8e37bf67f74b6")
-        clf.destroy()
+        reg = GradientBoostingRegressor()
+        reg = self.train(reg, model_params=dict(learning_rate=0.2, random_state=3))
+        with reg.ds:
+            self.assertEqual(reg.ds.hash, "$sha1$fb894bc728ca9a70bad40b856bc8e37bf67f74b6")
+        reg.destroy()
 
 
 if __name__ == '__main__':

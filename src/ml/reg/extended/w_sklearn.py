@@ -4,7 +4,7 @@ from sklearn.ensemble import GradientBoostingRegressor as SkGradientBoostingReg
 
 
 class RandomForestRegressor(SKLP):
-    def prepare_model(self, obj_fn=None, num_steps=0, model_params=None):
+    def prepare_model(self, obj_fn=None, num_steps: int = 0, model_params=None, batch_size: int = None):
         model = SkRandomForestReg(**model_params)
         with self.ds:
             reg_model = model.fit(self.ds[self.data_groups["data_train_group"]].to_ndarray(),
@@ -21,7 +21,7 @@ class RandomForestRegressor(SKLP):
     
 
 class GradientBoostingRegressor(SKLP):
-    def prepare_model(self, obj_fn=None, num_steps=0, model_params=None):
+    def prepare_model(self, obj_fn=None, num_steps: int = 0, model_params=None, batch_size: int = None):
         model = SkGradientBoostingReg(**model_params)
         with self.ds:
             reg_model = model.fit(self.ds[self.data_groups["data_train_group"]].to_ndarray(),

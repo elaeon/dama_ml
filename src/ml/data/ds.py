@@ -348,7 +348,7 @@ class Data(AbsDataset):
                     str_arrays.append(elem)
                 else:
                     if len(str_arrays) > 0:
-                        raise NotImplementedError("Not supported mixed content")
+                        raise NotImplementedError("Mixed content is not supported.")
             if len(str_arrays) > 0:
                 data = sum(str_arrays)
             data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")

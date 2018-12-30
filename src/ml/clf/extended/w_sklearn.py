@@ -11,7 +11,7 @@ from sklearn import svm
 
 
 class SVC(SKL):
-    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None):
+    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None, batch_size: int = None):
         model = CalibratedClassifierCV(svm.LinearSVC(**model_params), method="sigmoid")
         with self.ds:
             model_clf = model.fit(self.ds[self.data_groups["data_train_group"]].to_ndarray(),
@@ -23,7 +23,7 @@ class SVC(SKL):
 
 
 class RandomForest(SKLP):
-    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None):
+    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None, batch_size: int = None):
         if model_params is None:
             model_params = dict(n_estimators=25, min_samples_split=2)
         model = CalibratedClassifierCV(RandomForestClassifier(**model_params), method="sigmoid")
@@ -37,7 +37,7 @@ class RandomForest(SKLP):
     
 
 class ExtraTrees(SKLP):
-    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None):
+    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None, batch_size: int = None):
         model = CalibratedClassifierCV(ExtraTreesClassifier(**model_params), method="sigmoid")
         with self.ds:
             model_clf = model.fit(self.ds[self.data_groups["data_train_group"]].to_ndarray(),
@@ -49,7 +49,7 @@ class ExtraTrees(SKLP):
 
 
 class LogisticRegression(SKLP):
-    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None):
+    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None, batch_size: int = None):
         model = CalibratedClassifierCV(LReg(**model_params), method="sigmoid")
         with self.ds:
             model_clf = model.fit(self.ds[self.data_groups["data_train_group"]].to_ndarray(),
@@ -61,7 +61,7 @@ class LogisticRegression(SKLP):
 
 
 class SGDClassifier(SKLP):
-    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None):
+    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None, batch_size: int = None):
         model = CalibratedClassifierCV(SGDClassif(**model_params), method="sigmoid")
         with self.ds:
             model_clf = model.fit(self.ds[self.data_groups["data_train_group"]].to_ndarray(),
@@ -73,7 +73,7 @@ class SGDClassifier(SKLP):
 
 
 class AdaBoost(SKLP):
-    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None):
+    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None, batch_size: int = None):
 
         with self.ds:
             model = CalibratedClassifierCV(AdaBoostClassifier(**model_params), method="sigmoid")
@@ -86,7 +86,7 @@ class AdaBoost(SKLP):
 
 
 class GradientBoost(SKLP):
-    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None):
+    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None, batch_size: int = None):
         model = CalibratedClassifierCV(GradientBoostingClassifier(**model_params), method="sigmoid")
         with self.ds:
             model_clf = model.fit(self.ds[self.data_groups["data_train_group"]].to_ndarray(),
@@ -98,7 +98,7 @@ class GradientBoost(SKLP):
 
 
 class KNN(SKLP):
-    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None):
+    def prepare_model(self, obj_fn=None, num_steps=None, model_params=None, batch_size: int = None):
         model = CalibratedClassifierCV(KNeighborsClassifier(**model_params), method="sigmoid")
         with self.ds:
             model_clf = model.fit(self.ds[self.data_groups["data_train_group"]].to_ndarray(),

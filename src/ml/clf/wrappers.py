@@ -3,9 +3,9 @@ import tensorflow as tf
 from sklearn.externals import joblib
 from ml.models import MLModel, SupervicedModel
 from ml.data.it import Iterator
-from ml.data.ds import Data
 from ml import measures as metrics
 from ml.utils.logger import log_config
+from ml.measures import ListMeasure
 
 
 log = log_config(__name__)
@@ -13,11 +13,10 @@ log = log_config(__name__)
 
 class ClassifModel(SupervicedModel):
     def __init__(self, **params):
-        self.target_dim = None
         self.num_classes = None
         super(ClassifModel, self).__init__(**params)
 
-    def scores(self, measures=None, batch_size: int=2000):
+    def scores(self, measures=None, batch_size: int = 2000) -> ListMeasure:
         if measures is None or isinstance(measures, str):
             measure = metrics.MeasureBatch(name=self.model_name, batch_size=batch_size)
             measures = measure.make_metrics(measures=measures)
@@ -34,7 +33,7 @@ class ClassifModel(SupervicedModel):
 class SKL(ClassifModel):
     # (np.arange(self.num_classes) == target).astype(np.float32)
 
-    def ml_model(self, model):        
+    def ml_model(self, model) -> MLModel:
         from sklearn.externals import joblib
         return MLModel(fit_fn=model.fit,
                        predictors=model.predict,
@@ -45,7 +44,7 @@ class SKL(ClassifModel):
         model = joblib.load('{}'.format(path))
         self.model = self.ml_model(model)
 
-    def output_format(self, prediction, output=None):
+    def output_format(self, prediction, output=None) -> np.ndarray:
         if output == 'uncertain' or output == 'n_dim':
             return prediction
         else:
@@ -54,7 +53,7 @@ class SKL(ClassifModel):
 
 class SKLP(ClassifModel):
 
-    def ml_model(self, model):        
+    def ml_model(self, model) -> MLModel:
         from sklearn.externals import joblib
         return MLModel(fit_fn=model.fit,
                        predictors=model.predict_proba,
@@ -65,7 +64,7 @@ class SKLP(ClassifModel):
         model = joblib.load('{}'.format(path))
         self.model = self.ml_model(model)
 
-    def output_format(self, prediction, output=None):
+    def output_format(self, prediction, output=None) -> np.ndarray:
         if output == 'uncertain' or output == 'n_dim':
             return prediction
         else:
@@ -73,7 +72,7 @@ class SKLP(ClassifModel):
 
 
 class XGB(ClassifModel):
-    def ml_model(self, model, bst=None):
+    def ml_model(self, model, bst=None) -> MLModel:
         self.bst = bst
         return MLModel(fit_fn=model.train,
                        predictors=self.bst.predict,
@@ -92,7 +91,7 @@ class XGB(ClassifModel):
         import xgboost as xgb
         return xgb.DMatrix(data.to_ndarray())
 
-    def output_format(self, prediction, output=None):
+    def output_format(self, prediction, output=None) -> np.ndarray:
         if output == 'uncertain' or output == 'n_dim':
             return prediction
         else:
@@ -100,7 +99,7 @@ class XGB(ClassifModel):
 
 
 class LGB(ClassifModel):
-    def ml_model(self, model, bst=None):
+    def ml_model(self, model, bst=None) -> MLModel:
         self.bst = bst
         return MLModel(fit_fn=model.train,
                        predictors=self.bst.predict,
@@ -113,40 +112,40 @@ class LGB(ClassifModel):
         bst = lgb.Booster(model_file=path)
         self.model = self.ml_model(lgb, bst=bst)
 
-    def output_format(self, prediction, output=None):
+    def output_format(self, prediction, output=None) -> np.ndarray:
         if output == 'uncertain' or output == 'n_dim':
             return prediction
         else:
             return (prediction > .5).astype(int)
 
 
-class TFL(ClassifModel):
+#class TFL(ClassifModel):
 
-    def reformat_labels(self, labels):
+#    def reformat_labels(self, labels):
         # Map 0 to [1.0, 0.0, 0.0 ...], 1 to [0.0, 1.0, 0.0 ...]
-        return (np.arange(self.num_classes) == labels[:,None]).astype(np.float)
+#        return (np.arange(self.num_classes) == labels[:, None]).astype(np.float)
 
-    def load_fn(self, path):
-        model = self.prepare_model()
-        self.model = MLModel(fit_fn=model.fit, 
-                            predictors=model.predict,
-                            load_fn=self.load_fn,
-                            save_fn=model.save)
+#    def load_fn(self, path):
+#        model = self.prepare_model()
+#        self.model = MLModel(fit_fn=model.fit,
+#                             predictors=model.predict,
+#                             load_fn=self.load_fn,
+#                             save_fn=model.save)
 
-    def predict(self, data, output=None, transform=True, chunks_size=1):
-        with tf.Graph().as_default():
-            return super(TFL, self).predict(data, output=output)
+#    def predict(self, data, output=None, transform=True, chunks_size=1):
+#        with tf.Graph().as_default():
+#            return super(TFL, self).predict(data, output=output)
 
-    def train(self, batch_size=10, num_steps=1000, n_splits=None):
-        with tf.Graph().as_default():
-            self.model = self.prepare_model()
-            self.model.fit(self.dataset.train_data, 
-                self.dataset.train_labels, 
-                n_epoch=num_steps, 
-                validation_set=(self.dataset.validation_data, self.dataset.validation_labels),
-                show_metric=True, 
-                batch_size=batch_size,
-                run_id="tfl_model")
+#    def train(self, batch_size=10, num_steps=1000, n_splits=None):
+#        with tf.Graph().as_default():
+#            self.model = self.prepare_model()
+#            self.model.fit(self.dataset.train_data,
+#                self.dataset.train_labels,
+#                n_epoch=num_steps,
+#                validation_set=(self.dataset.validation_data, self.dataset.validation_labels),
+#                show_metric=True,
+#                batch_size=batch_size,
+#                run_id="tfl_model")
 
 
 class Keras(ClassifModel):
@@ -159,37 +158,15 @@ class Keras(ClassifModel):
         model = load_model(path)
         self.model = self.ml_model(model)
 
-    def ml_model(self, model):
-        return MLModel(fit_fn=model.fit, 
-                        predictors=model.predict,
-                        load_fn=self.load_fn,
-                        save_fn=model.save)
+    def ml_model(self, model) -> MLModel:
+        return MLModel(fit_fn=model.fit,
+                       predictors=model.predict,
+                       load_fn=self.load_fn,
+                       save_fn=model.save,
+                       to_json_fn=model.to_json)
 
-    def output_format(self, prediction, output=None):
+    def output_format(self, prediction, output=None) -> np.ndarray:
         if output == 'uncertain' or output == 'n_dim':
             return prediction
         else:
             return np.argmax(prediction, axis=1)
-
-    #def train(self, ds: Data, batch_size: int = 0, num_steps: int = 0, n_splits=None, obj_fn=None,
-    #          model_params: dict = None, data_train_group="train_x", target_train_group='train_y',
-    #          data_test_group="test_x", target_test_group='test_y',
-    #          data_validation_group="validation_x", target_validation_group="validation_y"):
-    #    self.ds = ds
-    #    log.info("Training")
-    #    self.model_params = model_params
-    #    self.num_steps = num_steps
-    #    self.data_groups = {
-    #        "data_train_group": data_train_group, "target_train_group": target_train_group,
-    #        "data_test_group": data_test_group, "target_test_group": target_test_group,
-    #        "data_validation_group": data_validation_group, "target_validation_group": target_validation_group
-    #    }
-    #    self.model = self.prepare_model()
-    #    with self.ds:
-    #        self.model.fit(self.train_ds.data,
-    #            self.train_ds.labels,
-    #            epochs=num_steps,
-    #            batch_size=batch_size,
-    #            shuffle="batch",
-    #            validation_data=(self.validation_ds.data, self.validation_ds.labels))
-

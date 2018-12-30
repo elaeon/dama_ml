@@ -4,7 +4,7 @@ import lightgbm as lgb
 
 class LightGBM(LGB):
 
-    def prepare_model(self, obj_fn=None, num_steps=0, model_params=None):
+    def prepare_model(self, obj_fn=None, num_steps=0, model_params=None, batch_size: int = None):
         with self.ds:
             data_train = self.ds[self.data_groups["data_train_group"]].to_ndarray()
             target_train = self.ds[self.data_groups["target_train_group"]].to_ndarray()

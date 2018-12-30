@@ -10,6 +10,8 @@ from ml.utils.numeric_functions import CV
 from ml.measures import gini_normalized
 from ml.data.drivers import HDF5
 from ml.measures import Measure
+from ml.models import Metadata
+
 
 try:
     from ml.clf.extended.w_xgboost import Xgboost
@@ -326,6 +328,8 @@ class TestKeras(unittest.TestCase):
         clf = FCNet()
         clf = self.train(clf, model_params=None)
         self.assertEqual(len(clf.scores2table().measures[0]), 7)
+        metadata = Metadata.get_metadata(clf.path_metadata, clf.path_metadata_version)
+        self.assertEqual(len(metadata["train"]["model_json"]) > 0, True)
         clf.destroy()
 
 

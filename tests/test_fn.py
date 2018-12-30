@@ -2,17 +2,6 @@ import unittest
 import numpy as np
 
 
-class TestLinearOutLayer(unittest.TestCase):
-    def setUp(self):
-        self.data = {
-            "height": [164, 150, 158, 160, 161, 160, 165, 165, 171, 172, 172, 173, 173, 175, 176, 178], 
-            "weight": [ 84,  55,  58,  60,  61,  60,  63,  62,  68,  65,  64,  62,  64,  56,  66,  70],
-            "gender": [ -1,   1,   1,   1,   1,   1,   1,   1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,   1]}
-        # -1 are outlayers
-        self.outlayers =  [ -1,   -1,  1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,  -1,   1,  -1]
-        self.contamination = .2
-
-
 class TestNumericFn(unittest.TestCase):
     def test_binary_data(self):
         from ml.utils.numeric_functions import is_binary
@@ -100,6 +89,31 @@ class TestNumericFn(unittest.TestCase):
         items = [1, False, 'a', 1.1]
         type_e = max_type(items)
         self.assertEqual(str, type_e)
+
+    def test_nested_shape(self):
+        from ml.utils.numeric_functions import nested_shape
+        x = [1, [1, 2], [[3, 4], [5, 6]]]
+        dtypes = [("a", np.dtype("int")), ("b", np.dtype("int")), ("c", np.dtype("int"))]
+        shape = nested_shape(x, dtypes)
+        self.assertEqual(shape["a"], [])
+        self.assertEqual(shape["b"], [2])
+        self.assertEqual(shape["c"], [2, 2])
+
+    def test_nested_shape_one_field(self):
+        from ml.utils.numeric_functions import nested_shape
+        x = [[1, 2], [2, 3], [1, 1]]
+        dtypes = [("a", np.dtype("int"))]
+        shape = nested_shape(x, dtypes)
+        self.assertEqual(shape["a"], [3, 2])
+
+        x = [[1, 2], [2, 3], [1, ]]
+        dtypes = [("a", np.dtype("int"))]
+        try:
+            shape = nested_shape(x, dtypes)
+        except:
+            pass
+        else:
+            self.assertEqual(1, 0)
 
 
 def count_values(data, y, v):

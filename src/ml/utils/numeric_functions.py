@@ -2,6 +2,7 @@ import numpy as np
 import heapq as hq
 from collections import defaultdict
 from sklearn.model_selection import train_test_split
+import numbers
 
 
 def pearsoncc(x, y):
@@ -267,7 +268,7 @@ def wsrj(stream, k):
 
 
 class CV(object):
-    def __init__(self, group_data, group_target, train_size: float = .7,
+    def __init__(self, group_data, group_target: str = None, train_size: float = .7,
                  valid_size: float = .1, unbalanced=None):
         self.train_size = train_size
         self.valid_size = valid_size
@@ -275,18 +276,60 @@ class CV(object):
         self.group_target = group_target
         self.group_data = group_data
 
-    def apply(self, data):
+    def apply(self, data) -> tuple:
         train_size = round(self.train_size + self.valid_size, 2)
-        x_train, x_test, y_train, y_test = train_test_split(
-            data[self.group_data], data[self.group_target], train_size=train_size, random_state=0)
-        size = len(data)
-        valid_size_index = int(round(size * self.valid_size, 0))
-        x_validation = x_train[:valid_size_index]
-        y_validation = y_train[:valid_size_index]
-        x_train = x_train[valid_size_index:]
-        y_train = y_train[valid_size_index:]
+        if self.group_target is not None:
+            x_train, x_test, y_train, y_test = train_test_split(
+                data[self.group_data], data[self.group_target], train_size=train_size, random_state=0)
+            size = len(data)
+            valid_size_index = int(round(size * self.valid_size, 0))
+            x_validation = x_train[:valid_size_index]
+            y_validation = y_train[:valid_size_index]
+            x_train = x_train[valid_size_index:]
+            y_train = y_train[valid_size_index:]
 
-        if self.unbalanced is not None:
-            return NotImplemented
+            if self.unbalanced is not None:
+                return NotImplemented
+            else:
+                return x_train, x_validation, x_test, y_train, y_validation, y_test
         else:
-            return x_train, x_validation, x_test, y_train, y_validation, y_test
+            x_train, x_test = train_test_split(data[self.group_data], train_size=train_size, random_state=0)
+            size = len(data)
+            valid_size_index = int(round(size * self.valid_size, 0))
+            x_validation = x_train[:valid_size_index]
+            x_train = x_train[valid_size_index:]
+
+            if self.unbalanced is not None:
+                return NotImplemented
+            else:
+                return x_train, x_validation, x_test
+
+
+def nested_shape(chunk, dtypes):
+    shapes = {}
+    if len(chunk) == len(dtypes):
+        for (group, _), x in zip(dtypes, chunk):
+            shapes[group] = nested_shape_aux(x)
+    else:
+        if len(dtypes) == 1:
+            shapes[dtypes[0][0]] = nested_shape_aux(chunk)
+        else:
+            raise Exception("Shae not defined")
+    return shapes
+
+
+def nested_shape_aux(x) -> list:
+    if hasattr(x, 'shape'):
+        return list(x.shape)
+    elif isinstance(x, tuple) or isinstance(x, list):
+        dim = [len(x)]
+        shapes = []
+        for e in x:
+            shapes.append(nested_shape_aux(e))
+        for ant, p in zip(shapes, shapes[1:]):
+            if ant != p:
+                raise Exception("Shape not defined {}".format(shapes))
+        dim.extend(shapes[0])
+        return dim
+    elif isinstance(x, numbers.Number) or isinstance(x, str):
+        return []

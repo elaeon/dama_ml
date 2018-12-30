@@ -1,31 +1,32 @@
-from ml.ae.wrappers import Keras
-from ml.models import MLModel
-import tensorflow as tf
+from ml.ae.wrappers import KerasAe
 from keras import regularizers
-from keras.layers import Input, Dense
+from keras.layers import Input, Dense, Activation
+from keras.models import Sequential
 from keras.models import Model
 from keras import backend as K
 from keras.layers import Lambda
 from keras.losses import binary_crossentropy
+from ml.utils.tf_functions import KLdivergence
+from ml.models import MLModel
+import numpy as np
 
 
-class PTsne(Keras):
+class PTsne(KerasAe):
     def __init__(self, perplexity=30., epsilon_std=1.0, **kwargs):
         self.perplexity = perplexity
         self.epsilon_std = epsilon_std
         super(PTsne, self).__init__(**kwargs)
 
     def custom_objects(self):
-        from ml.utils.tf_functions import KLdivergence
         return {'KLdivergence': KLdivergence}
 
-    def prepare_model(self):
-        from keras.layers import Dense, Activation
-        from keras.models import Sequential
-        from ml.utils.tf_functions import KLdivergence
+    def prepare_model(self, obj_fn=None, num_steps: int = 0, model_params=None, batch_size: int = None) -> MLModel:
+        with self.ds:
+            input_shape = self.ds[self.data_groups["data_train_group"]].shape.to_tuple()
+            validation_steps = self.ds[self.data_groups["data_validation_group"]].shape.to_tuple() / self.batch_size
 
         model = Sequential()
-        model.add(Dense(500, input_shape=(self.num_features,)))
+        model.add(Dense(500, input_shape=input_shape[1:]))
         model.add(Activation('relu'))
         model.add(Dense(500))
         model.add(Activation('relu'))
@@ -33,24 +34,12 @@ class PTsne(Keras):
         model.add(Activation('relu'))
         model.add(Dense(2))
         model.compile(optimizer='sgd', loss=KLdivergence)
-        self.model = self.default_model(model, self.load_fn)
+        model.fit_generator(x, steps_per_epoch=batch_size, epochs=num_steps, validation_data=z,
+                            validation_steps=validation_steps)
+        return self.ml_model(model)
 
-    def train(self, batch_size=258, num_steps=50, num_epochs=50):
-        from ml.utils.tf_functions import TSNe
-        import numpy as np
-        self.tsne = TSNe(batch_size=batch_size, perplexity=self.perplexity, dim=self.latent_dim)
-        with self.train_ds:
-            limit = int(round(self.train_ds.data.shape[0] * .9))
-            X = self.train_ds.data[:limit]
-            Z = self.train_ds.data[limit:]
-        x = self.tsne.calculate_P(X)
-        z = self.tsne.calculate_P(Z)
-        self.prepare_model()
-        self.model.fit(x,
-            steps_per_epoch=num_steps,#batch_size,
-            epochs=num_epochs,
-            validation_data=z,
-            nb_val_samples=num_steps)
+    def output_format(self, prediction, output=None) -> np.ndarray:
+        return NotImplemented
 
 
 def sampling(args):
@@ -70,7 +59,7 @@ def vae_loss(num_features=None, z_log_var=None, z_mean=None):
     return vae_loss
 
 
-class VAE(Keras):
+class VAE(KerasAe):
     def __init__(self, intermediate_dim=5, epsilon_std=1.0,**kwargs):
         self.intermediate_dim = intermediate_dim
         self.epsilon_std = epsilon_std
@@ -146,7 +135,7 @@ class VAE(Keras):
         return super(VAE, self).get_dataset()
 
 
-class SAE(Keras):
+class SAE(KerasAe):
     def __init__(self, epsilon_std=1.0,**kwargs):
         self.epsilon_std = epsilon_std
         super(SAE, self).__init__(**kwargs)

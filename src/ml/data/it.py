@@ -9,7 +9,7 @@ from ml.utils.seq import grouper_chunk
 from ml.utils.basic import StructArray, isnamedtupleinstance, Shape
 from ml.utils.logger import log_config
 from ml.abc.data import AbsDataset
-import numbers
+
 
 log = log_config(__name__)
 
@@ -34,7 +34,7 @@ def assign_struct_array(it, type_elem, start_i, end_i, dtype, dims):
 
 
 class BaseIterator(object):
-    def __init__(self, it, length: int = np.inf, dtypes: list = None, shape: tuple = None,
+    def __init__(self, it, length: int = np.inf, dtypes: list = None, shape=None,
                  type_elem=None, pushedback=None) -> None:
         self.data = it
         self.pushedback = [] if pushedback is None else pushedback
@@ -214,61 +214,68 @@ class Iterator(BaseIterator):
             self.shape = Shape({"c0": (0, )})
             self.dtypes = None
             self.dtype = None
-            return
+        else:
+            self.dtypes = self._define_dtypes(chunk, dtypes)
+            self.shape = self._define_shape(chunk, length)
+            self.dtype = max_dtype(self.dtypes)
+            self.pushback(chunk)
+            self.type_elem = type(chunk)
 
+    def _define_shape(self, chunk, length):
+        from ml.utils.numeric_functions import nested_shape
         try:
             shape = chunk.shape
         except AttributeError:
             if isnamedtupleinstance(chunk):
                 shape = ()
             elif hasattr(chunk, '__iter__') and not isinstance(chunk, str):
-                shape = (len(chunk),)
+                shape = Shape(nested_shape(chunk, self.dtypes))
             else:
                 shape = None
 
-        if isinstance(dtypes, list):
-            self.dtypes = self.replace_str_type_to_obj(dtypes)
-        elif isinstance(chunk, pd.DataFrame):
-            self.dtypes = []
-            for c, cdtype in zip(chunk.columns.values, chunk.dtypes.values):
-                self.dtypes.append((c, cdtype))
-        elif isinstance(chunk, np.ndarray):
-            self.dtypes = self.default_dtypes(chunk.dtype)
-        else:  # scalars
-            if type(chunk).__module__ == 'builtins':
-                if hasattr(chunk, "__iter__"):
-                    type_e = max_type(chunk)
-                    if type_e == list or type_e == tuple or type_e == str or type_e == np.ndarray:
-                        self.dtypes = self.default_dtypes(np.dtype("|O"))
-                    elif type_e == float or type_e == int:
-                        self.dtypes = self.default_dtypes(np.dtype(type_e))
-                else:
-                    if dtypes is not None:
-                        self.dtypes = dtypes
-                    else:
-                        self.dtypes = self.default_dtypes(np.dtype(type(chunk)))
-
-                    if type(chunk) == str:
-                        self.dtypes = self.default_dtypes(np.dtype("|O"))
-            else:
-                self.dtypes = self.default_dtypes(chunk.dtype)
-
-        if not isinstance(self.shape, Shape) and not isinstance(shape, Shape):
+        if isinstance(self.shape, Shape):
+            return self.shape
+        elif not isinstance(shape, Shape):
             shapes = {}
             if shape is None:
                 shape = []
             for group, _ in self.dtypes:
                 shapes[group] = tuple([length] + list(shape))
-            self.shape = self.calc_shape_stc(length, Shape(shapes))
-        elif not isinstance(self.shape, Shape) and isinstance(shape, Shape):
+            return self.calc_shape_stc(length, Shape(shapes))
+        elif isinstance(shape, Shape):
             shapes = {}
             for group, _ in self.dtypes:
                 shapes[group] = tuple([length] + list(shape[group]))
-            self.shape = self.calc_shape_stc(length, Shape(shapes))
+            return self.calc_shape_stc(length, Shape(shapes))
 
-        self.dtype = max_dtype(self.dtypes)
-        self.pushback(chunk)
-        self.type_elem = type(chunk)
+    def _define_dtypes(self, chunk, dtypes) -> list:
+        if isinstance(dtypes, list):
+            return self.replace_str_type_to_obj(dtypes)
+        elif isinstance(chunk, pd.DataFrame):
+            ndtypes = []
+            for c, cdtype in zip(chunk.columns.values, chunk.dtypes.values):
+                ndtypes.append((c, cdtype))
+            return ndtypes
+        elif isinstance(chunk, np.ndarray):
+            return self.default_dtypes(chunk.dtype)
+        else:  # scalars
+            if type(chunk).__module__ == 'builtins':
+                if hasattr(chunk, "__iter__"):
+                    type_e = max_type(chunk)
+                    if type_e == list or type_e == tuple or type_e == str or type_e == np.ndarray:
+                        return self.default_dtypes(np.dtype("|O"))
+                    elif type_e == float or type_e == int:
+                        return self.default_dtypes(np.dtype(type_e))
+                else:
+                    if dtypes is not None:
+                        return dtypes
+                    else:
+                        return self.default_dtypes(np.dtype(type(chunk)))
+
+                    if type(chunk) == str:
+                        return self.default_dtypes(np.dtype("|O"))
+            else:
+                return self.default_dtypes(chunk.dtype)
 
     @staticmethod
     def replace_str_type_to_obj(dtype) -> list:
