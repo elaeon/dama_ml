@@ -11,9 +11,9 @@ from ml.data.it import Iterator
 
 def to_data(cv, driver=None):
     x_train, x_validation, x_test = cv
-    x_train.rename_group("c0", "train_x")
-    x_test.rename_group("c0", "test_x")
-    x_validation.rename_group("c0", "validation_x")
+    x_train.rename_group("x", "train_x")
+    x_test.rename_group("x", "test_x")
+    x_validation.rename_group("x", "validation_x")
     stc = x_train + x_test + x_validation
     cv_ds = Data(name="cv", driver=driver, clean=True)
     cv_ds.from_data(stc)
@@ -27,10 +27,10 @@ class TestUnsupervicedModel(unittest.TestCase):
         x = np.sin(6 * x).reshape(-1, 1)
         dataset = Data(name="tsne", dataset_path="/tmp", driver=HDF5(), clean=True)
         tsne = TSNe(batch_size=10, perplexity=ae.perplexity, dim=2)
-        x_p = Iterator(tsne.calculate_P(x), length=100, dtypes=[("x", np.dtype(float)), ("y", np.dtype(float))])
+        x_p = Iterator(tsne.calculate_P(x), length=len(x), dtypes=[("x", np.dtype(float)), ("y", np.dtype(float))])
         dataset.from_data(x_p, batch_size=0)
 
-        cv = CV(group_data="c0", train_size=.7, valid_size=.1)
+        cv = CV(group_data="x", train_size=.7, valid_size=.1)
         with dataset:
             stc = cv.apply(dataset)
             ds = to_data(stc, driver=HDF5())

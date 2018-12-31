@@ -22,8 +22,9 @@ class PTsne(KerasAe):
 
     def prepare_model(self, obj_fn=None, num_steps: int = 0, model_params=None, batch_size: int = None) -> MLModel:
         with self.ds:
+            print(self.ds.shape)
             input_shape = self.ds[self.data_groups["data_train_group"]].shape.to_tuple()
-            validation_steps = self.ds[self.data_groups["data_validation_group"]].shape.to_tuple() / self.batch_size
+            validation_steps = len(self.ds[self.data_groups["data_validation_group"]]) / self.batch_size
 
         model = Sequential()
         model.add(Dense(500, input_shape=input_shape[1:]))

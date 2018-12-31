@@ -355,6 +355,17 @@ class TestDataset(unittest.TestCase):
         self.assertEqual((ds.to_ndarray() == values).all(), True)
         ds.destroy()
 
+    def test_array_from_multidim_it(self):
+        def _it(x):
+            for e in x:
+                yield (e, 1)
+
+        dataset = Data(name="test", dataset_path="/tmp/", driver=HDF5())
+        x = np.random.rand(100).reshape(-1, 1)
+        x_p = Iterator(_it(x), length=100, dtypes=[("x", np.dtype(float)), ("y", np.dtype(float))])
+        dataset.from_data(x_p, batch_size=0)
+        dataset.destroy()
+
 
 class TestDataZarr(unittest.TestCase):
     def test_ds(self):

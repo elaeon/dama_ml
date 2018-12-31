@@ -225,7 +225,7 @@ class Data(AbsDataset):
             for smx in tqdm(data, total=data.num_splits()):
                 end += 1
                 for i, group in enumerate(groups):
-                    self.driver["data"][group][init:end] = [smx]
+                    self.driver["data"][group][init:end] = smx[i]
                 init = end
         elif data.type_elem == pd.DataFrame or isnamedtupleinstance(data.type_elem):
             log.debug("WRITING ELEMS IN TABULAR")

@@ -9,6 +9,7 @@ from ml.utils.seq import grouper_chunk
 from ml.utils.basic import StructArray, isnamedtupleinstance, Shape
 from ml.utils.logger import log_config
 from ml.abc.data import AbsDataset
+from ml.utils.numeric_functions import nested_shape
 
 
 log = log_config(__name__)
@@ -221,8 +222,7 @@ class Iterator(BaseIterator):
             self.pushback(chunk)
             self.type_elem = type(chunk)
 
-    def _define_shape(self, chunk, length):
-        from ml.utils.numeric_functions import nested_shape
+    def _define_shape(self, chunk, length) -> Shape:
         try:
             shape = chunk.shape
         except AttributeError:
@@ -271,9 +271,6 @@ class Iterator(BaseIterator):
                         return dtypes
                     else:
                         return self.default_dtypes(np.dtype(type(chunk)))
-
-                    if type(chunk) == str:
-                        return self.default_dtypes(np.dtype("|O"))
             else:
                 return self.default_dtypes(chunk.dtype)
 
