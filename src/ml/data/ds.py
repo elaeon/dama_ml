@@ -213,7 +213,8 @@ class Data(AbsDataset):
                 if hasattr(smx, 'shape') and len(smx.shape) > 0:
                     end += smx.shape[0]
                 else:
-                    end += 1
+                    #end += 1
+                    end += data.batch_size
                 for i, group in enumerate(groups):
                     self.driver["data"][group][init:end] = smx[i]
                 init = end

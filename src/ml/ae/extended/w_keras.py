@@ -8,7 +8,18 @@ from keras.layers import Lambda
 from keras.losses import binary_crossentropy
 from ml.utils.tf_functions import KLdivergence
 from ml.models import MLModel
+from ml.data.it import Iterator
 import numpy as np
+
+
+def it2iter(it: Iterator):
+    groups = it.groups
+    for batch in it:
+        row = []
+        print(batch.shape)
+        for group in groups:
+            row.append(batch[group].to_ndarray())
+        yield row
 
 
 class PTsne(KerasAe):
@@ -22,7 +33,6 @@ class PTsne(KerasAe):
 
     def prepare_model(self, obj_fn=None, num_steps: int = 0, model_params=None, batch_size: int = None) -> MLModel:
         with self.ds:
-            print(self.ds.shape)
             input_shape = self.ds[self.data_groups["data_train_group"]].shape.to_tuple()
             validation_steps = len(self.ds[self.data_groups["data_validation_group"]]) / self.batch_size
 
@@ -35,8 +45,15 @@ class PTsne(KerasAe):
         model.add(Activation('relu'))
         model.add(Dense(2))
         model.compile(optimizer='sgd', loss=KLdivergence)
-        model.fit_generator(x, steps_per_epoch=batch_size, epochs=num_steps, validation_data=z,
-                            validation_steps=validation_steps)
+        with self.ds:
+            x_stc = self.ds[[self.data_groups["data_train_group"], self.data_groups["target_train_group"]]]
+            z_stc = self.ds[[self.data_groups["data_validation_group"], self.data_groups["target_validation_group"]]]
+            x_it = Iterator(x_stc).batchs(batch_size=1, batch_type="structured")
+            z_it = Iterator(z_stc).batchs(batch_size=1, batch_type="structured")
+            x_iter = it2iter(x_it)
+            z_iter = it2iter(z_it)
+        model.fit_generator(x_iter, steps_per_epoch=batch_size, epochs=num_steps, validation_data=z_iter,
+                            validation_steps=batch_size)
         return self.ml_model(model)
 
     def output_format(self, prediction, output=None) -> np.ndarray:

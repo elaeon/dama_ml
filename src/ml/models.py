@@ -326,16 +326,18 @@ class UnsupervisedModel(BaseModel):
         return model
 
     def train(self, ds: Data, batch_size: int = 0, num_steps: int = 0, n_splits=None, obj_fn=None,
-              model_params: dict = None, data_train_group="train_x", data_test_group="test_x",
-              data_validation_group="validation_x"):
-        log.info("Training")
+              model_params: dict = None, data_train_group="train_x", target_train_group='train_y',
+              data_test_group="test_x", target_test_group='test_y', data_validation_group="validation_x",
+              target_validation_group="validation_y"):
         self.ds = ds
+        log.info("Training")
         self.model_params = model_params
         self.num_steps = num_steps
         self.batch_size = batch_size
         self.data_groups = {
-            "data_train_group": data_train_group, "data_test_group": data_test_group,
-            "data_validation_group": data_validation_group
+            "data_train_group": data_train_group, "target_train_group": target_train_group,
+            "data_test_group": data_test_group, "target_test_group": target_test_group,
+            "data_validation_group": data_validation_group, "target_validation_group": target_validation_group
         }
-        self.model = self.prepare_model(obj_fn=None, num_steps=num_steps, model_params=model_params,
+        self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, model_params=model_params,
                                         batch_size=batch_size)

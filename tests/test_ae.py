@@ -2,22 +2,11 @@ import unittest
 import numpy as np
 from ml.data.ds import Data
 from ml.data.drivers import HDF5
-from ml.utils.numeric_functions import CV
+from ml.utils.model_selection import CV
 from ml.ae.extended.w_keras import PTsne
 from ml.models import Metadata
 from ml.utils.tf_functions import TSNe
-from ml.data.it import Iterator
-
-
-def to_data(cv, driver=None):
-    x_train, x_validation, x_test = cv
-    x_train.rename_group("x", "train_x")
-    x_test.rename_group("x", "test_x")
-    x_validation.rename_group("x", "validation_x")
-    stc = x_train + x_test + x_validation
-    cv_ds = Data(name="cv", driver=driver, clean=True)
-    cv_ds.from_data(stc)
-    return cv_ds
+from ml.data.it import BatchIterator
 
 
 class TestUnsupervicedModel(unittest.TestCase):
@@ -26,16 +15,18 @@ class TestUnsupervicedModel(unittest.TestCase):
         x = np.random.rand(100)
         x = np.sin(6 * x).reshape(-1, 1)
         dataset = Data(name="tsne", dataset_path="/tmp", driver=HDF5(), clean=True)
-        tsne = TSNe(batch_size=10, perplexity=ae.perplexity, dim=2)
-        x_p = Iterator(tsne.calculate_P(x), length=len(x), dtypes=[("x", np.dtype(float)), ("y", np.dtype(float))])
-        dataset.from_data(x_p, batch_size=0)
-
-        cv = CV(group_data="x", train_size=.7, valid_size=.1)
+        tsne = TSNe(batch_size=5, perplexity=ae.perplexity, dim=2)
+        x_p = BatchIterator.from_batchs(tsne.calculate_P(x), length=len(x), from_batch_size=tsne.batch_size,
+                                       dtypes=[("x", np.dtype(float)), ("y", np.dtype(float))])
+        dataset.from_data(x_p)
+        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         with dataset:
             stc = cv.apply(dataset)
-            ds = to_data(stc, driver=HDF5())
-            ae.train(ds, num_steps=2, data_train_group="train_x", batch_size=10, data_test_group="test_x",
-                     model_params=model_params, data_validation_group="validation_x")
+            ds = Data(name="test", dataset_path="/tmp/", driver=HDF5(), clean=True)
+            ds.from_data(stc)
+            ae.train(ds, num_steps=2, data_train_group="train_x", target_train_group='train_y', batch_size=10,
+                      data_test_group="test_x", target_test_group='test_y', model_params=model_params,
+                      data_validation_group="validation_x", target_validation_group="validation_y")
             ae.save("test", path="/tmp/", model_version="1")
         dataset.destroy()
         return ae

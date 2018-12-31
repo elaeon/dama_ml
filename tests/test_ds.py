@@ -6,7 +6,7 @@ from ml.data.ds import Data
 from ml.data.it import Iterator
 from ml.utils.basic import StructArray
 from ml.data.drivers import Zarr, HDF5
-from ml.utils.numeric_functions import CV
+from ml.utils.model_selection import CV
 from ml.utils.files import rm
 from numcodecs import GZip
 
@@ -61,13 +61,13 @@ class TestDataset(unittest.TestCase):
 
         cv = CV("x", "y", train_size=.7, valid_size=.1)
         with data:
-            x_train, x_validation, x_test, y_train, y_validation, y_test = cv.apply(data)
-            self.assertEqual(x_train.to_ndarray().shape, (7, 10))
-            self.assertEqual(x_test.to_ndarray().shape, (2, 10))
-            self.assertEqual(x_validation.to_ndarray().shape, (1, 10))
-            self.assertEqual(y_train.to_ndarray().shape, (7,))
-            self.assertEqual(y_validation.to_ndarray().shape, (1,))
-            self.assertEqual(y_test.to_ndarray().shape, (2,))
+            stc = cv.apply(data)
+            self.assertEqual(stc["train_x"].to_ndarray().shape, (7, 10))
+            self.assertEqual(stc["test_x"].to_ndarray().shape, (2, 10))
+            self.assertEqual(stc["validation_x"].to_ndarray().shape, (1, 10))
+            self.assertEqual(stc["train_y"].shape, (7,))
+            self.assertEqual(stc["validation_y"].to_ndarray().shape, (1,))
+            self.assertEqual(stc["test_y"].to_ndarray().shape, (2,))
         data.destroy()
 
     def test_only_column(self):
@@ -356,8 +356,8 @@ class TestDataset(unittest.TestCase):
         ds.destroy()
 
     def test_array_from_multidim_it(self):
-        def _it(x):
-            for e in x:
+        def _it(x_a):
+            for e in x_a:
                 yield (e, 1)
 
         dataset = Data(name="test", dataset_path="/tmp/", driver=HDF5())
@@ -365,6 +365,18 @@ class TestDataset(unittest.TestCase):
         x_p = Iterator(_it(x), length=100, dtypes=[("x", np.dtype(float)), ("y", np.dtype(float))])
         dataset.from_data(x_p, batch_size=0)
         dataset.destroy()
+
+    def test_ds_it(self):
+        x = np.random.rand(100, 1)
+        y = np.random.rand(100, 5)
+        ds = Data(name="test", dataset_path="/tmp/", clean=True)
+        ds.from_data({"x": x, "y": y})
+        with ds:
+            it = Iterator(ds).batchs(batch_size=10, batch_type="structured")
+            for batch in it:
+                self.assertEqual(batch["x"].shape.to_tuple(), (10, 1))
+                self.assertEqual(batch["y"].shape.to_tuple(), (10, 5))
+        ds.destroy()
 
 
 class TestDataZarr(unittest.TestCase):

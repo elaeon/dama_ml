@@ -320,6 +320,8 @@ class Iterator(BaseIterator):
 
 
 class BatchIterator(BaseIterator):
+    batch_type = None
+
     def __init__(self, it: Iterator, batch_size: int = 258, static: bool = False):
         super(BatchIterator, self).__init__(it, dtypes=it.dtypes, length=it.length, type_elem=it.type_elem)
         self.batch_size = batch_size
@@ -395,15 +397,6 @@ class BatchIterator(BaseIterator):
                                     batch_size=self.batch_size)
         return NotImplemented
 
-    @classmethod
-    def builder(cls, it, batch_size):
-        return cls(it, batch_size=batch_size, static=True)
-
-
-class BatchGen(BatchIterator):
-    def batch_from_it(self, batch_shape):
-        pass
-
     def run(self):
         if self.static is True:
             return self.data
@@ -411,9 +404,39 @@ class BatchGen(BatchIterator):
             batch_shape = self.batch_shape()
             return self.batch_from_it(batch_shape)
 
+    def batch_from_it(self, batch_shape):
+        for data in self.data:
+            yield data
+
+    @classmethod
+    def builder(cls, it: BaseIterator, batch_size: int):
+        return cls(it, batch_size=batch_size, static=True)
+
+    @classmethod
+    def from_batchs(cls, iterable: iter, dtypes: list=None, from_batch_size: int = 0, length: int = None):
+        it = Iterator(iterable, dtypes=dtypes)
+        length = it.length if length is None else length
+        shape_dict = {}
+        for group, shape in it.shape.items():
+            shape_dict[group] = [shape[0]] + list(shape[2:])
+        shape = Shape(shape_dict)
+        return cls.builder(BaseIterator(it, length=length, shape=shape, dtypes=dtypes), batch_size=from_batch_size)
+
+
+#class BatchGen(BatchIterator):
+#    def batch_from_it(self, batch_shape):
+#        pass
+
+#    def run(self):
+#        if self.static is True:
+#            return self.data
+#        else:
+#            batch_shape = self.batch_shape()
+#            return self.batch_from_it(batch_shape)
+
 
 class BatchSlice(BatchIterator):
-    def batch_from_it(self):
+    def batch_from_it(self, shape=None):
         init = 0
         end = self.batch_size
         while True:
@@ -426,7 +449,7 @@ class BatchSlice(BatchIterator):
                 break
 
 
-class BatchItArray(BatchGen):
+class BatchItArray(BatchIterator):
     batch_type = 'array'
 
     def batch_from_it_flat(self, shape):
@@ -457,7 +480,7 @@ class BatchItArray(BatchGen):
                 return self.batch_from_it(batch_shape)
 
 
-class BatchItStructured(BatchGen):
+class BatchItStructured(BatchIterator):
     batch_type = 'structured'
 
     def batch_from_it(self, shape):
@@ -469,7 +492,7 @@ class BatchItStructured(BatchGen):
             yield StructArray(group_array)
 
 
-class BatchItDataFrame(BatchGen):
+class BatchItDataFrame(BatchIterator):
     batch_type = 'df'
 
     @staticmethod

@@ -4,7 +4,7 @@ import pandas as pd
 import datetime
 import collections
 
-from ml.data.it import Iterator
+from ml.data.it import Iterator, BaseIterator, BatchItArray
 from ml.data.ds import Data
 
 
@@ -428,6 +428,17 @@ class TestIterator(unittest.TestCase):
                 yield ([1], [2], [3])
         it = Iterator(_it(), dtypes=[("x", np.dtype("float"))])
         self.assertEqual(it.shape["x"], (np.inf, 3, 1))
+
+    def test_batchs_to_iterator(self):
+        def _it():
+            for x in range(100):
+                e = np.random.rand(3, 3)
+                yield (e, e)
+
+        it = BatchItArray.from_batchs(_it(), length=100,
+                                      dtypes=[("x", np.dtype("float")), ("y", np.dtype("float"))], from_batch_size=3)
+        self.assertEqual(it.shape["x"], (100, 3))
+        self.assertEqual(it.shape["y"], (100, 3))
 
 
 def chunk_sizes(seq):
