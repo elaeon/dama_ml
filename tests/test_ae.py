@@ -15,16 +15,18 @@ class TestUnsupervicedModel(unittest.TestCase):
         x = np.random.rand(100)
         x = np.sin(6 * x).reshape(-1, 1)
         dataset = Data(name="tsne", dataset_path="/tmp", driver=HDF5(), clean=True)
-        tsne = TSNe(batch_size=5, perplexity=ae.perplexity, dim=2)
+        tsne = TSNe(batch_size=8, perplexity=ae.perplexity, dim=2)
         x_p = BatchIterator.from_batchs(tsne.calculate_P(x), length=len(x), from_batch_size=tsne.batch_size,
                                        dtypes=[("x", np.dtype(float)), ("y", np.dtype(float))])
+        e = next(tsne.calculate_P(x))
+        print(x_p.shape, e[0].shape, e[1].shape)
         dataset.from_data(x_p)
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         with dataset:
             stc = cv.apply(dataset)
             ds = Data(name="test", dataset_path="/tmp/", driver=HDF5(), clean=True)
             ds.from_data(stc)
-            ae.train(ds, num_steps=2, data_train_group="train_x", target_train_group='train_y', batch_size=10,
+            ae.train(ds, num_steps=2, data_train_group="train_x", target_train_group='train_y', batch_size=tsne.batch_size,
                       data_test_group="test_x", target_test_group='test_y', model_params=model_params,
                       data_validation_group="validation_x", target_validation_group="validation_y")
             ae.save("test", path="/tmp/", model_version="1")

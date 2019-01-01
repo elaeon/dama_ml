@@ -205,7 +205,7 @@ class Data(AbsDataset):
                 for group in groups:
                     self.driver["data"][group][init:end] = smx[group]
                 init = end
-        elif getattr(data, 'batch_size', 0) > 0:
+        elif getattr(data, 'batch_size', 0) > 0 and data.type_elem is not None:
             log.debug("WRITING GENERIC BATCH")
             init = 0
             end = 0
@@ -213,9 +213,20 @@ class Data(AbsDataset):
                 if hasattr(smx, 'shape') and len(smx.shape) > 0:
                     end += smx.shape[0]
                 else:
-                    #end += 1
-                    end += data.batch_size
+                    end += 1
                 for i, group in enumerate(groups):
+                    self.driver["data"][group][init:end] = smx[i]
+                init = end
+        elif getattr(data, 'batch_size', 0) > 0 and data.type_elem is None:
+            log.debug("WRITING GENERIC BATCH ARRAY")
+            init = 0
+            end = 0
+            for smx in tqdm(data, total=data.num_splits()):
+                for i, group in enumerate(groups):
+                    if hasattr(smx, 'shape') and len(smx.shape) > 0:
+                        end += smx[i].shape[0]
+                    else:
+                        end += 1
                     self.driver["data"][group][init:end] = smx[i]
                 init = end
         elif data.type_elem == tuple or data.type_elem == list or data.type_elem == np.ndarray and\

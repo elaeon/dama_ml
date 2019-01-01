@@ -13,13 +13,17 @@ import numpy as np
 
 
 def it2iter(it: Iterator):
+    from collections import deque
     groups = it.groups
-    for batch in it:
-        row = []
-        print(batch.shape)
-        for group in groups:
-            row.append(batch[group].to_ndarray())
-        yield row
+    d = deque([], maxlen=10)
+    while True:
+        for batch in it:
+            row = []
+            for group in groups:
+                row.append(batch[group].to_ndarray())
+            d.append(row)
+            yield row
+        yield d.popleft()
 
 
 class PTsne(KerasAe):
@@ -48,12 +52,14 @@ class PTsne(KerasAe):
         with self.ds:
             x_stc = self.ds[[self.data_groups["data_train_group"], self.data_groups["target_train_group"]]]
             z_stc = self.ds[[self.data_groups["data_validation_group"], self.data_groups["target_validation_group"]]]
-            x_it = Iterator(x_stc).batchs(batch_size=1, batch_type="structured")
-            z_it = Iterator(z_stc).batchs(batch_size=1, batch_type="structured")
+            x_it = Iterator(x_stc).batchs(batch_size=batch_size, batch_type="structured")
+            z_it = Iterator(z_stc).batchs(batch_size=batch_size, batch_type="structured")
             x_iter = it2iter(x_it)
             z_iter = it2iter(z_it)
-        model.fit_generator(x_iter, steps_per_epoch=batch_size, epochs=num_steps, validation_data=z_iter,
-                            validation_steps=batch_size)
+
+        print(x_it.shape)
+        model.fit_generator(x_iter, steps_per_epoch=x_it.length/batch_size/num_steps, epochs=num_steps, validation_data=z_iter,
+                            validation_steps=z_it.length/batch_size/num_steps, max_queue_size=1)
         return self.ml_model(model)
 
     def output_format(self, prediction, output=None) -> np.ndarray:
