@@ -177,11 +177,8 @@ class Data(AbsDataset):
                 self.driver["data"][group] = data[group].to_ndarray()
         elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "structured":
             log.debug("WRITING STRUCTURED BATCH")
-            end = {}
-            init = {}
-            for group in groups:
-                end[group] = 0
-                init[group] = 0
+            init = {group: 0 for group in groups}
+            end = {group: 0 for group in groups}
             for smx in tqdm(data, total=data.num_splits()):
                 for group in groups:
                     end[group] += len(smx[group])
@@ -219,16 +216,16 @@ class Data(AbsDataset):
                 init = end
         elif getattr(data, 'batch_size', 0) > 0 and data.type_elem is None:
             log.debug("WRITING GENERIC BATCH ARRAY")
-            init = 0
-            end = 0
+            init = {group: 0 for group in groups}
+            end = {group: 0 for group in groups}
             for smx in tqdm(data, total=data.num_splits()):
                 for i, group in enumerate(groups):
-                    if hasattr(smx, 'shape') and len(smx.shape) > 0:
-                        end += smx[i].shape[0]
+                    if hasattr(smx[i], 'shape') and len(smx[i].shape) > 0:
+                        end[group] += len(smx[i])
                     else:
-                        end += 1
-                    self.driver["data"][group][init:end] = smx[i]
-                init = end
+                        end[group] += 1
+                    self.driver["data"][group][init[group]:end[group]] = smx[i]
+                    init[group] = end[group]
         elif data.type_elem == tuple or data.type_elem == list or data.type_elem == np.ndarray and\
                 (data.type_elem != pd.DataFrame or not isnamedtupleinstance(data.type_elem)):
             log.debug("WRITING ELEMS IN LIST")

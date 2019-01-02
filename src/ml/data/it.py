@@ -414,25 +414,13 @@ class BatchIterator(BaseIterator):
 
     @classmethod
     def from_batchs(cls, iterable: iter, dtypes: list=None, from_batch_size: int = 0, length: int = None):
-        it = Iterator(iterable, dtypes=dtypes)
-        length = it.length if length is None else length
+        it = Iterator(iterable, dtypes=dtypes, length=length)
+        batcher_len = num_splits(length, from_batch_size)
         shape_dict = {}
         for group, shape in it.shape.items():
             shape_dict[group] = [shape[0]] + list(shape[2:])
         shape = Shape(shape_dict)
-        return cls.builder(BaseIterator(it, length=length, shape=shape, dtypes=dtypes), batch_size=from_batch_size)
-
-
-#class BatchGen(BatchIterator):
-#    def batch_from_it(self, batch_shape):
-#        pass
-
-#    def run(self):
-#        if self.static is True:
-#            return self.data
-#        else:
-#            batch_shape = self.batch_shape()
-#            return self.batch_from_it(batch_shape)
+        return cls.builder(BaseIterator(it[:batcher_len], shape=shape, dtypes=dtypes), batch_size=from_batch_size)
 
 
 class BatchSlice(BatchIterator):
