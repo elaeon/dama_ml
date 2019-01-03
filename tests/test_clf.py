@@ -6,7 +6,7 @@ from ml.clf.extended.w_sklearn import RandomForest, SVC, ExtraTrees, LogisticReg
 from ml.clf.extended.w_sklearn import AdaBoost, GradientBoost, KNN
 from ml.clf.extended.w_keras import FCNet
 from ml.data.etl import Pipeline
-from ml.utils.numeric_functions import CV
+from ml.utils.model_selection import CV
 from ml.measures import gini_normalized
 from ml.data.drivers import HDF5
 from ml.measures import Measure
@@ -36,20 +36,6 @@ def multi_int(xm):
         return xm
 
 
-def to_data(cv, driver=None):
-    x_train, x_validation, x_test, y_train, y_validation, y_test = cv
-    x_train.rename_group("x", "train_x")
-    y_train.rename_group("y", "train_y")
-    x_test.rename_group("x", "test_x")
-    y_test.rename_group("y", "test_y")
-    x_validation.rename_group("x", "validation_x")
-    y_validation.rename_group("y", "validation_y")
-    stc = x_train + y_train + x_test + y_test + x_validation + y_validation
-    cv_ds = Data(name="cv", driver=driver, clean=True)
-    cv_ds.from_data(stc)
-    return cv_ds
-
-
 class TestSKL(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
@@ -65,13 +51,13 @@ class TestSKL(unittest.TestCase):
             dataset.from_data({"x": self.X, "y": self.Y})
         classif = RandomForest()
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
-        pipeline = Pipeline(dataset)
-        a = pipeline.map(cv.apply).map(to_data, kwargs=dict(driver=HDF5()))
-        b = a.map(classif.train, kwargs=dict(num_steps=1,
-                  data_train_group="train_x", target_train_group='train_y',
-                  data_test_group="test_x", target_test_group='test_y',
-                  data_validation_group="validation_x", target_validation_group="validation_y"))
-        b.compute()
+        stc = cv.apply(dataset)
+        ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+        ds.from_data(stc)
+        classif.train(ds, num_steps=1,
+              data_train_group="train_x", target_train_group='train_y',
+              data_test_group="test_x", target_test_group='test_y',
+              data_validation_group="validation_x", target_validation_group="validation_y")
         classif.save(name="test_model", path="/tmp/", model_version="1")
         classif = RandomForest.load(model_name="test_model", path="/tmp/", model_version="1")
         self.assertEqual(classif.model_version, "1")
@@ -86,7 +72,8 @@ class TestSKL(unittest.TestCase):
         classif = RandomForest()
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         stc = cv.apply(dataset)
-        ds = to_data(stc, driver=HDF5())
+        ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+        ds.from_data(stc)
         classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                       data_test_group="test_x", target_test_group='test_y',
                       data_validation_group="validation_x", target_validation_group="validation_y")
@@ -108,7 +95,8 @@ class TestSKL(unittest.TestCase):
         classif = RandomForest()
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         stc = cv.apply(dataset)
-        ds = to_data(stc, driver=HDF5())
+        ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+        ds.from_data(stc)
         classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                       data_test_group="test_x", target_test_group='test_y',
                       data_validation_group="validation_x", target_validation_group="validation_y")
@@ -130,7 +118,8 @@ class TestSKL(unittest.TestCase):
         classif = RandomForest(metrics=metrics)
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         stc = cv.apply(dataset)
-        ds = to_data(stc, driver=HDF5())
+        ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+        ds.from_data(stc)
         classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                       data_test_group="test_x", target_test_group='test_y',
                       data_validation_group="validation_x", target_validation_group="validation_y")
@@ -150,7 +139,8 @@ class TestSKL(unittest.TestCase):
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         with dataset:
             stc = cv.apply(dataset)
-            ds = to_data(stc, driver=HDF5())
+            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+            ds.from_data(stc)
             classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                           data_test_group="test_x", target_test_group='test_y',
                           data_validation_group="validation_x", target_validation_group="validation_y")
@@ -166,7 +156,7 @@ class TestSKL(unittest.TestCase):
         ds.destroy()
 
     def test_simple_predict(self):
-        dataset = Data(name="test", dataset_path="/tmp", driver=HDF5(), clean=True)
+        dataset = Data(name="test", dataset_path="/tmp/", driver=HDF5(), clean=True)
         dataset.from_data({"x": self.X, "y": self.Y})
 
         metrics = Measure()
@@ -176,7 +166,8 @@ class TestSKL(unittest.TestCase):
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         with dataset:
             stc = cv.apply(dataset)
-            ds = to_data(stc, driver=HDF5())
+            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+            ds.from_data(stc)
             rf.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                      data_test_group="test_x", target_test_group='test_y',
                      data_validation_group="validation_x", target_validation_group="validation_y")
@@ -206,8 +197,8 @@ class TestXgboost(unittest.TestCase):
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         with self.dataset:
             stc = cv.apply(self.dataset)
-            ds = to_data(stc, driver=HDF5())
-
+            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+            ds.from_data(stc)
         params = {'max_depth': 2, 'eta': 1, 'silent': 1, 'objective': 'binary:logistic'}
         classif = Xgboost()
         classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
@@ -238,7 +229,8 @@ class TestLightGBM(unittest.TestCase):
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         with self.dataset:
             stc = cv.apply(self.dataset)
-            ds = to_data(stc, driver=HDF5())
+            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+            ds.from_data(stc)
 
         classif = LightGBM()
         self.params={'max_depth': 4, 'subsample': 0.9, 'colsample_bytree': 0.9,
@@ -283,7 +275,8 @@ class TestModelVersion(unittest.TestCase):
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         with dataset:
             stc = cv.apply(dataset)
-            ds = to_data(stc, driver=HDF5())
+            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+            ds.from_data(stc)
             classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                           data_test_group="test_x", target_test_group='test_y',
                           data_validation_group="validation_x", target_validation_group="validation_y")
@@ -316,7 +309,8 @@ class TestKeras(unittest.TestCase):
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         with dataset:
             stc = cv.apply(dataset)
-            ds = to_data(stc, driver=HDF5())
+            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+            ds.from_data(stc)
             clf.train(ds, num_steps=2, data_train_group="train_x", target_train_group='train_y', batch_size=10,
                           data_test_group="test_x", target_test_group='test_y', model_params=model_params,
                           data_validation_group="validation_x", target_validation_group="validation_y")
@@ -344,7 +338,8 @@ class TestWrappers(unittest.TestCase):
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         with dataset:
             stc = cv.apply(dataset)
-            ds = to_data(stc, driver=HDF5())
+            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+            ds.from_data(stc)
             clf.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                           data_test_group="test_x", target_test_group='test_y', model_params=model_params,
                           data_validation_group="validation_x", target_validation_group="validation_y")

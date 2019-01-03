@@ -82,7 +82,7 @@ class KerasAe(BaseAe):
     def load_fn(self, path):
         from keras.models import load_model
         model = load_model(path, custom_objects=self.custom_objects())
-        self.model = self.default_model(model, self.load_fn)
+        self.model = self.ml_model(model)
 
     #def preload_model(self):
     #    self.model = MLModel(fit_fn=None,
@@ -101,11 +101,11 @@ class KerasAe(BaseAe):
     #    self.test_ds = self.get_dataset()
     #    self.load_model()
 
-    def calculate_batch(self, X, batch_size=1):
-        while 1:
-            n = int(round(X.shape[0] / batch_size, 0))
-            for i in range(0, n):
-                yield (X[i:i + batch_size], X[i:i + batch_size])
+    #def calculate_batch(self, X, batch_size=1):
+    #    while 1:
+    #        n = int(round(X.shape[0] / batch_size, 0))
+    #        for i in range(0, n):
+    #            yield (X[i:i + batch_size], X[i:i + batch_size])
 
     #def train(self, batch_size=100, num_steps=50, num_epochs=50):
     #    with self.train_ds:

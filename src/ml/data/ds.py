@@ -14,6 +14,7 @@ from ml.abc.driver import AbsDriver
 from ml.data.drivers import Memory
 from ml.utils.logger import log_config
 from ml.utils.config import get_settings
+from ml.utils.decorators import cache, clean_cache
 
 
 settings = get_settings("ml")
@@ -34,7 +35,6 @@ class Data(AbsDataset):
         else:
             self.driver = driver
         self.group_name = group_name
-        self._it = None
 
         if dataset_path is None:
             self.dataset_path = settings["dataset_path"]
@@ -106,9 +106,15 @@ class Data(AbsDataset):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
     @property
+    @cache
     def data(self):
         groups_data = [(group, self._get_data(group)) for group in self.groups]
         return StructArray(groups_data)
+
+    @data.setter
+    @clean_cache
+    def data(self, v):
+        pass
 
     def __enter__(self):
         self.driver.enter(self.url)
@@ -116,7 +122,7 @@ class Data(AbsDataset):
 
     def __exit__(self, exc_type, value, traceback):
         self.driver.exit()
-        self._it = None
+        self.data = None
 
     def __getitem__(self, key) -> StructArray:
         return self.data[key]
@@ -130,21 +136,12 @@ class Data(AbsDataset):
         return self
 
     def __next__(self):
-        if self._it is None:
-            self._it = self.run()
-        return next(self._it)
+        return next(self.data)
 
     @property
     def basic_params(self):
         return {"name": self.name, "dataset_path": self.dataset_path,
                 "driver": self.driver.module_cls_name(), "group_name": self.group_name}
-
-    def run(self):
-        i = 0
-        data = self.data
-        while i < len(data):
-            yield data[i]
-            i += 1
 
     def _set_group_shape(self, name: str, shape: tuple, dtype: np.dtype, group: str) -> None:
         dtype = self.driver.auto_dtype(dtype)

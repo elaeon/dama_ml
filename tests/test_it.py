@@ -440,6 +440,38 @@ class TestIterator(unittest.TestCase):
         self.assertEqual(it.shape["x"], (100, 3))
         self.assertEqual(it.shape["y"], (100, 3))
 
+    def test_cycle_it(self):
+        x = range(10)
+        data = Data(name="test", dataset_path="/tmp/")
+        data.from_data(x)
+        it = Iterator(data).cycle()
+        elems = []
+        max = 20
+        for i, e in enumerate(it):
+            if i < max:
+                elems.append(e.to_ndarray()[0])
+            else:
+                break
+        self.assertEqual(elems, list(range(10))*2)
+
+    def test_cycle_it_batch(self):
+        x = range(10)
+        data = Data(name="test", dataset_path="/tmp/")
+        data.from_data(x)
+        it = Iterator(data).batchs(batch_size=3, batch_type='structured').cycle()
+        elems = []
+        max = 8
+        for i, e in enumerate(it):
+            if i < max:
+                elems.append(e.to_ndarray())
+            else:
+                break
+
+        self.assertCountEqual(elems[0], [0, 1, 2])
+        self.assertCountEqual(elems[3], [9])
+        self.assertCountEqual(elems[4], [0, 1, 2])
+        self.assertCountEqual(elems[7], [9])
+
 
 def chunk_sizes(seq):
     return [len(list(row)) for row in seq]

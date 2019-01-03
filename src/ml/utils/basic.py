@@ -65,6 +65,7 @@ class StructArray:
         try:
             elem = self[self.counter]
         except IndexError:
+            self.counter = 0
             raise StopIteration
         else:
             self.counter += 1
@@ -298,6 +299,12 @@ class Shape(object):
                 return max(values)
         else:
             return 0
+
+    def change_length(self, length) -> 'Shape':
+        shapes = OrderedDict()
+        for group, shape in self.items():
+            shapes[group] = tuple([length] + list(shape[1:]))
+        return Shape(shapes)
 
 
 def unique_dtypes(dtypes) -> np.ndarray:

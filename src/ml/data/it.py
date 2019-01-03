@@ -47,10 +47,12 @@ class BaseIterator(object):
         else:
             if isinstance(shape, Shape):
                 self.shape = self.calc_shape_stc(length, shape)
-            elif length != np.inf:
-                self.shape = (length,)
+            # elif length != np.inf:
+            #    print(shape)
+            #    self.shape = (length,)
             else:
-                self.shape = (np.inf,)
+                self.shape = None
+            #    self.shape = (np.inf,)
         self.iter_init = True
         self._it = None
 
@@ -146,13 +148,19 @@ class BaseIterator(object):
     def is_multidim(self) -> bool:
         return isinstance(self.shape, dict)
 
+    def _cycle_it(self):
+        while True:
+            for elem in self:
+                yield elem
+            self.reset_it()
+
     def __iter__(self) -> 'BaseIterator':
         return self
 
     def __next__(self):
-        if self._it is None and self.length == np.inf:
+        if self._it is None and (self.length == np.inf or self.num_splits() == 0):
             self._it = self.data
-        elif self._it is None:
+        elif self._it is None and self.num_splits() > 0:
             self._it = islice(self.data, self.num_splits() - len(self.pushedback))
 
         if len(self.pushedback) > 0:
@@ -160,44 +168,40 @@ class BaseIterator(object):
         else:
             return next(self._it)
 
+    def reset_it(self):
+        self._it = None
+
 
 class Iterator(BaseIterator):
     def __init__(self, fn_iter, dtypes: list = None, length: int = np.inf) -> None:
         super(Iterator, self).__init__(fn_iter, dtypes=dtypes, length=length)
         if isinstance(fn_iter, types.GeneratorType):
             self.data = fn_iter
-            self.is_ds = False
         elif isinstance(fn_iter, Iterator):
             pass
         elif isinstance(fn_iter, dict):
             self.data = StructArray(fn_iter.items())
             dtypes = self.data.dtypes
             length = len(self.data)
-            self.is_ds = True
         elif isinstance(fn_iter, pd.DataFrame):
             self.data = fn_iter.itertuples(index=False)
             dtypes = list(zip(fn_iter.columns.values, fn_iter.dtypes.values))
             length = fn_iter.shape[0] if length == np.inf else length
-            self.is_ds = False
         elif isinstance(fn_iter, np.ndarray):
             self.data = iter(fn_iter)
             length = fn_iter.shape[0] if length == np.inf else length
-            self.is_ds = False
         elif isinstance(fn_iter, StructArray) or isinstance(fn_iter, AbsDataset):
             self.data = fn_iter
             dtypes = fn_iter.dtypes
             length = len(fn_iter) if length == np.inf else length
-            self.is_ds = True
         else:
             self.data = iter(fn_iter)
             if hasattr(fn_iter, '__len__'):
                 length = len(fn_iter)
-            self.is_ds = False
 
         if isinstance(fn_iter, Iterator):
             self.data = fn_iter.data
             length = fn_iter.length if length == np.inf else length
-            self.is_ds = False
             self.shape = self.calc_shape_stc(length, fn_iter.shape)
             self.dtype = fn_iter.dtype
             self.type_elem = fn_iter.type_elem
@@ -292,7 +296,7 @@ class Iterator(BaseIterator):
 
     def batchs(self, batch_size: int, batch_type: str = "array") -> 'BatchIterator':
         if batch_size > 0:
-            if self.is_ds:
+            if self.type_elem == AbsDataset or self.type_elem == StructArray:
                 if batch_type == "df":
                     return BatchDataFrame(self, batch_size=batch_size)
                 elif batch_type == "array":
@@ -317,6 +321,11 @@ class Iterator(BaseIterator):
 
     def __setitem__(self, key, value):
         return NotImplemented
+
+    def cycle(self):
+        shape = self.shape.change_length(np.inf)
+        return BaseIterator(self._cycle_it(), dtypes=self.dtypes, type_elem=StructArray,
+                            pushedback=self.pushedback, shape=shape)
 
 
 class BatchIterator(BaseIterator):
@@ -381,6 +390,7 @@ class BatchIterator(BaseIterator):
     def __next__(self):
         if self._it is None:
             self._it = self.run()
+
         if len(self.pushedback) > 0:
             return self.pushedback.pop()
         else:
@@ -413,7 +423,7 @@ class BatchIterator(BaseIterator):
         return cls(it, batch_size=batch_size, static=True)
 
     @classmethod
-    def from_batchs(cls, iterable: iter, dtypes: list=None, from_batch_size: int = 0, length: int = None):
+    def from_batchs(cls, iterable: iter, dtypes: list = None, from_batch_size: int = 0, length: int = None):
         it = Iterator(iterable, dtypes=dtypes, length=length)
         batcher_len = num_splits(length, from_batch_size)
         shape_dict = {}
@@ -421,6 +431,10 @@ class BatchIterator(BaseIterator):
             shape_dict[group] = [shape[0]] + list(shape[2:])
         shape = Shape(shape_dict)
         return cls.builder(BaseIterator(it[:batcher_len], shape=shape, dtypes=dtypes), batch_size=from_batch_size)
+
+    def cycle(self):
+        return BatchIterator.from_batchs(self._cycle_it(),  dtypes=self.dtypes, from_batch_size=self.batch_size,
+                                         length=np.inf)
 
 
 class BatchSlice(BatchIterator):

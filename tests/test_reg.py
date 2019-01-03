@@ -5,26 +5,12 @@ from ml.data.ds import Data
 from ml.reg.extended.w_sklearn import RandomForestRegressor, GradientBoostingRegressor
 from ml.reg.extended.w_xgboost import Xgboost
 from ml.reg.extended.w_lgb import LightGBM
-from ml.utils.numeric_functions import CV
+from ml.utils.model_selection import CV
 from ml.data.drivers import HDF5
 
 
 def mulp(row):
     return row * 2
-
-
-def to_data(cv, driver=None):
-    x_train, x_validation, x_test, y_train, y_validation, y_test = cv
-    x_train.rename_group("x", "train_x")
-    y_train.rename_group("y", "train_y")
-    x_test.rename_group("x", "test_x")
-    y_test.rename_group("y", "test_y")
-    x_validation.rename_group("x", "validation_x")
-    y_validation.rename_group("y", "validation_y")
-    stc = x_train + y_train + x_test + y_test + x_validation + y_validation
-    cv_ds = Data(name="cv", driver=driver, clean=True)
-    cv_ds.from_data(stc)
-    return cv_ds
 
 
 class TestRegSKL(unittest.TestCase):
@@ -43,7 +29,8 @@ class TestRegSKL(unittest.TestCase):
         reg = RandomForestRegressor()
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         stc = cv.apply(dataset)
-        ds = to_data(stc, driver=HDF5())
+        ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+        ds.from_data(stc)
         model_params = dict(n_estimators=25, min_samples_split=2)
         reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                       data_test_group="test_x", target_test_group='test_y', model_params=model_params,
@@ -62,7 +49,8 @@ class TestRegSKL(unittest.TestCase):
         reg = RandomForestRegressor()
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         stc = cv.apply(dataset)
-        ds = to_data(stc, driver=HDF5())
+        ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+        ds.from_data(stc)
         model_params = dict(n_estimators=25, min_samples_split=2)
         reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                   data_test_group="test_x", target_test_group='test_y', model_params=model_params,
@@ -81,7 +69,8 @@ class TestRegSKL(unittest.TestCase):
         reg = RandomForestRegressor()
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         stc = cv.apply(dataset)
-        ds = to_data(stc, driver=HDF5())
+        ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+        ds.from_data(stc)
         model_params = dict(n_estimators=25, min_samples_split=2)
         reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                       data_test_group="test_x", target_test_group='test_y', model_params=model_params,
@@ -103,7 +92,8 @@ class TestRegSKL(unittest.TestCase):
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         with dataset:
             stc = cv.apply(dataset)
-            ds = to_data(stc, driver=HDF5())
+            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+            ds.from_data(stc)
             model_params = dict(n_estimators=25, min_samples_split=2)
             reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                           data_test_group="test_x", target_test_group='test_y', model_params=model_params,
@@ -130,7 +120,8 @@ class TestXgboost(unittest.TestCase):
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         with self.dataset:
             stc = cv.apply(self.dataset)
-            ds = to_data(stc, driver=HDF5())
+            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+            ds.from_data(stc)
 
         params = {'max_depth': 2, 'eta': 1, 'silent': 1, 'objective': 'binary:logistic'}
         reg = Xgboost()
@@ -163,7 +154,8 @@ class TestLightGBM(unittest.TestCase):
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         with self.dataset:
             stc = cv.apply(self.dataset)
-            ds = to_data(stc, driver=HDF5())
+            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+            ds.from_data(stc)
 
         reg = LightGBM()
         self.params={'max_depth': 4, 'subsample': 0.9, 'colsample_bytree': 0.9,
@@ -205,7 +197,8 @@ class TestWrappers(unittest.TestCase):
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
         with dataset:
             stc = cv.apply(dataset)
-            ds = to_data(stc, driver=HDF5())
+            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
+            ds.from_data(stc)
             reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                           data_test_group="test_x", target_test_group='test_y', model_params=model_params,
                           data_validation_group="validation_x", target_validation_group="validation_y")

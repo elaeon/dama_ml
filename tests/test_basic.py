@@ -129,9 +129,8 @@ class TestStructArray(unittest.TestCase):
     def test_index_iter(self):
         columns = [("x", np.asarray([1, 2, 3, 4, 5]))]
         str_array = StructArray(columns)
-        for e in str_array:
-            print(e.shape.to_tuple())
-            self.assertEqual(e.shape, (1,))
+        for i, e in enumerate(str_array, 1):
+            self.assertEqual(e.to_ndarray(), [i])
 
     def test_add(self):
         x = np.random.rand(10, 2)

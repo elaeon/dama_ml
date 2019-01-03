@@ -13,20 +13,15 @@ import numpy as np
 
 
 def it2iter(it: Iterator):
-    from collections import deque
     groups = it.groups
-    d = deque([], maxlen=80)
-    while True:
-        for batch in it:
-            row = []
-            for group in groups:
-                array = batch[group].to_ndarray()
-                if array.shape[1] > array.shape[0]:
-                    array = array[:, :array.shape[0]]
-                row.append(array)
-            d.append(row)
-            yield row
-        yield d.popleft()
+    for batch in it:
+        row = []
+        for group in groups:
+            array = batch[group].to_ndarray()
+            if array.shape[1] > array.shape[0]:
+                array = array[:, :array.shape[0]]
+            row.append(array)
+        yield row
 
 
 class PTsne(KerasAe):
@@ -54,13 +49,13 @@ class PTsne(KerasAe):
         with self.ds:
             x_stc = self.ds[[self.data_groups["data_train_group"], self.data_groups["target_train_group"]]]
             z_stc = self.ds[[self.data_groups["data_validation_group"], self.data_groups["target_validation_group"]]]
-            x_it = Iterator(x_stc).batchs(batch_size=batch_size, batch_type="structured")
-            z_it = Iterator(z_stc).batchs(batch_size=batch_size, batch_type="structured")
+            x_it = Iterator(x_stc).batchs(batch_size=batch_size, batch_type="structured").cycle()
+            z_it = Iterator(z_stc).batchs(batch_size=batch_size, batch_type="structured").cycle()
             x_iter = it2iter(x_it)
             z_iter = it2iter(z_it)
 
-        steps = round(x_it.length/batch_size/num_steps, 0)
-        vsteps = round(z_it.length/batch_size/num_steps, 0)
+        steps = round(len(x_stc)/batch_size/num_steps, 0)
+        vsteps = round(len(z_stc)/batch_size/num_steps, 0)
         steps = 1 if steps == 0 else steps
         vsteps = 1 if vsteps == 0 else vsteps
         model.fit_generator(x_iter, steps_per_epoch=steps, epochs=num_steps, validation_data=z_iter,
@@ -68,6 +63,7 @@ class PTsne(KerasAe):
         return self.ml_model(model)
 
     def output_format(self, prediction, output=None) -> np.ndarray:
+        print(prediction)
         return NotImplemented
 
 

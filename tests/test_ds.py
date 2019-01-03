@@ -294,7 +294,6 @@ class TestDataset(unittest.TestCase):
             it = Iterator(data).sample(5)
             self.assertEqual(it.shape.to_tuple(), (5, 2))
             for e in it:
-                print(e.to_ndarray().shape)
                 self.assertEqual(e.to_ndarray().shape, (2, ))
 
     def test_dataset_from_dict(self):
@@ -360,7 +359,7 @@ class TestDataset(unittest.TestCase):
             for e in x_a:
                 yield (e, 1)
 
-        dataset = Data(name="test", dataset_path="/tmp/", driver=HDF5())
+        dataset = Data(name="test", dataset_path="/tmp/", driver=HDF5(), clean=True)
         x = np.random.rand(100).reshape(-1, 1)
         x_p = Iterator(_it(x), length=100, dtypes=[("x", np.dtype(float)), ("y", np.dtype(float))])
         dataset.from_data(x_p, batch_size=0)
@@ -377,6 +376,20 @@ class TestDataset(unittest.TestCase):
                 self.assertEqual(batch["x"].shape.to_tuple(), (10, 1))
                 self.assertEqual(batch["y"].shape.to_tuple(), (10, 5))
         ds.destroy()
+
+    def test_index_iter(self):
+        x = np.asarray([1, 2, 3, 4, 5])
+        data = Data(name="test", dataset_path="/tmp/")
+        data.from_data(x)
+        for i, e in enumerate(data, 1):
+            self.assertEqual(e.to_ndarray(), [i])
+
+    def test_context_index(self):
+        x = np.asarray([1, 2, 3, 4, 5])
+        data = Data(name="test", dataset_path="/tmp/", driver=HDF5(), clean=True)
+        data.from_data({"x": x})
+        with data:
+            self.assertEqual(data[0].to_ndarray(), [1])
 
 
 class TestDataZarr(unittest.TestCase):
