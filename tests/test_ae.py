@@ -10,13 +10,16 @@ from ml.data.it import BatchIterator
 
 
 class TestUnsupervicedModel(unittest.TestCase):
-    def train(self, ae, model_params=None):
+    def setUp(self):
         np.random.seed(0)
         x = np.random.rand(100)
-        x = np.sin(6 * x).reshape(-1, 1)
+        self.x = np.sin(6 * x).reshape(-1, 1)
+
+    def train(self, ae, model_params=None):
         dataset = Data(name="tsne", dataset_path="/tmp", driver=HDF5(), clean=True)
-        tsne = TSNe(batch_size=12, perplexity=ae.perplexity, dim=2)
-        x_p = BatchIterator.from_batchs(tsne.calculate_P(x), length=len(x), from_batch_size=tsne.batch_size,
+        batch_size = 12
+        tsne = TSNe(batch_size=batch_size, perplexity=ae.perplexity, dim=2)
+        x_p = BatchIterator.from_batchs(tsne.calculate_P(self.x), length=len(self.x), from_batch_size=tsne.batch_size,
                                        dtypes=[("x", np.dtype(float)), ("y", np.dtype(float))])
         dataset.from_data(x_p)
         cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
@@ -34,18 +37,26 @@ class TestUnsupervicedModel(unittest.TestCase):
     def test_parametric_tsne(self):
         ae = self.train(PTsne(), model_params=None)
         metadata = Metadata.get_metadata(ae.path_metadata, ae.path_metadata_version)
-        print(metadata)
         self.assertEqual(len(metadata["train"]["model_json"]) > 0, True)
-        x = np.random.rand(100)
-        x = np.sin(6 * x).reshape(-1, 1)
         dataset = Data(name="test", dataset_path="/tmp", driver=HDF5(), clean=True)
-        dataset.from_data(x)
+        dataset.from_data(self.x)
         ae = PTsne.load(model_version="1", model_name="tsne", path="/tmp/")
-        #with dataset:
-        #    print(ae.predict(dataset))
-        #self.assertEqual(classif.predict(X[:1]).shape, (None, 2))
+        with dataset:
+            self.assertEqual(ae.predict(dataset).shape, (np.inf, 2))
         ae.destroy()
         dataset.destroy()
+
+    def test_P(self):
+        tsne = TSNe(batch_size=12, perplexity=30, dim=2)
+        x_p = BatchIterator.from_batchs(tsne.calculate_P(self.x), length=len(self.x), from_batch_size=tsne.batch_size,
+                                        dtypes=[("x", np.dtype(float)), ("y", np.dtype(float))])
+        for i, e in enumerate(x_p):
+            if i < 8:
+                self.assertEqual(e[0].shape, (12, 1))
+                self.assertEqual(e[1].shape, (12, 12))
+            else:
+                self.assertEqual(e[0].shape, (4, 1))
+                self.assertEqual(e[1].shape, (4, 12))
 
 # class TestAE(unittest.TestCase):
 #    def setUp(self):

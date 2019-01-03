@@ -157,17 +157,17 @@ class TSNe:
     #join_probabilities
     def calculate_P(self, X):
         print("Computing pairwise distances...")
-        while True:
-            n = X.shape[0]
-            for i in range(0, n, self.batch_size):
-                P_batch = self.x2p(X[i:i + self.batch_size])
-                P_batch[np.isnan(P_batch)] = 0
-                P_batch = (P_batch + P_batch.T) / 2.
-                P_batch = P_batch / P_batch.sum()
-                P_batch = np.maximum(P_batch, 1e-12)
-                if P_batch.shape[0] < self.batch_size:
-                    P = np.zeros([P_batch.shape[0], self.batch_size])
-                    P[:, :P_batch.shape[1]] = P_batch
-                    yield (X[i:i + self.batch_size], P)
-                else:
-                    yield (X[i:i + self.batch_size], P_batch)
+        n = X.shape[0]
+        for i in range(0, n, self.batch_size):
+            X_batch = X[i:i + self.batch_size]
+            P_batch = self.x2p(X_batch)
+            P_batch[np.isnan(P_batch)] = 0
+            P_batch = (P_batch + P_batch.T) / 2.
+            P_batch = P_batch / P_batch.sum()
+            P_batch = np.maximum(P_batch, 1e-12)
+            if P_batch.shape[0] < self.batch_size:
+                P = np.zeros([P_batch.shape[0], self.batch_size])
+                P[:, :P_batch.shape[1]] = P_batch
+                yield (X_batch, P)
+            else:
+                yield (X_batch, P_batch)

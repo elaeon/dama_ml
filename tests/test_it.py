@@ -4,12 +4,8 @@ import pandas as pd
 import datetime
 import collections
 
-from ml.data.it import Iterator, BaseIterator, BatchItArray
+from ml.data.it import Iterator, BatchItArray
 from ml.data.ds import Data
-
-
-def multi_round(matrix, *args):
-    return np.asarray([round(x, *args) for x in matrix])
 
 
 def stream():
@@ -446,9 +442,9 @@ class TestIterator(unittest.TestCase):
         data.from_data(x)
         it = Iterator(data).cycle()
         elems = []
-        max = 20
+        max_length = 20
         for i, e in enumerate(it):
-            if i < max:
+            if i < max_length:
                 elems.append(e.to_ndarray()[0])
             else:
                 break
@@ -460,9 +456,9 @@ class TestIterator(unittest.TestCase):
         data.from_data(x)
         it = Iterator(data).batchs(batch_size=3, batch_type='structured').cycle()
         elems = []
-        max = 8
+        max_length = 8
         for i, e in enumerate(it):
-            if i < max:
+            if i < max_length:
                 elems.append(e.to_ndarray())
             else:
                 break
@@ -471,6 +467,20 @@ class TestIterator(unittest.TestCase):
         self.assertCountEqual(elems[3], [9])
         self.assertCountEqual(elems[4], [0, 1, 2])
         self.assertCountEqual(elems[7], [9])
+
+    def test_it2iter(self):
+        data = Data(name="test", dataset_path="/tmp/")
+        x = np.random.rand(10)
+        y = np.random.rand(10)
+        z = np.random.rand(10)
+        data.from_data({"x": x, "y": y, "z": z})
+        with data:
+            it = Iterator(data).batchs(batch_size=3, batch_type="structured").cycle().to_iter()
+            for x, y, z in it:
+                self.assertEqual(x.to_ndarray().shape, (3, ))
+                self.assertEqual(y.to_ndarray().shape, (3, ))
+                self.assertEqual(z.to_ndarray().shape, (3, ))
+                break
 
 
 def chunk_sizes(seq):

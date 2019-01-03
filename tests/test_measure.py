@@ -3,7 +3,7 @@ import numpy as np
 
 from ml.measures import ListMeasure, Measure, MeasureBatch
 from ml.measures import accuracy, precision, f1, logloss
-from ml.utils.numeric_functions import gini_normalized
+from ml.measures import gini_normalized
 from ml.data.it import Iterator
 
 

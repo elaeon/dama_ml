@@ -171,6 +171,14 @@ class BaseIterator(object):
     def reset_it(self):
         self._it = None
 
+    def to_iter(self):
+        groups = self.groups
+        for batch in self:
+            row = []
+            for group in groups:
+                row.append(batch[group])
+            yield row
+
 
 class Iterator(BaseIterator):
     def __init__(self, fn_iter, dtypes: list = None, length: int = np.inf) -> None:

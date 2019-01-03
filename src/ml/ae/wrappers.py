@@ -1,8 +1,5 @@
 from ml.utils.config import get_settings
 from ml.models import MLModel, UnsupervisedModel
-from ml.data.ds import Data
-from ml.data.it import Iterator
-from ml.measures import ListMeasure
 from ml.utils.logger import log_config
 from keras import backend
 
@@ -43,9 +40,6 @@ class BaseAe(UnsupervisedModel):
     #        train_ds = dataset
 
     #    return train_ds, train_ds
-        
-    def scores(self, measures=None, batch_size: int = 258) -> ListMeasure:
-        return ListMeasure()
 
     #def encode(self, data, transform=True, chunks_size=258):
     #    def fn(x, t=True):

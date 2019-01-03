@@ -11,9 +11,9 @@ from ml.data.etl import Pipeline
 class TestMsssiM(unittest.TestCase):
     def setUp(self):
         base_file = os.path.dirname(os.path.abspath(__file__))
-        self.img1 = os.path.join(base_file, "../examples/Pictures/testPattern.png")
-        self.img2 = os.path.join(base_file, "../examples/Pictures/testPattern.png") 
-        self.img3 = os.path.join(base_file, "../examples/Pictures/testPattern2.png")
+        self.img1 = os.path.join(base_file, "../data/imgs/testPattern.png")
+        self.img2 = os.path.join(base_file, "../data/imgs/testPattern.png")
+        self.img3 = os.path.join(base_file, "../data/imgs/testPattern2.png")
 
     def test_same_img(self):
         from skimage import io, img_as_float

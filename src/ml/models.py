@@ -153,7 +153,7 @@ class BaseModel(Metadata, ABC):
         super(BaseModel, self).__init__()
 
     @abstractmethod
-    def scores(self, measures=None, chunks_size=2000):
+    def scores(self, measures=None, batch_size=2000):
         return NotImplemented
 
     @classmethod
@@ -341,3 +341,9 @@ class UnsupervisedModel(BaseModel):
         }
         self.model = self.prepare_model(obj_fn=obj_fn, num_steps=num_steps, model_params=model_params,
                                         batch_size=batch_size)
+
+    def scores(self, measures=None, batch_size: int = 258) -> ListMeasure:
+        return ListMeasure()
+
+    def output_format(self, prediction, output=None):
+        return prediction
