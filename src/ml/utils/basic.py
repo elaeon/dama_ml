@@ -2,6 +2,7 @@ import hashlib
 import numpy as np
 import pandas as pd
 import xarray as xr
+import dask.array as da
 import numbers
 
 from collections import OrderedDict
@@ -10,7 +11,7 @@ from .numeric_functions import max_dtype
 
 
 class Hash:
-    def __init__(self, hash_fn: str='sha1'):
+    def __init__(self, hash_fn: str = 'sha1'):
         self.hash_fn = hash_fn
         self.hash = getattr(hashlib, hash_fn)()
 
@@ -48,7 +49,7 @@ class StructArray:
                 columns = [(self.labels_data[i][0], self.labels_data[i][1]) for i in key]
             return self.convert_from_columns(columns, 0, len(self))
         elif isinstance(key, np.ndarray) and key.dtype == np.dtype('int'):
-            return self.convert_from_array(self.labels_data, key)
+            return StructArray.convert_from_array(self.labels_data, key)
         else:
             return self.convert_from_index(key)
 
@@ -141,7 +142,7 @@ class StructArray:
                 dtypes.append((col_name, np.dtype(type(array))))
         return dtypes
 
-    def convert(self, labels_data, start_i, end_i):
+    def convert(self, labels_data, start_i, end_i) -> 'StructArray':
         if start_i is None:
             start_i = 0
 
@@ -151,18 +152,19 @@ class StructArray:
         sub_labels_data = [(group, array[start_i:end_i]) for group, array in labels_data]
         return StructArray(sub_labels_data)
 
-    def convert_from_array(self, labels_data, index_array):
+    @staticmethod
+    def convert_from_array(labels_data, index_array) -> 'StructArray':
         sub_labels_data = [(label, array[index_array]) for label, array in labels_data]
         return StructArray(sub_labels_data)
 
-    def convert_from_index(self, index: int):
+    def convert_from_index(self, index: int) -> 'StructArray':
         sub_labels_data = []
         for group, array in self.labels_data:
             sub_labels_data.append((group, array[index]))
         return StructArray(sub_labels_data)
 
     @staticmethod
-    def convert_from_columns(labels_data: list, start_i: int, end_i: int):
+    def convert_from_columns(labels_data: list, start_i: int, end_i: int) -> 'StructArray':
         sub_labels_data = []
         for label, array in labels_data:
             try:
@@ -181,7 +183,7 @@ class StructArray:
             stc_arr[col_name] = array[start_i:end_i]
         return stc_arr
 
-    def to_df(self, init_i: int=0, end_i=None) -> pd.DataFrame:
+    def to_df(self, init_i: int = 0, end_i: int = None) -> pd.DataFrame:
         data = StructArray._array_builder(self.struct_shape, self.dtypes, self.labels_data, 0, len(self))
         if end_i is None:
             end_i = len(self)
@@ -195,7 +197,7 @@ class StructArray:
         else:
             return pd.DataFrame(data, index=np.arange(init_i, end_i), columns=self.groups)
 
-    def to_ndarray(self, dtype: list=None) -> np.ndarray:
+    def to_ndarray(self, dtype: list = None) -> np.ndarray:
         if dtype is None:
             dtype = self.dtype
         if not self.is_multidim():
@@ -262,7 +264,8 @@ class Shape(object):
     def values(self):
         return self._shape.values()
 
-    def get_dim_shape(self, dim, shapes):
+    @staticmethod
+    def get_dim_shape(dim, shapes) -> list:
         values = []
         for shape in shapes:
             try:
@@ -271,16 +274,16 @@ class Shape(object):
                 pass
         return values
 
-    def to_tuple(self):
+    def to_tuple(self) -> tuple:
         # if we have different lengths return dict of shapes
         shapes = list(self._shape.values())
         if len(shapes) == 0:
-            return (0,)
+            return tuple([0])
 
         dim = 0
         nshape = []
         while dim < len(max(shapes)):
-            nshape.append(max(self.get_dim_shape(dim, shapes)))
+            nshape.append(max(Shape.get_dim_shape(dim, shapes)))
             dim += 1
         num_groups = len(self._shape)
         if num_groups > 1:
@@ -290,7 +293,7 @@ class Shape(object):
         return tuple(nshape)
 
     @property
-    def max_length(self):
+    def max_length(self) -> int:
         if len(self._shape) > 0:
             values = [a[0] for a in self._shape.values() if len(a) > 0]
             if len(values) == 0:
@@ -305,6 +308,22 @@ class Shape(object):
         for group, shape in self.items():
             shapes[group] = tuple([length] + list(shape[1:]))
         return Shape(shapes)
+
+
+class Array(da.Array):
+    @property
+    def shape(self) -> Shape:
+        tuple_shape = super(Array, self).shape
+        shape = Shape({"c0": tuple_shape})
+        return shape
+
+    @property
+    def dtypes(self) -> list:
+        return [("c0", self.dtype)]
+
+    @staticmethod
+    def from_da(array):
+        return Array(array.dask, chunks=array.chunks, dtype=array.dtype, name=array.name)
 
 
 class Login(object):

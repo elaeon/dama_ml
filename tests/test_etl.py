@@ -7,6 +7,12 @@ import os
 from ml.data.it import Iterator
 from ml.data.etl import Pipeline
 from ml.utils.files import rm
+from ml.data.ds import Data
+from ml.data.drivers import Zarr, HDF5
+
+# from dask import get # single thread
+# from dask.multiprocessing import get
+# from dask.threaded import get
 
 
 def str_it(it):
@@ -208,20 +214,19 @@ class TestETL(unittest.TestCase):
         pipeline_cl = Pipeline.load(json_stc, os.path.dirname(__file__))
         self.assertEqual(pipeline.compute()[0], pipeline_cl.compute()[0])
 
-    def test_darray(self):
-        import dask.array as da
-        from ml.data.ds import Data
-        from dask import get # single thread
-        #from dask.multiprocessing import get
-        #from dask.threaded import get
-        array = da.from_array(np.random.rand(10), chunks=(4))
-        #print(list(array.dask.items()))
-        #pipeline = Pipeline(array)
-        #a = pipeline.map(inc)
-        #b = a.map(inc)
-        #g = pipeline.to_dask_graph()
-        print(array.dask)
-        #print(pipeline.compute(scheduler=get)[0].compute())
-        with Data(name="test") as ds:
-            array.store(ds)
-        #print(ds.to_ndarray())
+    def test_store(self):
+        x = np.asarray(range(10))
+        array = da.from_array(x, chunks=(2,))
+        array = array + 1
+        ds = Data(name="test", dataset_path="/tmp/", driver=Zarr())
+        ds.from_data(array)
+        with ds:
+            self.assertEqual((ds[:5].to_ndarray() == (x[:5] + 1)).all(), True)
+        ds.destroy()
+
+    def test_pipeline_store(self):
+        data = Data(name="test_store_pipeline", dataset_path="/tmp/")
+        pipeline = Pipeline(np.asarray([1, 2, 3, 4, 5]))
+        a = pipeline.map(inc)
+        print(a.compute())
+        data.destroy()

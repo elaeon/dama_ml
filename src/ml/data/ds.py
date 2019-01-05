@@ -4,12 +4,13 @@ import json
 import numpy as np
 import pandas as pd
 import xarray as xr
+import dask.array as da
 
 from tqdm import tqdm
 from ml.abc.data import AbsDataset
-from ml.data.it import Iterator, BaseIterator
+from ml.data.it import Iterator, BaseIterator, BatchIterator
 from ml.utils.files import build_path
-from ml.utils.basic import Hash, StructArray, isnamedtupleinstance
+from ml.utils.basic import Hash, StructArray, isnamedtupleinstance, Array
 from ml.abc.driver import AbsDriver
 from ml.data.drivers import Memory
 from ml.utils.logger import log_config
@@ -128,9 +129,9 @@ class Data(AbsDataset):
         return self.data[key]
 
     def __setitem__(self, key, value):
-        # self.data[key] = value
         print(key, value)
-        return NotImplemented
+        for group in self.groups:
+            self.driver["data"][group][key] = value
 
     def __iter__(self):
         return self
@@ -143,10 +144,10 @@ class Data(AbsDataset):
         return {"name": self.name, "dataset_path": self.dataset_path,
                 "driver": self.driver.module_cls_name(), "group_name": self.group_name}
 
-    def _set_group_shape(self, name: str, shape: tuple, dtype: np.dtype, group: str) -> None:
+    def _set_group_shape(self, name: str, shape: tuple, dtype: np.dtype, level: str) -> None:
         dtype = self.driver.auto_dtype(dtype)
-        self.driver.require_group(group)
-        self.driver.require_dataset(group, name, shape, dtype=dtype)
+        self.driver.require_group(level)
+        self.driver.require_dataset(level, name, shape, dtype=dtype)
 
     def _get_data(self, group):
         return self.driver["data"][group]
@@ -167,12 +168,14 @@ class Data(AbsDataset):
             log.debug("Error opening {} in file {}".format(name, self.url))
             return None
 
-    def batchs_writer(self, groups, data):
+    def batchs_writer(self, data):
+        groups = self.groups
         log.info("Writing with batch size {}".format(getattr(data, 'batch_size', 0)))
-        if isinstance(data, StructArray):
-            for group in data.groups:
-                self.driver["data"][group] = data[group].to_ndarray()
-        elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "structured":
+        #if isinstance(data, StructArray):
+        #    raise Exception
+        #    for group in data.groups:
+        #        self.driver["data"][group] = data[group].to_ndarray()
+        if getattr(data, 'batch_size', 0) > 0 and data.batch_type == "structured":
             log.debug("WRITING STRUCTURED BATCH")
             init = {group: 0 for group in groups}
             end = {group: 0 for group in groups}
@@ -291,11 +294,10 @@ class Data(AbsDataset):
 
     @groups.setter
     def groups(self, value) -> None:
-        with self:
-            if len(value) == len(self.dtypes):
-                dtypes = [(col, dtypes[1]) for col, dtypes in zip(value, self.dtypes)]
-            else:
-                raise Exception
+        if len(value) == len(self.dtypes):
+            dtypes = [(col, dtypes[1]) for col, dtypes in zip(value, self.dtypes)]
+        else:
+            raise Exception
         self.dtypes = dtypes
 
     @property
@@ -309,7 +311,7 @@ class Data(AbsDataset):
     def dtypes(self, value):
         if value is not None:
             with self:
-                self._set_group_shape("dtypes", (len(value), 2), np.dtype('object'), group="meta")
+                self._set_group_shape("dtypes", (len(value), 2), np.dtype('object'), level="meta")
                 for i, (group, dtype) in enumerate(value):
                     self.driver["meta"]["dtypes"][i] = (group, dtype.str)
 
@@ -341,8 +343,8 @@ class Data(AbsDataset):
         """
         build a datalabel dataset from data and labels
         """
-        if isinstance(data, AbsDataset):
-            print("ok")
+        if isinstance(data, da.Array):
+            data = Array.from_da(data)
         elif isinstance(data, StructArray):
             data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
         elif isinstance(data, Iterator):
@@ -362,16 +364,20 @@ class Data(AbsDataset):
             data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
         self.dtypes = data.dtypes
         with self:
-            groups = []
-            for group, dtype in self.dtypes:
-                self._set_group_shape(group, data.shape[group], dtype, group="data")
-                groups.append(group)
-            self.batchs_writer(groups, data)
+            self._set_groups_shapes(data.shape)
+            if isinstance(data, BatchIterator) or isinstance(data, Iterator):
+                self.batchs_writer(data)
+            else:
+                data.store(self)
             if with_hash is not None:
                 c_hash = self.calc_hash(with_hash=with_hash)
             else:
                 c_hash = None
         self.hash = c_hash
+
+    def _set_groups_shapes(self, shapes):
+        for group, dtype in self.dtypes:
+            self._set_group_shape(group, shapes[group], dtype, level="data")
 
     def to_df(self) -> pd.DataFrame:
         return self.data.to_df()
