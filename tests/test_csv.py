@@ -1,9 +1,7 @@
 import unittest
-import numpy as np
 
 from ml.data.csv import CSVDataset, ZIPFile, File, get_compressed_file_manager_ext
 from ml.data.csv import DaskEngine
-from ml.data.it import Iterator
 
 
 class TestCSVZip(unittest.TestCase):

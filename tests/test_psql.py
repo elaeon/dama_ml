@@ -1,11 +1,10 @@
 import unittest
 import numpy as np
-import pandas as pd
 import psycopg2
 
-from ml.data.db import SQL
+from ml.utils.basic import Login
 from ml.data.it import Iterator
-from ml import fmtypes
+from ml.data.db import Schema
 
 
 def get_column(data, column_index):
@@ -17,7 +16,34 @@ def get_column(data, column_index):
 
 class TestSQL(unittest.TestCase):
     def setUp(self):
-        self.data = np.asarray([
+        self.login = Login(username="alejandro", resource="ml")
+
+    def tearDown(self):
+        pass
+
+    def test_schema(self):
+        try:
+            with Schema(self.login) as schema:
+                schema.build("test_schema_db", [("c0", np.dtype("O"))])
+                self.assertEqual(schema.exists("test_schema_db"), True)
+                schema.destroy("test_schema_db")
+                self.assertEqual(schema.exists("test_schema_db"), False)
+        except psycopg2.OperationalError:
+            pass
+
+    def test_schema_info(self):
+        dtypes = [("x0", np.dtype(object)), ("x1", np.dtype(bool)), ("x2", np.dtype(int)),
+                  ("x3", np.dtype(float)), ("x4", np.dtype("datetime64[ns]"))]
+        try:
+            with Schema(self.login) as schema:
+                schema.build("test_schema_db", dtypes)
+                self.assertEqual(dtypes, schema.info("test_schema_db"))
+                schema.destroy("test_schema_db")
+        except psycopg2.OperationalError:
+            pass
+
+    def test_insert(self):
+        data = np.asarray([
             ["a", 1, 0.1],
             ["b", 2, 0.2],
             ["c", 3, 0.3],
@@ -30,122 +56,31 @@ class TestSQL(unittest.TestCase):
             ["j", 10, 1],
             ["k", 11, 1.1],
             ["l", 12, 1.2],
-        ], dtype="|O")
+        ], dtype="O")
+        dtypes = [("x0", np.dtype(object)), ("x1", np.dtype(int)), ("x2", np.dtype(float))]
         try:
-            with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                sql.build_schema(columns=[("X0", "text"), ("X1", "int"),
-                                          ("X2", "float")], indexes=["X1"])
-                sql.from_data(self.data)
+            with Schema(self.login) as schema:
+                schema.build("test_schema_db", dtypes)
+                schema.insert("test_schema_db", Iterator(data).batchs(batch_size=10, batch_type="array"))
+                schema.destroy("test_schema_db")
         except psycopg2.OperationalError:
             pass
 
-    def tearDown(self):
+    def test_table(self):
+        data = np.random.rand(10, 2)
+        dtypes = [("x0", np.dtype(object)), ("x1", np.dtype(object))]
         try:
-            with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                sql.destroy()
+            with Schema(self.login) as schema:
+                schema.build("test_schema_db", dtypes)
+                schema.insert("test_schema_db", Iterator(data).batchs(batch_size=10, batch_type="array"))
+                self.assertEqual(schema["test_schema_db"].shape, (10, 2))
+                self.assertEqual(schema["test_schema_db"].last_id(), 10)
+                schema.destroy("test_schema_db")
         except psycopg2.OperationalError:
             pass
 
-    def test_index(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                self.assertEqual((sql[["x0", "x1"]].to_ndarray() == self.data[:, :2]).all(), True)
-                self.assertEqual((sql[3:8].to_ndarray() == self.data[3:8]).all(), True)
-                self.assertEqual((sql[3:].to_ndarray() == self.data[3:]).all(), True)
-                self.assertEqual((sql[1].to_ndarray() == self.data[1]).all(), True)
-                self.assertEqual((sql[5].to_ndarray() == self.data[5]).all(), True)
-                self.assertEqual((sql[:10].to_ndarray() == self.data[:10]).all(), True)
-                self.assertEqual((sql[["x1", "x2"]][:5].to_ndarray() == self.data[:5, 1:]).all(), True)
-        except psycopg2.OperationalError:
-            pass
-
-    def test_to_df(self):
-        try:
-            df = pd.DataFrame(self.data, columns=["x0", "x1", "x2"])
-            with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                self.assertEqual((sql["x0"].to_df().values.reshape(-1) == df["x0"].values).all(), True)
-        except psycopg2.OperationalError:
-            pass
-
-    def test_batchs(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                self.assertEqual((sql[2:6].to_ndarray() == self.data[2:6]).all(), True)
-        except psycopg2.OperationalError:
-            pass
-
-    def test_dtypes(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                dtypes = dict(sql.dtypes)
-                self.assertEqual(list(dtypes.keys()), ['x0', 'x1', 'x2'])
-                self.assertEqual(list(dtypes.values()), ['|O', 'int', 'float'])
-        except psycopg2.OperationalError:
-            pass
-
-    def test_shape(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                self.assertEqual(sql.shape, (12, 3))
-
-            with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                self.assertEqual(sql[3:].shape, (9, 3))
-        except psycopg2.OperationalError:
-            pass
-
-    def test_update(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                sql.update(3, ("0", 0, 0))
-                self.assertEqual((sql[3].to_ndarray()[0][0] == "0"), True)
-                self.assertEqual((sql[3].to_ndarray()[0][1] == 0), True)
-                self.assertEqual((sql[3].to_ndarray()[0][2] == 0), True)
-        except psycopg2.OperationalError:
-            pass
-
-    def test_insert_update_by_index(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                sql[12] = ["0", 0, 0]
-                self.assertEqual((sql[12].to_ndarray()[0][0] == "0"), True)
-                self.assertEqual((sql[12].to_ndarray()[0][1] == 0), True)
-                self.assertEqual((sql[12].to_ndarray()[0][2] == 0), True)
-                values = [["k", 11, 1.1], ["l", 12, 1.2], ["m", 13, 1.3]]
-                sql[10:] = values
-                sql_values = sql[10:].to_ndarray()
-                self.assertCountEqual(sql_values[0], values[0])
-                self.assertCountEqual(sql_values[1], values[1])
-                self.assertCountEqual(sql_values[2], values[2])
-
-                values = [["A", 1, 1], ["B", 2, 2], ["C", 3, 3]]
-                sql[:3] = values
-                sql_values = sql[:3].to_ndarray()
-                self.assertCountEqual(sql_values[0], values[0])
-                self.assertCountEqual(sql_values[1], values[1])
-                self.assertCountEqual(sql_values[2], values[2])
-
-                values = [["M", 13, 13], ["N", 14, 1.4], ["O", 15, 1.5]]
-                sql[12:14] = values
-                sql_values = sql[12:15].to_ndarray()
-                self.assertCountEqual(sql_values[0], values[0])
-                self.assertCountEqual(sql_values[1], values[1])
-                self.assertCountEqual(sql_values[2], values[2])
-        except psycopg2.OperationalError:
-            pass
-
-    def test_sample(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test") as sql:
-                it = Iterator(sql[["x0", "x2"]]).sample(5)
-                for e in it:
-                    self.assertEqual(e.to_ndarray().shape, (1, 2))
-        except psycopg2.OperationalError:
-            pass
-
-
-class TestSQLDateTime(unittest.TestCase):
-    def setUp(self):
-        self.data = [
+    def test_datetime(self):
+        data = [
             ["a", "2018-01-01 08:31:28"],
             ["b", "2018-01-01 09:31:28"],
             ["c", "2018-01-01 10:31:28"],
@@ -155,25 +90,13 @@ class TestSQLDateTime(unittest.TestCase):
             ["g", "2018-01-01 14:31:28"],
             ["h", "2018-01-01 15:31:28"]
         ]
+        dtypes = [("x0", np.dtype(object)), ("x1", np.dtype("datetime64[ns]"))]
         try:
-            with SQL(username="alejandro", db_name="ml", table_name="test_dt") as sql:
-                sql.build_schema(columns=[("A", "text"), ("B", "datetime")])
-                sql.from_data(self.data)
-        except psycopg2.OperationalError:
-            pass
-
-    def tearDown(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test_dt") as sql:
-                sql.destroy()
-        except psycopg2.OperationalError:
-            pass
-
-    def test_data_df(self):
-        try:
-            with SQL(username="alejandro", db_name="ml", table_name="test_dt") as sql:
-                df = sql["b"]
-                self.assertEqual(str(df.dtypes[0][1]), "datetime64[ns]")
+            with Schema(self.login) as schema:
+                schema.build("test_schema_db", dtypes)
+                schema.insert("test_schema_db", Iterator(data).batchs(batch_size=10, batch_type="array"))
+                self.assertEqual(schema["test_schema_db"].shape, (8, 2))
+                schema.destroy("test_schema_db")
         except psycopg2.OperationalError:
             pass
 

@@ -10,7 +10,7 @@ class AbsDriver(ABC):
     persistent = None
     ext = None
 
-    def __init__(self, compressor: Codec = None):
+    def __init__(self, compressor: Codec = None, login = None):
         self.f = None
         self.compressor = compressor
         if compressor is not None:
@@ -21,6 +21,7 @@ class AbsDriver(ABC):
 
         self.mode = 'a'
         self.attrs = None
+        self.login = login
         log.debug("Driver: {}, mode: {}, compressor: {}".format(self.__class__.__name__,
                                                                 self.mode, self.compressor))
 

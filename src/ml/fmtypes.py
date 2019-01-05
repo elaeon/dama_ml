@@ -11,10 +11,10 @@ TEXT = Fmtype(name="text", dtype=dtype(object), db_type="TEXT")
 DATETIME = Fmtype(name="datetime", dtype=dtype("datetime64[ns]"), db_type="TIMESTAMP")
 
 fmtypes_map = {
-    BOOLEAN.name: BOOLEAN,
-    NANBOOLEAN.name: NANBOOLEAN,
-    ORDINAL.name: ORDINAL,
-    DENSE.name: DENSE,
-    TEXT.name: TEXT,
-    DATETIME.name: DATETIME
+    BOOLEAN.dtype: BOOLEAN,
+    NANBOOLEAN.dtype: NANBOOLEAN,
+    ORDINAL.dtype: ORDINAL,
+    DENSE.dtype: DENSE,
+    TEXT.dtype: TEXT,
+    DATETIME.dtype: DATETIME
 }

@@ -307,6 +307,13 @@ class Shape(object):
         return Shape(shapes)
 
 
+class Login(object):
+    def __init__(self, username, resource, passwd: str = None):
+        self.username = username
+        self.passwd = passwd
+        self.resource = resource
+
+
 def unique_dtypes(dtypes) -> np.ndarray:
     return np.unique([dtype.name for _, dtype in dtypes])
 
