@@ -129,7 +129,7 @@ class Data(AbsDataset):
         return self.data[key]
 
     def __setitem__(self, key, value):
-        print(key, value, self.groups)
+        # print(key, value, self.groups, "DS")
         for group in self.groups:
             self.driver["data"][group][key] = value
 

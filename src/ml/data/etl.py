@@ -68,10 +68,11 @@ class PipelineABC(object):
 
 
 class Pipeline(PipelineABC):
-    def __init__(self, data=None, upstream=None):
+    def __init__(self, data=None, upstream=None, shape=None):
         super(Pipeline, self).__init__(upstream=upstream)
         self.data = data
         self.di_graph = None
+        self.shape = shape
         self.root = 'root'
 
     def graph(self) -> nx.DiGraph:
@@ -117,13 +118,13 @@ class Pipeline(PipelineABC):
     def edges(self, downstreams: OrderedSet, parent) -> list:
         edges = []
         for fn in downstreams:
-            if type(fn) == zip:
-                for fn_zip in fn.args:
-                    for map_zip_fn in fn.downstreams:
-                        edges.append((fn_zip, map_zip_fn))
+            if type(fn) == fold:
+                for fn_fold in fn.args:
+                    for map_fold_fn in fn.downstreams:
+                        edges.append((fn_fold, map_fold_fn))
             edges.extend(self.edges(fn.downstreams, fn))
             
-            if type(fn) != zip and type(parent) != zip:
+            if type(fn) != fold and type(parent) != fold:
                 edges.append((parent, fn))
         return edges
 
@@ -148,18 +149,20 @@ class Pipeline(PipelineABC):
         leafs = [key for _, key in self._eval(None)]
         return scheduler(dask_graph, leafs, **kwargs)
 
-    def store(self, data):
+    def store(self, targets):
         sources = [self]
         sources_dsk = HighLevelGraph.merge(*[e.__dask_graph__() for e in sources])
-        sources_dsk = da.Array.__dask_optimize__(
-            sources_dsk,
-            list(dask.core.flatten([e.__dask_keys__() for e in sources]))
-        )
-        print(self.to_dask_graph())
-        print(sources_dsk)
         leafs = [key for _, key in self._eval(None)]
-        sources2 = da.Array(sources_dsk, leafs[0], ((5,),), np.dtype(float))
-        data.from_data(sources2)
+        if not isinstance(targets, list):
+            targets = [targets]
+
+        if len(targets) < len(leafs):
+            raise Exception("The number of outputs in the graph '{}' is less than the number of targets {}.".format(len(leafs),
+                                                                                                                    len(targets)))
+
+        for leaf, target in zip(leafs, targets):
+            da_array = da.Array(sources_dsk, leaf, self.shape, np.dtype(float), shape=self.shape)
+            target.from_data(da_array)
 
     def __dask_graph__(self) -> HighLevelGraph.ShareDict:
         return self.dsk_numblocks()
@@ -170,12 +173,19 @@ class Pipeline(PipelineABC):
 
     def dsk_numblocks(self) -> HighLevelGraph.ShareDict:
         dsk = {}
+        zeros = [0 for e in range(len(self.shape))]
         for key, value in self.to_dask_graph().items():
+            t_key = tuple([key] + zeros)
             if isinstance(value, tuple):
-                print(value)
-                dsk[(key, 0)] = tuple([value[0]] + list(value[1:]) + [0])
+                if len(value) == 2:
+                    v1 = tuple([value[1]] + zeros)
+                    dsk[t_key] = (value[0], v1)
+                elif len(value) == 3:
+                    v1 = tuple([value[1]] + zeros)
+                    v2 = tuple([value[2]] + zeros)
+                    dsk[t_key] = (value[0], v1, v2)
             else:
-                dsk[(key, 0)] = value
+                dsk[t_key] = value
         return HighLevelGraph.merge(dsk)
 
     def to_dask_graph(self) -> dict:
@@ -252,9 +262,9 @@ class Pipeline(PipelineABC):
             elif lvl["fn"][0] == "map":
                 fn = lvl["fn"][1]
                 tree_map[lvl["id"]] = tree_map[lvl["input"]].map(locate(fn), kwargs=lvl["kwargs"])
-            elif lvl["fn"][0] == "zip":
+            elif lvl["fn"][0] == "fold":
                 args = [tree_map[name] for name in lvl["args"]]
-                tree_map[lvl["id"]] = tree_map[lvl["input"]].zip(*args)
+                tree_map[lvl["id"]] = tree_map[lvl["input"]].fold(*args)
         return tree_map["placeholder"]
 
     @property
@@ -335,7 +345,7 @@ class map(PipelineABC):
 
 
 @PipelineABC.register_api()
-class zip(PipelineABC):
+class fold(PipelineABC):
     def __init__(self, upstream, *func):
         self.args = func
         PipelineABC.__init__(self, upstream)
@@ -355,7 +365,7 @@ class zip(PipelineABC):
 
     @property
     def key(self) -> str:
-        return "zip"
+        return "fold"
 
     def __str__(self):
         return self.__class__.__name__

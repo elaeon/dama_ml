@@ -3,12 +3,17 @@ import numpy as np
 import datetime
 import dask.array as da
 import os
+import pandas as pd
+import psycopg2
 
 from ml.data.it import Iterator
 from ml.data.etl import Pipeline
 from ml.utils.files import rm
 from ml.data.ds import Data
 from ml.data.drivers import Zarr, HDF5
+from ml.data.csv import ZIPFile
+from ml.data.db import Schema
+from ml.utils.basic import Login
 
 # from dask import get # single thread
 # from dask.multiprocessing import get
@@ -101,8 +106,8 @@ class TestETL(unittest.TestCase):
         c = a.map(dec)
         f = c.map(lambda x: x*4)
         b = pipeline.map(ident)
-        d = pipeline.zip(c, b).map(add).map(str).map(float)
-        pipeline.zip(d, f).map(add)
+        d = pipeline.fold(c, b).map(add).map(str).map(float)
+        pipeline.fold(d, f).map(add)
 
         for result in pipeline.compute():
             self.assertEqual(result, 24.0)
@@ -148,7 +153,7 @@ class TestETL(unittest.TestCase):
         a = pipeline.map(inc)
         b = pipeline.map(dec)
         c = b.map(ident).map(square)
-        d = pipeline.zip(a, b).map(add)
+        d = pipeline.fold(a, b).map(add)
         self.assertEqual(a.compute(), 5)
         self.assertEqual(b.compute(), 3)
         self.assertEqual(c.compute(), 9)
@@ -168,7 +173,7 @@ class TestETL(unittest.TestCase):
         pipeline = Pipeline(data)
         a = pipeline.map(inc)
         b = pipeline.map(dec, values)
-        c = pipeline.zip(a, b).map(add)
+        c = pipeline.fold(a, b).map(add)
         self.assertEqual((c.compute() == (values + 4)).all(), True)
 
     def test_dask_graph_da(self):
@@ -190,7 +195,7 @@ class TestETL(unittest.TestCase):
         pipeline = Pipeline(1)
         a = pipeline.map(ident)
         b = pipeline.map(ident)
-        c = pipeline.zip(a, b).map(add)
+        c = pipeline.fold(a, b).map(add)
         pre_json_value = pipeline.compute()
         json_stc = pipeline.to_json()
         pipeline = Pipeline.load(json_stc, os.path.dirname(__file__))
@@ -200,7 +205,7 @@ class TestETL(unittest.TestCase):
         pipeline = Pipeline(1)
         a = pipeline.map(line, kwargs=dict(a=2, b=1)).map(inc)
         b = pipeline.map(inc)
-        c = pipeline.zip(a, b).map(add)
+        c = pipeline.fold(a, b).map(add)
         self.assertEqual(a.compute(), 4)
         self.assertEqual(b.compute(), 2)
         self.assertEqual(c.compute(), 6)
@@ -209,7 +214,7 @@ class TestETL(unittest.TestCase):
         pipeline = Pipeline(1)
         a = pipeline.map(line, kwargs=dict(a=2, b=1)).map(inc)
         b = pipeline.map(inc)
-        pipeline.zip(a, b).map(add)
+        pipeline.fold(a, b).map(add)
         json_stc = pipeline.to_json()
         pipeline_cl = Pipeline.load(json_stc, os.path.dirname(__file__))
         self.assertEqual(pipeline.compute()[0], pipeline_cl.compute()[0])
@@ -224,16 +229,71 @@ class TestETL(unittest.TestCase):
             self.assertEqual((ds[:5].to_ndarray() == (x[:5] + 1)).all(), True)
         ds.destroy()
 
-    def test_pipeline_store(self):
-        import pandas as pd
+    def test_pipeline_store_array(self):
+        x = np.random.rand(5, 2)
         data = Data(name="test_store_pipeline", dataset_path="/tmp/", driver=HDF5(), clean=True)
-        pipeline = Pipeline(np.asarray([1, 2, 3, 4, 5]))
-        #pipeline = Pipeline(pd.DataFrame({"a": [1, 2, 3, 4,5], "b": [1,1,1,1,1]}))
+        pipeline = Pipeline(x, shape=x.shape)
         a = pipeline.map(inc)
         b = pipeline.map(dec)
-        pipeline.zip(a, b).map(add)
-        print(pipeline.compute(), "COMPUTE")
+        pipeline.fold(a, b).map(add)
         pipeline.store(data)
-        #with data:
-        #    print(data.to_ndarray())
+        with data:
+            self.assertEqual(data.to_ndarray().shape, x.shape)
         data.destroy()
+
+    def test_pipeline_store_df(self):
+        x = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": [1, 1, 1, 1, 1]})
+        data = Data(name="test_store_pipeline", dataset_path="/tmp/", driver=HDF5(), clean=True)
+        pipeline = Pipeline(x, shape=x.shape)
+        a = pipeline.map(inc)
+        b = pipeline.map(dec)
+        pipeline.fold(a, b).map(add)
+        pipeline.store(data)
+        with data:
+            self.assertEqual(data.to_ndarray().shape, x.shape)
+        data.destroy()
+
+    def test_short_etl(self):
+        data = np.asarray([
+            ["a", 1, 0.1],
+            ["b", 2, 0.2],
+            ["c", 3, 0.3],
+            ["d", 4, 0.4],
+            ["e", 5, 0.5],
+            ["f", 6, 0.6],
+            ["g", 7, 0.7],
+            ["h", 8, 0.8],
+            ["i", 9, 0.9],
+            ["j", 10, 1],
+            ["k", 11, 1.1],
+            ["l", 12, 1.2],
+        ], dtype="O")
+
+        self.filepath = "/tmp/test.zip"
+        pipeline = Pipeline(data)
+        csv_write = pipeline.map(write_to_csv, kwargs=dict(filepath=self.filepath, header=["letra", "nat", "real"], delimiter=","))
+        post_build = csv_write.map(write_to_db, kwargs=dict(name="test_schema_db", filename="test.csv"))
+        csv, schema = pipeline.compute()[0]
+        pipeline.visualize()
+        # print(csv, schema)
+        csv.destroy()
+        with schema:
+            schema.destroy("test_schema_db")
+
+
+def write_to_csv(data, filepath=None, header=None, delimiter=None):
+    csv = ZIPFile(filepath)
+    csv.write(data, header=header, delimiter=delimiter)
+    return csv
+
+
+def write_to_db(csv, name=None, filename=None):
+    login = Login(username="alejandro", resource="ml")
+    try:
+        with Schema(login) as schema:
+            schema.build(name, csv.dtypes)
+            schema.insert(name, csv.read(filename=filename, batch_size=4, batch_type="array", delimiter=","))
+    except psycopg2.OperationalError:
+        return None, None
+    else:
+        return csv, schema
