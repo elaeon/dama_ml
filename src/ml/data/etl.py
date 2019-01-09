@@ -8,6 +8,9 @@ import json
 from pydoc import locate
 from dask import get as sync_get
 from dask.compatibility import apply
+from dask import sharedict as HighLevelGraph
+import dask.array as da
+import numpy as np
 
 
 class OrderedSet(MutableSet):
@@ -144,6 +147,36 @@ class Pipeline(PipelineABC):
         dask_graph = self.to_dask_graph()
         leafs = [key for _, key in self._eval(None)]
         return scheduler(dask_graph, leafs, **kwargs)
+
+    def store(self, data):
+        sources = [self]
+        sources_dsk = HighLevelGraph.merge(*[e.__dask_graph__() for e in sources])
+        sources_dsk = da.Array.__dask_optimize__(
+            sources_dsk,
+            list(dask.core.flatten([e.__dask_keys__() for e in sources]))
+        )
+        print(self.to_dask_graph())
+        print(sources_dsk)
+        leafs = [key for _, key in self._eval(None)]
+        sources2 = da.Array(sources_dsk, leafs[0], ((5,),), np.dtype(float))
+        data.from_data(sources2)
+
+    def __dask_graph__(self) -> HighLevelGraph.ShareDict:
+        return self.dsk_numblocks()
+
+    def __dask_keys__(self) -> list:
+        keys = [k for k in self.__dask_graph__().keys()]
+        return keys
+
+    def dsk_numblocks(self) -> HighLevelGraph.ShareDict:
+        dsk = {}
+        for key, value in self.to_dask_graph().items():
+            if isinstance(value, tuple):
+                print(value)
+                dsk[(key, 0)] = tuple([value[0]] + list(value[1:]) + [0])
+            else:
+                dsk[(key, 0)] = value
+        return HighLevelGraph.merge(dsk)
 
     def to_dask_graph(self) -> dict:
         if self.di_graph is None:

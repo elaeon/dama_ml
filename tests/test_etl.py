@@ -225,8 +225,15 @@ class TestETL(unittest.TestCase):
         ds.destroy()
 
     def test_pipeline_store(self):
-        data = Data(name="test_store_pipeline", dataset_path="/tmp/")
+        import pandas as pd
+        data = Data(name="test_store_pipeline", dataset_path="/tmp/", driver=HDF5(), clean=True)
         pipeline = Pipeline(np.asarray([1, 2, 3, 4, 5]))
+        #pipeline = Pipeline(pd.DataFrame({"a": [1, 2, 3, 4,5], "b": [1,1,1,1,1]}))
         a = pipeline.map(inc)
-        print(a.compute())
+        b = pipeline.map(dec)
+        pipeline.zip(a, b).map(add)
+        print(pipeline.compute(), "COMPUTE")
+        pipeline.store(data)
+        #with data:
+        #    print(data.to_ndarray())
         data.destroy()
