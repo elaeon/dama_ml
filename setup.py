@@ -21,7 +21,7 @@ tests_require = [
 setup(
     name='ml',
     version='1.0.0',
-    description='A framework for machine learning pipeline',
+    description='A framework for building machine learning pipelines',
     long_description=long_description,
     author="Alejandro G. Martínez Romero",
     author_email="mara80@gmail.com",
@@ -50,7 +50,7 @@ setup(
         'Programming Language :: Python :: 3.5',
     ],
     zip_safe=False,
-    keywords = 'ml dataset inference machine learning',
+    keywords = 'ml dataset inference machine learning bigdata',
 )
 
 
