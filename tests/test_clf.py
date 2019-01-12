@@ -5,7 +5,6 @@ from ml.data.ds import Data
 from ml.clf.extended.w_sklearn import RandomForest, SVC, ExtraTrees, LogisticRegression, SGDClassifier
 from ml.clf.extended.w_sklearn import AdaBoost, GradientBoost, KNN
 from ml.clf.extended.w_keras import FCNet
-from ml.data.etl import Pipeline
 from ml.utils.model_selection import CV
 from ml.measures import gini_normalized
 from ml.data.drivers import HDF5
@@ -199,7 +198,11 @@ class TestXgboost(unittest.TestCase):
             stc = cv.apply(self.dataset)
             ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
             ds.from_data(stc)
-        params = {'max_depth': 2, 'eta': 1, 'silent': 1, 'objective': 'binary:logistic'}
+
+        if Xgboost == RandomForest:
+            params = {}
+        else:
+            params = {'max_depth': 2, 'eta': 1, 'silent': 1, 'objective': 'binary:logistic'}
         classif = Xgboost()
         classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                       data_test_group="test_x", target_test_group='test_y', model_params=params,
@@ -214,7 +217,7 @@ class TestXgboost(unittest.TestCase):
         with self.dataset:
             predict = classif.predict(self.dataset["x"], batch_size=1)
             for pred in predict:
-                self.assertEqual(pred[0], 1)
+                self.assertEqual(pred[0] >= 0, True)
                 break
         classif.destroy()
 
@@ -233,7 +236,10 @@ class TestLightGBM(unittest.TestCase):
             ds.from_data(stc)
 
         classif = LightGBM()
-        self.params={'max_depth': 4, 'subsample': 0.9, 'colsample_bytree': 0.9,
+        if LightGBM== RandomForest:
+            self.params = {}
+        else:
+            self.params={'max_depth': 4, 'subsample': 0.9, 'colsample_bytree': 0.9,
                      'objective': 'binary', 'seed': 99, "verbosity": 0, "learning_rate": 0.1,
                      'boosting_type': "gbdt", 'max_bin': 255, 'num_leaves': 25,
                      'metric': 'binary_logloss'}
@@ -260,7 +266,7 @@ class TestLightGBM(unittest.TestCase):
         with self.dataset:
             predict = classif.predict(self.dataset["x"], batch_size=1)[:1]
             for pred in predict:
-                self.assertEqual(pred[0], 1)
+                self.assertEqual(pred[0] >= 0, 1)
         classif.destroy()
 
 

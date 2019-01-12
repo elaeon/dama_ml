@@ -1,6 +1,7 @@
 from ml.reg.wrappers import SKLP
 from sklearn.ensemble import RandomForestRegressor as SkRandomForestReg
 from sklearn.ensemble import GradientBoostingRegressor as SkGradientBoostingReg
+import pandas as pd
 
 
 class RandomForestRegressor(SKLP):
@@ -12,10 +13,8 @@ class RandomForestRegressor(SKLP):
         return self.ml_model(reg_model)
 
     def feature_importance(self):
-        import pandas as pd
         with self.ds:
-            df = pd.DataFrame({'importance': self.model.model.feature_importances_, 
-                'feature': self.ds.groups}).sort_values(
+            df = pd.DataFrame({'importance': self.model.model.feature_importances_, 'gain': None}).sort_values(
                 by=['importance'], ascending=False)
         return df
     
