@@ -1,11 +1,9 @@
-import os
-
 from ml.utils.config import get_settings
-from ml.data.ds import Data
-settings = get_settings("ml")
+settings = get_settings("paths")
 
 
 def run(args):
+    from ml.data.ds import Data
     if args.dataset:
         dataset = Data.original_ds(args.dataset)
 

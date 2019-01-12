@@ -3,7 +3,7 @@ from ml.utils.config import get_settings
 
 
 def log_config(file):
-    settings = get_settings("ml")
+    settings = get_settings("log")
     log = logging.getLogger(file)
     logFormatter = logging.Formatter("[%(name)s] - [%(levelname)s] %(message)s")
     handler = logging.StreamHandler()

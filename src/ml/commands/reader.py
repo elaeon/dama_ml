@@ -1,12 +1,12 @@
 import glob
 from tabulate import tabulate
-from ml.extractors.file import CSVDataset
 
 
 def run(args):
+    from ml.data.csv import get_compressed_file_manager_ext
     filepaths = check_filepaths(args.file)
     for filepath in filepaths:
-        csv = CSVDataset(filepath)
+        csv = get_compressed_file_manager_ext(filepath)
         reader = csv.reader(nrows=args.nrows)
         table = []
         headers = []

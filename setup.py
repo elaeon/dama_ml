@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
 from setuptools import find_packages, setup
 from os.path import abspath, dirname, join
+
 
 with open("requirements.txt") as f:
     req = f.read()
@@ -19,8 +19,9 @@ tests_require = [
 ]
 
 setup(
-    name='ml',
-    version='1.0.0',
+    name='soft stream',
+    use_scm_version=True,
+    setup_requires=['setuptools_scm'],
     description='A framework for building machine learning pipelines',
     long_description=long_description,
     author="Alejandro G. Martínez Romero",
@@ -35,7 +36,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'ml=ml.cli:main'
+            'soft=ml.cli:main',
+            'sst=ml.cli:main'
         ]
     },
     package_dir={'': 'src'},
@@ -50,7 +52,7 @@ setup(
         'Programming Language :: Python :: 3.5',
     ],
     zip_safe=False,
-    keywords = 'ml dataset inference machine learning bigdata',
+    keywords = 'pipeline stream dataset inference machine learning bigdata',
 )
 
 

@@ -1,9 +1,10 @@
-[ml]
-dataset_path = {home}/ml_data/dataset/
-checkpoints_path = {home}/ml_data/checkpoints/
-dataset_model_path = {home}/ml_data/dataset_models/
-dataset_folds_path = {home}/ml_data/dataset_folds/
+[paths]
+data_path = {home}/softstream/dataset/
+models_path = {home}/softstream/models/
+code_path = {home}/softstream/code/
 class_path = {home}
+
+[log]
 ;Info level
 loglevel = 10
 

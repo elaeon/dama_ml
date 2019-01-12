@@ -1,16 +1,13 @@
 import os
 
 from ml.utils.config import get_settings
-from ml.models import DataDrive
-from ml.measures import ListMeasure
-from ml.utils.files import get_models_path, get_models_from_dataset, rm
-from ml.data.ds import Data
-from ml.data.ds import load_metadata
+from ml.utils.files import get_models_path
 
-settings = get_settings("ml")
+settings = get_settings("paths")
 
   
 def run(args):
+    from ml.measures import ListMeasure
     models_path = get_models_path(settings["checkpoints_path"])
     if args.info:
         table = []

@@ -18,7 +18,7 @@ from ml.utils.config import get_settings
 from ml.utils.decorators import cache, clean_cache
 
 
-settings = get_settings("ml")
+settings = get_settings("paths")
 log = log_config(__name__)
 
 
@@ -38,7 +38,7 @@ class Data(AbsDataset):
         self.group_name = group_name
 
         if dataset_path is None:
-            self.dataset_path = settings["dataset_path"]
+            self.dataset_path = settings["data_path"]
         else:
             self.dataset_path = dataset_path
 

@@ -1,30 +1,28 @@
 import os
-
 from ml.utils.config import get_settings
-from ml.utils.numeric_functions import humanize_bytesize
-from ml.models import DataDrive
-from ml.measures import ListMeasure
-from ml.data.ds import Data
-from ml.utils.files import rm, get_models_from_dataset
-
-settings = get_settings("ml")
+settings = get_settings("paths")
 
   
 def run(args):
+    from ml.utils.numeric_functions import humanize_bytesize
+    from ml.measures import ListMeasure
+    from ml.data.ds import Data
+    from ml.utils.files import rm
+
     if args.group_name:
-        dataset_path = os.path.join(settings["dataset_path"], args.group_name)
+        dataset_path = os.path.join(settings["data_path"], args.group_name)
     else:
-        dataset_path = settings["dataset_path"]
+        dataset_path = settings["data_path"]
 
     if args.info:
-        dataset = Data.original_ds(dataset_path=dataset_path, name=args.info)
-        dataset.info(classes=args.targets)
+        dataset = Data(dataset_path=dataset_path, name=args.info)
+        #dataset.info(classes=args.targets)
     elif args.rm:
         try:
             for ds in args.rm:
-                dataset = Data.original_ds(ds)
-                print("Dataset: {}".format(dataset.url()))
-                rm(dataset.url())
+                dataset = Data(ds)
+                print("Dataset: {}".format(dataset.url))
+                rm(dataset.url)
         except IOError:
             pass
         print("Done.")
@@ -46,7 +44,7 @@ def run(args):
         for path, files in datasets.items():
             for filename in files:
                 size = os.stat(os.path.join(path, filename)).st_size
-                dl = Data.original_ds(filename)
+                dl = Data(name=filename)
                 if dl is not None:
                     with dl:
                         date = dl._get_attr("timestamp")
@@ -56,10 +54,9 @@ def run(args):
         list_measure = ListMeasure(headers=headers, measures=table)
         print(list_measure.to_tabulate(order_column="dataset"))
 
-
 def dataset_model_relation():
     datasets = {}
-    for parent, childs, files in os.walk(settings["dataset_path"]):
+    for parent, childs, files in os.walk(settings["data_path"]):
         datasets[parent] = files
 
     dataset_md5 = {}
@@ -76,5 +73,5 @@ def get_model_dataset(classes):
         for name_version in dataset:
             md5 = DataDrive.read_meta(
                 "md5", os.path.join(
-                    settings["checkpoints_path"], clf, name_version, name_version))
+                    settings["models_path"], clf, name_version, name_version))
             yield clf, name_version, md5, dataset_md5.get(md5, None)

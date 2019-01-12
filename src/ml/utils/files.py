@@ -1,5 +1,4 @@
 import os
-import shutil
 import ntpath
 import datetime
 import sys
@@ -25,37 +24,6 @@ def check_or_create_path_dir(path, dirname):
     return check_point
 
 
-def set_up_cfg(filepath):
-    import pkg_resources
-    setting_expl = pkg_resources.resource_filename('ml', 'data/settings.cfg.example')
-    base = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
-    home = os.path.expanduser("~")
-    #setting_expl = os.path.join(base, "settings.cfg.example")
-    with open(setting_expl, 'r') as f:
-        cfg = f.read()
-        cfg = cfg.format(home=home, base=base)
-    with open(filepath, 'w') as f:
-        f.write(cfg)
-    return True
-
-
-def build_tickets_processed(transforms, settings, PICTURES):
-    from skimage import io
-    tickets_processed_url = settings["tickets_processed"]
-    if not os.path.exists(tickets_processed_url):
-        os.makedirs(tickets_processed_url)
-    for path in [os.path.join(settings["tickets"], f) for f in PICTURES]:
-        name = path.split("/").pop()
-        image = io.imread(path)
-        image = transforms.apply(image)
-        d_path = os.path.join(tickets_processed_url, name)
-        io.imsave(d_path, image)
-
-
-def delete_tickets_processed(settings):
-    shutil.rmtree(settings["tickets_processed"])
-
-
 def rm(path):
     import shutil
     try:
@@ -77,7 +45,6 @@ def get_models_path(checkpoints_path):
 
 
 def get_models_from_dataset(dataset, checkpoints_path):
-    from ml.clf.wrappers import DataDrive
     from collections import defaultdict
     models_path = get_models_path(checkpoints_path)
     models_md5 = defaultdict(list)
@@ -105,12 +72,12 @@ def path2module(class_path):
     return ".".join(filepath.split("/"))
 
 
-def if_file_exists(filepath):
+def file_exists(filepath):
     my_file = Path(filepath)
     return my_file.is_file()
 
 
-def if_dir_exists(filepath):
+def dir_exists(filepath):
     file_ = Path(filepath)
     return file_.is_dir()
 
@@ -118,6 +85,6 @@ def if_dir_exists(filepath):
 def build_path(levels):
     levels = [level for level in levels if level is not None]
     path = os.path.join(*levels)
-    if not if_dir_exists(path):
+    if not dir_exists(path):
         os.makedirs(path)
     return path

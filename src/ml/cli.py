@@ -1,10 +1,10 @@
 import argparse
+from pkg_resources import get_distribution
+from ml.commands import dataset, models, plot, config, reader, repo
 
-from ml import __version__
-from ml.commands import dataset, models, plot, config, reader
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--version', action='version', version=__version__)
+parser.add_argument('--version', action='version', version=get_distribution("soft-stream").version)
 subparsers = parser.add_subparsers()
 
 dataset_parser = subparsers.add_parser('datasets')
@@ -12,7 +12,6 @@ dataset_parser_group = dataset_parser.add_mutually_exclusive_group()
 dataset_parser_group.add_argument("--info", type=str, help="list of datasets or dateset info if a name is added")
 dataset_parser_group.add_argument("--rm", nargs="+", type=str, help="delete the dataset")
 dataset_parser.add_argument("--targets", action="store_true", help="show targets info in a dataset")
-#dataset_parser.add_argument("--used-in", type=str, help="find if the models are using a specific dataset")
 dataset_parser_group.add_argument("--sts", type=str, help="show stadistic analysis of the dataset")
 dataset_parser.add_argument("--group-name", type=str, help="list all datasets who has this group name")
 dataset_parser.set_defaults(func=dataset.run)
@@ -38,13 +37,22 @@ header_parser.set_defaults(func=reader.run)
 
 config_parser = subparsers.add_parser('config')
 config_parser_group = config_parser.add_mutually_exclusive_group()
-config_parser_group.add_argument("--init", action="store_true", help="set the initial values")
-config_parser_group.add_argument("--force-init", action="store_true", help="set the initial values")
+config_parser_group.add_argument("--init-repo", type=str, help="initialize the repository with the typed name")
 config_parser_group.add_argument("--edit", action="store_true", help="edit the values saved in the config file")
 config_parser_group.set_defaults(func=config.run)
+
+repo_parser = subparsers.add_parser('repo')
+repo_parser_group = repo_parser.add_argument_group()
+repo_parser_group.add_argument("--no-add", action="store_true", help="the file is not added to the repository")
+repo_parser_group.add_argument("--run", type=str, help="exec the file")
+repo_parser_group.add_argument("name", type=str, help="repository name")
+repo_parser_group.set_defaults(func=repo.run)
 
 
 def main():
     """Main CLI entrypoint."""
     args = parser.parse_args()
-    args.func(args)
+    try:
+        args.func(args)
+    except AttributeError:
+        print(parser.format_help())
