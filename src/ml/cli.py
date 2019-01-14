@@ -42,11 +42,19 @@ config_parser_group.add_argument("--edit", action="store_true", help="edit the v
 config_parser_group.set_defaults(func=config.run)
 
 repo_parser = subparsers.add_parser('repo')
+repo_parser.add_argument("name", type=str, help="repository name")
+
 repo_parser_group = repo_parser.add_argument_group()
-repo_parser_group.add_argument("--no-add", action="store_true", help="the file is not added to the repository")
+repo_parser_group.add_argument("--commit-msg", help="commit message")
 repo_parser_group.add_argument("--run", type=str, help="exec the file")
-repo_parser_group.add_argument("name", type=str, help="repository name")
-repo_parser_group.set_defaults(func=repo.run)
+
+repo_parser_group_revert = repo_parser.add_argument_group()
+repo_parser_group_revert.add_argument("--commit", help="commit id")
+repo_parser_group_revert.add_argument("--branch", help="branch", default="master")
+repo_parser_group_revert.add_argument("--checkout", type=str, help="checkout the file")
+
+repo_parser_group.set_defaults(func=repo.run_commit)
+repo_parser_group_revert.set_defaults(func=repo.run_revert)
 
 
 def main():
