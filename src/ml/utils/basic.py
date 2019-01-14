@@ -4,6 +4,7 @@ import pandas as pd
 import xarray as xr
 import dask.array as da
 import numbers
+import time
 
 from collections import OrderedDict
 from .decorators import cache
@@ -348,3 +349,7 @@ def isnamedtupleinstance(x):
     f = getattr(x, '_fields', None)
     shape = getattr(x, 'shape', None)
     return f is not None and shape is None  # x.__bases__[0] == tuple
+
+
+def time2str(date):
+    return time.strftime("%a, %d %b %Y %H:%M", time.gmtime(date))

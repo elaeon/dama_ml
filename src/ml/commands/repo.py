@@ -1,31 +1,64 @@
 from ml.utils.config import get_settings
 from ml.utils.files import file_exists
+from ml.utils.basic import time2str
 from git import Repo
 import os
 import subprocess
-import time
+import tabulate
 
 
 settings = get_settings("paths")
 
 
-def run_commit(args):
-    print("ccc")
+def run(args):
+    repo = Repo(os.path.join(settings["code_path"], args.name))
+    if args.branch is None:
+        if repo.head.is_detached:
+            branch = None
+        else:
+            branch = repo.active_branch.name
+    else:
+        branch = args.branch
+
     if args.run:
-        no_error_code = prepare_run_code(args.run, args.name)
+        no_error_code = run_code(args.run, args.name)
         if args.commit_msg:
             if no_error_code:
-                repo_add_commit(settings["code_path"], args.name, args.run, args.commit_msg)
+                repo_add_commit(repo, args.run, args.commit_msg, branch)
         else:
             print("file not commited")
+    elif args.checkout:
+       repo_checkout_file(repo, args.checkout, args.commit, branch)
+    elif args.head:
+        if repo.head.is_detached:
+            for head in repo.heads:
+                for item in repo.iter_commits(head):
+                    if item.hexsha == repo.head.commit.hexsha:
+                        repo.git.checkout(head)
+                        print("Head of {}".format(head))
+        else:
+            print("Nothing to do.")
+    elif args.log:
+        print("Branch {}".format(branch))
+        repo.git.checkout(branch)
+        commits = []
+        for commit in repo.iter_commits(repo.head, max_count=20):
+            l = [time2str(commit.committed_date), commit.hexsha, commit.message]
+            commits.append(l)
+        print(tabulate.tabulate(commits, ["date", "hexsha", "msg"]))
+    elif branch:
+        if branch == "all":
+            active_branch = repo.active_branch.name
+            for branch in repo.branches:
+                if branch.name == active_branch:
+                    print(" *", branch.name)
+                else:
+                    print("  ", branch.name)
+        else:
+            print("Branch {}".format(branch))
 
 
-def run_revert(args):
-    if args.checkout:
-       repo_checkout_file(settings["code_path"], args.name, args.checkout, args.commit, args.branch)
-
-
-def prepare_run_code(name, repo_name) -> bool:
+def run_code(name, repo_name) -> bool:
     filepath = os.path.join(settings["code_path"], repo_name, name)
     repo_path = os.path.join(settings["code_path"], repo_name)
     if file_exists(filepath):
@@ -40,19 +73,32 @@ def prepare_run_code(name, repo_name) -> bool:
         return False
 
 
-def repo_add_commit(repo_code_path, repo_name, filename, commit_msg, branch="master"):
-    repo = Repo(os.path.join(repo_code_path, repo_name))
-    repo.index.add([filename])
-    repo.index.commit(commit_msg)
-    print(time.strftime("%a, %d %b %Y %H:%M", time.gmtime(repo.head.commit.committed_date)))
+def repo_add_commit(repo, filename, commit_msg, branch_name):
+    if repo.head.is_detached:
+        for branch in repo.branches:
+            if branch.name == branch_name:
+                print("Branch '{}' already exists, choose another".format(branch_name))
+                return
+    changed_files = {item.a_path for item in repo.index.diff(None)}
+    if filename in changed_files:
+        if repo.head.is_detached:
+            repo.git.checkout(repo.head.commit, b=branch_name)
+        repo.index.add([filename])
+        commit = repo.index.commit(commit_msg)
+        print("Commit: {}".format(commit))
+        print(time2str(repo.head.commit.committed_date))
+    else:
+        print("Not changes found")
 
 
-def repo_checkout_file(repo_code_path, repo_name, filename, commit, branch="master"):
-    repo = Repo(os.path.join(repo_code_path, repo_name))
-    print(filename, commit, branch)
-    if repo.active_branch.name != branch:
-        repo.git.checkout(branch)
-        print("Changed to branch {}".format(branch))
-
-    repo.git.checkout(commit)#, b="new1")
-    #print(repo.working_tree_dir)
+def repo_checkout_file(repo, filename, commit, branch_name):
+    print("Checkout to {} on branch {}".format(commit, branch_name))
+    try:
+        if repo.active_branch.name != branch_name:
+            repo.git.checkout(branch_name)
+            print("Changed to branch {}".format(branch_name))
+        repo.git.checkout(commit)
+    except TypeError as e:
+        print(e)
+        print("Try to return to the head of this branch")
+        pass
