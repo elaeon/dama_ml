@@ -56,6 +56,8 @@ def run(args):
                     print("  ", branch.name)
         else:
             print("Branch {}".format(branch))
+            if repo.active_branch.name != branch:
+                repo.git.checkout(branch)
 
 
 def run_code(name, repo_name) -> bool:

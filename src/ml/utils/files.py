@@ -44,21 +44,6 @@ def get_models_path(checkpoints_path):
     return classes
 
 
-def get_models_from_dataset(dataset, checkpoints_path):
-    from collections import defaultdict
-    models_path = get_models_path(checkpoints_path)
-    models_md5 = defaultdict(list)
-    md5 = dataset.md5()
-    for clf, ds_txt in models_path.items():
-        for name_version in ds_txt:
-            model_path_meta = os.path.join(checkpoints_path, clf, name_version, name_version)
-            model_path = os.path.join(checkpoints_path, clf, name_version)    
-            dataset_name = DataDrive.read_meta("dataset_name", model_path_meta)            
-            model_md5 = DataDrive.read_meta("md5", model_path_meta)
-            if dataset_name == dataset.name and md5 == model_md5:
-                yield (model_path, model_path_meta)
-
-
 def get_date_from_file(file_path):
     return datetime.datetime.utcfromtimestamp(os.path.getmtime(file_path))
 
@@ -88,3 +73,12 @@ def build_path(levels):
     if not dir_exists(path):
         os.makedirs(path)
     return path
+
+
+def get_dir_file_size(path) -> int:
+    try:
+        if dir_exists(path):
+            return sum(sum(map(lambda fname: os.path.getsize(os.path.join(directory, fname)), files)) for directory, folders, files in os.walk(path))
+        return os.path.getsize(path)
+    except FileNotFoundError:
+        return 0

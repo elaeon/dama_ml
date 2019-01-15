@@ -16,6 +16,7 @@ from ml.data.drivers import Memory
 from ml.utils.logger import log_config
 from ml.utils.config import get_settings
 from ml.utils.decorators import cache, clean_cache
+from ml.utils.files import get_dir_file_size, rm
 
 
 settings = get_settings("paths")
@@ -48,8 +49,7 @@ class Data(AbsDataset):
             ds_exist = False
 
         if not ds_exist and (self.driver.mode == 'w' or self.driver.mode == 'a'):
-            build_path([self.dataset_path, self.group_name])
-            self.create_route()
+            build_path(self.dir_levels())
             self.author = author
             self.description = description
             self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
@@ -171,7 +171,7 @@ class Data(AbsDataset):
     def batchs_writer(self, data):
         groups = self.groups
         log.info("Writing with batch size {}".format(getattr(data, 'batch_size', 0)))
-        #if isinstance(data, StructArray):
+        # if isinstance(data, StructArray):
         #    raise Exception
         #    for group in data.groups:
         #        self.driver["data"][group] = data[group].to_ndarray()
@@ -260,9 +260,18 @@ class Data(AbsDataset):
         """
         delete the hdf5 file
         """
-        from ml.utils.files import rm
         rm(self.url)
         log.debug("DESTROY {}".format(self.url))
+        meta_url = self.metadata_url()
+        if meta_url is not None:
+            rm(meta_url)
+            log.debug("DESTROY METADATA {}".format(meta_url))
+
+    def dir_levels(self) -> list:
+        if self.group_name is None:
+            return [self.dataset_path, self.driver.cls_name()]
+        else:
+            return [self.dataset_path, self.driver.cls_name(), self.group_name]
 
     @property
     def url(self) -> str:
@@ -270,10 +279,8 @@ class Data(AbsDataset):
         return the path where is saved the dataset
         """
         filename = "{}.{}".format(self.name, self.driver.ext)
-        if self.group_name is None:
-            return os.path.join(self.dataset_path, filename)
-        else:
-            return os.path.join(self.dataset_path, self.group_name, filename)
+        dir_levels = self.dir_levels() + [filename]
+        return os.path.join(*dir_levels)
 
     def exists(self) -> bool:
         if self.driver.persistent is True:
@@ -329,6 +336,35 @@ class Data(AbsDataset):
             table.append(["dataset", self.shape])
         print(order_table(headers, table, "shape"))
         # print columns
+
+    def metadata(self) -> dict:
+        meta_dict = {}
+        with self:
+            meta_dict["hash"] = self.hash
+            meta_dict["dir_levels"] = self.dir_levels()
+            meta_dict["driver"] = self.driver.module_cls_name()
+            meta_dict["name"] = self.name
+            meta_dict["size"] = get_dir_file_size(self.url)
+            meta_dict["timestamp"] = self.timestamp
+        return meta_dict
+
+    def metadata_url(self) -> str:
+        import re
+        metadata = self.metadata()
+        if metadata["hash"] is not None:
+            pattern = "\$.+\$"
+            hash_name = re.sub(pattern, "", metadata["hash"])
+            filename = "{}.json".format(hash_name)
+            return os.path.join(self.dataset_path, 'metadata', filename)
+
+    def write_metadata(self):
+        if self.driver.persistent is True:
+            build_path([self.dataset_path, "metadata"])
+            path = self.metadata_url()
+            if path is not None:
+                metadata = self.metadata()
+                with open(path, "w") as f:
+                    json.dump(metadata, f)
 
     def calc_hash(self, with_hash: str = 'sha1', batch_size: int = 1080) -> str:
         hash_obj = Hash(hash_fn=with_hash)
@@ -388,19 +424,12 @@ class Data(AbsDataset):
     def to_xrds(self) -> xr.Dataset:
         return self.data.to_xrds()
 
-    def create_route(self):
-        """
-        create directories if the dataset_path does not exist
-        """
-        if os.path.exists(self.dataset_path) is False:
-            os.makedirs(self.dataset_path)
-
-    @staticmethod
-    def url_to_name(url):
-        dataset_url = url.split("/")
-        name = dataset_url[-1]
-        path = "/".join(dataset_url[:-1])
-        return name, path
+    # @staticmethod
+    # def url_to_name(url):
+    #    dataset_url = url.split("/")
+    #    name = dataset_url[-1]
+    #    path = "/".join(dataset_url[:-1])
+    #    return name, path
 
     def to_libsvm(self, target, save_to=None):
         """
@@ -423,8 +452,8 @@ class Data(AbsDataset):
         from ml.utils.numeric_functions import missing, zeros
         from ml.fmtypes import fmtypes_map
 
-        headers = ["feature", "label", "missing", "mean", "std dev", "zeros", 
-            "min", "25%", "50%", "75%", "max", "type", "unique"]
+        headers = ["feature", "label", "missing", "mean", "std dev", "zeros",
+                   "min", "25%", "50%", "75%", "max", "type", "unique"]
         table = []
         li = self.labels_info()
         feature_column = defaultdict(dict)

@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 import pandas as pd
+import json
 
 from ml.data.ds import Data
 from ml.data.it import Iterator
@@ -166,10 +167,14 @@ class TestDataset(unittest.TestCase):
 
     def test_filename(self):
         dsb = Data(name="test", dataset_path="/tmp", driver=HDF5(GZip(level=5)), clean=True)
-        self.assertEqual(dsb.url, "/tmp/test.h5")
+        self.assertEqual(dsb.url, "/tmp/{}/test.h5".format(HDF5.cls_name()))
         dsb.destroy()
         dsb = Data(name="test", dataset_path="/tmp", driver=Zarr(GZip(level=5)), clean=True)
-        self.assertEqual(dsb.url, "/tmp/test.zarr")
+        self.assertEqual(dsb.url, "/tmp/{}/test.zarr".format(Zarr.cls_name()))
+        dsb.destroy()
+        dsb = Data(name="test", dataset_path="/tmp", driver=Zarr(), clean=True, group_name='basic')
+        dsb.from_data([1,2,3,4,5])
+        self.assertEqual(dsb.url, "/tmp/{}/basic/test.zarr".format(Zarr.cls_name()))
         dsb.destroy()
 
     def test_no_data(self):
@@ -390,6 +395,28 @@ class TestDataset(unittest.TestCase):
         data.from_data({"x": x})
         with data:
             self.assertEqual(data[0].to_ndarray(), [1])
+
+    def test_metadata(self):
+        data = Data(name="test", dataset_path="/tmp/")
+        data.from_data([1, 2, 3, 4, 5])
+        metadata = data.metadata()
+        self.assertEqual(metadata["hash"], data.hash)
+        self.assertEqual(metadata["size"], 0)
+        data.destroy()
+        data = Data(name="test", dataset_path="/tmp/")
+        metadata = data.metadata()
+        self.assertEqual(metadata["hash"], data.hash)
+        data.destroy()
+
+    def test_write_metadata(self):
+        data = Data(name="test", dataset_path="/tmp/", driver=Zarr(), clean=True)
+        data.from_data(np.random.rand(100, 10))
+        metadata = data.metadata()
+        data.write_metadata()
+        with open(data.metadata_url()) as f:
+            obj = json.load(f)
+            self.assertEqual(obj, metadata)
+        data.destroy()
 
 
 class TestDataZarr(unittest.TestCase):

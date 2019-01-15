@@ -35,6 +35,10 @@ class AbsDriver(ABC):
     def module_cls_name(cls):
         return "{}.{}".format(cls.__module__, cls.__name__)
 
+    @classmethod
+    def cls_name(cls):
+        return cls.__name__
+
     @abstractmethod
     def __contains__(self, item):
         return NotImplemented

@@ -35,24 +35,24 @@ def run(args):
     #    print(dataset.stadistics())
     else:
         datasets = {}
-        for parent, childs, files in os.walk(dataset_path):
+        for parent, childs, files in os.walk(os.path.join(dataset_path, 'metadata')):
             datasets[parent] = files
-        
-        headers = ["dataset", "size", "date"]
-        table = []
-        total_size = 0
-        for path, files in datasets.items():
-            for filename in files:
-                size = os.stat(os.path.join(path, filename)).st_size
-                dl = Data(name=filename)
-                if dl is not None:
-                    with dl:
-                        date = dl._get_attr("timestamp")
-                    table.append([filename, humanize_bytesize(size), date])
-                    total_size += size
-        print("Total size: {}".format(humanize_bytesize(total_size)))
-        list_measure = ListMeasure(headers=headers, measures=table)
-        print(list_measure.to_tabulate(order_column="dataset"))
+        print(datasets)
+        #headers = ["dataset", "size", "date"]
+        #table = []
+        #total_size = 0
+        #for path, files in datasets.items():
+        #    for filename in files:
+        #        size = os.stat(os.path.join(path, filename)).st_size
+        #        dl = Data(name=filename)
+        #        if dl is not None:
+        #            with dl:
+        #                date = dl._get_attr("timestamp")
+        #            table.append([filename, humanize_bytesize(size), date])
+        #            total_size += size
+        #print("Total size: {}".format(humanize_bytesize(total_size)))
+        #list_measure = ListMeasure(headers=headers, measures=table)
+        #print(list_measure.to_tabulate(order_column="dataset"))
 
 def dataset_model_relation():
     datasets = {}
