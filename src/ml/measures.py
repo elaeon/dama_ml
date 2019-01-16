@@ -257,11 +257,11 @@ class ListMeasure(object):
         order = [v["reverse"] for k, v in data_dict.items()]
         return ListMeasure(headers=headers, measures=measures, order=order)
 
-    def to_tabulate(self, order_column: str = None):
+    def to_tabulate(self, order_column: str = None, limit=None):
         from ml.utils.order import order_table
         self.drop_empty_columns()
         return order_table(self.headers, self.measures, order_column,
-                           natural_order=self.order)
+                           natural_order=self.order, limit=limit)
 
     def __str__(self):
         return self.to_tabulate()

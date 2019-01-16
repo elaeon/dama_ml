@@ -17,6 +17,7 @@ from ml.utils.logger import log_config
 from ml.utils.config import get_settings
 from ml.utils.decorators import cache, clean_cache
 from ml.utils.files import get_dir_file_size, rm
+from ml.utils.order import order_table
 
 
 settings = get_settings("paths")
@@ -323,19 +324,17 @@ class Data(AbsDataset):
                     self.driver["meta"]["dtypes"][i] = (group, dtype.str)
 
     def info(self):
-        from ml.utils.order import order_table
         print('       ')
         print('Dataset NAME: {}'.format(self.name))
         print('Author: {}'.format(self.author))
         print('Hash: {}'.format(self.hash))
         print('Description: {}'.format(self.description))
         print('       ')
-        headers = ["Dataset", "Shape"]
+        headers = ["Group", "Shape"]
         table = []
-        with self:
-            table.append(["dataset", self.shape])
-        print(order_table(headers, table, "shape"))
-        # print columns
+        for group, shape in self.shape.items():
+            table.append([group, shape])
+        print(order_table(headers, table, "Group"))
 
     def metadata(self) -> dict:
         meta_dict = {}
@@ -346,6 +345,8 @@ class Data(AbsDataset):
             meta_dict["name"] = self.name
             meta_dict["size"] = get_dir_file_size(self.url)
             meta_dict["timestamp"] = self.timestamp
+            meta_dict["author"] = self.author
+            meta_dict["description"] = self.description if self.description is None else self.description[:100]
         return meta_dict
 
     def metadata_url(self) -> str:
@@ -410,6 +411,7 @@ class Data(AbsDataset):
             else:
                 c_hash = None
         self.hash = c_hash
+        self.write_metadata()
 
     def _set_groups_shapes(self, shapes):
         for group, dtype in self.dtypes:

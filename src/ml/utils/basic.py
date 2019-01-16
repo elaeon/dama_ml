@@ -259,6 +259,9 @@ class Shape(object):
     def __str__(self):
         return str(self._shape)
 
+    def groups(self):
+        return self._shape.keys()
+
     def items(self):
         return self._shape.items()
 

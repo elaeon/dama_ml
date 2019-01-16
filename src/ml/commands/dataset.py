@@ -1,77 +1,54 @@
 import os
+import json
 from ml.utils.config import get_settings
+from ml.utils.numeric_functions import humanize_bytesize
+
+
 settings = get_settings("paths")
 
   
 def run(args):
-    from ml.utils.numeric_functions import humanize_bytesize
     from ml.measures import ListMeasure
     from ml.data.ds import Data
-    from ml.utils.files import rm
-
-    if args.group_name:
-        dataset_path = os.path.join(settings["data_path"], args.group_name)
-    else:
-        dataset_path = settings["data_path"]
+    from ml.data import drivers
 
     if args.info:
-        dataset = Data(dataset_path=dataset_path, name=args.info)
-        #dataset.info(classes=args.targets)
+        path = os.path.join(settings["data_path"])
+        driver_class = getattr(drivers, args.driver)
+        dataset = Data(dataset_path=path, name=args.name, group_name=args.group_name, driver=driver_class())
+        with dataset:
+            dataset.info()
     elif args.rm:
+        path = os.path.join(settings["data_path"])
+        driver_class = getattr(drivers, args.driver)
         try:
-            for ds in args.rm:
-                dataset = Data(ds)
-                print("Dataset: {}".format(dataset.url))
-                rm(dataset.url)
+            dataset = Data(dataset_path=path, name=args.name, group_name=args.group_name, driver=driver_class())
+            print("Dataset: {}".format(dataset.url))
+            dataset.destroy()
         except IOError:
             pass
         print("Done.")
-    #elif args.used_in:
+    # elif args.used_in:
     #    dataset = Data.original_ds(args.used_in)
     #    for _, model_path_meta in get_models_from_dataset(dataset, settings["checkpoints_path"]):
     #        print("Dataset used in model: {}".format(DataDrive.read_meta("model_module", model_path_meta)))
-    #elif args.sts:
-    #    dataset = Data.original_ds(args.sts)
-    #    print(dataset.stadistics())
+    elif args.sts:
+        path = os.path.join(settings["data_path"])
+        driver_class = getattr(drivers, args.driver)
+        dataset = Data(dataset_path=path, name=args.name, group_name=args.group_name, driver=driver_class())
+        #print(dataset.stadistics())
     else:
-        datasets = {}
-        for parent, childs, files in os.walk(os.path.join(dataset_path, 'metadata')):
-            datasets[parent] = files
-        print(datasets)
-        #headers = ["dataset", "size", "date"]
-        #table = []
-        #total_size = 0
-        #for path, files in datasets.items():
-        #    for filename in files:
-        #        size = os.stat(os.path.join(path, filename)).st_size
-        #        dl = Data(name=filename)
-        #        if dl is not None:
-        #            with dl:
-        #                date = dl._get_attr("timestamp")
-        #            table.append([filename, humanize_bytesize(size), date])
-        #            total_size += size
-        #print("Total size: {}".format(humanize_bytesize(total_size)))
-        #list_measure = ListMeasure(headers=headers, measures=table)
-        #print(list_measure.to_tabulate(order_column="dataset"))
+        metadata_path = os.path.join(settings["data_path"], 'metadata')
+        files_list = [os.path.join(metadata_path, filename) for filename in os.listdir(metadata_path)]
+        table = []
+        for filename in files_list:
+            with open(filename, "r") as f:
+                metadata = json.load(f)
+                table.append([metadata["name"], humanize_bytesize(metadata["size"]),
+                              metadata["timestamp"], metadata["driver"].split(".")[-1],
+                              metadata["hash"], metadata["description"]])
 
-def dataset_model_relation():
-    datasets = {}
-    for parent, childs, files in os.walk(settings["data_path"]):
-        datasets[parent] = files
+        headers = ["dataset", "size", "date", "driver", "hash", "description"]
+        list_measure = ListMeasure(headers=headers, measures=table)
+        print(list_measure.to_tabulate(order_column="dataset", limit=10))
 
-    dataset_md5 = {}
-    for parent, datasets_name in datasets.items():
-        for dataset_name in datasets_name:
-            dataset = Data.original_ds(dataset_name)
-            dataset_md5[dataset.md5()] = dataset_name
-    return dataset_md5
-
-
-def get_model_dataset(classes):
-    dataset_md5 = dataset_model_relation()
-    for clf, dataset in classes.items():
-        for name_version in dataset:
-            md5 = DataDrive.read_meta(
-                "md5", os.path.join(
-                    settings["models_path"], clf, name_version, name_version))
-            yield clf, name_version, md5, dataset_md5.get(md5, None)

@@ -412,11 +412,16 @@ class TestDataset(unittest.TestCase):
         data = Data(name="test", dataset_path="/tmp/", driver=Zarr(), clean=True)
         data.from_data(np.random.rand(100, 10))
         metadata = data.metadata()
-        data.write_metadata()
         with open(data.metadata_url()) as f:
             obj = json.load(f)
             self.assertEqual(obj, metadata)
         data.destroy()
+
+    def test_many_ds(self):
+        for i in range(100):
+            x = np.random.rand(1000, 2)
+            data = Data(name="test_"+str(i), driver=HDF5(), description="hola mundo {}".format(i), clean=True)
+            data.from_data(x)
 
 
 class TestDataZarr(unittest.TestCase):
