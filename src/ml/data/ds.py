@@ -448,46 +448,65 @@ class Data(AbsDataset):
                 f.write("\n")
 
     def stadistics(self):
-        from tabulate import tabulate
         from collections import defaultdict
         from ml.utils.numeric_functions import unique_size, data_type
         from ml.utils.numeric_functions import missing, zeros
         from ml.fmtypes import fmtypes_map
+        import dask.array as da
+        import dask
 
-        headers = ["feature", "label", "missing", "mean", "std dev", "zeros",
-                   "min", "25%", "50%", "75%", "max", "type", "unique"]
-        table = []
-        li = self.labels_info()
-        feature_column = defaultdict(dict)
-        for label in li:
-            mask = (self.labels[:] == label)
-            data = self.data[:][mask]
-            for i, column in enumerate(data.T):
-                percentile = np.nanpercentile(column, [0, 25, 50, 75, 100])
-                values = [
-                    "{0:.{1}f}%".format(missing(column), 2),
-                    np.nanmean(column),  
-                    np.nanstd(column),
-                    "{0:.{1}f}%".format(zeros(column), 2),
-                    ]
-                values.extend(percentile)
-                feature_column[i][label] = values
-
-        data = self.data
-        fmtypes = self.fmtypes
-        for feature, rows in feature_column.items():
-            column = data[:, feature]            
-            usize = unique_size(column)
-            if fmtypes is None or len(fmtypes) != self.num_features():
-                data_t = data_type(usize, column.size).name
+        headers = ["missing", "mean", "std dev", "zeros", "min", "25%", "50%", "75%", "max", "type", "unique"]
+        for group in ["x"]:#self.groups:
+        #    for x in Iterator(self.data[group]).batchs(batch_size=20, batch_type='array'):
+        #        print(x)
+            shape = self.data[group].shape.to_tuple()
+            if len(shape) > 1:
+                chunks = (100, shape[1])
             else:
-                data_t = fmtypes_map[fmtypes[feature]]
+                chunks = (100,)
+            array = da.from_array(self.data[group], chunks=chunks)
+            mean = array.mean()
+            std = array.std()
+            min = array.min()
+            max = array.max()
+            #percentile = da.percentile(array, 4)
+            unique = da.unique(array)
+            print(dask.compute([mean, std, min, max]))
+            break
+        #for x in Iterator(self.data).batchs(batch_size=20, batch_type='array'):
+        #     print(x)
+        #table = []
+        #li = self.labels_info()
+        #feature_column = defaultdict(dict)
+        #for label in li:
+        #    mask = (self.labels[:] == label)
+        #    data = self.data[:][mask]
+        #    for i, column in enumerate(data.T):
+        #        percentile = np.nanpercentile(column, [0, 25, 50, 75, 100])
+        #        values = [
+        #            "{0:.{1}f}%".format(missing(column), 2),
+        #            np.nanmean(column),
+        #            np.nanstd(column),
+        #            "{0:.{1}f}%".format(zeros(column), 2),
+        #            ]
+        #        values.extend(percentile)
+        #        feature_column[i][label] = values
 
-            for label, row in rows.items():
-                table.append([feature, label] + row + [data_t, str(usize)])
-                feature = "-"
-                data_t = "-"
-                usize = "-"
+        #data = self.data
+        #fmtypes = self.fmtypes
+        #for feature, rows in feature_column.items():
+        #    column = data[:, feature]
+        #    usize = unique_size(column)
+        #    if fmtypes is None or len(fmtypes) != self.num_features():
+        #        data_t = data_type(usize, column.size).name
+        #    else:
+        #        data_t = fmtypes_map[fmtypes[feature]]
 
-        return tabulate(table, headers)
+        #    for label, row in rows.items():
+        #        table.append([feature, label] + row + [data_t, str(usize)])
+        #        feature = "-"
+        #        data_t = "-"
+        #        usize = "-"
+
+        #return tabulate(table, headers)
 

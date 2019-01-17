@@ -1,11 +1,8 @@
 from .seq import grouper_chunk
-from .decorators import cut
 import numpy as np
 import pandas as pd
 
 
-# cut if length > array size
-#@cut
 def assign_struct_array2df(it, type_elem, start_i, end_i, dtype, columns):
     length = end_i - start_i
     stc_arr = np.empty(length, dtype=dtype)
@@ -17,8 +14,7 @@ def assign_struct_array2df(it, type_elem, start_i, end_i, dtype, columns):
         for i, row in enumerate(it):
             stc_arr[i] = row
     smx = pd.DataFrame(stc_arr, index=np.arange(start_i, end_i), columns=columns)
-    print(smx)
-    return smx#, i+1, length
+    return smx
 
 
 class Batch(object):

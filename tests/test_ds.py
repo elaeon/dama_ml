@@ -418,10 +418,16 @@ class TestDataset(unittest.TestCase):
         data.destroy()
 
     def test_many_ds(self):
-        for i in range(100):
-            x = np.random.rand(1000, 2)
-            data = Data(name="test_"+str(i), driver=HDF5(), description="hola mundo {}".format(i), clean=True)
-            data.from_data(x)
+        #for i in range(100):
+        #    x = np.random.rand(1000, 2)
+        #    data = Data(name="test_"+str(i), driver=HDF5(), description="hola mundo {}".format(i), clean=True)
+        #    data.from_data(x)
+
+        x = np.random.rand(1000, 2)
+        y = np.random.rand(1000, 1)
+        z = np.random.rand(1000)
+        data = Data(name="test_X", driver=HDF5(), description="hola mundo {}".format("X"), clean=True)
+        data.from_data({"x": x, "y": y, "z": z})
 
 
 class TestDataZarr(unittest.TestCase):

@@ -130,7 +130,7 @@ class TestStructArray(unittest.TestCase):
         columns = [("x", np.asarray([1, 2, 3, 4, 5]))]
         str_array = StructArray(columns)
         for i, e in enumerate(str_array, 1):
-            self.assertEqual(e.to_ndarray(), [i])
+            self.assertEqual(e, [i])
 
     def test_add(self):
         x = np.random.rand(10, 2)
@@ -140,6 +140,16 @@ class TestStructArray(unittest.TestCase):
         xy_train = x_train + y_train
         self.assertEqual((xy_train["x"].to_ndarray() == x).all(), True)
         self.assertEqual((xy_train["y"].to_ndarray() == y).all(), True)
+
+    def test_struct2array(self):
+        x = np.random.rand(2,)
+        x_train = StructArray([("x", x)])
+        self.assertEqual((np.asarray(x_train) == x).all(), True)
+
+    def test_struct2array2(self):
+        x = np.random.rand(2, 1)
+        x_train = StructArray([("x", x)])
+        self.assertEqual((np.asarray(x_train) == x).all(), True)
 
 
 class TestShape(unittest.TestCase):
@@ -154,7 +164,7 @@ class TestShape(unittest.TestCase):
         self.assertEqual(shape.to_tuple(), (10, 2, 2))
         shape = Shape({"x": (10, 2)})
         self.assertEqual(shape.to_tuple(), (10, 2))
-        shape = Shape({"x": (10, 2), "y": (3, 2), "z": (11, 1, 1)})
+        shape = Shape({"x": (10, 2), "y": (4, 2), "z": (11, 1, 1)})
         self.assertEqual(shape.to_tuple(), (11, 3, 2, 1))
 
     def test_length(self):
@@ -162,3 +172,8 @@ class TestShape(unittest.TestCase):
         self.assertEqual(shape.max_length, 11)
         shape = Shape({})
         self.assertEqual(shape.max_length, 0)
+
+    def test_iterable(self):
+        shape = Shape({"x": (10, 2)})
+        for s0, s1 in zip(shape, (10 ,2)):
+            self.assertEqual(s0, s1)

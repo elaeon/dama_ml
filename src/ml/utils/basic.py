@@ -35,9 +35,10 @@ class StructArray:
         self.dtype = max_dtype(self.dtypes)
         self.o_columns = OrderedDict(self.labels_data)
         self.groups = list(self.o_columns.keys())
-        self.counter = 0
+        self._it = None
 
     def __getitem__(self, key):
+        # print(key)
         if isinstance(key, slice):
             return self.convert(self.labels_data, key.start, key.stop)
         elif isinstance(key, str):
@@ -59,19 +60,30 @@ class StructArray:
         del self.o_columns[old]
         self.labels_data = list(self.o_columns.items())
 
+    def _iter(self):
+        counter = 0
+        while True:
+            elem = self[counter]
+            counter += 1
+            if len(elem.groups) == 1:
+                array = elem.to_ndarray()
+                if len(elem.shape[elem.groups[0]]) == 0:
+                    array = array[0]
+                yield array
+            else:
+                yield elem
+
     def __iter__(self):
-        self.counter = 0
+        self._it = None
         return self
 
     def __next__(self):
+        if self._it is None:
+            self._it = self._iter()
         try:
-            elem = self[self.counter]
+            return next(self._it)
         except IndexError:
-            self.counter = 0
             raise StopIteration
-        else:
-            self.counter += 1
-            return elem
 
     def __add__(self, other: 'StructArray') -> 'StructArray':
         if other == 0:
@@ -161,6 +173,7 @@ class StructArray:
     def convert_from_index(self, index: int) -> 'StructArray':
         sub_labels_data = []
         for group, array in self.labels_data:
+            #print(index, array)
             sub_labels_data.append((group, array[index]))
         return StructArray(sub_labels_data)
 
@@ -241,8 +254,8 @@ class Shape(object):
         self._shape = shape
 
     def __getitem__(self, item):
-        if isinstance(item, numbers.Number) and item == 0:
-            return self.max_length
+        if isinstance(item, numbers.Number):
+            return self.to_tuple()[item]
         elif isinstance(item, str):
             return self._shape[item]
         elif isinstance(item, slice):
@@ -250,8 +263,14 @@ class Shape(object):
         else:
             raise IndexError
 
+    def __iter__(self):
+        return iter(self.to_tuple())
+
     def __len__(self):
-        return len(self._shape)
+        if len(self._shape) == 1:
+            return len(self.to_tuple())
+        else:
+            return self.max_length
 
     def __eq__(self, other):
         return self.to_tuple() == other
@@ -300,12 +319,9 @@ class Shape(object):
     def max_length(self) -> int:
         if len(self._shape) > 0:
             values = [a[0] for a in self._shape.values() if len(a) > 0]
-            if len(values) == 0:
-                return 0
-            else:
+            if len(values) > 0:
                 return max(values)
-        else:
-            return 0
+        return 0
 
     def change_length(self, length) -> 'Shape':
         shapes = OrderedDict()

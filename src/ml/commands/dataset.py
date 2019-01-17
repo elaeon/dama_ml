@@ -36,7 +36,8 @@ def run(args):
         path = os.path.join(settings["data_path"])
         driver_class = getattr(drivers, args.driver)
         dataset = Data(dataset_path=path, name=args.name, group_name=args.group_name, driver=driver_class())
-        #print(dataset.stadistics())
+        with dataset:
+            print(dataset.stadistics())
     else:
         metadata_path = os.path.join(settings["data_path"], 'metadata')
         files_list = [os.path.join(metadata_path, filename) for filename in os.listdir(metadata_path)]
