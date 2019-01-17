@@ -387,7 +387,7 @@ class TestDataset(unittest.TestCase):
         data = Data(name="test", dataset_path="/tmp/")
         data.from_data(x)
         for i, e in enumerate(data, 1):
-            self.assertEqual(e.to_ndarray(), [i])
+            self.assertEqual(e, [i])
 
     def test_context_index(self):
         x = np.asarray([1, 2, 3, 4, 5])
