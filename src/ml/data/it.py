@@ -358,7 +358,7 @@ class BatchIterator(BaseIterator):
         self.batch_size = batch_size
         self.shape = it.shape
         self.static = static
-        self._it = None
+        self._it = self.run()
 
     def clean_batchs(self) -> Iterator:
         def cleaner():
@@ -411,12 +411,6 @@ class BatchIterator(BaseIterator):
         return Iterator(wsrj(self.weights_gen(data, col, weight_fn), length), dtypes=self.dtypes, length=length)
 
     def __next__(self):
-        #if self._it is None:
-        #    self._it = self.run()
-
-        #if len(self.pushedback) > 0:
-        #    return self.pushedback.pop()
-        #else:
         return next(self._it)
 
     def __iter__(self) -> 'BatchIterator':

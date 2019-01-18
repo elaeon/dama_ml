@@ -25,13 +25,15 @@ class TestIterator(unittest.TestCase):
         result = data.to_ndarray()
         self.assertCountEqual(result, array, True)
 
-    # def test_mixtype_multidim(self):
-    #    array = [1, 2, 3, 4.0, 'xxx', [1], [[2, 3]]]
-    #    it = Iterator(array, dtypes=[("c0", np.dtype("object"))])
-    #    data = Data(name="test")#, driver=HDF5())
-    #    data.from_data(it[:7])
-    #    result = data.to_ndarray()
-    #    self.assertCountEqual(result, np.asarray([1, 2, 3, 4.0, 'xxx', 1, [2, 3]], dtype='object'), True)
+    def test_mixtype_multidim(self):
+        array = [1, 2, 3, 4.0, 'xxx', [1], [[2, 3]]]
+        it = Iterator(array, dtypes=[("c0", np.dtype("object"))])
+        data = Data(name="test")
+        data.from_data(it[:7])
+        with data:
+            result = data.to_ndarray()
+        for r0, r1 in zip(result, array):
+            self.assertEqual(r0, r1)
 
     def test_length_array(self):
         array = np.zeros((20, 2)) + 1
@@ -223,8 +225,8 @@ class TestIterator(unittest.TestCase):
         dtypes = [('x', np.dtype('float')), ('y', np.dtype('float'))]
         it = Iterator(data, dtypes=dtypes).batchs(batch_size, batch_type="df")
         batch = next(it)
-        #self.assertCountEqual(batch.x, [0, 2, 4])
-        #self.assertCountEqual(batch.y, [1, 3, 5])
+        self.assertCountEqual(batch.x, [0, 2, 4])
+        self.assertCountEqual(batch.y, [1, 3, 5])
 
         batch_size = 2
         data = np.asarray([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype='float')
