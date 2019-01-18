@@ -274,8 +274,9 @@ class TestETL(unittest.TestCase):
         csv_write = pipeline.map(write_to_csv, kwargs=dict(filepath=self.filepath, header=["letra", "nat", "real"], delimiter=","))
         post_build = csv_write.map(write_to_db, kwargs=dict(name="test_schema_db", filename="test.csv"))
         csv, schema = pipeline.compute()[0]
-        #pipeline.visualize()
-        # print(csv, schema)
+        for e in csv.read(batch_size=5):
+            self.assertEqual((e.iloc[4].values == data[4]).all(), True)
+            break
         csv.destroy()
         with schema:
             schema.destroy("test_schema_db")

@@ -264,10 +264,9 @@ class Shape(object):
         return iter(self.to_tuple())
 
     def __len__(self):
-        if len(self._shape) == 1:
-            return len(self.to_tuple())
-        else:
-            return self.max_length
+        """ To add compatibility with shapes in tuple form, we define the Shape lenght
+        as the lenght of his tuple form"""
+        return len(self.to_tuple())
 
     def __eq__(self, other):
         return self.to_tuple() == other
@@ -294,6 +293,7 @@ class Shape(object):
                 pass
         return values
 
+    @cache
     def to_tuple(self) -> tuple:
         # if we have different lengths return dict of shapes
         shapes = list(self._shape.values())

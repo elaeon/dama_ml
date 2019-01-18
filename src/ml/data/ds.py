@@ -370,6 +370,7 @@ class Data(AbsDataset):
     def calc_hash(self, with_hash: str = 'sha1', batch_size: int = 1080) -> str:
         hash_obj = Hash(hash_fn=with_hash)
         header = [getattr(self, attr) for attr in self.header_map]
+        header = [attr for attr in header if attr is not None]
         hash_obj.hash.update("".join(header).encode("utf-8"))
         for group in self.groups:
             it = Iterator(self.data[group]).batchs(batch_size=batch_size, batch_type="array")
