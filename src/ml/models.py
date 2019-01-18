@@ -39,10 +39,7 @@ class MLModel:
             #else:
             def _it():
                 for row in data:  # fixme add batch_size
-                    predict = self.predictors(row.to_ndarray().reshape(1, -1))
-                    #if len(predict.shape) > 1:
-                    #    yield output_format_fn(predict[0], output=output)
-                    #else:
+                    predict = self.predictors(row.reshape(1, -1))
                     yield output_format_fn(predict, output=output)[0]
             return Iterator(_it()).batchs(batch_size=batch_size)
         else:

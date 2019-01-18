@@ -3,21 +3,12 @@ from skimage import filters
 from skimage import transform
 from skimage import img_as_ubyte
 from skimage import exposure
-
-import logging
 import numpy as np
 import random
 
-from ml.utils.config import get_settings
+from ml.utils.logger import log_config
 
-settings = get_settings("ml")
-
-log = logging.getLogger(__name__)
-logFormatter = logging.Formatter("[%(name)s] - [%(levelname)s] %(message)s")
-handler = logging.StreamHandler()
-handler.setFormatter(logFormatter)
-log.addHandler(handler)
-log.setLevel(int(settings["loglevel"]))
+log = log_config(__name__)
 
 
 def pixelate_mode(mode: str):
