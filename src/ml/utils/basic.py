@@ -35,7 +35,7 @@ class StructArray:
         self.dtype = max_dtype(self.dtypes)
         self.o_columns = OrderedDict(self.labels_data)
         self.groups = list(self.o_columns.keys())
-        self._it = None
+        self.counter = 0
 
     def __getitem__(self, key):
         # print(key)
@@ -60,30 +60,28 @@ class StructArray:
         del self.o_columns[old]
         self.labels_data = list(self.o_columns.items())
 
-    def _iter(self):
-        counter = 0
-        while True:
-            elem = self[counter]
-            counter += 1
-            if len(elem.groups) == 1:
-                array = elem.to_ndarray()
-                if len(elem.shape[elem.groups[0]]) == 0:
-                    array = array[0]
-                yield array
-            else:
-                yield elem
+    def _iterator(self, counter):
+        elem = self[counter]
+        if len(elem.groups) == 1:
+            array = elem.to_ndarray()
+            if len(elem.shape[elem.groups[0]]) == 0:
+                array = array[0]
+            return array
+        else:
+            return elem
 
     def __iter__(self):
-        self._it = None
+        self.counter = 0
         return self
 
     def __next__(self):
-        if self._it is None:
-            self._it = self._iter()
         try:
-            return next(self._it)
+            elem = self._iterator(self.counter)
+            self.counter += 1
         except IndexError:
             raise StopIteration
+        else:
+            return elem
 
     def __add__(self, other: 'StructArray') -> 'StructArray':
         if other == 0:
@@ -173,7 +171,6 @@ class StructArray:
     def convert_from_index(self, index: int) -> 'StructArray':
         sub_labels_data = []
         for group, array in self.labels_data:
-            #print(index, array)
             sub_labels_data.append((group, array[index]))
         return StructArray(sub_labels_data)
 

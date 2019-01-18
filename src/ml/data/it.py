@@ -47,14 +47,11 @@ class BaseIterator(object):
         else:
             if isinstance(shape, Shape):
                 self.shape = self.calc_shape_stc(length, shape)
-            # elif length != np.inf:
-            #    print(shape)
-            #    self.shape = (length,)
             else:
                 self.shape = None
-            #    self.shape = (np.inf,)
-        self.iter_init = True
-        self._it = None
+        # self.iter_init = True
+        # self._it = None
+        self.rewind = False
 
     @property
     def length(self):
@@ -152,24 +149,19 @@ class BaseIterator(object):
         while True:
             for elem in self:
                 yield elem
-            self.reset_it()
 
     def __iter__(self) -> 'BaseIterator':
+        if isinstance(self.data, AbsDataset):
+            self.data.data.counter = 0
+            if len(self.pushedback) > 0:
+                self.pushedback.pop()
         return self
 
     def __next__(self):
-        if self._it is None and (self.length == np.inf or self.num_splits() == 0):
-            self._it = self.data
-        elif self._it is None and self.num_splits() > 0:
-            self._it = islice(self.data, self.num_splits() - len(self.pushedback))
-
         if len(self.pushedback) > 0:
             return self.pushedback.pop()
         else:
-            return next(self._it)
-
-    def reset_it(self):
-        self._it = None
+            return next(self.data)
 
     def to_iter(self):
         groups = self.groups
@@ -179,31 +171,47 @@ class BaseIterator(object):
                 row.append(batch[group])
             yield row
 
+    def __getitem__(self, key) -> 'Iterator':
+        if isinstance(key, slice):
+            if key.stop is not None:
+                if self.rewind is False:
+                    _it = islice(self.data, key.stop)
+                else:
+                    _it = self
+                return Iterator(_it, dtypes=self.dtypes, length=key.stop)
+        return NotImplemented
+
 
 class Iterator(BaseIterator):
     def __init__(self, fn_iter, dtypes: list = None, length: int = np.inf) -> None:
         super(Iterator, self).__init__(fn_iter, dtypes=dtypes, length=length)
         if isinstance(fn_iter, types.GeneratorType):
             self.data = fn_iter
+            self.rewind = False
         elif isinstance(fn_iter, Iterator):
             pass
         elif isinstance(fn_iter, dict):
             self.data = StructArray(fn_iter.items())
+            self.rewind = True
             dtypes = self.data.dtypes
             length = len(self.data)
         elif isinstance(fn_iter, pd.DataFrame):
             self.data = fn_iter.itertuples(index=False)
             dtypes = list(zip(fn_iter.columns.values, fn_iter.dtypes.values))
             length = fn_iter.shape[0] if length == np.inf else length
+            self.rewind = False
         elif isinstance(fn_iter, np.ndarray):
             self.data = iter(fn_iter)
             length = fn_iter.shape[0] if length == np.inf else length
+            self.rewind = False
         elif isinstance(fn_iter, StructArray) or isinstance(fn_iter, AbsDataset):
             self.data = fn_iter
             dtypes = fn_iter.dtypes
             length = len(fn_iter) if length == np.inf else length
+            self.rewind = True
         else:
             self.data = iter(fn_iter)
+            self.rewind = False
             if hasattr(fn_iter, '__len__'):
                 length = len(fn_iter)
 
@@ -215,6 +223,7 @@ class Iterator(BaseIterator):
             self.type_elem = fn_iter.type_elem
             self.pushedback = fn_iter.pushedback
             self.dtypes = fn_iter.dtypes
+            self.rewind = fn_iter.rewind
         else:
             # obtain dtypes, shape, dtype, type_elem and length
             self.chunk_taste(length, dtypes)
@@ -304,7 +313,7 @@ class Iterator(BaseIterator):
 
     def batchs(self, batch_size: int, batch_type: str = "array") -> 'BatchIterator':
         if batch_size > 0:
-            if self.type_elem == AbsDataset or self.type_elem == StructArray:
+            if isinstance(self.data, AbsDataset) or isinstance(self.data, StructArray):
                 if batch_type == "df":
                     return BatchDataFrame(self, batch_size=batch_size)
                 elif batch_type == "array":
@@ -324,7 +333,13 @@ class Iterator(BaseIterator):
     def __getitem__(self, key) -> 'Iterator':
         if isinstance(key, slice):
             if key.stop is not None:
-                return Iterator(self, dtypes=self.dtypes, length=key.stop)
+                if self.rewind is False:
+                    _it = islice(self, key.stop)  # islice(self.data, self.num_splits() - len(self.pushedback))
+                else:
+                    _it = self
+                return Iterator(_it, dtypes=self.dtypes, length=key.stop)
+            else:
+                return self
         return NotImplemented
 
     def __setitem__(self, key, value):
@@ -332,8 +347,7 @@ class Iterator(BaseIterator):
 
     def cycle(self):
         shape = self.shape.change_length(np.inf)
-        return BaseIterator(self._cycle_it(), dtypes=self.dtypes, type_elem=StructArray,
-                            pushedback=self.pushedback, shape=shape)
+        return BaseIterator(self._cycle_it(), dtypes=self.dtypes, type_elem=StructArray, shape=shape)
 
 
 class BatchIterator(BaseIterator):
@@ -344,6 +358,7 @@ class BatchIterator(BaseIterator):
         self.batch_size = batch_size
         self.shape = it.shape
         self.static = static
+        self._it = None
 
     def clean_batchs(self) -> Iterator:
         def cleaner():
@@ -396,15 +411,16 @@ class BatchIterator(BaseIterator):
         return Iterator(wsrj(self.weights_gen(data, col, weight_fn), length), dtypes=self.dtypes, length=length)
 
     def __next__(self):
-        if self._it is None:
-            self._it = self.run()
+        #if self._it is None:
+        #    self._it = self.run()
 
-        if len(self.pushedback) > 0:
-            return self.pushedback.pop()
-        else:
-            return next(self._it)
+        #if len(self.pushedback) > 0:
+        #    return self.pushedback.pop()
+        #else:
+        return next(self._it)
 
     def __iter__(self) -> 'BatchIterator':
+        self._it = self.run()
         return self
 
     def __getitem__(self, key) -> 'BatchIterator':
@@ -413,6 +429,8 @@ class BatchIterator(BaseIterator):
                 return self.builder(BaseIterator(self.cut_batch(key.stop), dtypes=self.dtypes,
                                                  length=key.stop, shape=self.shape),
                                     batch_size=self.batch_size)
+            else:
+                return self
         return NotImplemented
 
     def run(self):
@@ -438,6 +456,8 @@ class BatchIterator(BaseIterator):
         for group, shape in it.shape.items():
             shape_dict[group] = [shape[0]] + list(shape[2:])
         shape = Shape(shape_dict)
+        if batcher_len == 0:
+            batcher_len = None
         return cls.builder(BaseIterator(it[:batcher_len], shape=shape, dtypes=dtypes), batch_size=from_batch_size)
 
     def cycle(self):
