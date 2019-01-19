@@ -5,90 +5,39 @@ import numpy as np
 from tqdm import tqdm
 from collections import OrderedDict
 from psycopg2.extras import execute_values
-from ml.data.it import BaseIterator
 from ml.fmtypes import fmtypes_map
-from ml.utils.basic import Shape, Login
+from ml.utils.basic import Shape
+from ml.abc.driver import AbsDriver
+from ml.utils.numeric_functions import max_dtype
 
 
-class IteratorConn(BaseIterator):
-    def __init__(self, conn, length=None, dtypes=None, shape=None, type_elem=None,
-                 batch_size: int=0, table_name=None) -> None:
-        self.conn = conn
-        self.batch_size = batch_size
-        self.table_name = table_name
-        super(IteratorConn, self).__init__(None, length=length, dtypes=dtypes, shape=shape, type_elem=type_elem)
+class Schema(AbsDriver):
+    persistent = True
+    ext = 'sql'
 
-    def __getitem__(self, key):
-        cur = self.conn.cursor(uuid.uuid4().hex, scrollable=False, withhold=False)
-        start = 0
-        stop = None
-        if isinstance(key, tuple):
-            _columns = self.labels[key[1]]
-            key = key[0]
-        else:
-            _columns = None
+    def __contains__(self, item):
+        return self.exists(item)
 
-        if isinstance(key, str):
-            if _columns is None:
-                _columns = [key]
-        elif isinstance(key, list):
-            if _columns is None:
-                _columns = key
-        elif isinstance(key, int):
-            if _columns is None:
-                _columns = self.labels
-            start = key
-            stop = start + 1
-        elif isinstance(key, slice):
-            if _columns is None:
-                _columns = self.labels
-            if key.start is not None:
-                start = key.start
+    def enter(self, url):
+        self.__enter__()
 
-            if key.stop is None:
-                stop = self.shape[0]
-            else:
-                stop = key.stop
-
-        if stop is None:
-            limit_txt = ""
-        else:
-            limit_txt = "LIMIT {}".format(stop)
-
-        length = abs(stop - start)
-        shape = [length] + list(self.shape[1:])
-        query = "SELECT {columns} FROM {table_name} ORDER BY {order_by} {limit}".format(
-            columns=IteratorConn.format_columns(_columns), table_name=self.table_name,
-            order_by="id",
-            limit=limit_txt)
-        cur.execute(query)
-        cur.itersize = self.batch_size
-        cur.scroll(start)
-        smx = np.empty(shape, dtype=self.dtype)
-        for i, row in enumerate(cur.fetchall()):
-            smx[i] = row
-        return smx
-
-    @staticmethod
-    def format_columns(columns):
-        if columns is None:
-            return "*"
-        else:
-            return ",".join(columns)
-
-
-class Schema(object):
-    def __init__(self, login: Login):
-        self.login = login
+    def exit(self):
+        self.__exit__()
 
     def __enter__(self):
         self.conn = psycopg2.connect(
             "dbname={db_name} user={username}".format(db_name=self.login.resource, username=self.login.username))
         self.conn.autocommit = False
+        self.attrs = {}
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.conn.close()
+        self.attrs = None
+
+    def __getitem__(self, item):
+        if isinstance(item, str):
+            return Table(item, self.conn)
 
     def exists(self, table_name) -> bool:
         cur = self.conn.cursor()
@@ -96,7 +45,7 @@ class Schema(object):
         return True if cur.fetchone()[0] else False
 
     def build(self, table_name, columns, indexes=None):
-        def _build():
+        if not self.exists(table_name):
             columns_types = ["id serial PRIMARY KEY"]
             for col, dtype in columns:
                 fmtype = fmtypes_map[dtype]
@@ -118,21 +67,18 @@ class Schema(object):
                     index_q = "CREATE INDEX {i_name}_{name}_index ON {name} ({i_columns})".format(
                         name=table_name, i_name=index_name, i_columns=index_columns)
                     cur.execute(index_q)
-
-        if not self.exists(table_name):
-            _build()
-        self.conn.commit()
+            self.conn.commit()
 
     def destroy(self, table_name):
         cur = self.conn.cursor()
         cur.execute("DROP TABLE {name}".format(name=table_name))
         self.conn.commit()
 
-    def info(self, table_name):
-        return self[table_name].info()
+    def dtypes(self, table_name) -> list:
+        return self[table_name].dtypes()
 
     def insert(self, table_name: str, data):
-        header = self.info(table_name)
+        header = self.dtypes(table_name)
         columns = "(" + ", ".join([name for name, _ in header]) + ")"
         insert_str = "INSERT INTO {name} {columns} VALUES".format(
             name=table_name, columns=columns)
@@ -142,28 +88,67 @@ class Schema(object):
             execute_values(cur, insert, row, page_size=data.batch_size)
         self.conn.commit()
 
-    def __getitem__(self, item):
-        if isinstance(item, str):
-            return Table(item, self.conn)
+    def require_group(self, *args, **kwargs):
+        return self.f.require_group(*args, **kwargs)
+
+    def require_dataset(self, group: str, name: str, shape: tuple, dtype: np.dtype) -> None:
+        self.chunk_size = 1000
+        self.f[group].require_dataset(name, shape, dtype=dtype, chunks=True,
+                                      exact=True,
+                                      **self.compressor_params)
+
+    def auto_dtype(self, dtype: np.dtype):
+        return dtype
 
 
 class Table(object):
-    def __init__(self, name, conn):
+    def __init__(self, name, conn, query_parts=None):
         self.conn = conn
         self.name = name
+        if query_parts is None:
+            self.query_parts = {"columns": None, "slice": None}
+        else:
+            self.query_parts = query_parts
 
-    def query(self):
-        return "SELECT * FROM {table_name}".format(table_name=self.name)
+    def __getitem__(self, item):
+        if isinstance(item, str):
+            self.query_parts["columns"] = [item]
+        elif isinstance(item, list):
+            self.query_parts["columns"] = item
+        elif isinstance(item, int):
+            self.query_parts["slice"] = slice(item, item + 1)
+        elif isinstance(item, slice):
+            self.query_parts["slice"] = item
+        return self
+
+    def compute(self):
+        slice_item, _ = self.build_limit_info()
+        query = self.build_query()
+        cur = self.conn.cursor(uuid.uuid4().hex, scrollable=False, withhold=False)
+        cur.execute(query)
+        cur.itersize = 1000  # chunksize
+        cur.scroll(slice_item.start)
+        print(self.shape)
+        array = np.empty(self.shape, max_dtype(self.dtypes()))
+        print(cur.fetchall())
+        print(query)
+        #array[:] = cur.fetchall()
+        self.conn.commit()
+        return array
 
     @property
     def shape(self) -> Shape:
         cur = self.conn.cursor()
-        query = "SELECT COUNT(*) FROM {table_name}".format(table_name=self.name)
-        cur.execute(query)
-        length = cur.fetchone()[0]
-        return Shape({self.name: (length, len(self.info()))})
+        slice_item, limit_txt = self.build_limit_info()
+        if limit_txt == "":
+            query = "SELECT COUNT(*) FROM {table_name}".format(table_name=self.name)
+            cur.execute(query)
+            length = cur.fetchone()[0]
+        else:
+            length = abs(slice_item.stop - slice_item.start)
+        return Shape({self.name: (length, len(self.dtypes()))})
 
-    def info(self):
+    def dtypes(self) -> list:
         cur = self.conn.cursor()
         query = "SELECT * FROM information_schema.columns WHERE table_name=%(table_name)s ORDER BY ordinal_position"
         cur.execute(query, {"table_name": self.name})
@@ -172,8 +157,13 @@ class Table(object):
                  "double precision": np.dtype("float"), "boolean": np.dtype("bool"),
                  "timestamp without time zone": np.dtype('datetime64[ns]')}
 
-        for column in cur.fetchall():
-            dtypes[column[3]] = types.get(column[7], np.dtype("object"))
+        if self.query_parts["columns"] is not None:
+            for column in cur.fetchall():
+                if column[3] in self.query_parts["columns"]:
+                    dtypes[column[3]] = types.get(column[7], np.dtype("object"))
+        else:
+            for column in cur.fetchall():
+                dtypes[column[3]] = types.get(column[7], np.dtype("object"))
 
         if "id" in dtypes:
             del dtypes["id"]
@@ -186,3 +176,38 @@ class Table(object):
         query = "SELECT last_value FROM {table_name}_id_seq".format(table_name=self.name)
         cur.execute(query)
         return cur.fetchone()[0]
+
+    @staticmethod
+    def format_columns(columns):
+        if columns is None:
+            return "*"
+        else:
+            return ",".join(columns)
+
+    def build_limit_info(self) -> tuple:
+        item = self.query_parts["slice"]
+        if item is None:
+            start = 0
+            stop = None
+            limit_txt = ""
+        else:
+            if item.start is None:
+                start = 0
+            else:
+                start = item.start
+
+            if item.stop is None:
+                limit_txt = ""
+                stop = None
+            else:
+                limit_txt = "LIMIT {}".format(item.stop)
+                stop = item.stop
+
+        return slice(start, stop), limit_txt
+
+    def build_query(self) -> str:
+        slice_item, limit_txt = self.build_limit_info()
+        query = "SELECT {columns} FROM {table_name} ORDER BY {order_by} {limit}".format(
+            columns=Table.format_columns(self.query_parts["columns"]), table_name=self.name, order_by="id",
+            limit=limit_txt)
+        return query
