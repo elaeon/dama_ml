@@ -417,6 +417,9 @@ class BatchIterator(BaseIterator):
         self._it = self.run()
         return self
 
+    def __len__(self):
+        return self.num_splits()
+
     def __getitem__(self, key) -> 'BatchIterator':
         if isinstance(key, slice):
             if key.stop is not None:

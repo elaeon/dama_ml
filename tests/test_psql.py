@@ -5,6 +5,7 @@ import psycopg2
 from ml.utils.basic import Login
 from ml.data.it import Iterator
 from ml.data.db import Schema
+from ml.data.ds import Data
 
 
 def get_column(data, column_index):
@@ -100,7 +101,7 @@ class TestSQL(unittest.TestCase):
         except psycopg2.OperationalError:
             pass
 
-    def test_read(self):
+    def test_get(self):
         data = np.asarray([
             ["a", 1, 0.1],
             ["b", 2, 0.2],
@@ -118,20 +119,71 @@ class TestSQL(unittest.TestCase):
         dtypes = [("x0", np.dtype(object)), ("x1", np.dtype(int)), ("x2", np.dtype(float))]
         try:
             with Schema(login=self.login) as schema:
+                schema.destroy("test_schema_db")
                 schema.build("test_schema_db", dtypes)
                 schema.insert("test_schema_db", Iterator(data).batchs(batch_size=10, batch_type="array"))
-                #print(schema["test_schema_db"]["x0"][:5].compute())
-                #print(schema["test_schema_db"][["x0", "x1"]].compute())
-                #print(schema["test_schema_db"]["x0"][3].compute())
-                print(schema["test_schema_db"][1].compute())
-                #print(schema["test_schema_db"][[1, 2, 3]].compute())
-                #print(schema["test_schema_db"]["x0"][[1, 2, 3].compute())
+                self.assertEqual((schema["test_schema_db"]["x0"][:5].compute().reshape(-1) == data[:5, 0]).all(), True)
+                self.assertEqual((schema["test_schema_db"]["x0", "x1"].compute() == data[:, :2]).all(), True)
+                self.assertEqual(schema["test_schema_db"]["x0"][3].compute(), data[3, 0])
+                self.assertEqual((schema["test_schema_db"][1].compute().reshape(-1) == data[1]).all(), True)
+                self.assertEqual((schema["test_schema_db"][1, 2, 3].compute() == data[[1, 2, 3]]).all(), True)
+                self.assertEqual((schema["test_schema_db"]["x0"][1, 2, 3].compute().reshape(-1) == data[:, 0][[1, 2, 3]]).all(), True)
                 schema.destroy("test_schema_db")
-        except (psycopg2.OperationalError, ValueError) as e:
-            print(e)
-            with Schema(login=self.login) as schema:
-                schema.destroy("test_schema_db")
-                print("DESTROYED")
+        except psycopg2.OperationalError:
+            pass
+
+    def test_set(self):
+        data = np.asarray([
+            ["a", 1, 0.1],
+            ["b", 2, 0.2],
+            ["c", 3, 0.3],
+            ["d", 4, 0.4],
+            ["e", 5, 0.5],
+            ["f", 6, 0.6],
+            ["g", 7, 0.7],
+            ["h", 8, 0.8],
+            ["i", 9, 0.9],
+            ["j", 10, 1],
+            ["k", 11, 1.1],
+            ["l", 12, 1.2],
+        ], dtype="O")
+        dtypes = [("x0", np.dtype(object)), ("x1", np.dtype(int)), ("x2", np.dtype(float))]
+        #try:
+        with Schema(login=self.login) as schema:
+            schema.destroy("test_schema_db")
+            schema.build("test_schema_db", dtypes)
+            schema["test_schema_db"][0:5] = data[0:5]
+            schema["test_schema_db"][6:10] = data[6:10]
+            print(schema["test_schema_db"][:].compute())
+            schema.destroy("test_schema_db")
+        #except psycopg2.OperationalError:
+        #    pass
+
+    def test_driver(self):
+        #data = np.asarray([
+        #    ["a", 1, 0.1],
+        #    ["b", 2, 0.2],
+        #    ["c", 3, 0.3]])
+        #dtypes = [("x0", np.dtype(object)), ("x1", np.dtype(int)), ("x2", np.dtype(float))]
+        #with Schema(login=self.login) as schema:
+        #    schema.destroy("test")
+        #    schema.build("test", dtypes)
+        #    schema.insert("test", data)
+        #    l = []
+        #    l.append(schema["test"]["x0"])
+        #    print(l[0].dtypes)
+            #schema.destroy("test")
+
+        with Schema(login=self.login) as schema:
+            schema.destroy("test")
+
+        x = np.random.rand(10)
+        y = np.random.rand(10)
+        data = Data(name="test", driver=Schema(login=self.login))
+        data.from_data({"x": x, "y": y})
+        with data:
+            print(data[:].labels_data)
+        data.destroy()
 
 
 if __name__ == '__main__':

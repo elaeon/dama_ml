@@ -151,7 +151,7 @@ class Data(AbsDataset):
         self.driver.require_dataset(level, name, shape, dtype=dtype)
 
     def _get_data(self, group):
-        return self.driver["data"][group]
+        return self.driver[self.name][group]
 
     def _set_attr(self, name, value):
         if value is not None:
@@ -181,10 +181,12 @@ class Data(AbsDataset):
             init = {group: 0 for group in groups}
             end = {group: 0 for group in groups}
             for smx in tqdm(data, total=data.num_splits()):
-                for group in groups:
-                    end[group] += len(smx[group])
-                    self.driver["data"][group][init[group]:end[group]] = smx[group].to_ndarray()
-                    init[group] = end[group]
+                end["x"] += len(smx["x"])
+                self.driver[self.name][init["x"]:end["x"]] = smx.to_ndarray()
+                #for group in groups:
+                #    end[group] += len(smx[group])
+                #    self.driver[self.name][group][init[group]:end[group]] = smx[group].to_ndarray()
+                #    init[group] = end[group]
         elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "array":
             log.debug("WRITING ARRAY BATCH")
             init = 0
@@ -261,6 +263,9 @@ class Data(AbsDataset):
         """
         delete the hdf5 file
         """
+        with self:
+            self.driver.destroy(scope=self.name)
+
         rm(self.url)
         log.debug("DESTROY {}".format(self.url))
         meta_url = self.metadata_url()
@@ -310,18 +315,20 @@ class Data(AbsDataset):
 
     @property
     def dtypes(self) -> list:
-        if "meta" in self.driver:
-            return [(col, np.dtype(dtype)) for col, dtype in self.driver["meta"].get("dtypes", [])]
-        else:
-            return []
+        return self.driver.dtypes(self.name)
+        #if "meta" in self.driver:
+        #    return [(col, np.dtype(dtype)) for col, dtype in self.driver["meta"].get("dtypes", [])]
+        #else:
+        #    return []
 
     @dtypes.setter
     def dtypes(self, value):
         if value is not None:
             with self:
-                self._set_group_shape("dtypes", (len(value), 2), np.dtype('object'), level="meta")
-                for i, (group, dtype) in enumerate(value):
-                    self.driver["meta"]["dtypes"][i] = (group, dtype.str)
+                #self._set_group_shape("dtypes", (len(value), 2), np.dtype('object'), level="meta")
+                #for i, (group, dtype) in enumerate(value):
+                #    self.driver["meta"]["dtypes"][i] = (group, dtype.str)
+                self.driver.set_schema(self.name, value)
 
     def info(self):
         print('       ')
@@ -407,6 +414,7 @@ class Data(AbsDataset):
                 self.batchs_writer(data)
             else:
                 data.store(self)
+        with self:
             if with_hash is not None:
                 c_hash = self.calc_hash(with_hash=with_hash)
             else:
@@ -426,13 +434,6 @@ class Data(AbsDataset):
 
     def to_xrds(self) -> xr.Dataset:
         return self.data.to_xrds()
-
-    # @staticmethod
-    # def url_to_name(url):
-    #    dataset_url = url.split("/")
-    #    name = dataset_url[-1]
-    #    path = "/".join(dataset_url[:-1])
-    #    return name, path
 
     def to_libsvm(self, target, save_to=None):
         """

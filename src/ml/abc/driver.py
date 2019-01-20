@@ -62,3 +62,7 @@ class AbsDriver(ABC):
     @abstractmethod
     def auto_dtype(self, dtype):
         return NotImplemented
+
+    @abstractmethod
+    def destroy(self, scope=None):
+        return NotImplemented

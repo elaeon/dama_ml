@@ -294,3 +294,11 @@ def nested_shape_aux(x) -> list:
         return dim
     elif isinstance(x, numbers.Number) or isinstance(x, str):
         return []
+
+
+def all_int(item):
+    try:
+        np.asarray(item, dtype=np.dtype(int))
+        return True
+    except ValueError:
+        return False
