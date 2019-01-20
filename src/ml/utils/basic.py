@@ -209,6 +209,7 @@ class StructArray:
             return pd.DataFrame(data, index=np.arange(init_i, end_i), columns=self.groups)
 
     def to_ndarray(self, dtype: list = None) -> np.ndarray:
+        print("----")
         if dtype is None:
             dtype = self.dtype
         if not self.is_multidim():
@@ -216,10 +217,11 @@ class StructArray:
             ndarray = np.empty(ushape, dtype=dtype)
             if len(self.labels_data) == 1:
                 if ushape[0] == 1:
-                    ndarray[0] = self.o_columns[self.groups[0]]
+                    ndarray[0] = self.o_columns[self.groups[0]].compute()
                 else:
                     for i, (_, array) in enumerate(self.labels_data):
-                        ndarray[:] = array[0:len(self)]
+                        print("++++++", array.query_parts, len(self))
+                        ndarray[:] = array[0:len(self)].compute()
             else:
                 if len(ushape) == 1:
                     for i, (_, array) in enumerate(self.labels_data):

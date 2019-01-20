@@ -164,7 +164,11 @@ class Table(object):
         cur.itersize = self.chunksize[0]
         cur.scroll(slice_item.start)
         array = np.empty(self.shape, self.dtype)
-        array[:] = cur.fetchall()
+        if len(self.shape.groups()) == 1:
+            for i, row in enumerate(cur):
+                array[i] = row[0]
+        else:
+            array[:] = cur.fetchall()
         self.conn.commit()
         return array
 
@@ -182,7 +186,8 @@ class Table(object):
             length = cur.fetchone()[0]
         else:
             length = abs(slice_item.stop - slice_item.start)
-        return Shape({self.name: (length, len(self.dtypes))})
+        shape = dict([(group, (length,)) for group, _ in self.dtypes])
+        return Shape(shape)
 
     @property
     def dtypes(self) -> list:
@@ -195,7 +200,6 @@ class Table(object):
                  "timestamp without time zone": np.dtype('datetime64[ns]')}
 
         if self.query_parts["columns"] is not None:
-            #print(cur.fetchall(), cur.fetchone(), self.conn, "****")
             for column in cur.fetchall():
                 if column[3] in self.query_parts["columns"]:
                     dtypes[column[3]] = types.get(column[7], np.dtype("object"))

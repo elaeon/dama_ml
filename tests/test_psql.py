@@ -122,7 +122,7 @@ class TestSQL(unittest.TestCase):
                 schema.destroy("test_schema_db")
                 schema.build("test_schema_db", dtypes)
                 schema.insert("test_schema_db", Iterator(data).batchs(batch_size=10, batch_type="array"))
-                self.assertEqual((schema["test_schema_db"]["x0"][:5].compute().reshape(-1) == data[:5, 0]).all(), True)
+                self.assertEqual((schema["test_schema_db"]["x1"][:5].compute().reshape(-1) == data[:5, 1]).all(), True)
                 self.assertEqual((schema["test_schema_db"]["x0", "x1"].compute() == data[:, :2]).all(), True)
                 self.assertEqual(schema["test_schema_db"]["x0"][3].compute(), data[3, 0])
                 self.assertEqual((schema["test_schema_db"][1].compute().reshape(-1) == data[1]).all(), True)
