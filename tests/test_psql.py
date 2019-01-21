@@ -160,29 +160,15 @@ class TestSQL(unittest.TestCase):
         #    pass
 
     def test_driver(self):
-        #data = np.asarray([
-        #    ["a", 1, 0.1],
-        #    ["b", 2, 0.2],
-        #    ["c", 3, 0.3]])
-        #dtypes = [("x0", np.dtype(object)), ("x1", np.dtype(int)), ("x2", np.dtype(float))]
-        #with Schema(login=self.login) as schema:
-        #    schema.destroy("test")
-        #    schema.build("test", dtypes)
-        #    schema.insert("test", data)
-        #    l = []
-        #    l.append(schema["test"]["x0"])
-        #    print(l[0].dtypes)
-            #schema.destroy("test")
-
         with Schema(login=self.login) as schema:
             schema.destroy("test")
-
-        x = np.random.rand(10)
-        y = np.random.rand(10)
+        x = np.random.rand(10)*100
+        y = np.random.rand(10)*100
         data = Data(name="test", driver=Schema(login=self.login))
         data.from_data({"x": x, "y": y})
         with data:
-            print(data[:].labels_data)
+            self.assertEqual((data["x"].to_ndarray(dtype=np.dtype("int8")) == x.astype("int8")).all(), True)
+            self.assertEqual((data["y"].to_ndarray(dtype=np.dtype("int8")) == y.astype("int8")).all(), True)
         data.destroy()
 
 

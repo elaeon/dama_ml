@@ -140,9 +140,9 @@ class StructArray:
                 shapes[group] = ()
         return Shape(shapes)
 
-    @property
-    def ushape(self) -> tuple:
-        return self.shape.to_tuple()
+    # @property
+    # def ushape(self) -> tuple:
+    #    return self.shape.to_tuple()
 
     def columns2dtype(self) -> list:
         dtypes = []
@@ -209,19 +209,18 @@ class StructArray:
             return pd.DataFrame(data, index=np.arange(init_i, end_i), columns=self.groups)
 
     def to_ndarray(self, dtype: list = None) -> np.ndarray:
-        print("----")
         if dtype is None:
             dtype = self.dtype
         if not self.is_multidim():
-            ushape = self.ushape
+            ushape = self.shape.to_tuple()
             ndarray = np.empty(ushape, dtype=dtype)
             if len(self.labels_data) == 1:
+                if hasattr(self.o_columns[self.groups[0]], 'compute'):
+                    array = self.o_columns[self.groups[0]].compute()
                 if ushape[0] == 1:
-                    ndarray[0] = self.o_columns[self.groups[0]].compute()
+                    ndarray[0] = array
                 else:
-                    for i, (_, array) in enumerate(self.labels_data):
-                        print("++++++", array.query_parts, len(self))
-                        ndarray[:] = array[0:len(self)].compute()
+                    ndarray[:] = array
             else:
                 if len(ushape) == 1:
                     for i, (_, array) in enumerate(self.labels_data):
@@ -230,8 +229,12 @@ class StructArray:
                     for i, (_, array) in enumerate(self.labels_data):
                         ndarray[:, i] = array
                 else:
-                    for i, (_, array) in enumerate(self.labels_data):
-                        ndarray[:, i] = array[0:len(self)]
+                    if hasattr(self.o_columns[self.groups[0]], 'compute'):
+                        for i, (_, array) in enumerate(self.labels_data):
+                            ndarray[:, i] = array[0:len(self)].compute()
+                    else:
+                        for i, (_, array) in enumerate(self.labels_data):
+                            ndarray[:, i] = array[0:len(self)]
         else:
             raise NotImplementedError
         return ndarray

@@ -11,6 +11,7 @@ from ml.utils.basic import Shape
 from ml.abc.driver import AbsDriver
 from ml.utils.numeric_functions import max_dtype, all_int
 from ml.data.it import Iterator, BatchIterator
+from ml.utils.decorators import cache
 
 
 log = log_config(__name__)
@@ -141,6 +142,9 @@ class Table(object):
             else:
                 self.update(value)
 
+    def __len__(self):
+        return self.shape.to_tuple()[0]
+
     def insert(self, data, batch_size=258):
         if not isinstance(data, BatchIterator):
             data = Iterator(data).batchs(batch_size=batch_size, batch_type="array")
@@ -177,6 +181,7 @@ class Table(object):
         return max_dtype(self.dtypes)
 
     @property
+    @cache
     def shape(self) -> Shape:
         cur = self.conn.cursor()
         slice_item, limit_txt = self.build_limit_info()
@@ -185,11 +190,15 @@ class Table(object):
             cur.execute(query)
             length = cur.fetchone()[0]
         else:
-            length = abs(slice_item.stop - slice_item.start)
+            query = "SELECT COUNT(*) FROM {table_name} WHERE id > {start} and id <= {stop}".format(
+                start=slice_item.start, stop=slice_item.stop, table_name=self.name)
+            cur.execute(query)
+            length = cur.fetchone()[0]
         shape = dict([(group, (length,)) for group, _ in self.dtypes])
         return Shape(shape)
 
     @property
+    @cache
     def dtypes(self) -> list:
         cur = self.conn.cursor()
         query = "SELECT * FROM information_schema.columns WHERE table_name=%(table_name)s ORDER BY ordinal_position"

@@ -172,92 +172,17 @@ class Data(AbsDataset):
     def batchs_writer(self, data):
         groups = self.groups
         log.info("Writing with batch size {}".format(getattr(data, 'batch_size', 0)))
-        # if isinstance(data, StructArray):
-        #    raise Exception
-        #    for group in data.groups:
-        #        self.driver["data"][group] = data[group].to_ndarray()
-        if getattr(data, 'batch_size', 0) > 0 and data.batch_type == "structured":
-            log.debug("WRITING STRUCTURED BATCH")
-            init = {group: 0 for group in groups}
-            end = {group: 0 for group in groups}
-            for smx in tqdm(data, total=data.num_splits()):
-                end["x"] += len(smx["x"])
-                self.driver[self.name][init["x"]:end["x"]] = smx.to_ndarray()
-                #for group in groups:
-                #    end[group] += len(smx[group])
-                #    self.driver[self.name][group][init[group]:end[group]] = smx[group].to_ndarray()
-                #    init[group] = end[group]
-        elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "array":
-            log.debug("WRITING ARRAY BATCH")
-            init = 0
-            end = 0
-            for smx in tqdm(data, total=data.num_splits()):
-                end += smx.shape[0]
-                for group in groups:
-                    self.driver["data"][group][init:end] = smx
-                init = end
-        elif getattr(data, 'batch_size', 0) > 0 and data.batch_type == "df":
-            log.debug("WRITING DF BATCH")
-            init = 0
-            end = 0
-            for smx in tqdm(data, total=data.num_splits()):
-                end += smx.shape[0]
-                for group in groups:
-                    self.driver["data"][group][init:end] = smx[group]
-                init = end
-        elif getattr(data, 'batch_size', 0) > 0 and data.type_elem is not None:
-            log.debug("WRITING GENERIC BATCH")
-            init = 0
-            end = 0
-            for smx in tqdm(data, total=data.num_splits()):
-                if hasattr(smx, 'shape') and len(smx.shape) > 0:
-                    end += smx.shape[0]
-                else:
-                    end += 1
-                for i, group in enumerate(groups):
-                    self.driver["data"][group][init:end] = smx[i]
-                init = end
-        elif getattr(data, 'batch_size', 0) > 0 and data.type_elem is None:
-            log.debug("WRITING GENERIC BATCH ARRAY")
-            init = {group: 0 for group in groups}
-            end = {group: 0 for group in groups}
-            for smx in tqdm(data, total=data.num_splits()):
-                for i, group in enumerate(groups):
-                    if hasattr(smx[i], 'shape') and len(smx[i].shape) > 0:
-                        end[group] += len(smx[i])
-                    else:
-                        end[group] += 1
-                    self.driver["data"][group][init[group]:end[group]] = smx[i]
-                    init[group] = end[group]
-        elif data.type_elem == tuple or data.type_elem == list or data.type_elem == np.ndarray and\
-                (data.type_elem != pd.DataFrame or not isnamedtupleinstance(data.type_elem)):
-            log.debug("WRITING ELEMS IN LIST")
-            init = 0
-            end = 0
-            for smx in tqdm(data, total=data.num_splits()):
-                end += 1
-                for i, group in enumerate(groups):
-                    self.driver["data"][group][init:end] = smx[i]
-                init = end
-        elif data.type_elem == pd.DataFrame or isnamedtupleinstance(data.type_elem):
-            log.debug("WRITING ELEMS IN TABULAR")
-            init = 0
-            end = 0
-            for smx in tqdm(data, total=data.num_splits()):
-                end += 1
-                for group in groups:
-                    self.driver["data"][group][init:end] = getattr(smx, group)
-                init = end
-        else:
-            log.debug("WRITING SCALARS")
-            init = 0
-            end = 0
-            if len(groups) > 0:
-                group = groups[0]
-                for smx in tqdm(data, total=data.num_splits()):
-                    end += 1
-                    self.driver["data"][group][init:end] = smx
-                    init = end
+        log.debug("WRITING STRUCTURED BATCH")
+        init = {group: 0 for group in groups}
+        end = {group: 0 for group in groups}
+        for smx in tqdm(data, total=data.num_splits()):
+            end["x"] += len(smx["x"])
+            self.driver[self.name][init["x"]:end["x"]] = smx.to_ndarray()  # fixme
+            #self.driver[self.name].write(init, end, smx, groups)
+            #for group in groups:
+            #    end[group] += len(smx[group])
+            #    self.driver[self.name][group][init[group]:end[group]] = smx[group].to_ndarray()
+            #    init[group] = end[group]
 
     def destroy(self):
         """
