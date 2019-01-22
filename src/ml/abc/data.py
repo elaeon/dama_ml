@@ -43,10 +43,6 @@ class AbsDataset(ABC):
     def url(self):
         return NotImplemented
 
-    @abstractmethod
-    def exists(self):
-        return NotImplemented
-
     @property
     @abstractmethod
     def shape(self):

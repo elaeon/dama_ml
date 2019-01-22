@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import types
 
+from collections import namedtuple
 from collections import defaultdict, deque
 from ml.utils.numeric_functions import max_type, num_splits, wsrj, max_dtype
 from ml.utils.seq import grouper_chunk
@@ -13,6 +14,7 @@ from ml.utils.numeric_functions import nested_shape
 
 
 log = log_config(__name__)
+Slice = namedtuple('Slice', 'batch slice')
 
 
 def assign_struct_array(it, type_elem, start_i, end_i, dtype, dims):
@@ -463,15 +465,15 @@ class BatchIterator(BaseIterator):
 
 
 class BatchSlice(BatchIterator):
-    def batch_from_it(self, shape=None):
+    def batch_from_it(self, shape=None) -> Slice:
         init = 0
         end = self.batch_size
         while True:
             batch = self.data.data[init:end]
-            init = end
-            end += self.batch_size
             if len(batch) > 0:
-                yield batch
+                yield Slice(batch=batch, slice=slice(init, end))
+                init = end
+                end += self.batch_size
             else:
                 break
 
@@ -510,13 +512,13 @@ class BatchItArray(BatchIterator):
 class BatchItStructured(BatchIterator):
     batch_type = 'structured'
 
-    def batch_from_it(self, shape):
+    def batch_from_it(self, shape) -> Slice:
         for start_i, end_i, stc_array in BatchItDataFrame.str_array(shape, self.batch_size,
                                                                     self.data, self.data.dtypes):
             group_array = []
             for group in self.groups:
                 group_array.append((group, stc_array[group]))
-            yield StructArray(group_array)
+            yield Slice(batch=StructArray(group_array), slice=slice(start_i, end_i))
 
 
 class BatchItDataFrame(BatchIterator):
@@ -554,8 +556,8 @@ class BatchArray(BatchSlice):
     batch_type = "array"
 
     def run(self):
-        for batch in self.batch_from_it():
-            yield batch.to_ndarray(dtype=self.dtype)
+        for slice_obj in self.batch_from_it():
+            yield slice_obj.batch.to_ndarray(dtype=self.dtype)
 
 
 class BatchDataFrame(BatchSlice):

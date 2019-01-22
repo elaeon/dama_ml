@@ -10,26 +10,24 @@ class AbsDriver(ABC):
     persistent = None
     ext = None
 
-    def __init__(self, compressor: Codec = None, login=None):
-        self.f = None
+    def __init__(self, compressor: Codec = None, login=None, mode: str= 'a'):
         self.compressor = compressor
+        self.conn = None
         if compressor is not None:
             self.compressor_params = {"compression": self.compressor.codec_id,
                                       "compression_opts": self.compressor.level}
         else:
             self.compressor_params = {}
 
-        self.mode = 'a'
+        self.mode = mode
         self.attrs = None
         self.login = login
         log.debug("Driver: {}, mode: {}, compressor: {}".format(self.__class__.__name__,
                                                                 self.mode, self.compressor))
 
+    @abstractmethod
     def __getitem__(self, item):
-        return self.f[item]
-
-    def __setitem__(self, key, value):
-        self.f[key] = value
+        return NotImplemented
 
     @classmethod
     def module_cls_name(cls):
@@ -52,17 +50,21 @@ class AbsDriver(ABC):
         return NotImplemented
 
     @abstractmethod
-    def require_group(self, *args, **kwargs):
+    def dtypes(self, name):
         return NotImplemented
 
     @abstractmethod
-    def require_dataset(self, *args, **kwargs):
+    def set_schema(self, name, dtypes):
         return NotImplemented
 
     @abstractmethod
-    def auto_dtype(self, dtype):
+    def set_data_shape(self, shape):
         return NotImplemented
 
     @abstractmethod
-    def destroy(self, scope=None):
+    def destroy(self, scope):
+        return NotImplemented
+
+    @abstractmethod
+    def exists(self, scope):
         return NotImplemented

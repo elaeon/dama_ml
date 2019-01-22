@@ -17,7 +17,7 @@ from ml.utils.decorators import cache
 log = log_config(__name__)
 
 
-class Schema(AbsDriver):
+class Postgres(AbsDriver):
     persistent = True
     ext = 'sql'
 
@@ -45,15 +45,27 @@ class Schema(AbsDriver):
         if isinstance(item, str):
             return Table(item, self.conn)
 
-    def exists(self, table_name) -> bool:
+    def exists(self, scope) -> bool:
         cur = self.conn.cursor()
-        cur.execute("select exists(select relname from pg_class where relname='{name}')".format(name=table_name))
+        cur.execute("select exists(select relname from pg_class where relname='{name}')".format(name=scope))
         return True if cur.fetchone()[0] else False
 
-    def build(self, table_name, columns, indexes=None):
-        if not self.exists(table_name):
+    def destroy(self, scope):
+        cur = self.conn.cursor()
+        try:
+            cur.execute("DROP TABLE {name}".format(name=scope))
+        except psycopg2.ProgrammingError as e:
+            log.debug(e)
+        self.conn.commit()
+
+    def dtypes(self, name) -> list:
+        return self[name].dtypes
+
+    def set_schema(self, name, dtypes):
+        idx = None
+        if not self.exists(name):
             columns_types = ["id serial PRIMARY KEY"]
-            for col, dtype in columns:
+            for col, dtype in dtypes:
                 fmtype = fmtypes_map[dtype]
                 columns_types.append("{col} {type}".format(col=col, type=fmtype.db_type))
             cols = "("+", ".join(columns_types)+")"
@@ -61,9 +73,9 @@ class Schema(AbsDriver):
             cur.execute("""
                 CREATE TABLE {name}
                 {columns};
-            """.format(name=table_name, columns=cols))
-            if isinstance(indexes, list):
-                for index in indexes:
+            """.format(name=name, columns=cols))
+            if isinstance(idx, list):
+                for index in idx:
                     if isinstance(index, tuple):
                         index_columns = ",".join(index)
                         index_name = "_".join(index)
@@ -71,49 +83,22 @@ class Schema(AbsDriver):
                         index_columns = index
                         index_name = index
                     index_q = "CREATE INDEX {i_name}_{name}_index ON {name} ({i_columns})".format(
-                        name=table_name, i_name=index_name, i_columns=index_columns)
+                        name=name, i_name=index_name, i_columns=index_columns)
                     cur.execute(index_q)
             self.conn.commit()
 
-    def destroy(self, scope=None):
-        cur = self.conn.cursor()
-        if scope is not None:
-            try:
-                cur.execute("DROP TABLE {name}".format(name=scope))
-            except psycopg2.ProgrammingError as e:
-                log.debug(e)
-        self.conn.commit()
-
-    def dtypes(self, table_name) -> list:
-        return self[table_name].dtypes
-
-    def set_schema(self, name, dtypes):
-        self.build(name, dtypes)
+    def set_data_shape(self, shape):
+        pass
 
     def insert(self, table_name: str, data):
         table = Table(table_name, self.conn)
         table.insert(data)
 
-    def require_group(self, *args, **kwargs):
-        print(*args, **kwargs)
-        if 'meta' in args:
-            pass
-
-    def require_dataset(self, group: str, name: str, shape: tuple, dtype: np.dtype) -> None:
-        print(group, name, shape, dtype)
-        #self.f[group].require_dataset(name, shape, dtype=dtype, chunks=True,
-        #                              exact=True,
-        #                              **self.compressor_params)
-
-    def auto_dtype(self, dtype: np.dtype):
-        return dtype
-
 
 class Table(object):
-    def __init__(self, name, conn, query_parts=None, chunksize=(258,)):
+    def __init__(self, name, conn, query_parts=None):
         self.conn = conn
         self.name = name
-        self.chunksize = chunksize
         if query_parts is None:
             self.query_parts = {"columns": None, "slice": None}
         else:
@@ -138,7 +123,7 @@ class Table(object):
         if isinstance(item, slice):
             last_id = self.last_id()
             if last_id < item.stop:
-                self.insert(value, batch_size=self.chunksize[0])
+                self.insert(value, batch_size=abs(item.stop - item.start))
             else:
                 self.update(value)
 
@@ -160,12 +145,12 @@ class Table(object):
     def update(self, value):
         raise NotImplementedError
 
-    def compute(self):
+    def compute(self, chunksize=(258,)):
         slice_item, _ = self.build_limit_info()
         query = self.build_query()
         cur = self.conn.cursor(uuid.uuid4().hex, scrollable=False, withhold=False)
         cur.execute(query)
-        cur.itersize = self.chunksize[0]
+        cur.itersize = chunksize[0]
         cur.scroll(slice_item.start)
         array = np.empty(self.shape, self.dtype)
         if len(self.shape.groups()) == 1:

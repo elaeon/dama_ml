@@ -10,6 +10,7 @@ from ml.data.drivers import Zarr, HDF5
 from ml.utils.model_selection import CV
 from ml.utils.files import rm
 from numcodecs import GZip
+from ml.utils.basic import Login
 
 
 class TestDataset(unittest.TestCase):
@@ -409,60 +410,79 @@ class TestDataset(unittest.TestCase):
         data.destroy()
 
     def test_write_metadata(self):
-        data = Data(name="test", dataset_path="/tmp/", driver=Zarr(), clean=True)
-        data.from_data(np.random.rand(100, 10))
-        metadata = data.metadata()
-        with open(data.metadata_url()) as f:
-            obj = json.load(f)
-            self.assertEqual(obj, metadata)
-        data.destroy()
+        with Data(name="test", dataset_path="/tmp/", driver=Zarr(mode="w")) as data:
+            data.from_data(np.random.rand(100, 10))
+            metadata = data.metadata()
+            with open(data.metadata_url()) as f:
+                obj = json.load(f)
+                self.assertEqual(obj, metadata)
+            data.destroy()
 
     def test_many_ds(self):
-        #for i in range(100):
-        #    x = np.random.rand(1000, 2)
-        #    data = Data(name="test_"+str(i), driver=HDF5(), description="hola mundo {}".format(i), clean=True)
-        #    data.from_data(x)
-
         x = np.random.rand(1000, 2)
         y = np.random.rand(1000, 1)
         z = np.random.rand(1000)
-        data = Data(name="test_X", driver=HDF5(), description="hola mundo {}".format("X"), clean=True)
-        data.from_data({"x": x, "y": y, "z": z})
+        with Data(name="test_X", driver=HDF5(mode="w")) as data:
+            data.from_data({"x": x, "y": y, "z": z})
+            data.description = "hello world {}".format("X")
+            self.assertEqual((data["x"].to_ndarray()[100] == x[100]).all(), True)
+            self.assertEqual(data["y"].to_ndarray()[100], y[100])
+            self.assertEqual(data["z"].to_ndarray()[100], z[100])
 
 
 class TestDataZarr(unittest.TestCase):
     def test_ds(self):
-        data = Data(name="test", dataset_path="/tmp/", driver=Zarr())
-        array = [1, 2, 3, 4, 5]
-        data.from_data(array)
-        with data:
+        with Data(name="test", dataset_path="/tmp/", driver=Zarr(mode="w")) as data:
+            array = [1, 2, 3, 4, 5]
+            data.from_data(array)
             self.assertCountEqual(data.to_ndarray(), array)
-        data.destroy()
+            data.destroy()
 
     def test_load(self):
-        data = Data(name="test", dataset_path="/tmp/", driver=Zarr(), clean=True)
-        array = [1, 2, 3, 4, 5]
-        data.from_data(array)
+        with Data(name="test", dataset_path="/tmp/", driver=Zarr(mode="w")) as data:
+            array = [1, 2, 3, 4, 5]
+            data.from_data(array)
 
-        data = Data(name="test", dataset_path="/tmp/", driver=Zarr(), clean=False)
-        with data:
+        with Data(name="test", dataset_path="/tmp/", driver=Zarr(mode="r")) as data:
             self.assertCountEqual(data.to_ndarray(), array)
+            data.destroy()
 
     def test_load_compression(self):
-        data = Data(name="test", dataset_path="/tmp/", driver=Zarr(GZip(level=6)), clean=True)
-        array = [1, 2, 3, 4, 5]
-        data.from_data(array)
+        with Data(name="test", dataset_path="/tmp/", driver=Zarr(GZip(level=6), mode="w")) as data:
+            array = [1, 2, 3, 4, 5]
+            data.from_data(array)
 
-        data = Data(name="test", dataset_path="/tmp/", driver=Zarr(), clean=False)
-        with data:
+        with Data(name="test", dataset_path="/tmp/", driver=Zarr(mode="r")) as data:
             self.assertEqual(data.compressor_params["compression"], "gzip")
             self.assertEqual(data.compressor_params["compression_opts"], 6)
             self.assertCountEqual(data.to_ndarray(), array)
+            data.destroy()
 
-    def test_compressor(self):
-        data = Data(name="test", dataset_path="/tmp/", driver=Zarr(GZip(level=6)), clean=True)
-        array = [1, 2, 3, 4, 5]
-        data.from_data(array)
-        with data:
-            self.assertEqual(data.compressor_params["compression"], "gzip")
-            self.assertEqual(data.compressor_params["compression_opts"], 6)
+    def test_author_description(self):
+        author = "Anonymous"
+        description = "Description text 00"
+        with Data(name="test", dataset_path="/tmp/", driver=Zarr(GZip(level=6), mode="w")) as data:
+            array = [1, 2, 3, 4, 5]
+            data.from_data(array)
+            data.author = author
+            data.description = description
+
+        with Data(name="test", dataset_path="/tmp/", driver=Zarr(GZip(level=6), mode="r")) as data:
+            self.assertEqual(data.author, author)
+            self.assertEqual(data.description, description)
+            data.destroy()
+
+
+class TestPsqlDriver(unittest.TestCase):
+    def setUp(self):
+        self.login = Login(username="alejandro", resource="ml")
+
+    def test_driver(self):
+        from ml.data.db import Postgres
+        x = np.random.rand(10)*100
+        y = np.random.rand(10)*100
+        with Data(name="test", driver=Postgres(login=self.login, mode="w")) as data:
+            data.from_data({"x": x, "y": y}, batch_size=3)
+            self.assertEqual((data["x"].to_ndarray(dtype=np.dtype("int8")) == x.astype("int8")).all(), True)
+            self.assertEqual((data["y"].to_ndarray(dtype=np.dtype("int8")) == y.astype("int8")).all(), True)
+            data.destroy()

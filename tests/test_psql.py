@@ -5,14 +5,6 @@ import psycopg2
 from ml.utils.basic import Login
 from ml.data.it import Iterator
 from ml.data.db import Schema
-from ml.data.ds import Data
-
-
-def get_column(data, column_index):
-    column = []
-    for row in data:
-        column.append(row[column_index])
-    return column
 
 
 class TestSQL(unittest.TestCase):
@@ -148,28 +140,15 @@ class TestSQL(unittest.TestCase):
             ["l", 12, 1.2],
         ], dtype="O")
         dtypes = [("x0", np.dtype(object)), ("x1", np.dtype(int)), ("x2", np.dtype(float))]
-        #try:
-        with Schema(login=self.login) as schema:
-            schema.destroy("test_schema_db")
-            schema.build("test_schema_db", dtypes)
-            schema["test_schema_db"][0:5] = data[0:5]
-            schema["test_schema_db"][6:10] = data[6:10]
-            print(schema["test_schema_db"][:].compute())
-            schema.destroy("test_schema_db")
-        #except psycopg2.OperationalError:
-        #    pass
-
-    def test_driver(self):
-        with Schema(login=self.login) as schema:
-            schema.destroy("test")
-        x = np.random.rand(10)*100
-        y = np.random.rand(10)*100
-        data = Data(name="test", driver=Schema(login=self.login))
-        data.from_data({"x": x, "y": y})
-        with data:
-            self.assertEqual((data["x"].to_ndarray(dtype=np.dtype("int8")) == x.astype("int8")).all(), True)
-            self.assertEqual((data["y"].to_ndarray(dtype=np.dtype("int8")) == y.astype("int8")).all(), True)
-        data.destroy()
+        try:
+            with Schema(login=self.login) as schema:
+                schema.destroy("test_schema_db")
+                schema.build("test_schema_db", dtypes)
+                schema["test_schema_db"][0:5] = data[0:5]
+                schema["test_schema_db"][6:10] = data[6:10]
+                schema.destroy("test_schema_db")
+        except psycopg2.OperationalError:
+            pass
 
 
 if __name__ == '__main__':

@@ -10,7 +10,7 @@ from tqdm import tqdm
 from ml.abc.data import AbsDataset
 from ml.data.it import Iterator, BaseIterator, BatchIterator
 from ml.utils.files import build_path
-from ml.utils.basic import Hash, StructArray, isnamedtupleinstance, Array
+from ml.utils.basic import Hash, StructArray, Array
 from ml.abc.driver import AbsDriver
 from ml.data.drivers import Memory
 from ml.utils.logger import log_config
@@ -25,8 +25,8 @@ log = log_config(__name__)
 
 
 class Data(AbsDataset):
-    def __init__(self, name: str = None, dataset_path: str = None, description: str = '', author: str = '',
-                 clean: bool = False, driver: AbsDriver = None, group_name: str = None):
+    def __init__(self, name: str = None, dataset_path: str = None, driver: AbsDriver = None,
+                 group_name: str = None):
 
         if name is None and not isinstance(self.driver, Memory):
             raise Exception("I can't build a dataset without a name, plese add a name to this dataset.")
@@ -44,19 +44,20 @@ class Data(AbsDataset):
         else:
             self.dataset_path = dataset_path
 
-        ds_exist = self.exists()
-        if ds_exist and clean:
-            self.destroy()
-            ds_exist = False
+        self.dtypes = None
+        self.hash = None
+        self.author = None
+        self.description = None
+        self.timestamp = None
+        self.compressor_params = None
 
-        if not ds_exist and (self.driver.mode == 'w' or self.driver.mode == 'a'):
+    def set_attrs(self):
+        ds_exist = self.driver.exists(self.url)
+        if ds_exist and self.driver.mode == "w":
+            self.destroy()
             build_path(self.dir_levels())
-            self.author = author
-            self.description = description
             self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
             self.compressor_params = self.driver.compressor_params
-            self.dtypes = None
-            self.hash = None
 
     @property
     def author(self):
@@ -64,7 +65,8 @@ class Data(AbsDataset):
 
     @author.setter
     def author(self, value):
-        self._set_attr('author', value)
+        if value is not None:
+            self._set_attr('author', value)
 
     @property
     def dtype(self):
@@ -76,7 +78,8 @@ class Data(AbsDataset):
 
     @description.setter
     def description(self, value):
-        self._set_attr('description', value)
+        if value is not None:
+            self._set_attr('description', value)
 
     @property
     def timestamp(self):
@@ -84,7 +87,8 @@ class Data(AbsDataset):
 
     @timestamp.setter
     def timestamp(self, value):
-        self._set_attr('timestamp', value)
+        if value is not None:
+            self._set_attr('timestamp', value)
 
     @property
     def hash(self):
@@ -101,7 +105,8 @@ class Data(AbsDataset):
 
     @compressor_params.setter
     def compressor_params(self, value):
-        self._set_attr('compressor_params', json.dumps(value))
+        if value is not None:
+            self._set_attr('compressor_params', json.dumps(value))
 
     @classmethod
     def module_cls_name(cls):
@@ -132,7 +137,7 @@ class Data(AbsDataset):
     def __setitem__(self, key, value):
         # print(key, value, self.groups, "DS")
         for group in self.groups:
-            self.driver["data"][group][key] = value
+            self.driver[self.name][group][key] = value
 
     def __iter__(self):
         return self
@@ -145,18 +150,14 @@ class Data(AbsDataset):
         return {"name": self.name, "dataset_path": self.dataset_path,
                 "driver": self.driver.module_cls_name(), "group_name": self.group_name}
 
-    def _set_group_shape(self, name: str, shape: tuple, dtype: np.dtype, level: str) -> None:
-        dtype = self.driver.auto_dtype(dtype)
-        self.driver.require_group(level)
-        self.driver.require_dataset(level, name, shape, dtype=dtype)
-
     def _get_data(self, group):
         return self.driver[self.name][group]
 
     def _set_attr(self, name, value):
         if value is not None:
-            with self:
-                self.driver.attrs[name] = value
+            #with self:
+            log.debug("SET attribute {name} {value}".format(name=name, value=value))
+            self.driver.attrs[name] = value
 
     def _get_attr(self, name):
         try:
@@ -170,33 +171,17 @@ class Data(AbsDataset):
             return None
 
     def batchs_writer(self, data):
-        groups = self.groups
         log.info("Writing with batch size {}".format(getattr(data, 'batch_size', 0)))
         log.debug("WRITING STRUCTURED BATCH")
-        init = {group: 0 for group in groups}
-        end = {group: 0 for group in groups}
         for smx in tqdm(data, total=data.num_splits()):
-            end["x"] += len(smx["x"])
-            self.driver[self.name][init["x"]:end["x"]] = smx.to_ndarray()  # fixme
-            #self.driver[self.name].write(init, end, smx, groups)
-            #for group in groups:
-            #    end[group] += len(smx[group])
-            #    self.driver[self.name][group][init[group]:end[group]] = smx[group].to_ndarray()
-            #    init[group] = end[group]
+            self.driver[self.name][smx.slice] = smx.batch
 
     def destroy(self):
-        """
-        delete the hdf5 file
-        """
-        with self:
-            self.driver.destroy(scope=self.name)
-
-        rm(self.url)
-        log.debug("DESTROY {}".format(self.url))
+        self.driver.destroy(scope=self.name)
         meta_url = self.metadata_url()
         if meta_url is not None:
             rm(meta_url)
-            log.debug("DESTROY METADATA {}".format(meta_url))
+            log.debug("METADATA DESTROYED {}".format(meta_url))
 
     def dir_levels(self) -> list:
         if self.group_name is None:
@@ -212,12 +197,6 @@ class Data(AbsDataset):
         filename = "{}.{}".format(self.name, self.driver.ext)
         dir_levels = self.dir_levels() + [filename]
         return os.path.join(*dir_levels)
-
-    def exists(self) -> bool:
-        if self.driver.persistent is True:
-            return os.path.exists(self.url)
-        else:
-            return False
 
     def __len__(self):
         return len(self.data)
@@ -241,19 +220,12 @@ class Data(AbsDataset):
     @property
     def dtypes(self) -> list:
         return self.driver.dtypes(self.name)
-        #if "meta" in self.driver:
-        #    return [(col, np.dtype(dtype)) for col, dtype in self.driver["meta"].get("dtypes", [])]
-        #else:
-        #    return []
 
     @dtypes.setter
     def dtypes(self, value):
         if value is not None:
-            with self:
-                #self._set_group_shape("dtypes", (len(value), 2), np.dtype('object'), level="meta")
-                #for i, (group, dtype) in enumerate(value):
-                #    self.driver["meta"]["dtypes"][i] = (group, dtype.str)
-                self.driver.set_schema(self.name, value)
+            #with self:
+            self.driver.set_schema(self.name, value)
 
     def info(self):
         print('       ')
@@ -270,15 +242,15 @@ class Data(AbsDataset):
 
     def metadata(self) -> dict:
         meta_dict = {}
-        with self:
-            meta_dict["hash"] = self.hash
-            meta_dict["dir_levels"] = self.dir_levels()
-            meta_dict["driver"] = self.driver.module_cls_name()
-            meta_dict["name"] = self.name
-            meta_dict["size"] = get_dir_file_size(self.url)
-            meta_dict["timestamp"] = self.timestamp
-            meta_dict["author"] = self.author
-            meta_dict["description"] = self.description if self.description is None else self.description[:100]
+        #with self:
+        meta_dict["hash"] = self.hash
+        meta_dict["dir_levels"] = self.dir_levels()
+        meta_dict["driver"] = self.driver.module_cls_name()
+        meta_dict["name"] = self.name
+        meta_dict["size"] = get_dir_file_size(self.url)
+        meta_dict["timestamp"] = self.timestamp
+        meta_dict["author"] = self.author
+        meta_dict["description"] = self.description if self.description is None else self.description[:100]
         return meta_dict
 
     def metadata_url(self) -> str:
@@ -313,6 +285,7 @@ class Data(AbsDataset):
         """
         build a datalabel dataset from data and labels
         """
+        self.set_attrs()
         if isinstance(data, da.Array):
             data = Array.from_da(data)
         elif isinstance(data, StructArray):
@@ -333,23 +306,19 @@ class Data(AbsDataset):
         elif not isinstance(data, BaseIterator):
             data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
         self.dtypes = data.dtypes
-        with self:
-            self._set_groups_shapes(data.shape)
-            if isinstance(data, BatchIterator) or isinstance(data, Iterator):
-                self.batchs_writer(data)
-            else:
-                data.store(self)
-        with self:
-            if with_hash is not None:
-                c_hash = self.calc_hash(with_hash=with_hash)
-            else:
-                c_hash = None
+        #with self:
+        self.driver.set_data_shape(data.shape)
+        if isinstance(data, BatchIterator) or isinstance(data, Iterator):
+            self.batchs_writer(data)
+        else:
+            data.store(self)
+        #with self:
+        if with_hash is not None:
+            c_hash = self.calc_hash(with_hash=with_hash)
+        else:
+            c_hash = None
         self.hash = c_hash
         self.write_metadata()
-
-    def _set_groups_shapes(self, shapes):
-        for group, dtype in self.dtypes:
-            self._set_group_shape(group, shapes[group], dtype, level="data")
 
     def to_df(self) -> pd.DataFrame:
         return self.data.to_df()
