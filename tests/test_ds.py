@@ -23,31 +23,30 @@ class TestDataset(unittest.TestCase):
         pass
 
     def test_from_unique_dtype(self):
-        dataset = Data(name="test_ds_0", dataset_path="/tmp/", clean=True)
-        array = np.random.rand(10, 2)
-        dataset.from_data(array)
-        with dataset:
+        with Data(name="test_ds_0", dataset_path="/tmp/") as dataset:
+            array = np.random.rand(10, 2)
+            dataset.from_data(array)
             self.assertEqual(dataset.shape, (10, 2))
-        dataset.destroy()
+            dataset.destroy()
 
     def test_to_list(self):
-        dataset = Data(name="test_ds_0", dataset_path="/tmp/", clean=True)
-        x0 = np.random.rand(10).astype(int)
-        x1 = np.random.rand(10).astype(float)
-        x2 = np.random.rand(10).astype(object)
-        df = pd.DataFrame({"X0": x0, "X1": x1, "X2": x2})
-        dataset.from_data(df)
-        with dataset:
-            self.assertEqual(len(list(dataset["X0"])), 10)
+        with Data(name="test_ds_0", dataset_path="/tmp/") as dataset:
+            x0 = np.random.rand(10).astype(int)
+            x1 = np.random.rand(10).astype(float)
+            x2 = np.random.rand(10).astype(object)
+            df = pd.DataFrame({"X0": x0, "X1": x1, "X2": x2})
+            dataset.from_data(df)
+            self.assertEqual(list(dataset["X0"]), list(x0))
+            self.assertEqual(list(dataset["X1"]), list(x1))
+            self.assertEqual(list(dataset["X2"]), list(x2))
 
     def test_from_dtypes(self):
-        dataset = Data(name="test_ds_0", dataset_path="/tmp/", clean=True)
-        x0 = np.random.rand(10).astype(int)
-        x1 = np.random.rand(10).astype(float)
-        x2 = np.random.rand(10).astype(object)
-        df = pd.DataFrame({"X0": x0, "X1": x1, "X2": x2})
-        dataset.from_data(df)
-        with dataset:
+        with Data(name="test_ds_0", dataset_path="/tmp/") as dataset:
+            x0 = np.random.rand(10).astype(int)
+            x1 = np.random.rand(10).astype(float)
+            x2 = np.random.rand(10).astype(object)
+            df = pd.DataFrame({"X0": x0, "X1": x1, "X2": x2})
+            dataset.from_data(df)
             self.assertCountEqual(dataset["X0"].to_ndarray(), x0)
             self.assertCountEqual(dataset["X1"].to_ndarray(), x1)
             self.assertCountEqual(dataset["X2"].to_ndarray(), x2)
@@ -55,14 +54,13 @@ class TestDataset(unittest.TestCase):
             self.assertEqual(dataset["X1"].dtype, float)
             self.assertEqual(dataset["X2"].dtype, object)
             self.assertCountEqual(dataset[:]["X0"].to_ndarray(), x0)
-        dataset.destroy()
+            dataset.destroy()
 
     def test_from_data_dim_7_1_2(self):
-        data = Data(name="test_ds_0", dataset_path="/tmp/", clean=True)
-        data.from_data({"x": self.X, "y": self.Y})
+        with Data(name="test_ds_0", dataset_path="/tmp/") as data:
+            data.from_data({"x": self.X, "y": self.Y})
 
-        cv = CV("x", "y", train_size=.7, valid_size=.1)
-        with data:
+            cv = CV("x", "y", train_size=.7, valid_size=.1)
             stc = cv.apply(data)
             self.assertEqual(stc["train_x"].to_ndarray().shape, (7, 10))
             self.assertEqual(stc["test_x"].to_ndarray().shape, (2, 10))
@@ -70,7 +68,7 @@ class TestDataset(unittest.TestCase):
             self.assertEqual(stc["train_y"].shape, (7,))
             self.assertEqual(stc["validation_y"].to_ndarray().shape, (1,))
             self.assertEqual(stc["test_y"].to_ndarray().shape, (2,))
-        data.destroy()
+            data.destroy()
 
     def test_only_column(self):
         dataset = Data(name="test_ds", dataset_path="/tmp/", clean=True)
@@ -385,29 +383,29 @@ class TestDataset(unittest.TestCase):
 
     def test_index_iter(self):
         x = np.asarray([1, 2, 3, 4, 5])
-        data = Data(name="test", dataset_path="/tmp/")
-        data.from_data(x)
-        for i, e in enumerate(data, 1):
-            self.assertEqual(e, [i])
+        with Data(name="test", dataset_path="/tmp/") as data:
+            data.from_data(x)
+            for i, e in enumerate(data, 1):
+                self.assertEqual(e, [i])
 
     def test_context_index(self):
         x = np.asarray([1, 2, 3, 4, 5])
-        data = Data(name="test", dataset_path="/tmp/", driver=HDF5(), clean=True)
-        data.from_data({"x": x})
-        with data:
+        with Data(name="test", dataset_path="/tmp/", driver=HDF5(mode="w")) as data:
+            data.from_data({"x": x})
             self.assertEqual(data[0].to_ndarray(), [1])
 
     def test_metadata(self):
-        data = Data(name="test", dataset_path="/tmp/")
-        data.from_data([1, 2, 3, 4, 5])
-        metadata = data.metadata()
-        self.assertEqual(metadata["hash"], data.hash)
-        self.assertEqual(metadata["size"], 0)
-        data.destroy()
-        data = Data(name="test", dataset_path="/tmp/")
-        metadata = data.metadata()
-        self.assertEqual(metadata["hash"], data.hash)
-        data.destroy()
+        with Data(name="test", dataset_path="/tmp/") as data:
+            data.from_data([1, 2, 3, 4, 5])
+            metadata = data.metadata()
+            self.assertEqual(metadata["hash"], data.hash)
+            self.assertEqual(metadata["size"], 0)
+            data.destroy()
+
+        with Data(name="test", dataset_path="/tmp/") as data:
+            metadata = data.metadata()
+            self.assertEqual(metadata["hash"], data.hash)
+            data.destroy()
 
     def test_write_metadata(self):
         with Data(name="test", dataset_path="/tmp/", driver=Zarr(mode="w")) as data:

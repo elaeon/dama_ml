@@ -10,6 +10,7 @@ from numcodecs import MsgPack
 from ml.abc.driver import AbsDriver
 from ml.utils.basic import Shape
 from ml.utils.files import rm
+from ml.utils.numeric_functions import max_dtype
 
 
 class HDF5(AbsDriver):
@@ -125,16 +126,43 @@ class Memory(Zarr):
         pass
 
 
+class Empty(object):
+    def __init__(self, dtypes):
+        self.dtypes = dtypes
+
+    def __len__(self):
+        return 0
+
+    def compute(self):
+        return None
+
+
 class ZarrGroup(object):
-    def __init__(self, conn, name=None):
+    def __init__(self, conn, name=None, end_node=False, dtypes=None):
         self.conn = conn
         self.name = name
+        self.end_node = end_node
+        self.static_dtypes = dtypes
 
     def __getitem__(self, item):
         if isinstance(self.conn, ZGroup):
             return ZarrGroup(self.conn[item], name=item)
-        else:
-            return ZarrGroup(self.conn[item], name=self.name)
+        elif isinstance(self.conn, ZArray) and not self.end_node:
+            return ZarrGroup(self.conn, name=self.name, end_node=True)
+        elif self.end_node:
+            if isinstance(item, int) and item >= len(self.conn):
+                raise IndexError("index {} is out of bounds with size {}".format(item, len(self.conn)))
+            elif isinstance(item, int) and item < len(self.conn):
+                return ZarrGroup(self.conn[item], name=self.name, end_node=True, dtypes=self.dtypes)
+            elif isinstance(item, slice):
+                return ZarrGroup(self.conn[item], name=self.name, end_node=True, dtypes=self.dtypes)
+            elif isinstance(item, list) or isinstance(item, np.ndarray):
+                print(item, list(item), self.conn)
+                return ZarrGroup(self.conn[item], name=self.name, end_node=True, dtypes=self.dtypes)
+            else:
+                print(item, self.conn, type(item))
+                return Empty(dtypes=self.dtypes)
+
 
     def __setitem__(self, item, value):
         if hasattr(value, "groups"):
@@ -145,11 +173,17 @@ class ZarrGroup(object):
         return self.shape.to_tuple()[0]
 
     @property
-    def dtypes(self):
+    def dtypes(self) -> list:
         if isinstance(self.conn, ZGroup):
             return [(key, self.conn[key].dtype) for key in self.conn.keys()]
-        else:
+        elif hasattr(self.conn, 'dtype'):
             return [(self.name, self.conn.dtype)]
+        else:
+            return [(key, dtype) for key, dtype in self.static_dtypes]
+
+    @property
+    def dtype(self) -> np.dtype:
+        return max_dtype(self.dtypes)
 
     @property
     def shape(self) -> Shape:
@@ -157,8 +191,7 @@ class ZarrGroup(object):
         return Shape(shape)
 
     def compute(self, chunksize=(258,)):
-        if isinstance(self.conn, ZArray):
-            return self.conn
+        return self.conn
 
 
 class HDF5Group(object):
@@ -186,6 +219,10 @@ class HDF5Group(object):
             return [(key, self.conn[key].dtype) for key in self.conn.keys()]
         else:
             return [(self.name, self.conn.dtype)]
+
+    @property
+    def dtype(self) -> np.dtype:
+        return max_dtype(self.dtypes)
 
     @property
     def shape(self) -> Shape:

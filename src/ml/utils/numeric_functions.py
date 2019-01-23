@@ -275,7 +275,7 @@ def nested_shape(chunk, dtypes):
         if len(dtypes) == 1:
             shapes[dtypes[0][0]] = nested_shape_aux(chunk)
         else:
-            raise Exception("Shae not defined")
+            raise Exception("Not defined shape")
     return shapes
 
 
@@ -289,8 +289,9 @@ def nested_shape_aux(x) -> list:
             shapes.append(nested_shape_aux(e))
         for ant, p in zip(shapes, shapes[1:]):
             if ant != p:
-                raise Exception("Shape not defined {}".format(shapes))
-        dim.extend(shapes[0])
+                raise Exception("Not defined shape: {}".format(shapes))
+        if len(shapes) > 0:
+            dim.extend(shapes[0])
         return dim
     elif isinstance(x, numbers.Number) or isinstance(x, str):
         return []

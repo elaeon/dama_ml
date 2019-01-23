@@ -38,7 +38,6 @@ class StructArray:
         self.counter = 0
 
     def __getitem__(self, key):
-        # print(key)
         if isinstance(key, slice):
             return self.convert(self.labels_data, key.start, key.stop)
         elif isinstance(key, str):
@@ -101,7 +100,11 @@ class StructArray:
             if len(values) > 0:
                 return max(values)
             else:
-                return 1
+                for value in self.o_columns.values():
+                    if isinstance(value, numbers.Number):
+                        return 1
+                    else:
+                        raise Exception("All elements inside the strutured array must have a len attribute")
         else:
             return 0
 
@@ -139,10 +142,6 @@ class StructArray:
             else:
                 shapes[group] = ()
         return Shape(shapes)
-
-    # @property
-    # def ushape(self) -> tuple:
-    #    return self.shape.to_tuple()
 
     def columns2dtype(self) -> list:
         dtypes = []
@@ -218,7 +217,7 @@ class StructArray:
                 if hasattr(self.o_columns[self.groups[0]], 'compute'):
                     array = self.o_columns[self.groups[0]].compute()
                 else:
-                    array = array = self.o_columns[self.groups[0]]
+                    array = self.o_columns[self.groups[0]]
                 if ushape[0] == 1:
                     ndarray[0] = array
                 else:
@@ -271,8 +270,8 @@ class Shape(object):
         return iter(self.to_tuple())
 
     def __len__(self):
-        """ To add compatibility with shapes in tuple form, we define the Shape lenght
-        as the lenght of his tuple form"""
+        """ To add compatibility with shapes that are in tuple form, we define the Shape lenght
+        as the lenght of its tuple"""
         return len(self.to_tuple())
 
     def __eq__(self, other):

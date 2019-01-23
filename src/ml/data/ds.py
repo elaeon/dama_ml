@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import dask.array as da
+import re
 
 from tqdm import tqdm
 from ml.abc.data import AbsDataset
@@ -115,7 +116,7 @@ class Data(AbsDataset):
     @property
     @cache
     def data(self):
-        groups_data = [(group, self._get_data(group)) for group in self.groups]
+        groups_data = [(group, self.driver[self.name][group]) for group in self.groups]
         return StructArray(groups_data)
 
     @data.setter
@@ -150,12 +151,8 @@ class Data(AbsDataset):
         return {"name": self.name, "dataset_path": self.dataset_path,
                 "driver": self.driver.module_cls_name(), "group_name": self.group_name}
 
-    def _get_data(self, group):
-        return self.driver[self.name][group]
-
     def _set_attr(self, name, value):
         if value is not None:
-            #with self:
             log.debug("SET attribute {name} {value}".format(name=name, value=value))
             self.driver.attrs[name] = value
 
@@ -224,7 +221,6 @@ class Data(AbsDataset):
     @dtypes.setter
     def dtypes(self, value):
         if value is not None:
-            #with self:
             self.driver.set_schema(self.name, value)
 
     def info(self):
@@ -241,8 +237,7 @@ class Data(AbsDataset):
         print(order_table(headers, table, "Group"))
 
     def metadata(self) -> dict:
-        meta_dict = {}
-        #with self:
+        meta_dict = dict()
         meta_dict["hash"] = self.hash
         meta_dict["dir_levels"] = self.dir_levels()
         meta_dict["driver"] = self.driver.module_cls_name()
@@ -254,7 +249,6 @@ class Data(AbsDataset):
         return meta_dict
 
     def metadata_url(self) -> str:
-        import re
         metadata = self.metadata()
         if metadata["hash"] is not None:
             pattern = "\$.+\$"
@@ -282,9 +276,6 @@ class Data(AbsDataset):
         return str(hash_obj)
 
     def from_data(self, data, batch_size: int = 258, with_hash: str = "sha1"):
-        """
-        build a datalabel dataset from data and labels
-        """
         self.set_attrs()
         if isinstance(data, da.Array):
             data = Array.from_da(data)
@@ -306,13 +297,12 @@ class Data(AbsDataset):
         elif not isinstance(data, BaseIterator):
             data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
         self.dtypes = data.dtypes
-        #with self:
         self.driver.set_data_shape(data.shape)
         if isinstance(data, BatchIterator) or isinstance(data, Iterator):
             self.batchs_writer(data)
         else:
             data.store(self)
-        #with self:
+
         if with_hash is not None:
             c_hash = self.calc_hash(with_hash=with_hash)
         else:
@@ -336,7 +326,7 @@ class Data(AbsDataset):
         from ml.utils.seq import libsvm_row
         from sklearn.preprocessing import LabelEncoder
         le = LabelEncoder()
-        target_t = le.fit_transform(self._get_data(target))
+        target_t = le.fit_transform(self.driver[self.name][target])
         groups = [group for group in self.groups if group != target]
         with open(save_to, 'w') as f:
             for row in libsvm_row(target_t, self.data[groups].to_ndarray()):
