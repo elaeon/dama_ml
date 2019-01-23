@@ -326,7 +326,7 @@ class Data(AbsDataset):
         from ml.utils.seq import libsvm_row
         from sklearn.preprocessing import LabelEncoder
         le = LabelEncoder()
-        target_t = le.fit_transform(self.driver[self.name][target])
+        target_t = le.fit_transform(self.driver[self.name][target].compute())
         groups = [group for group in self.groups if group != target]
         with open(save_to, 'w') as f:
             for row in libsvm_row(target_t, self.data[groups].to_ndarray()):

@@ -55,7 +55,10 @@ class StructArray:
             return self.convert_from_index(key)
 
     def rename_group(self, old, new):
+        from ml.data.drivers import ZarrGroup
         self.o_columns[new] = self.o_columns[old]
+        if isinstance(self.o_columns[new], ZarrGroup):
+            self.o_columns[new].set_alias(old, new)
         del self.o_columns[old]
         self.labels_data = list(self.o_columns.items())
 
@@ -109,6 +112,7 @@ class StructArray:
             return 0
 
     def is_multidim(self) -> bool:
+        return False
         shape_values = list(self.shape.values())
         if len(shape_values) == 0:
             return False
@@ -164,7 +168,7 @@ class StructArray:
 
     @staticmethod
     def convert_from_array(labels_data, index_array) -> 'StructArray':
-        sub_labels_data = [(label, array[index_array]) for label, array in labels_data]
+        sub_labels_data = [(label, array[index_array].compute()) for label, array in labels_data]
         return StructArray(sub_labels_data)
 
     def convert_from_index(self, index: int) -> 'StructArray':
@@ -190,7 +194,7 @@ class StructArray:
     def _array_builder(shape, dtypes, columns: list, start_i: int, end_i: int):
         stc_arr = np.empty(shape, dtype=dtypes)
         for col_name, array in columns:
-            stc_arr[col_name] = array[start_i:end_i]
+            stc_arr[col_name] = array[start_i:end_i].compute()
         return stc_arr
 
     def to_df(self, init_i: int = 0, end_i: int = None) -> pd.DataFrame:
@@ -247,7 +251,7 @@ class StructArray:
             if isinstance(data, StructArray):
                 data_dims = (index_dims, data.to_ndarray())
             else:
-                data_dims = (index_dims, data)
+                data_dims = (index_dims, data.compute())
             xr_data[group] = data_dims
         return xr.Dataset(xr_data)
 

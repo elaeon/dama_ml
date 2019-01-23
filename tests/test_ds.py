@@ -71,54 +71,48 @@ class TestDataset(unittest.TestCase):
             data.destroy()
 
     def test_only_column(self):
-        dataset = Data(name="test_ds", dataset_path="/tmp/", clean=True)
-        xy = np.hstack((self.X, self.Y.reshape(-1, 1)))
-        dataset.from_data(self.X)
-        with dataset:
+        with Data(name="test_ds", dataset_path="/tmp/") as dataset:
+            xy = np.hstack((self.X, self.Y.reshape(-1, 1)))
+            dataset.from_data(self.X)
             self.assertEqual((dataset["c0"][:, 0].to_ndarray() == xy[:, 0]).all(), True)
-        dataset.destroy()
+            dataset.destroy()
 
     def test_groups(self):
-        dataset = Data(name="test_ds", dataset_path="/tmp/", clean=True)
-        dataset.from_data(self.X)
-        with dataset:
+        with Data(name="test_ds", dataset_path="/tmp/") as dataset:
+            dataset.from_data(self.X)
             self.assertEqual(dataset.groups, ['c0'])
-        dataset.destroy()
+            dataset.destroy()
 
     def test_groups_df(self):
-        dataset = Data(name="test_ds", dataset_path="/tmp/", clean=True)
-        df = pd.DataFrame({"X": self.X[:, 0], "Y": self.Y})
-        dataset.from_data(df)
-        with dataset:
+        with Data(name="test_ds", dataset_path="/tmp/") as dataset:
+            df = pd.DataFrame({"X": self.X[:, 0], "Y": self.Y})
+            dataset.from_data(df)
             df = dataset.to_df()
             self.assertEqual(list(df.columns), ['X', 'Y'])
-        dataset.destroy()
+            dataset.destroy()
 
     def test_to_df(self):
-        data0 = Data(name="test0", dataset_path="/tmp", clean=True)
-        array = np.random.rand(10)
-        data0.from_data(array)
-        with data0:
-            self.assertEqual((data0.to_df().values.reshape(-1) == array).all(), True)
-        data0.destroy()
+        with Data(name="test0", dataset_path="/tmp") as data:
+            array = np.random.rand(10)
+            data.from_data(array)
+            self.assertEqual((data.to_df().values.reshape(-1) == array).all(), True)
+            data.destroy()
 
     def test_to_ndarray(self):
-        data0 = Data(name="test0", dataset_path="/tmp", clean=True)
-        array = np.random.rand(10, 2)
-        data0.from_data(array)
-        with data0:
-            self.assertEqual((data0.to_ndarray() == array).all(), True)
-        data0.destroy()
+        with Data(name="test0", dataset_path="/tmp") as data:
+            array = np.random.rand(10, 2)
+            data.from_data(array)
+            self.assertEqual((data.to_ndarray() == array).all(), True)
+            data.destroy()
 
-    def test_to_structured(self):
-        data = Data(name="test")
-        array = np.array([[1, 'x1'], [2, 'x2'], [3, 'x3'], [4, 'x4'],
+    def test_to_xrds(self):
+        with Data(name="test") as data:
+            array = np.array([[1, 'x1'], [2, 'x2'], [3, 'x3'], [4, 'x4'],
                           [5, 'x5'], [6, 'x6'], [7, 'x7'], [8, 'x8'],
                           [9, 'x9'], [10, 'x10']])
-        data.from_data(array)
-        with data:
+            data.from_data(array)
             self.assertEqual((data.to_xrds()["c0"] == array).all(), True)
-        data.destroy()
+            data.destroy()
 
     def test_ds_build(self):
         x = np.asarray([
@@ -126,23 +120,21 @@ class TestDataset(unittest.TestCase):
             [6, 5, 4, 3, 2, 1],
             [0, 0, 0, 0, 0, 0],
             [-1, 0, -1, 0, -1, 0]], dtype=np.float)
-        dl = Data(name="test", dataset_path="/tmp", clean=True)
-        dl.from_data(x)
-        with dl:
-            self.assertEqual((dl["c0"].to_ndarray()[:, 0] == x[:, 0]).all(), True)
-        dl.destroy()
+        with Data(name="test", dataset_path="/tmp") as data:
+            data.from_data(x)
+            self.assertEqual((data["c0"].to_ndarray()[:, 0] == x[:, 0]).all(), True)
+            data.destroy()
 
     def test_attrs(self):
-        dsb = Data(name="test", dataset_path="/tmp", author="AGMR", clean=True,
-                   description="description text")
-        with dsb:
-            self.assertEqual(dsb.author, "AGMR")
-            self.assertEqual(dsb.description, "description text")
-            self.assertEqual(type(dsb.timestamp), type(''))
-        dsb.destroy()
+        with Data(name="test", dataset_path="/tmp") as data:
+            data.author = "AGMR"
+            data.description = "description text"
+            self.assertEqual(data.author, "AGMR")
+            self.assertEqual(data.description, "description text")
+            self.assertEqual(type(data.timestamp), type(''))
+            data.destroy()
 
     def test_to_libsvm(self):
-
         def check(path):
             with open(path, "r") as f:
                 row = f.readline()
@@ -156,12 +148,11 @@ class TestDataset(unittest.TestCase):
                 self.assertEqual(2 == len(elem1) == len(elem2), True)
 
         df = pd.DataFrame({"X0": self.X[:, 0], "X1": self.X[:, 1], "Y": self.Y})
-        dataset = Data(name="test_ds_1", dataset_path="/tmp/", clean=True)
-        dataset.from_data(df)
-        with dataset:
+        with Data(name="test_ds_1", dataset_path="/tmp/") as dataset:
+            dataset.from_data(df)
             dataset.to_libsvm("Y", save_to="/tmp/test.txt")
-        check("/tmp/test.txt")
-        dataset.destroy()
+            check("/tmp/test.txt")
+            dataset.destroy()
         rm("/tmp/test.txt")
 
     def test_filename(self):
