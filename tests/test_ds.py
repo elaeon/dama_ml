@@ -131,7 +131,7 @@ class TestDataset(unittest.TestCase):
             data.description = "description text"
             self.assertEqual(data.author, "AGMR")
             self.assertEqual(data.description, "description text")
-            self.assertEqual(type(data.timestamp), type(''))
+            self.assertEqual(data.timestamp, None)
             data.destroy()
 
     def test_to_libsvm(self):
@@ -156,177 +156,175 @@ class TestDataset(unittest.TestCase):
         rm("/tmp/test.txt")
 
     def test_filename(self):
-        dsb = Data(name="test", dataset_path="/tmp", driver=HDF5(GZip(level=5)), clean=True)
-        self.assertEqual(dsb.url, "/tmp/{}/test.h5".format(HDF5.cls_name()))
-        dsb.destroy()
-        dsb = Data(name="test", dataset_path="/tmp", driver=Zarr(GZip(level=5)), clean=True)
-        self.assertEqual(dsb.url, "/tmp/{}/test.zarr".format(Zarr.cls_name()))
-        dsb.destroy()
-        dsb = Data(name="test", dataset_path="/tmp", driver=Zarr(), clean=True, group_name='basic')
-        dsb.from_data([1,2,3,4,5])
-        self.assertEqual(dsb.url, "/tmp/{}/basic/test.zarr".format(Zarr.cls_name()))
-        dsb.destroy()
+        with Data(name="test", dataset_path="/tmp", driver=HDF5(GZip(level=5))) as data:
+            self.assertEqual(data.url, "/tmp/{}/test.h5".format(HDF5.cls_name()))
+            data.destroy()
+
+        with Data(name="test", dataset_path="/tmp", driver=Zarr(GZip(level=5))) as data:
+            self.assertEqual(data.url, "/tmp/{}/test.zarr".format(Zarr.cls_name()))
+            data.destroy()
+
+        with Data(name="test", dataset_path="/tmp", driver=Zarr(), group_name='basic') as data:
+            data.from_data([1,2,3,4,5])
+            self.assertEqual(data.url, "/tmp/{}/basic/test.zarr".format(Zarr.cls_name()))
+            data.destroy()
 
     def test_no_data(self):
-        dsb = Data(name="test", dataset_path="/tmp",
-                   author="AGMR", clean=True,
-                   description="description text", driver=HDF5(GZip(level=5)))
-        with dsb:
-            timestamp = dsb.timestamp
+        with Data(name="test", dataset_path="/tmp", driver=HDF5(GZip(level=5))) as data:
+            data.author = "AGMR"
+            data.description = "description text"
 
-        with Data(name="test", dataset_path="/tmp", driver=HDF5()) as dsb2:
-            self.assertEqual(dsb2.author, "AGMR")
-            self.assertEqual(dsb2.description, "description text")
-            self.assertEqual(dsb2.timestamp, timestamp)
-            self.assertEqual(dsb2.compressor_params["compression_opts"], 5)
-        dsb.destroy()
+        with Data(name="test", dataset_path="/tmp", driver=HDF5(mode='r')) as data:
+            self.assertEqual(data.author, "AGMR")
+            self.assertEqual(data.description, "description text")
+
+        with Data(name="test", dataset_path="/tmp", driver=HDF5(mode="a")) as data:
+            data.from_data([1,2,3,4])
+            self.assertEqual(data.compressor_params["compression_opts"], 5)
+            self.assertEqual(data.author, "AGMR")
+            self.assertEqual(data.description, "description text")
+            data.destroy()
 
     def test_text_ds(self):
         x = np.asarray([(str(line)*10, "1") for line in range(100)], dtype=np.dtype("O"))
-        ds = Data(name="test", dataset_path="/tmp/", clean=True)
-        ds.from_data(x)
-        with ds:
-            self.assertEqual(ds.shape, (100, 2))
-            self.assertEqual(ds.dtype, x.dtype)
-            ds.destroy()
+        with Data(name="test", dataset_path="/tmp/") as data:
+            data.from_data(x)
+            self.assertEqual(data.shape, (100, 2))
+            self.assertEqual(data.dtype, x.dtype)
+            data.destroy()
 
     def test_dtypes(self):
-        data = Data(name="test", dataset_path="/tmp/", clean=True)
-        data.from_data(self.X)
-        dtypes = [("c"+str(i), np.dtype("float64")) for i in range(1)]
-        with data:
+        with Data(name="test", dataset_path="/tmp/") as data:
+            data.from_data(self.X)
+            dtypes = [("c"+str(i), np.dtype("float64")) for i in range(1)]
             self.assertCountEqual([dtype for _, dtype in data.dtypes], [dtype for _, dtype in dtypes])
-        data.destroy()
+            data.destroy()
 
     def test_dtypes_2(self):
         df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
-        data = Data(name="test", dataset_path="/tmp/", clean=True)
-        data.from_data(df)
-        with data:
+        with Data(name="test", dataset_path="/tmp/") as data:
+            data.from_data(df)
             self.assertCountEqual([e for _, e in data.dtypes], df.dtypes.values)
-        data.destroy()
+            data.destroy()
 
-    def test_labels_rename(self):
-        data = Data(name="test", dataset_path="/tmp/", clean=True)
-        data.from_data(self.X)
-        columns = ['a']
-        data.groups = columns
-        with data:
+    def test_groups_rename(self):
+        with Data(name="test", dataset_path="/tmp/") as data:
+            data.from_data(self.X)
+            columns = ['a']
+            data.groups = columns
             self.assertCountEqual(data.groups, columns)
-        data.destroy()
+            data.destroy()
 
     def test_groups_rename_2(self):
         df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
-        data = Data(name="test", dataset_path="/tmp/", clean=True)
-        data.from_data(df)
-        columns = ['x0', 'x1']
-        data.groups = columns
-        with data:
+        with Data(name="test", dataset_path="/tmp/") as data:
+            data.from_data(df)
+            columns = ['x0', 'x1']
+            data.groups = columns
             self.assertCountEqual(data.groups, columns)
-        data.destroy()
+            data.destroy()
 
     def test_length(self):
-        data = Data(name="test", dataset_path="/tmp/", clean=True)
-        data.from_data(self.X)
-        with data:
+        with Data(name="test", dataset_path="/tmp/") as data:
+            data.from_data(self.X)
             self.assertCountEqual(data[:3].shape.to_tuple(), self.X[:3].shape)
+            data.destroy()
 
     def test_from_struct(self):
         x0 = np.random.rand(10, 2)
         x1 = np.random.rand(10)
         XY = StructArray([("x0", x0), ("x1", x1)])
-        data = Data(name="test", dataset_path="/tmp", clean=True)
-        data.from_data(XY)
-        with data:
+        with Data(name="test", dataset_path="/tmp") as data:
+            data.from_data(XY)
             self.assertEqual((data["x0"].to_ndarray() == x0).all(), True)
             self.assertEqual((data["x1"].to_ndarray() == x1).all(), True)
+            data.destroy()
 
     def test_from_it(self):
         seq = [1, 2, 3, 4, 4, 4, 5, 6, 3, 8, 1]
         it = Iterator(seq)
-        data = Data(name="test", dataset_path="/tmp", clean=True)
-        data.from_data(it, batch_size=20)
-        with data:
+        with Data(name="test", dataset_path="/tmp") as data:
+            data.from_data(it, batch_size=20)
             self.assertCountEqual(data.groups, ["c0"])
-        data.destroy()
+            self.assertEqual((data.to_ndarray() == seq).all(), True)
+            data.destroy()
 
     def test_group_name(self):
-        data = Data(name="test0", dataset_path="/tmp", clean=True, group_name="test_ds", driver=HDF5())
-        self.assertEqual(data.exists(), True)
-        data.destroy()
+        with Data(name="test0", dataset_path="/tmp", group_name="test_ds", driver=HDF5()) as data:
+            self.assertEqual(data.driver.exists(data.url), True)
+            data.destroy()
 
     def test_hash(self):
-        data = Data(name="test0", dataset_path="/tmp", clean=True)
-        data.from_data(np.ones(100))
-        with data:
+        with Data(name="test0", dataset_path="/tmp") as data:
+            data.from_data(np.ones(100))
             self.assertEqual(data.hash, "$sha1$fe0e420a6aff8c6f81ef944644cc78a2521a0495")
             self.assertEqual(data.calc_hash(with_hash='md5'), "$md5$2376a2375977070dc32209a8a7bd2a99")
+            data.destroy()
 
     def test_empty_hash(self):
-        data = Data(name="test0", dataset_path="/tmp", clean=True)
-        data.from_data(np.ones(100), with_hash=None)
-        with data:
+        with Data(name="test0", dataset_path="/tmp") as data:
+            data.from_data(np.ones(100), with_hash=None)
             self.assertEqual(data.hash, None)
+            data.destroy()
 
     def test_getitem(self):
         df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
-        data = Data(name="test0", dataset_path="/tmp", clean=True)
-        data.from_data(df)
-        with data:
+        with Data(name="test0", dataset_path="/tmp") as data:
+            data.from_data(df)
             self.assertCountEqual(data["a"].to_ndarray(), df["a"].values)
             self.assertEqual((data[["a", "b"]].to_ndarray() == df[["a", "b"]].values).all(), True)
             self.assertEqual((data[0].to_ndarray(dtype=np.dtype("O")) == df.iloc[0].values).all(), True)
             self.assertEqual((data[0:1].to_ndarray() == df.iloc[0:1].values).all(), True)
             self.assertEqual((data[3:].to_ndarray() == df.iloc[3:].values).all(), True)
             self.assertEqual((data[:3].to_ndarray() == df.iloc[:3].values).all(), True)
-        data.destroy()
+            data.destroy()
 
     def test_sample(self):
         df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
-        data = Data(name="test0", dataset_path="/tmp", clean=True)
-        data.from_data(df)
-        with data:
+        with Data(name="test0", dataset_path="/tmp") as data:
+            data.from_data(df)
             it = Iterator(data).sample(5)
             self.assertEqual(it.shape.to_tuple(), (5, 2))
             for e in it:
                 self.assertEqual(e.to_ndarray().shape, (2, ))
+            data.destroy()
 
     def test_dataset_from_dict(self):
         x = np.asarray([1, 2, 3, 4, 5])
         y = np.asarray(['a', 'b', 'c', 'd', 'e'], dtype="object")
-        data = Data(name="test0", dataset_path="/tmp", clean=True)
-        data.from_data({"x": x, "y": y})
-        with data:
+        with Data(name="test0", dataset_path="/tmp") as data:
+            data.from_data({"x": x, "y": y})
             df = data.to_df()
             self.assertEqual((df["x"].values == x).all(), True)
             self.assertEqual((df["y"].values == y).all(), True)
+            data.destroy()
 
     def test_from_batch_type_array(self):
         x = np.random.rand(100)
         it = Iterator(x).batchs(batch_size=10, batch_type="array")
-        data = Data(name="test")
-        data.from_data(it)
-        with data:
+        with Data(name="test") as data:
+            data.from_data(it)
             self.assertEqual((data.to_df().values.reshape(-1) == x).all(), True)
+            data.destroy()
 
     def test_from_batch_type_df(self):
         x = np.random.rand(100)
         it = Iterator(x).batchs(batch_size=10, batch_type="df")
-        data = Data(name="test")
-        data.from_data(it)
-        with data:
+        with Data(name="test") as data:
+            data.from_data(it)
             self.assertEqual((data.to_ndarray() == x).all(), True)
+            data.destroy()
 
     def test_from_struct_dict(self):
         x = np.random.rand(10, 2)
         y = (np.random.rand(10) * 10).astype(int)
         x_train = StructArray([("x", x)])
         y_train = StructArray([("y", y)])
-        train_ds = Data(name="train")
-        train_ds.from_data({"x": x_train, "y": y_train})
-        with train_ds:
+        with Data(name="train") as train_ds:
+            train_ds.from_data({"x": x_train, "y": y_train})
             self.assertEqual((train_ds["x"].to_ndarray() == x).all(), True)
             self.assertEqual((train_ds["y"].to_ndarray() == y).all(), True)
+            train_ds.destroy()
 
     def test_index_dim(self):
         x = np.random.rand(10, 1)
@@ -335,42 +333,41 @@ class TestDataset(unittest.TestCase):
         a = np.random.rand(8, 2, 1)
         columns = [("x", x), ("y", y), ("z", z), ("a", a)]
         str_array = StructArray(columns)
-        data = Data(name="test")
-        data.from_data(str_array)
-        self.assertEqual(data["x"].shape, x.shape)
-        self.assertEqual(data["y"].shape, y.shape)
-        self.assertEqual(data["z"].shape, z.shape)
-        self.assertEqual(data["a"].shape, a.shape)
+        with Data(name="test") as data:
+            data.from_data(str_array)
+            self.assertEqual(data["x"].shape, x.shape)
+            self.assertEqual(data["y"].shape, y.shape)
+            self.assertEqual(data["z"].shape, z.shape)
+            self.assertEqual(data["a"].shape, a.shape)
 
     def test_nested_array(self):
         values = np.asarray([[1], [2], [.4], [.1], [0], [1]])
-        ds = Data(name="test2")
-        ds.from_data(values)
-        self.assertEqual((ds.to_ndarray() == values).all(), True)
-        ds.destroy()
+        with Data(name="test2") as data:
+            data.from_data(values)
+            self.assertEqual((data.to_ndarray() == values).all(), True)
+            data.destroy()
 
     def test_array_from_multidim_it(self):
         def _it(x_a):
             for e in x_a:
                 yield (e, 1)
 
-        dataset = Data(name="test", dataset_path="/tmp/", driver=HDF5(), clean=True)
-        x = np.random.rand(100).reshape(-1, 1)
-        x_p = Iterator(_it(x), length=100, dtypes=[("x", np.dtype(float)), ("y", np.dtype(float))])
-        dataset.from_data(x_p, batch_size=0)
-        dataset.destroy()
+        with Data(name="test", dataset_path="/tmp/", driver=HDF5(mode="w")) as dataset:
+            x = np.random.rand(100).reshape(-1, 1)
+            x_p = Iterator(_it(x), length=100, dtypes=[("x", np.dtype(float)), ("y", np.dtype(float))])
+            dataset.from_data(x_p, batch_size=0)
+            dataset.destroy()
 
     def test_ds_it(self):
         x = np.random.rand(100, 1)
         y = np.random.rand(100, 5)
-        ds = Data(name="test", dataset_path="/tmp/", clean=True)
-        ds.from_data({"x": x, "y": y})
-        with ds:
-            it = Iterator(ds).batchs(batch_size=10, batch_type="structured")
-            for batch in it:
-                self.assertEqual(batch["x"].shape.to_tuple(), (10, 1))
-                self.assertEqual(batch["y"].shape.to_tuple(), (10, 5))
-        ds.destroy()
+        with Data(name="test", dataset_path="/tmp/") as data:
+            data.from_data({"x": x, "y": y})
+            it = Iterator(data).batchs(batch_size=10, batch_type="structured")
+            for item in it:
+                self.assertEqual((item.batch["x"].to_ndarray() == x[item.slice]).all(), True)
+                self.assertEqual((item.batch["y"].to_ndarray() == y[item.slice]).all(), True)
+            data.destroy()
 
     def test_index_iter(self):
         x = np.asarray([1, 2, 3, 4, 5])
@@ -417,6 +414,7 @@ class TestDataset(unittest.TestCase):
             self.assertEqual((data["x"].to_ndarray()[100] == x[100]).all(), True)
             self.assertEqual(data["y"].to_ndarray()[100], y[100])
             self.assertEqual(data["z"].to_ndarray()[100], z[100])
+            data.destroy()
 
 
 class TestDataZarr(unittest.TestCase):

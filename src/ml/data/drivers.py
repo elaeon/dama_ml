@@ -159,7 +159,8 @@ class ZarrGroup(object):
         if isinstance(self.conn, ZGroup):
             return ZarrGroup(self.conn[self.alias_map.get(item, item)], name=item, alias_map=self.alias_map.copy())
         elif isinstance(self.conn, ZArray) and not self.end_node:
-            return ZarrGroup(self.conn, name=self.name, end_node=True, alias_map=self.alias_map.copy())
+            return ZarrGroup(self.conn[item], name=self.name, end_node=True, alias_map=self.alias_map.copy(),
+                             dtypes=self.dtypes)
         elif self.end_node:
             if isinstance(item, int) and hasattr(self.conn, 'len') and item >= len(self.conn):
                 raise IndexError("index {} is out of bounds with size {}".format(item, len(self.conn)))
@@ -186,6 +187,9 @@ class ZarrGroup(object):
         if hasattr(value, "groups"):
             for group in value.groups:
                 self.conn[group][item] = value[group]
+        else:
+            group = list(value.keys())[0]
+            self.conn[group][item] = value[group]
 
     def __len__(self):
         return self.shape.to_tuple()[0]
@@ -215,6 +219,8 @@ class ZarrGroup(object):
             for i, idx in enumerate(self.index):
                 array[i] = self.conn[idx]
             return array
+        elif isinstance(self.conn, ZArray):
+            return self.conn[...]
         else:
             return self.conn
 

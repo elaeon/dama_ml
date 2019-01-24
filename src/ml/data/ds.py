@@ -52,13 +52,11 @@ class Data(AbsDataset):
         self.timestamp = None
         self.compressor_params = None
 
-    def set_attrs(self):
+    def clean_data(self):
         ds_exist = self.driver.exists(self.url)
         if ds_exist and self.driver.mode == "w":
             self.destroy()
             build_path(self.dir_levels())
-            self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
-            self.compressor_params = self.driver.compressor_params
 
     @property
     def author(self):
@@ -126,6 +124,9 @@ class Data(AbsDataset):
 
     def __enter__(self):
         self.driver.enter(self.url)
+        if self.driver.mode in ["w", "a", "r+"]:
+            if len(self.driver.compressor_params) > 0:
+                self.compressor_params = self.driver.compressor_params
         return self
 
     def __exit__(self, exc_type, value, traceback):
@@ -168,10 +169,15 @@ class Data(AbsDataset):
             return None
 
     def batchs_writer(self, data):
-        log.info("Writing with batch size {}".format(getattr(data, 'batch_size', 0)))
-        log.debug("WRITING STRUCTURED BATCH")
-        for smx in tqdm(data, total=data.num_splits()):
-            self.driver[self.name][smx.slice] = smx.batch
+        batch_size = getattr(data, 'batch_size', 0)
+        log.info("Writing with batch size {}".format(batch_size))
+        if batch_size > 0:
+           for smx in tqdm(data, total=data.num_splits()):
+                self.driver[self.name][smx.slice] = smx.batch
+        else:
+            for i, smx in tqdm(enumerate(data), total=data.num_splits()):
+                for j, group in enumerate(self.groups):
+                    self.driver[self.name][group][i] = smx[j]
 
     def destroy(self):
         self.driver.destroy(scope=self.name)
@@ -276,7 +282,7 @@ class Data(AbsDataset):
         return str(hash_obj)
 
     def from_data(self, data, batch_size: int = 258, with_hash: str = "sha1"):
-        self.set_attrs()
+        self.clean_data()
         if isinstance(data, da.Array):
             data = Array.from_da(data)
         elif isinstance(data, StructArray):
@@ -308,6 +314,7 @@ class Data(AbsDataset):
         else:
             c_hash = None
         self.hash = c_hash
+        self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
         self.write_metadata()
 
     def to_df(self) -> pd.DataFrame:

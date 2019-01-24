@@ -112,7 +112,6 @@ class StructArray:
             return 0
 
     def is_multidim(self) -> bool:
-        return False
         shape_values = list(self.shape.values())
         if len(shape_values) == 0:
             return False
@@ -229,10 +228,10 @@ class StructArray:
             else:
                 if len(ushape) == 1:
                     for i, (_, array) in enumerate(self.labels_data):
-                        ndarray[i] = array
+                        ndarray[i] = array.compute()
                 elif ushape[0] == 1:
                     for i, (_, array) in enumerate(self.labels_data):
-                        ndarray[:, i] = array
+                        ndarray[:, i] = array.compute()
                 else:
                     if hasattr(self.o_columns[self.groups[0]], 'compute'):
                         for i, (_, array) in enumerate(self.labels_data):

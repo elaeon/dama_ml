@@ -51,8 +51,6 @@ class BaseIterator(object):
                 self.shape = self.calc_shape_stc(length, shape)
             else:
                 self.shape = None
-        # self.iter_init = True
-        # self._it = None
         self.rewind = False
 
     @property
@@ -490,12 +488,17 @@ class BatchItArray(BatchIterator):
             yield smx_a[:i+1]
 
     def batch_from_it(self, shape):
+        init = 0
+        end = 0
+        group = self.groups[0]
         for smx in grouper_chunk(self.batch_size, self.data):
             smx_a = np.empty(shape, dtype=self.data.dtype)
             i = 0
             for i, row in enumerate(smx):
                 smx_a[i] = row
-            yield smx_a[:i+1]
+            end += (i + 1)
+            yield Slice(batch={group: smx_a[:i+1]}, slice=slice(init, end))
+            init = end
 
     def run(self):
         if self.static is True:
@@ -549,7 +552,8 @@ class BatchItDataFrame(BatchIterator):
             columns = self.groups
 
         for start_i, end_i, stc_array in BatchItDataFrame.str_array(shape[:1], self.batch_size, self.data, self.dtypes):
-            yield pd.DataFrame(stc_array, index=np.arange(start_i, end_i), columns=columns)
+            df = pd.DataFrame(stc_array, index=np.arange(start_i, end_i), columns=columns)
+            yield Slice(batch=df, slice=slice(start_i, end_i))
 
 
 class BatchArray(BatchSlice):
@@ -566,8 +570,8 @@ class BatchDataFrame(BatchSlice):
     def run(self):
         init = 0
         end = self.batch_size
-        for batch in self.batch_from_it():
-            yield batch.to_df(init_i=init, end_i=end)
+        for slice_obj in self.batch_from_it():
+            yield slice_obj.batch.to_df(init_i=init, end_i=end)
             init = end
             end += self.batch_size
 
