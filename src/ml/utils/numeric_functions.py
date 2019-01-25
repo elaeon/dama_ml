@@ -184,9 +184,9 @@ def max_type(items: list):
     return v[1]
 
 
-def max_dtype(dtypes: list) -> np.dtype:
+def max_dtype(dtypes: np.dtype) -> np.dtype:
     if dtypes is not None:
-        sizeof_dtype = [(dtype_obj, dtype_obj.num) for _, dtype_obj in dtypes]
+        sizeof_dtype = [(dtype, dtype.num) for _, (dtype, _) in dtypes.fields.items()]
         if len(sizeof_dtype) > 0:
             return max(sizeof_dtype, key=lambda x: x[1])[0]
 

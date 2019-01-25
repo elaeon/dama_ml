@@ -12,7 +12,7 @@ from ml.abc.driver import AbsDriver
 from ml.utils.numeric_functions import max_dtype, all_int
 from ml.data.it import Iterator, BatchIterator
 from ml.utils.decorators import cache
-
+from ml.abc.group import AbsGroup
 
 log = log_config(__name__)
 
@@ -43,7 +43,7 @@ class Postgres(AbsDriver):
 
     def __getitem__(self, item):
         if isinstance(item, str):
-            return Table(item, self.conn)
+            return Table(self.conn, name=item)
 
     def exists(self, scope) -> bool:
         cur = self.conn.cursor()
@@ -91,14 +91,13 @@ class Postgres(AbsDriver):
         pass
 
     def insert(self, table_name: str, data):
-        table = Table(table_name, self.conn)
+        table = Table(self.conn, table_name)
         table.insert(data)
 
 
-class Table(object):
-    def __init__(self, name, conn, query_parts=None):
-        self.conn = conn
-        self.name = name
+class Table(AbsGroup):
+    def __init__(self, conn, name=None, query_parts=None):
+        super(Table, self).__init__(conn, name=name)
         if query_parts is None:
             self.query_parts = {"columns": None, "slice": None}
         else:
@@ -117,7 +116,7 @@ class Table(object):
             query_parts["slice"] = slice(item, item + 1)
         elif isinstance(item, slice):
             query_parts["slice"] = item
-        return Table(self.name, self.conn, query_parts=query_parts)
+        return Table(self.conn, name=self.name, query_parts=query_parts)
 
     def __setitem__(self, item, value):
         if isinstance(item, slice):
@@ -127,8 +126,8 @@ class Table(object):
             else:
                 self.update(value)
 
-    def __len__(self):
-        return self.shape.to_tuple()[0]
+    def __iter__(self):
+        pass
 
     def insert(self, data, batch_size=258):
         if not isinstance(data, BatchIterator):
@@ -160,10 +159,6 @@ class Table(object):
             array[:] = cur.fetchall()
         self.conn.commit()
         return array
-
-    @property
-    def dtype(self):
-        return max_dtype(self.dtypes)
 
     @property
     @cache

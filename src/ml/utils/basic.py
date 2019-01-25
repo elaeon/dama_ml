@@ -19,10 +19,10 @@ class Hash:
     def update(self, it):
         if it.dtype == np.dtype('<M8[ns]'):
             for chunk in it:
-                self.hash.update(chunk.astype('object'))
+                self.hash.update(chunk.to_ndarray().astype('object'))
         else:
             for chunk in it:
-                self.hash.update(chunk)
+                self.hash.update(chunk.to_ndarray())
 
     def __str__(self):
         return "${hash_fn}${digest}".format(hash_fn=self.hash_fn, digest=self.hash.hexdigest())
@@ -231,7 +231,10 @@ class StructArray:
                         ndarray[i] = array.compute()
                 elif ushape[0] == 1:
                     for i, (_, array) in enumerate(self.labels_data):
-                        ndarray[:, i] = array.compute()
+                        if hasattr(array, 'compute'):
+                            ndarray[:, i] = array.compute()
+                        else:
+                            ndarray[:, i] = array
                 else:
                     if hasattr(self.o_columns[self.groups[0]], 'compute'):
                         for i, (_, array) in enumerate(self.labels_data):

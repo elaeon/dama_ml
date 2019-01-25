@@ -11,6 +11,7 @@ from ml.abc.driver import AbsDriver
 from ml.utils.basic import Shape
 from ml.utils.files import rm
 from ml.utils.numeric_functions import max_dtype
+from ml.abc.group import AbsGroup
 
 
 class HDF5(AbsDriver):
@@ -101,7 +102,7 @@ class Zarr(AbsDriver):
     def set_schema(self, name, dtypes):
         self.conn.require_group("metadata")
         self.require_dataset("metadata", "dtypes", (len(dtypes), 2), dtype=np.dtype('object'))
-        for i, (group, dtype) in enumerate(dtypes):
+        for i, (group, (dtype, _)) in enumerate(dtypes.fields.items()):
             self.conn["metadata"]["dtypes"][i] = (group, dtype.str)
 
     def set_data_shape(self, shape):
@@ -137,90 +138,92 @@ class Empty(object):
         return None
 
 
-class ZarrGroup(object):
+class ZarrGroup(AbsGroup):
     def __init__(self, conn, name=None, end_node=False, dtypes=None, index=None, alias_map=None):
-        self.conn = conn
-        self.name = name
-        self.end_node = end_node
-        self.static_dtypes = dtypes
-        self.index = index
-        if alias_map is None:
-            self.alias_map = {}
-            self.inv_map = {}
-        else:
-            self.alias_map = alias_map
-            self.inv_map = {value: key for key, value in self.alias_map.items()}
-
-    def set_alias(self, name, alias):
-        self.alias_map[alias] = name
-        self.inv_map[name] = alias
+        super(ZarrGroup, self).__init__(conn, name=name, end_node=end_node, dtypes=dtypes, index=index,
+                                        alias_map=alias_map)
 
     def __getitem__(self, item):
-        if isinstance(self.conn, ZGroup):
+        if isinstance(item, str): #isinstance(self.conn, ZGroup):
             return ZarrGroup(self.conn[self.alias_map.get(item, item)], name=item, alias_map=self.alias_map.copy())
-        elif isinstance(self.conn, ZArray) and not self.end_node:
-            return ZarrGroup(self.conn[item], name=self.name, end_node=True, alias_map=self.alias_map.copy(),
+        elif isinstance(item, slice): #isinstance(self.conn, ZArray):# and not self.end_node:
+            group = ZarrGroup(self.conn, name=self.name, end_node=True, alias_map=self.alias_map.copy(),
                              dtypes=self.dtypes)
-        elif self.end_node:
-            if isinstance(item, int) and hasattr(self.conn, 'len') and item >= len(self.conn):
+            group.slice = item
+            return group
+        elif isinstance(item, int):
+            if item >= len(self.conn):
                 raise IndexError("index {} is out of bounds with size {}".format(item, len(self.conn)))
-            elif isinstance(item, int):
-                return ZarrGroup(self.conn[item], name=self.name, end_node=True, dtypes=self.dtypes,
-                                 alias_map=self.alias_map.copy())
-            elif isinstance(item, int) and item < len(self.conn):
-                return ZarrGroup(self.conn[item], name=self.name, end_node=True, dtypes=self.dtypes,
-                                 alias_map=self.alias_map.copy())
-            elif isinstance(item, slice):
-                return ZarrGroup(self.conn[item], name=self.name, end_node=True, dtypes=self.dtypes,
-                                 alias_map=self.alias_map.copy())
-            elif isinstance(item, list) or isinstance(item, np.ndarray):
-                return ZarrGroup(self.conn, name=self.name, end_node=True, dtypes=self.dtypes, index=item,
-                                 alias_map=self.alias_map.copy())
-            elif isinstance(item, tuple):
-                return ZarrGroup(self.conn[item], name=self.name, end_node=True, dtypes=self.dtypes,
-                                 alias_map=self.alias_map.copy())
-            else:
-                return Empty(dtypes=self.dtypes)
+            group = ZarrGroup(self.conn, name=self.name, end_node=True, alias_map=self.alias_map.copy(),
+                              dtypes=self.dtypes)
+            group.slice = slice(item, item + 1)
+            return group
+        #elif self.end_node:
+        #    if isinstance(item, int) and hasattr(self.conn, 'len') and item >= len(self.conn):
+        #        raise IndexError("index {} is out of bounds with size {}".format(item, len(self.conn)))
+        #    elif isinstance(item, int):
+        #        print("INT")
+        #        return ZarrGroup(self.conn[item], name=self.name, end_node=True, dtypes=self.dtypes,
+        #                         alias_map=self.alias_map.copy())
+        #    elif isinstance(item, int) and item < len(self.conn):
+        #        print("INT2")
+        #        return ZarrGroup(self.conn[item], name=self.name, end_node=True, dtypes=self.dtypes,
+        #                         alias_map=self.alias_map.copy())
+        #    elif isinstance(item, slice):
+        #        print("SLICE")
+        #        return ZarrGroup(self.conn[item], name=self.name, end_node=True, dtypes=self.dtypes,
+        #                         alias_map=self.alias_map.copy())
+        #    elif isinstance(item, list) or isinstance(item, np.ndarray):
+        #        return ZarrGroup(self.conn, name=self.name, end_node=True, dtypes=self.dtypes, index=item,
+        #                         alias_map=self.alias_map.copy())
+        #    elif isinstance(item, tuple):
+        #        print("TUPLE")
+        #        return ZarrGroup(self.conn[item], name=self.name, end_node=True, dtypes=self.dtypes,
+        #                         alias_map=self.alias_map.copy())
+        #    else:
+        #        return Empty(dtypes=self.dtypes)
 
 
     def __setitem__(self, item, value):
         if hasattr(value, "groups"):
             for group in value.groups:
-                self.conn[group][item] = value[group]
-        else:
-            group = list(value.keys())[0]
-            self.conn[group][item] = value[group]
-
-    def __len__(self):
-        return self.shape.to_tuple()[0]
+                self.conn[group][item] = value[group].to_ndarray()
+        #else:
+        #    group = list(value.keys())[0]
+        #    self.conn[group][item] = value[group]
 
     @property
-    def dtypes(self) -> list:
+    def dtypes(self) -> np.dtype:
         if isinstance(self.conn, ZGroup):
-            return [(self.inv_map.get(key, key), self.conn[key].dtype) for key in self.conn.keys()]
-        elif hasattr(self.conn, 'dtype'):
-            return [(self.inv_map.get(self.name, self.name), self.conn.dtype)]
+            return np.dtype([(self.inv_map.get(group, group), self.conn[group].dtype) for group in self.conn.keys()])
+        elif isinstance(self.conn, ZArray):
+            return np.dtype([(self.inv_map.get(self.name, self.name), self.conn.dtype)])
         else:
-            return [(self.inv_map.get(key, key), dtype) for key, dtype in self.static_dtypes]
-
-    @property
-    def dtype(self) -> np.dtype:
-        return max_dtype(self.dtypes)
+            return np.dtype([(self.inv_map.get(group, group), dtype)
+                             for group, (dtype, _) in self.static_dtypes.fields.items()])
 
     @property
     def shape(self) -> Shape:
-        shape = dict([(group, self.conn.shape) for group, _ in self.dtypes])
+        if self.slice.stop == np.inf:
+            shape = dict([(group, self.conn.shape) for group in self.groups])
+        else:
+            shape = dict([(group, self.conn[self.slice].shape) for group in self.groups])
         return Shape(shape)
 
-    def compute(self, chunksize=(258,)):
-        if self.index is not None:
-            shape = [len(self.index)] + list(self.shape.to_tuple())[1:]
-            array = np.empty(shape, dtype=self.dtype)
-            for i, idx in enumerate(self.index):
-                array[i] = self.conn[idx]
-            return array
-        elif isinstance(self.conn, ZArray):
-            return self.conn[...]
+    def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)):
+        #if self.index is not None:
+        #    shape = [len(self.index)] + list(self.shape.to_tuple())[1:]
+        #    array = np.empty(shape, dtype=self.dtype)
+        #    for i, idx in enumerate(self.index):
+        #        array[i] = self.conn[idx]
+        #    return array
+        if isinstance(self.conn, ZArray):
+            return self.conn[self.slice]
+        elif isinstance(self.conn, ZGroup):
+            if self.slice.stop != np.inf:
+                return self.conn[self.groups[0]][self.slice]
+            else:
+                return self.conn[self.groups[0]][...]
         else:
             return self.conn
 

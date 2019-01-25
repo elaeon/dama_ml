@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 
-class AbsDataset(ABC):
+class AbsData(ABC):
     _graphviz_shape = 'ellipse'
     _graphviz_style = 'rounded,filled'
     _graphviz_fillcolor = 'white'

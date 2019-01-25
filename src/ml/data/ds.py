@@ -8,12 +8,13 @@ import dask.array as da
 import re
 
 from tqdm import tqdm
-from ml.abc.data import AbsDataset
+from ml.abc.data import AbsData
 from ml.data.it import Iterator, BaseIterator, BatchIterator
 from ml.utils.files import build_path
 from ml.utils.basic import Hash, StructArray, Array
 from ml.abc.driver import AbsDriver
 from ml.data.drivers import Memory
+from ml.abc.group import AbsGroup
 from ml.utils.logger import log_config
 from ml.utils.config import get_settings
 from ml.utils.decorators import cache, clean_cache
@@ -25,7 +26,7 @@ settings = get_settings("paths")
 log = log_config(__name__)
 
 
-class Data(AbsDataset):
+class Data(AbsData):
     def __init__(self, name: str = None, dataset_path: str = None, driver: AbsDriver = None,
                  group_name: str = None):
 
@@ -113,9 +114,10 @@ class Data(AbsDataset):
 
     @property
     @cache
-    def data(self):
-        groups_data = [(group, self.driver[self.name][group]) for group in self.groups]
-        return StructArray(groups_data)
+    def data(self) -> AbsGroup:
+        #groups_data = [(group, self.driver[self.name][group]) for group in self.groups]
+        #return StructArray(groups_data)
+        return self.driver[self.name]
 
     @data.setter
     @clean_cache
@@ -173,7 +175,7 @@ class Data(AbsDataset):
         log.info("Writing with batch size {}".format(batch_size))
         if batch_size > 0:
            for smx in tqdm(data, total=data.num_splits()):
-                self.driver[self.name][smx.slice] = smx.batch
+               self.driver[self.name][smx.slice] = smx
         else:
             for i, smx in tqdm(enumerate(data), total=data.num_splits()):
                 for j, group in enumerate(self.groups):
@@ -209,20 +211,16 @@ class Data(AbsDataset):
         return self.data.shape
 
     @property
-    def groups(self) -> list:
-        return [c for c, _ in self.dtypes]
+    def groups(self) -> tuple:
+        return self.data.groups
 
     @groups.setter
     def groups(self, value) -> None:
-        if len(value) == len(self.dtypes):
-            dtypes = [(col, dtypes[1]) for col, dtypes in zip(value, self.dtypes)]
-        else:
-            raise Exception
-        self.dtypes = dtypes
+        raise NotImplementedError
 
     @property
-    def dtypes(self) -> list:
-        return self.driver.dtypes(self.name)
+    def dtypes(self) -> np.dtype:
+        return self.data.dtypes
 
     @dtypes.setter
     def dtypes(self, value):
@@ -288,7 +286,7 @@ class Data(AbsDataset):
         elif isinstance(data, StructArray):
             data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
         elif isinstance(data, Iterator):
-            data = data.batchs(batch_size=batch_size, batch_type="structured")
+            data = data.batchs(batch_size=batch_size, batch_type="group")
         elif isinstance(data, dict):
             str_arrays = []
             for elem in data.values():
@@ -301,7 +299,7 @@ class Data(AbsDataset):
                 data = sum(str_arrays)
             data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
         elif not isinstance(data, BaseIterator):
-            data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
+            data = Iterator(data).batchs(batch_size=batch_size, batch_type="group")
         self.dtypes = data.dtypes
         self.driver.set_data_shape(data.shape)
         if isinstance(data, BatchIterator) or isinstance(data, Iterator):

@@ -469,6 +469,7 @@ class TestPsqlDriver(unittest.TestCase):
         x = np.random.rand(10)*100
         y = np.random.rand(10)*100
         with Data(name="test", driver=Postgres(login=self.login, mode="w")) as data:
+            data.destroy()
             data.from_data({"x": x, "y": y}, batch_size=3)
             self.assertEqual((data["x"].to_ndarray(dtype=np.dtype("int8")) == x.astype("int8")).all(), True)
             self.assertEqual((data["y"].to_ndarray(dtype=np.dtype("int8")) == y.astype("int8")).all(), True)

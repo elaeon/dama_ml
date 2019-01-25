@@ -18,19 +18,19 @@ def stream():
 class TestIterator(unittest.TestCase):
 
     def test_mixtype(self):
-        array = [1, 2, 3, 4.0, 'xxx', 1, 3]
-        it = Iterator(array, dtypes=[("c0", np.dtype("object"))])
-        data = Data(name="test")
-        data.from_data(it[:7])
-        result = data.to_ndarray()
-        self.assertCountEqual(result, array, True)
+        array = [1, 2, 3, 4.0, 'xxx', 1, 3, 4, 5]
+        it = Iterator(array, dtypes=np.dtype([("c0", np.dtype("object"))]))
+        with Data(name="test") as data:
+            data.from_data(it[:7], batch_size=3)
+            result = data.to_ndarray()
+            self.assertEqual((result == np.asarray(array[:7], dtype="O")).all(), True)
+            data.destroy()
 
     def test_mixtype_multidim(self):
         array = [1, 2, 3, 4.0, 'xxx', [1], [[2, 3]]]
-        it = Iterator(array, dtypes=[("c0", np.dtype("object"))])
-        data = Data(name="test")
-        data.from_data(it[:7])
-        with data:
+        it = Iterator(array, dtypes=np.dtype([("c0", np.dtype("object"))]))
+        with Data(name="test") as data:
+            data.from_data(it[:7])
             result = data.to_ndarray()
         for r0, r1 in zip(result, array):
             self.assertEqual(r0, r1)
@@ -38,37 +38,37 @@ class TestIterator(unittest.TestCase):
     def test_length_array(self):
         array = np.zeros((20, 2)) + 1
         it = Iterator(array)
-        data = Data(name="test")
-        data.from_data(it[:10])
-        result = data[:5].to_ndarray()
+        with Data(name="test") as data:
+            data.from_data(it[:10])
+            result = data[:5].to_ndarray()
         self.assertEqual((result == array[:5]).all(), True)
 
     def test_length_array_batch(self):
         array = np.asarray([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12],
                             [13, 14], [15, 16], [17, 18], [19, 20]])
         it = Iterator(array).batchs(batch_size=3, batch_type="array")
-        data = Data(name="test")
-        data.from_data(it[:10])
-        result = data[:5].to_ndarray()
+        with Data(name="test") as data:
+            data.from_data(it[:10])
+            result = data[:5].to_ndarray()
         self.assertEqual((result == array[:5]).all(), True)
 
     def test_flat_all(self):
         array = np.zeros((20, 2)) + 1
         it = Iterator(array)
         x = it.flat()
-        data = Data(name="test")
-        data.from_data(x)
-        y = np.zeros((40,)) + 1
-        self.assertCountEqual(data.to_ndarray(), y)
+        with Data(name="test") as data:
+            data.from_data(x)
+            y = np.zeros((40,)) + 1
+            self.assertCountEqual(data.to_ndarray(), y)
 
     def test_flat_all_batch(self):
         data = np.zeros((20, 2)) + 1
         it = Iterator(data).batchs(batch_size=3, batch_type="array")
         x = it.flat()
-        data = Data(name="test")
-        data.from_data(x)
-        y = np.zeros((40,)) + 1
-        self.assertCountEqual(data.to_ndarray(), y)
+        with Data(name="test") as data:
+            data.from_data(x)
+            y = np.zeros((40,)) + 1
+            self.assertCountEqual(data.to_ndarray(), y)
 
     def test_it_attrs(self):
         it = Iterator(stream())
@@ -77,8 +77,8 @@ class TestIterator(unittest.TestCase):
         self.assertEqual(it.length, np.inf)
         self.assertEqual(it.shape, (np.inf,))
         self.assertEqual(it.num_splits(), np.inf)
-        # self.assertEqual(it.type_elem, int)
-        self.assertEqual(it.groups, ["c0"])
+        self.assertEqual(it.type_elem, int)
+        self.assertEqual(it.groups, ("c0",))
 
     def test_it_attrs_length(self):
         it = Iterator(stream())[:10]
@@ -88,10 +88,10 @@ class TestIterator(unittest.TestCase):
         self.assertEqual(it.shape, (10,))
         self.assertEqual(it.num_splits(), 10)
         self.assertEqual(it.type_elem, int)
-        self.assertEqual(it.groups, ["c0"])
+        self.assertEqual(it.groups, ("c0",))
 
     def test_batch_it_attrs(self):
-        it = Iterator(stream()).batchs(batch_size=3, batch_type="df")
+        it = Iterator(stream()).batchs(batch_size=3, batch_type="group")
         self.assertEqual(it.dtype, int)
         self.assertEqual(it.dtypes, [('c0', np.dtype('int64'))])
         self.assertEqual(it.length, np.inf)
@@ -99,10 +99,10 @@ class TestIterator(unittest.TestCase):
         self.assertEqual(it.batch_size, 3)
         self.assertEqual(it.num_splits(), 0)
         self.assertEqual(it.batch_shape(), [3])
-        self.assertEqual(it.groups, ["c0"])
+        self.assertEqual(it.groups, ("c0",))
 
     def test_batch_it_attrs_length(self):
-        it = Iterator(stream()).batchs(batch_size=3, batch_type="df")[:10]
+        it = Iterator(stream()).batchs(batch_size=3, batch_type="group")[:10]
         self.assertEqual(it.dtype, int)
         self.assertEqual(it.dtypes, [('c0', np.dtype('int64'))])
         self.assertEqual(it.length, 10)
@@ -110,21 +110,21 @@ class TestIterator(unittest.TestCase):
         self.assertEqual(it.batch_size, 3)
         self.assertEqual(it.num_splits(), 4)
         self.assertEqual(it.batch_shape(), [3])
-        self.assertEqual(it.groups, ["c0"])
+        self.assertEqual(it.groups, ("c0",))
 
     def test_stream(self):
         it = Iterator(stream())
-        data = Data(name="test")
-        data.from_data(it[:10])
-        self.assertCountEqual(data.to_ndarray(), np.arange(0, 10))
-        self.assertCountEqual(data.to_df().values, pd.DataFrame(np.arange(0, 10)).values)
+        with Data(name="test") as data:
+            data.from_data(it[:10])
+            self.assertCountEqual(data.to_ndarray(), np.arange(0, 10))
+            #self.assertCountEqual(data.to_df().values, pd.DataFrame(np.arange(0, 10)).values)
 
     def test_stream_batchs(self):
         it = Iterator(stream()).batchs(batch_size=3, batch_type="df")
-        data = Data(name="test")
-        data.from_data(it[:10])
-        self.assertCountEqual(data.to_ndarray(), np.arange(0, 10))
-        self.assertCountEqual(data.to_df().values, pd.DataFrame(np.arange(0, 10)).values)
+        with Data(name="test") as data:
+            data.from_data(it[:10])
+            self.assertCountEqual(data.to_ndarray(), np.arange(0, 10))
+            self.assertCountEqual(data.to_df().values, pd.DataFrame(np.arange(0, 10)).values)
 
     def test_multidtype(self):
         x0 = np.zeros(20) + 1
