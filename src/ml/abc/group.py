@@ -12,7 +12,7 @@ class AbsGroup(ABC):
         self.end_node = end_node
         self.static_dtypes = dtypes
         self.index = index
-        self.slice = slice(0, np.inf)
+        self.slice = slice(0, None)
         self.counter = 0
         if alias_map is None:
             self.alias_map = {}
