@@ -28,11 +28,23 @@ class StructuredGroup(AbsGroup):
     @property
     def dtypes(self) -> np.dtype:
         if isinstance(self.conn, np.ndarray):
-            return np.dtype([(self.inv_map.get(group, group), dtype) for group, (dtype, _) in self.conn.dtype.fields.items()])
+            if self.conn.dtype.fields is None:
+                return self.conn.dtype
+            else:
+                return np.dtype([(self.inv_map.get(group, group), dtype) for group, (dtype, _) in self.conn.dtype.fields.items()])
+        elif isinstance(self.conn, np.void):
+            return np.dtype(
+                [(self.inv_map.get(group, group), dtype) for group, (dtype, _) in self.conn.dtype.fields.items()])
 
     @property
     def shape(self) -> Shape:
-        shape = dict([(group, self.conn[group].shape) for group in self.groups])
+        if isinstance(self.conn, np.ndarray):
+            if self.groups is None:
+                shape = dict([("c0", self.conn.shape)])
+            else:
+                shape = dict([(group, self.conn[group].shape) for group in self.groups])
+        else:
+            shape = dict([(group, self.conn.shape) for group in self.groups])
         return Shape(shape)
 
     def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:

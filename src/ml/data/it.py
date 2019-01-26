@@ -257,14 +257,12 @@ class Iterator(BaseIterator):
             else:
                 shape = None
 
-        #if isinstance(shape, Shape):
-        #    return shape
         if not isinstance(shape, Shape):
             shapes = {}
             if shape is None:
                 shape = []
             for group in self.groups:
-                shapes[group] = tuple([length] + list(shape))
+                shapes[group] = tuple([length] + list(shape[1:]))
             return self.calc_shape_stc(length, Shape(shapes))
         elif isinstance(shape, Shape):
             shapes = {}
@@ -273,7 +271,7 @@ class Iterator(BaseIterator):
             return self.calc_shape_stc(length, Shape(shapes))
 
     def _define_dtypes(self, chunk, dtypes) -> np.dtype:
-        if isinstance(dtypes, list):
+        if isinstance(dtypes, np.dtype):
             return self.replace_str_type_to_obj(dtypes)
         elif isinstance(chunk, pd.DataFrame):
             ndtypes = []
@@ -296,13 +294,19 @@ class Iterator(BaseIterator):
                     else:
                         return self.default_dtypes(np.dtype(type(chunk)))
             else:
-                return self.default_dtypes(chunk.dtype)
+                if isnamedtupleinstance(chunk):
+                    dtypes_l = []
+                    for v, field in zip(chunk, chunk._fields):
+                        dtypes_l.append((field, np.dtype(type(v))))
+                    return np.dtype(dtypes_l)
+                else:
+                    return self.default_dtypes(chunk.dtype)
 
     @staticmethod
-    def replace_str_type_to_obj(dtype) -> np.dtype:
-        if hasattr(dtype, '__iter__'):
+    def replace_str_type_to_obj(dtype: np.dtype) -> np.dtype:
+        if dtype.fields is not None:
             dtype_tmp = []
-            for c, dtp in dtype:
+            for c, (dtp, _) in dtype.fields.items():
                 if dtp == "str" or dtp == str:
                     dtype_tmp.append((c, np.dtype("O")))
                 else:
@@ -314,19 +318,11 @@ class Iterator(BaseIterator):
                 dtype_tmp = dtype
         return np.dtype(dtype_tmp)
 
-    def batchs(self, batch_size: int, batch_type: str = "array") -> 'BatchIterator':
+    def batchs(self, batch_size: int) -> 'BatchIterator':
         if batch_size > 0:
             if isinstance(self.data, AbsData) or isinstance(self.data, AbsGroup):
-                #if batch_type == "df":
-                #    return BatchDataFrame(self, batch_size=batch_size)
-                #elif batch_type == "array":
                 return BatchGroup(self, batch_size=batch_size)
             else:
-                #if batch_type == "df":
-                #    return BatchItDataFrame(self, batch_size=batch_size)
-                #elif batch_type == "array":
-                #    return BatchItArray(self, batch_size=batch_size)
-                #elif batch_type == "group":
                 return BatchItGroup(self, batch_size=batch_size)
         else:
             return self
@@ -447,7 +443,7 @@ class BatchIterator(BaseIterator):
         return cls(it, batch_size=batch_size, static=True)
 
     @classmethod
-    def from_batchs(cls, iterable: iter, dtypes: list = None, from_batch_size: int = 0, length: int = None):
+    def from_batchs(cls, iterable: iter, dtypes: np.dtype = None, from_batch_size: int = 0, length: int = None):
         it = Iterator(iterable, dtypes=dtypes, length=length)
         batcher_len = num_splits(length, from_batch_size)
         shape_dict = {}

@@ -46,7 +46,7 @@ class TestIterator(unittest.TestCase):
     def test_length_array_batch(self):
         array = np.asarray([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12],
                             [13, 14], [15, 16], [17, 18], [19, 20]])
-        it = Iterator(array).batchs(batch_size=3, batch_type="array")
+        it = Iterator(array).batchs(batch_size=3)
         with Data(name="test") as data:
             data.from_data(it[:10])
             result = data[:5].to_ndarray()
@@ -63,7 +63,7 @@ class TestIterator(unittest.TestCase):
 
     def test_flat_all_batch(self):
         data = np.zeros((20, 2)) + 1
-        it = Iterator(data).batchs(batch_size=3, batch_type="array")
+        it = Iterator(data).batchs(batch_size=3)
         x = it.flat()
         with Data(name="test") as data:
             data.from_data(x)
@@ -91,7 +91,7 @@ class TestIterator(unittest.TestCase):
         self.assertEqual(it.groups, ("c0",))
 
     def test_batch_it_attrs(self):
-        it = Iterator(stream()).batchs(batch_size=3, batch_type="group")
+        it = Iterator(stream()).batchs(batch_size=3)
         self.assertEqual(it.dtype, int)
         self.assertEqual(it.dtypes, [('c0', np.dtype('int64'))])
         self.assertEqual(it.length, np.inf)
@@ -102,7 +102,7 @@ class TestIterator(unittest.TestCase):
         self.assertEqual(it.groups, ("c0",))
 
     def test_batch_it_attrs_length(self):
-        it = Iterator(stream()).batchs(batch_size=3, batch_type="group")[:10]
+        it = Iterator(stream()).batchs(batch_size=3)[:10]
         self.assertEqual(it.dtype, int)
         self.assertEqual(it.dtypes, [('c0', np.dtype('int64'))])
         self.assertEqual(it.length, 10)
@@ -120,50 +120,49 @@ class TestIterator(unittest.TestCase):
             #self.assertCountEqual(data.to_df().values, pd.DataFrame(np.arange(0, 10)).values)
 
     def test_stream_batchs(self):
-        it = Iterator(stream()).batchs(batch_size=3, batch_type="df")
+        it = Iterator(stream()).batchs(batch_size=3)
         with Data(name="test") as data:
             data.from_data(it[:10])
             self.assertCountEqual(data.to_ndarray(), np.arange(0, 10))
-            self.assertCountEqual(data.to_df().values, pd.DataFrame(np.arange(0, 10)).values)
+            #self.assertCountEqual(data.to_df().values, pd.DataFrame(np.arange(0, 10)).values)
 
     def test_multidtype(self):
-        x0 = np.zeros(20) + 1
-        x1 = (np.zeros(20) + 2).astype("int")
-        x2 = np.zeros(20) + 3
+        x0 = np.arange(20)
+        x1 = (x0 + 1).astype("float")
+        x2 = x0 + 2
         df = pd.DataFrame({"x0": x0, "x1": x1, "x2": x2})
-        data = Data(name="test")
-        data.from_data(df, batch_size=0)
-        self.assertEqual(data[:5].to_ndarray().shape, (5, 3))
-        df = data[:5].to_df()
-        self.assertEqual(df.dtypes["x0"], float)
-        self.assertEqual(df.dtypes["x1"], int)
-        self.assertEqual(df.dtypes["x2"], float)
+        with Data(name="test") as data:
+            data.from_data(df, batch_size=0)
+            self.assertEqual((data[:5].to_ndarray()[:5, 0] == x0[:5]).all(), True)
+            self.assertEqual((data[:5].to_ndarray()[:5, 1] == x1[:5]).all(), True)
+            self.assertEqual((data[:5].to_ndarray()[:5, 2] == x2[:5]).all(), True)
+            self.assertEqual((data[:5]["x2"].to_ndarray() == x2[:5]).all(), True)
+            self.assertEqual(data["x0"].dtype, np.dtype(int))
+            self.assertEqual(data["x1"].dtype, np.dtype(float))
 
     def test_onedtype_batchs(self):
         x0 = np.zeros(20) + 1
         x1 = np.zeros(20) + 2
         x2 = np.zeros(20) + 3
         df = pd.DataFrame({"x0": x0, "x1": x1, "x2": x2})
-        data = Data(name="test")
-        data.from_data(df, batch_size=3)
-        self.assertEqual(data[:5].to_ndarray().shape, (5, 3))
-        df = data[:5].to_df()
-        self.assertEqual(df.dtypes["x0"], float)
-        self.assertEqual(df.dtypes["x1"], float)
-        self.assertEqual(df.dtypes["x2"], float)
+        with Data(name="test") as data:
+            data.from_data(df, batch_size=3)
+            self.assertEqual((data[:5].to_ndarray()[:5, 0] == x0[:5]).all(), True)
+            self.assertEqual((data[:5].to_ndarray()[:5, 1] == x1[:5]).all(), True)
+            self.assertEqual((data[:5].to_ndarray()[:5, 2] == x2[:5]).all(), True)
+
 
     def test_multidtype_batchs(self):
         x0 = np.zeros(20) + 1
         x1 = (np.zeros(20) + 2).astype("int")
         x2 = np.zeros(20) + 3
         df = pd.DataFrame({"x0": x0, "x1": x1, "x2": x2})
-        data = Data(name="test")
-        data.from_data(df, batch_size=3)
-        self.assertEqual(data[:5].to_ndarray().shape, (5, 3))
-        df = data[:5].to_df()
-        self.assertEqual(df.dtypes["x0"], float)
-        self.assertEqual(df.dtypes["x1"], int)
-        self.assertEqual(df.dtypes["x2"], float)
+        with Data(name="test") as data:
+            data.from_data(df, batch_size=3)
+            self.assertEqual(data[:5].to_ndarray().shape, (5, 3))
+            self.assertEqual(data["x0"].dtypes["x0"], float)
+            self.assertEqual(data["x1"].dtypes["x1"], int)
+            self.assertEqual(data["x2"].dtypes["x2"], float)
 
     def test_shape(self):
         data = np.random.rand(10, 3)
@@ -199,20 +198,7 @@ class TestIterator(unittest.TestCase):
         self.assertEqual(it_0.batch_size, batch_size)
         for smx in it_0:
             for i, row in enumerate(smx):
-                self.assertCountEqual(row, m[i])
-
-    def test_batch_type(self):
-        data = np.random.rand(10, 1)
-        batch_size = 2
-        it = Iterator(data)
-        for smx in it.batchs(batch_size, batch_type='structured'):
-            self.assertEqual(smx.shape, (2, 1))
-        it = Iterator(data)
-        for smx in it.batchs(batch_size, batch_type='array'):
-            self.assertEqual(smx.shape, (2, 1))
-        it = Iterator(data)
-        for smx in it.batchs(batch_size, batch_type='df'):
-            self.assertEqual(smx.shape, (2, 1))
+                self.assertCountEqual(row.to_ndarray(), m[i])
 
     def test_df_batchs(self):
         batch_size = 3
@@ -222,28 +208,27 @@ class TestIterator(unittest.TestCase):
             [4, 5],
             [6, 7],
             [8, 9]], dtype='float')
-        dtypes = [('x', np.dtype('float')), ('y', np.dtype('float'))]
-        it = Iterator(data, dtypes=dtypes).batchs(batch_size, batch_type="df")
+        dtypes = np.dtype([('x', np.dtype('float')), ('y', np.dtype('float'))])
+        it = Iterator(data, dtypes=dtypes).batchs(batch_size)
         batch = next(it)
-        self.assertCountEqual(batch.x, [0, 2, 4])
-        self.assertCountEqual(batch.y, [1, 3, 5])
+        self.assertCountEqual(batch["x"], [0, 2, 4])
+        self.assertCountEqual(batch["y"], [1, 3, 5])
 
         batch_size = 2
         data = np.asarray([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype='float')
-        it = Iterator(data, dtypes=[('x', np.dtype('float'))]).batchs(batch_size, batch_type="df")
+        it = Iterator(data, dtypes=np.dtype([('x', np.dtype('float'))])).batchs(batch_size)
         batch = next(it)
-        self.assertCountEqual(batch['x'].values, [1, 2])
+        self.assertCountEqual(batch['x'], [1, 2])
 
     def test_to_ndarray_dtype(self):
         batch_size = 2
         array = np.asarray([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype='int')
         it = Iterator(array).batchs(batch_size)
-        data = Data(name="test")
-        data.from_data(it)
-        with data:
+        with Data(name="test") as data:
+            data.from_data(it)
             array = data.to_ndarray(dtype='float')
             self.assertEqual(array.dtype, np.dtype("float"))
-        data.destroy()
+            data.destroy()
 
     def test_clean_batchs(self):
         it = Iterator(((i, 'X', 'Z') for i in range(20)))
@@ -256,18 +241,16 @@ class TestIterator(unittest.TestCase):
         order = (i for i in range(20))
         it = Iterator(order)
         it_s = it.sample(5)
-        data = Data(name="test")
-        data.from_data(it_s)
-        with data:
+        with Data(name="test") as data:
+            data.from_data(it_s)
             self.assertEqual(data.to_ndarray().shape, (5,))
 
     def test_sample_batch(self):
         order = (i for i in range(20))
         it = Iterator(order).batchs(batch_size=2)
         it_s = it.sample(5)
-        data = Data(name="test")
-        data.from_data(it_s)
-        with data:
+        with Data(name="test") as data:
+            data.from_data(it_s)
             self.assertEqual(data.to_ndarray().shape, (5,))
 
     def test_gen_weights(self):
@@ -300,20 +283,18 @@ class TestIterator(unittest.TestCase):
         array = np.zeros((num_items, 4)) + [1, 2, 3, 0]
         array[:, 3] = np.random.rand(1, num_items) > .5
         it = Iterator(array).sample(num_samples, col=3, weight_fn=fn)
-        data = Data(name="test", clean=True, dataset_path="/tmp")
-        data.from_data(it, batch_size=258)
-        with data:
+        with Data(name="test", dataset_path="/tmp") as data:
+            data.from_data(it, batch_size=258)
             c = collections.Counter(data.to_ndarray()[:, 3])
-        self.assertEqual(c[1]/float(num_samples) > .79, True)
+            self.assertEqual(c[1]/float(num_samples) > .79, True)
 
     def test_empty(self):
         it = Iterator([])
-        data = Data(name="test")
-        data.from_data(it)
-        with data:
+        with Data(name="test") as data:
+            data.from_data(it)
             self.assertCountEqual(data.to_ndarray(), np.asarray([]))
             self.assertEqual(data.shape, (0,))
-        data.destroy()
+            data.destroy()
 
     def test_columns(self):
         data = np.asarray([[1, 2], [3, 4], [5, 6], [7, 8], [9, 0]], dtype='int')
@@ -324,13 +305,10 @@ class TestIterator(unittest.TestCase):
     def test_datetime(self):
         m = [datetime.datetime.today(), datetime.datetime.today(), datetime.datetime.today()]
         df = pd.DataFrame(m, columns=['A'])
-        data = Data(name="test")
-        data.from_data(df)
-        self.assertCountEqual(data.to_df().values, df.values)
-        it = Iterator(m, dtypes=[("A", np.dtype('<M8[ns]'))]).batchs(batch_size=2, batch_type="df")
-        data = Data(name="test")
-        data.from_data(it)
-        self.assertCountEqual(data.to_df().values, df.values)
+        it = Iterator(m, dtypes=np.dtype([("A", np.dtype('<M8[ns]'))])).batchs(batch_size=2)
+        with Data(name="test") as data:
+            data.from_data(it)
+            self.assertCountEqual(data.to_ndarray(), df.values)
 
     def test_unique(self):
         it = Iterator([1, 2, 3, 4, 4, 4, 5, 6, 3, 8, 1])
@@ -345,7 +323,7 @@ class TestIterator(unittest.TestCase):
 
     def test_df_index_chunks(self):
         array = np.random.rand(10, 2)
-        it = Iterator(array).batchs(3, batch_type="df")
+        it = Iterator(array).batchs(3)
         df = next(it)
         self.assertCountEqual(df.index.values, np.array([0, 1, 2]))
         df = next(it)
@@ -379,43 +357,41 @@ class TestIterator(unittest.TestCase):
 
     def test_abstractds(self):
         array = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-        data = Data(name="test")
-        data.from_data(array)
-        with data:
+        with Data(name="test") as data:
+            data.from_data(array)
             it = Iterator(data)
             for it_array, array_elem in zip(it, array):
                 self.assertEqual(it_array, array_elem)
-        data.destroy()
+            data.destroy()
 
     def test_batch_ads(self):
-        data = Data(name="test")
-        data.from_data(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
-        array_l = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10]]
-        with data:
-            it = Iterator(data).batchs(batch_size=3, batch_type="array")
+        with Data(name="test") as data:
+            data.from_data(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
+            array_l = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10]]
+            it = Iterator(data).batchs(batch_size=3)
             for batch, array in zip(it, array_l):
-                self.assertCountEqual(batch, array)
-        data.destroy()
+                self.assertCountEqual(batch.to_ndarray(), array)
+            data.destroy()
 
     def test_batch_to_structured(self):
-        data = Data(name="test")
-        data.from_data(np.array([[1, 'x1'], [2, 'x2'], [3, 'x3'], [4, 'x4'],
+        with Data(name="test") as data:
+            data.from_data(np.array([[1, 'x1'], [2, 'x2'], [3, 'x3'], [4, 'x4'],
                                  [5, 'x5'], [6, 'x6'], [7, 'x7'], [8, 'x8'],
                                  [9, 'x9'], [10, 'x10']]))
-        it = Iterator(data).batchs(batch_size=3, batch_type="structured")
-        counter = 0
-        for batch in it:
-            self.assertEqual(batch["c0"].shape, (3, 2))
-            if counter == 2:
-                break
-            counter += 1
+            it = Iterator(data).batchs(batch_size=3)
+            counter = 0
+            for batch in it:
+                self.assertEqual(batch["c0"].shape, (3, 2))
+                if counter == 2:
+                    break
+                counter += 1
 
     def test_shape_list(self):
         def _it():
             for x in range(100):
                 e = np.random.rand(3, 3)
                 yield (x, e, [1, 2])
-        it = Iterator(_it(), dtypes=[("x", np.dtype("float")), ("y", np.dtype("float")), ("z", np.dtype("int"))])
+        it = Iterator(_it(), dtypes=np.dtype([("x", np.dtype("float")), ("y", np.dtype("float")), ("z", np.dtype("int"))]))
         self.assertEqual(it.shape["x"], (np.inf, ))
         self.assertEqual(it.shape["y"], (np.inf, 3, 3))
         self.assertEqual(it.shape["z"], (np. inf, 2))
@@ -424,7 +400,7 @@ class TestIterator(unittest.TestCase):
         def _it():
             for x in range(100):
                 yield ([1], [2], [3])
-        it = Iterator(_it(), dtypes=[("x", np.dtype("float"))])
+        it = Iterator(_it(), dtypes=np.dtype([("x", np.dtype("float"))]))
         self.assertEqual(it.shape["x"], (np.inf, 3, 1))
 
     def test_batchs_to_iterator(self):
@@ -434,26 +410,27 @@ class TestIterator(unittest.TestCase):
                 yield (e, e)
 
         it = BatchItArray.from_batchs(_it(), length=100,
-                                      dtypes=[("x", np.dtype("float")), ("y", np.dtype("float"))], from_batch_size=3)
+                                      dtypes=np.dtype([("x", np.dtype("float")), ("y", np.dtype("float"))]), from_batch_size=3)
         self.assertEqual(it.shape["x"], (100, 3))
         self.assertEqual(it.shape["y"], (100, 3))
 
     def test_cycle_it(self):
         x = range(10)
-        data = Data(name="test", dataset_path="/tmp/")
-        data.from_data(x)
-        it = Iterator(data).cycle()[:20]
-        elems = []
-        for i, e in enumerate(it):
-            elems.append(e)
-        self.assertEqual(elems, list(range(10))*2)
+        with Data(name="test", dataset_path="/tmp/") as data:
+            data.from_data(x)
+            it = Iterator(data).cycle()[:20]
+            elems = []
+            for i, e in enumerate(it):
+                print(e)
+                elems.append(e)
+            self.assertEqual(elems, list(range(10))*2)
 
     def test_cycle_it_batch(self):
         x = range(10)
         data = Data(name="test", dataset_path="/tmp/")
         data.from_data(x)
 
-        it = Iterator(data).batchs(batch_size=3, batch_type='structured').cycle()[:20]
+        it = Iterator(data).batchs(batch_size=3).cycle()[:20]
         elems = []
         for i, e in enumerate(it):
             elems.append(e.to_ndarray())
@@ -471,7 +448,7 @@ class TestIterator(unittest.TestCase):
         z = np.random.rand(10)
         data.from_data({"x": x, "y": y, "z": z})
         with data:
-            it = Iterator(data).batchs(batch_size=3, batch_type="structured").cycle().to_iter()
+            it = Iterator(data).batchs(batch_size=3).cycle().to_iter()
             for x, y, z in it:
                 self.assertEqual(x.to_ndarray().shape, (3, ))
                 self.assertEqual(y.to_ndarray().shape, (3, ))

@@ -2,6 +2,7 @@ import zarr
 import h5py
 import numpy as np
 import os
+import numbers
 from zarr.core import Array as ZArray
 from zarr.hierarchy import Group as ZGroup
 from h5py.highlevel import Group as H5Group
@@ -107,12 +108,15 @@ class Zarr(AbsDriver):
 
     def set_data_shape(self, shape):
         self.conn.require_group(self.data_tag)
-        for group, dtype in self.dtypes("metadata"):
-            self.require_dataset(self.data_tag, group, shape[group], dtype)
+        dtypes = self.dtypes("metadata")
+        if dtypes is not None:
+            for group, (dtype, _) in dtypes.fields.items():
+                self.require_dataset(self.data_tag, group, shape[group], dtype)
 
-    def dtypes(self, name) -> list:
-        dtypes = self.conn["metadata"]["dtypes"]
-        return [(col, np.dtype(dtype)) for col, dtype in dtypes]
+    def dtypes(self, name) -> np.dtype:
+        if name in self.conn:
+            dtypes = self.conn[name]["dtypes"]
+            return np.dtype([(col, np.dtype(dtype)) for col, dtype in dtypes])
 
 
 class Memory(Zarr):
@@ -145,7 +149,9 @@ class ZarrGroup(AbsGroup):
 
     def __getitem__(self, item):
         if isinstance(item, str): #isinstance(self.conn, ZGroup):
-            return ZarrGroup(self.conn[self.alias_map.get(item, item)], name=item, alias_map=self.alias_map.copy())
+            group = ZarrGroup(self.conn[self.alias_map.get(item, item)], name=item, alias_map=self.alias_map.copy())
+            group.slice = self.slice
+            return group
         elif isinstance(item, slice): #isinstance(self.conn, ZArray):# and not self.end_node:
             group = ZarrGroup(self.conn, name=self.name, end_node=True, alias_map=self.alias_map.copy(),
                              dtypes=self.dtypes)
@@ -188,9 +194,8 @@ class ZarrGroup(AbsGroup):
         if hasattr(value, "groups"):
             for group in value.groups:
                 self.conn[group][item] = value[group].to_ndarray()
-        #else:
-        #    group = list(value.keys())[0]
-        #    self.conn[group][item] = value[group]
+        elif isinstance(value, numbers.Number):
+            self.conn[item] = value
 
     @property
     def dtypes(self) -> np.dtype:
@@ -204,28 +209,67 @@ class ZarrGroup(AbsGroup):
 
     @property
     def shape(self) -> Shape:
-        if self.slice.stop == np.inf:
-            shape = dict([(group, self.conn.shape) for group in self.groups])
+        if isinstance(self.conn, ZGroup):
+            if self.slice.stop == np.inf:
+                shape = dict([(group, self.conn[group].shape) for group in self.groups])
+            else:
+                shape = dict([(group, self.conn[group][self.slice].shape) for group in self.groups])
         else:
-            shape = dict([(group, self.conn[self.slice].shape) for group in self.groups])
+            if self.slice.stop == np.inf:
+                shape = dict([(group, self.conn.shape) for group in self.groups])
+            else:
+                shape = dict([(group, self.conn[self.slice].shape) for group in self.groups])
         return Shape(shape)
 
-    def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)):
+    def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
         #if self.index is not None:
         #    shape = [len(self.index)] + list(self.shape.to_tuple())[1:]
         #    array = np.empty(shape, dtype=self.dtype)
         #    for i, idx in enumerate(self.index):
         #        array[i] = self.conn[idx]
         #    return array
+        if self.dtype is None:
+            return np.asarray([])
+
+        if dtype is None:
+            dtype = self.dtype
+
         if isinstance(self.conn, ZArray):
-            return self.conn[self.slice]
+            if self.slice.stop != np.inf:
+                array = self.conn[self.slice]
+            else:
+                array = self.conn[...]
         elif isinstance(self.conn, ZGroup):
             if self.slice.stop != np.inf:
-                return self.conn[self.groups[0]][self.slice]
+                return build_array(self[self.slice], self.groups, dtype)
             else:
-                return self.conn[self.groups[0]][...]
+                return build_array(self, self.groups, dtype)
         else:
-            return self.conn
+            array = self.conn
+
+        if self.dtype != dtype:
+            return array.astype(dtype)
+        else:
+            return array
+
+    def apply_slice(self):
+        if isinstance(self.conn, ZArray):
+            if self.slice.stop != np.inf:
+                return self.conn[self.slice]
+            else:
+                return self.conn[...]
+
+
+def build_array(array_group, groups, dtype) -> np.ndarray:
+    shape = array_group.shape.to_tuple()
+    if len(shape) == 1:
+        for i, group in enumerate(groups):
+            return array_group[group].apply_slice().astype(dtype)
+    else:
+        array = np.empty(shape, dtype=dtype)
+        for i, group in enumerate(groups):
+            array[:, i] = array_group[group].apply_slice()
+        return array
 
 
 class HDF5Group(object):

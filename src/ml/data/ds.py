@@ -275,7 +275,7 @@ class Data(AbsData):
         header = [attr for attr in header if attr is not None]
         hash_obj.hash.update("".join(header).encode("utf-8"))
         for group in self.groups:
-            it = Iterator(self.data[group]).batchs(batch_size=batch_size, batch_type="array")
+            it = Iterator(self.data[group]).batchs(batch_size=batch_size)
             hash_obj.update(it)
         return str(hash_obj)
 
@@ -284,9 +284,9 @@ class Data(AbsData):
         if isinstance(data, da.Array):
             data = Array.from_da(data)
         elif isinstance(data, StructArray):
-            data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
+            data = Iterator(data).batchs(batch_size=batch_size)
         elif isinstance(data, Iterator):
-            data = data.batchs(batch_size=batch_size, batch_type="group")
+            data = data.batchs(batch_size=batch_size)
         elif isinstance(data, dict):
             str_arrays = []
             for elem in data.values():
@@ -297,9 +297,9 @@ class Data(AbsData):
                         raise NotImplementedError("Mixed content is not supported.")
             if len(str_arrays) > 0:
                 data = sum(str_arrays)
-            data = Iterator(data).batchs(batch_size=batch_size, batch_type="structured")
+            data = Iterator(data).batchs(batch_size=batch_size)
         elif not isinstance(data, BaseIterator):
-            data = Iterator(data).batchs(batch_size=batch_size, batch_type="group")
+            data = Iterator(data).batchs(batch_size=batch_size)
         self.dtypes = data.dtypes
         self.driver.set_data_shape(data.shape)
         if isinstance(data, BatchIterator) or isinstance(data, Iterator):

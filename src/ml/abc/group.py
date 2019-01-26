@@ -48,9 +48,11 @@ class AbsGroup(ABC):
 
     def _iterator(self, counter):
         elem = self[counter]
-        if len(elem.groups) == 1:
+        if elem.dtypes is None:  # fixme
+            return elem.conn
+        elif len(elem.groups) == 1:
             array = elem.to_ndarray()
-            if len(elem.shape[elem.groups[0]]) == 0: #fixme
+            if len(elem.shape[elem.groups[0]]) == 0:  # fixme
                 array = array[0]
             return array
         else:
