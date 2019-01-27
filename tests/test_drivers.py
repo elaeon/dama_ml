@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 from ml.data.drivers import Memory, Zarr
 from ml.utils.basic import Shape
+import dask.array as da
 
 
 class TestDriver(unittest.TestCase):
@@ -44,9 +45,9 @@ class TestDriver(unittest.TestCase):
 
     def test_slice_attrb(self):
         self.driver.enter(self.url)
-        self.assertEqual(self.driver.data.slice.slice, slice(0, None))
-        self.assertEqual(self.driver.data["c0"].slice.slice, slice(0, self.shape["c0"][0]))
-        self.assertEqual(self.driver.data["c1"].slice.slice, slice(0, self.shape["c1"][0]))
+        self.assertEqual(self.driver.data.slice, slice(0, None))
+        self.assertEqual(self.driver.data["c0"].slice, slice(0, self.shape["c0"][0]))
+        self.assertEqual(self.driver.data["c1"].slice, slice(0, self.shape["c1"][0]))
         self.driver.exit()
 
     def test_iteration(self):
@@ -72,11 +73,18 @@ class TestDriver(unittest.TestCase):
         self.assertEqual(data["group0"][9].to_ndarray(), -1)
         self.driver.exit()
 
-    def test_list_index(self):
+    #def test_list_index(self):
+    #    self.driver.enter(self.url)
+    #    data_list_index = self.driver.data["c1"][[3, 5, 7]]
+    #    self.assertEqual((data_list_index.to_ndarray() == self.array_c1[[3, 5, 7]]).all(), True)
+    #    self.assertEqual((data_list_index[:2].to_ndarray() == self.array_c1[[3, 5, 7]][:2]).all(), True)
+    #    self.driver.exit()
+
+    def test_to_da(self):
         self.driver.enter(self.url)
-        data_list_index = self.driver.data["c1"][[3, 5, 7]]
-        self.assertEqual((data_list_index.to_ndarray() == self.array_c1[[3, 5, 7]]).all(), True)
-        self.assertEqual((data_list_index[:2].to_ndarray() == self.array_c1[[3, 5, 7]][:2]).all(), True)
+        stc_da = self.driver.data.to_structured_da(chunks=(3,))
+        self.assertEqual((stc_da["c0"].compute() == self.array_c0).all(), True)
+        self.assertEqual((stc_da["c1"].compute() == self.array_c1).all(), True)
         self.driver.exit()
 
     def test_add(self):

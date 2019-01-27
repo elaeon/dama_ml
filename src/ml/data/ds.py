@@ -115,9 +115,7 @@ class Data(AbsData):
     @property
     @cache
     def data(self) -> AbsGroup:
-        #groups_data = [(group, self.driver[self.name][group]) for group in self.groups]
-        #return StructArray(groups_data)
-        return self.driver[self.name]
+        return self.driver.data
 
     @data.setter
     @clean_cache
@@ -141,7 +139,7 @@ class Data(AbsData):
     def __setitem__(self, key, value):
         # print(key, value, self.groups, "DS")
         for group in self.groups:
-            self.driver[self.name][group][key] = value
+            self.driver.data[group][key] = value
 
     def __iter__(self):
         return self
@@ -225,7 +223,7 @@ class Data(AbsData):
     @dtypes.setter
     def dtypes(self, value):
         if value is not None:
-            self.driver.set_schema(self.name, value)
+            self.driver.set_schema(value)
 
     def info(self):
         print('       ')
@@ -315,14 +313,14 @@ class Data(AbsData):
         self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
         self.write_metadata()
 
-    def to_df(self) -> pd.DataFrame:
-        return self.data.to_df()
+    # def to_df(self) -> pd.DataFrame:
+    #    return self.data.to_df()
 
     def to_ndarray(self, dtype=None) -> np.ndarray:
         return self.data.to_ndarray(dtype=dtype)
 
-    def to_xrds(self) -> xr.Dataset:
-        return self.data.to_xrds()
+    # def to_xrds(self) -> xr.Dataset:
+    #    return self.data.to_xrds()
 
     def to_libsvm(self, target, save_to=None):
         """
@@ -331,7 +329,7 @@ class Data(AbsData):
         from ml.utils.seq import libsvm_row
         from sklearn.preprocessing import LabelEncoder
         le = LabelEncoder()
-        target_t = le.fit_transform(self.driver[self.name][target].compute())
+        target_t = le.fit_transform(self.driver.data[target].compute())
         groups = [group for group in self.groups if group != target]
         with open(save_to, 'w') as f:
             for row in libsvm_row(target_t, self.data[groups].to_ndarray()):

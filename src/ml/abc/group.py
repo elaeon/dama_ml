@@ -73,7 +73,7 @@ class AbsGroup(ABC):
         self.name = name
         self.static_dtypes = dtypes
         self.index = index
-        self.slice = Slice(0, None)
+        self.slice = slice(0, None)
         self.counter = 0
         if alias_map is None:
             self.alias_map = {}
@@ -109,8 +109,10 @@ class AbsGroup(ABC):
 
     def _iterator(self, counter):
         elem = self[counter]
-        if elem.dtypes is None:  # fixme
-            return elem.conn
+        #if elem.dtypes is None:  # fixme
+        #    return elem.conn
+        if isinstance(elem, np.ndarray):
+            return elem
         elif len(elem.groups) == 1:
             array = elem.to_ndarray()
             if len(elem.shape[elem.groups[0]]) == 0:  # fixme
