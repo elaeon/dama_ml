@@ -175,11 +175,11 @@ class Data(AbsData):
         log.info("Writing with batch size {}".format(batch_size))
         if batch_size > 0:
            for smx in tqdm(data, total=data.num_splits()):
-               self.driver[self.name][smx.slice] = smx
+               self.driver.data[smx.slice] = smx
         else:
             for i, smx in tqdm(enumerate(data), total=data.num_splits()):
                 for j, group in enumerate(self.groups):
-                    self.driver[self.name][group][i] = smx[j]
+                    self.driver.data[group][i] = smx[j]
 
     def destroy(self):
         self.driver.destroy(scope=self.name)

@@ -25,8 +25,9 @@ class AbsDriver(ABC):
         log.debug("Driver: {}, mode: {}, compressor: {}".format(self.__class__.__name__,
                                                                 self.mode, self.compressor))
 
+    @property
     @abstractmethod
-    def __getitem__(self, item):
+    def data(self):
         return NotImplemented
 
     @classmethod
@@ -49,12 +50,13 @@ class AbsDriver(ABC):
     def exit(self):
         return NotImplemented
 
+    @property
     @abstractmethod
-    def dtypes(self, name):
+    def dtypes(self):
         return NotImplemented
 
     @abstractmethod
-    def set_schema(self, name, dtypes):
+    def set_schema(self, dtypes):
         return NotImplemented
 
     @abstractmethod
