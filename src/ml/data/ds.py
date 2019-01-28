@@ -133,7 +133,7 @@ class Data(AbsData):
         self.driver.exit()
         self.data = None
 
-    def __getitem__(self, key) -> StructArray:
+    def __getitem__(self, key):
         return self.data[key]
 
     def __setitem__(self, key, value):
@@ -172,8 +172,8 @@ class Data(AbsData):
         batch_size = getattr(data, 'batch_size', 0)
         log.info("Writing with batch size {}".format(batch_size))
         if batch_size > 0:
-           for smx in tqdm(data, total=data.num_splits()):
-               self.driver.data[smx.slice] = smx
+            for smx in tqdm(data, total=data.num_splits()):
+                self.driver.data[smx.slice] = smx
         else:
             for i, smx in tqdm(enumerate(data), total=data.num_splits()):
                 for j, group in enumerate(self.groups):

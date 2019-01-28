@@ -22,7 +22,7 @@ class Hash:
                 self.hash.update(chunk.to_ndarray().astype('object'))
         else:
             for chunk in it:
-                self.hash.update(chunk.to_ndarray())
+                self.hash.update(chunk)
 
     def __str__(self):
         return "${hash_fn}${digest}".format(hash_fn=self.hash_fn, digest=self.hash.hexdigest())

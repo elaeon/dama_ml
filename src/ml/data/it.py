@@ -12,7 +12,7 @@ from ml.utils.logger import log_config
 from ml.abc.data import AbsData
 from ml.abc.group import AbsGroup
 from ml.utils.numeric_functions import nested_shape
-from ml.data.groups import StructuredGroup, NumpyArrayGroup
+from ml.data.groups import NumpyArrayGroup
 
 
 log = log_config(__name__)
@@ -31,6 +31,7 @@ def assign_struct_array(it, type_elem, start_i, end_i, dtype, dims):
     stc_arr = np.empty(shape, dtype=dtype)
     if type_elem == np.ndarray and len(stc_arr.shape) == 1:
         for i, row in enumerate(it):
+            print(row, shape, dtype)
             stc_arr[i] = tuple(row)
     else:
         for i, row in enumerate(it):
@@ -98,7 +99,14 @@ class BaseIterator(object):
     def flatter(self):
         if self.type_elem == np.ndarray:
             for chunk in self:
-                for e in chunk.to_ndarray().reshape(-1):
+                for e in chunk.reshape(-1):
+                    if hasattr(e, "__iter__") and len(e) == 1:
+                        yield e[0]
+                    else:
+                        yield e
+        elif self.type_elem == Slice:
+            for chunk in self:
+                for e in chunk.batch.reshape(-1):
                     if hasattr(e, "__iter__") and len(e) == 1:
                         yield e[0]
                     else:
@@ -155,7 +163,7 @@ class BaseIterator(object):
 
     def __iter__(self) -> 'BaseIterator':
         if isinstance(self.data, AbsData):
-            self.data.data.counter = 0
+            self.data.counter = 0
             if len(self.pushedback) > 0:
                 self.pushedback.pop()
         return self
@@ -262,7 +270,7 @@ class Iterator(BaseIterator):
             if shape is None:
                 shape = []
             for group in self.groups:
-                shapes[group] = tuple([length] + list(shape[1:]))
+                shapes[group] = tuple([length] + list(shape))
             return self.calc_shape_stc(length, Shape(shapes))
         elif isinstance(shape, Shape):
             shapes = {}
@@ -348,10 +356,10 @@ class Iterator(BaseIterator):
 
 
 class BatchIterator(BaseIterator):
-    batch_type = None
+    type_elem = None
 
     def __init__(self, it: Iterator, batch_size: int = 258, static: bool = False):
-        super(BatchIterator, self).__init__(it, dtypes=it.dtypes, length=it.length, type_elem=it.type_elem)
+        super(BatchIterator, self).__init__(it, dtypes=it.dtypes, length=it.length, type_elem=self.type_elem)
         self.batch_size = batch_size
         self.shape = it.shape
         self.static = static
@@ -460,6 +468,8 @@ class BatchIterator(BaseIterator):
 
 
 class BatchGroup(BatchIterator):
+    type_elem = AbsGroup
+
     def batch_from_it(self, shape=None) -> Slice:
         init = 0
         end = self.batch_size
@@ -520,13 +530,12 @@ class BatchItArray(BatchIterator):
 
 class BatchItGroup(BatchIterator):
     batch_type = 'group'
+    type_elem = Slice
 
-    def batch_from_it(self, shape) -> Slice:
+    def batch_from_it(self, shape):
         for start_i, end_i, stc_array in BatchItDataFrame.str_array(shape, self.batch_size,
                                                                     self.data, self.data.dtypes):
-            batch = StructuredGroup(stc_array)
-            batch.slice = slice(start_i, end_i)
-            yield batch
+            yield Slice(batch=stc_array, slice=slice(start_i, end_i))
 
 
 class BatchItDataFrame(BatchIterator):

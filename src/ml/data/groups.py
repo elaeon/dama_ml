@@ -8,14 +8,20 @@ class StructuredGroup(AbsGroup):
         super(StructuredGroup, self).__init__(conn, name=name)
 
     def __getitem__(self, item):
-        group = StructuredGroup(self.conn[item])
-        if isinstance(item, slice):
-            group.slice = item
-        elif isinstance(item, int):
-            group.slice = slice(item, item + 1)
-        else:
+        if isinstance(item, str):
+            key = self.alias_map.get(item, item)
+            group = StructuredGroup(self.conn[key])
             group.slice = self.slice
-        return group
+            return group
+        else:
+            group = StructuredGroup(self.conn)
+            if isinstance(item, slice):
+                group.slice = item
+            elif isinstance(item, int):
+                group.slice = slice(item, item + 1)
+            else:
+                group.slice = self.slice
+            return group.to_ndarray()
 
     def __setitem__(self, item, value):
         if hasattr(value, "groups"):
@@ -48,7 +54,8 @@ class StructuredGroup(AbsGroup):
         return Shape(shape)
 
     def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
-        return self.conn
+        #print(self.conn, self.slice)
+        return self.conn[self.slice]
 
 
 class NumpyArrayGroup(AbsGroup):

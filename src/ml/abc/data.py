@@ -58,9 +58,9 @@ class AbsData(ABC):
     def dtypes(self):
         return NotImplemented
 
-    @abstractmethod
-    def to_df(self):
-        return NotImplemented
+    #@abstractmethod
+    #def to_df(self):
+    #    return NotImplemented
 
     @abstractmethod
     def to_ndarray(self):

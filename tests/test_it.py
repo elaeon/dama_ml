@@ -35,13 +35,18 @@ class TestIterator(unittest.TestCase):
         for r0, r1 in zip(result, array):
             self.assertEqual(r0, r1)
 
+    def test_nshape(self):
+        array = np.zeros((20, 2)) + 1
+        it = Iterator(array)
+        self.assertEqual(it.shape, (20, 2))
+        self.assertEqual(it[:10].shape, (10, 2))
+
     def test_length_array(self):
         array = np.zeros((20, 2)) + 1
         it = Iterator(array)
         with Data(name="test") as data:
             data.from_data(it[:10])
-            result = data[:5].to_ndarray()
-        self.assertEqual((result == array[:5]).all(), True)
+            self.assertEqual((data[:5] == array[:5]).all(), True)
 
     def test_length_array_batch(self):
         array = np.asarray([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12],
@@ -49,8 +54,7 @@ class TestIterator(unittest.TestCase):
         it = Iterator(array).batchs(batch_size=3)
         with Data(name="test") as data:
             data.from_data(it[:10])
-            result = data[:5].to_ndarray()
-        self.assertEqual((result == array[:5]).all(), True)
+        self.assertEqual((data[:5] == array[:5]).all(), True)
 
     def test_flat_all(self):
         array = np.zeros((20, 2)) + 1
@@ -62,12 +66,15 @@ class TestIterator(unittest.TestCase):
             self.assertCountEqual(data.to_ndarray(), y)
 
     def test_flat_all_batch(self):
-        data = np.zeros((20, 2)) + 1
-        it = Iterator(data).batchs(batch_size=3)
+        from ml.abc.group import AbsGroup
+        array = np.empty((20, 2), dtype=np.dtype(int))
+        array[:, 0] = np.arange(0, 20)
+        array[:, 1] = np.arange(0, 20) + 1
+        it = Iterator(array).batchs(batch_size=3)
         x = it.flat()
         with Data(name="test") as data:
             data.from_data(x)
-            y = np.zeros((40,)) + 1
+            y = list(e for e0e1 in zip(array[:, 0], array[:, 1]) for e in e0e1)
             self.assertCountEqual(data.to_ndarray(), y)
 
     def test_it_attrs(self):

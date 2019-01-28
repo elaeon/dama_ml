@@ -183,6 +183,10 @@ class ZarrGroup(AbsGroup):
         if hasattr(value, "groups"):
             for group in value.groups:
                 self.conn[group][item] = value[group].to_ndarray()
+        elif hasattr(value, 'batch'):
+            #print(value.batch, item, value.batch.dtype)
+            for group in value.batch.dtype.names:
+                self.conn[group][item] = value.batch
         elif isinstance(value, numbers.Number):
             self.conn[item] = value
         else:
@@ -224,20 +228,15 @@ class ZarrGroup(AbsGroup):
         if self.dtype is None:
             return np.asarray([])
 
-        if dtype is None:
-            dtype = self.dtype
-
         if isinstance(self.conn, ZArray):
             array = self.conn[self.slice]
-        elif isinstance(self.conn, ZGroup):
-            if self.slice.stop is None:
-                return build_array(self[self.slice], self.groups, dtype)
-            else:
-                return build_array(self, self.groups, dtype)
         else:
-            array = self.conn
+            if len(self.groups) == 1:
+                return self.conn[self.groups[0]][self.slice]
+            else:
+                raise NotImplementedError
 
-        if self.dtype != dtype:
+        if dtype is not None and self.dtype != dtype:
             return array.astype(dtype)
         else:
             return array

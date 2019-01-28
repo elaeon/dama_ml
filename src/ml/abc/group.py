@@ -109,8 +109,6 @@ class AbsGroup(ABC):
 
     def _iterator(self, counter):
         elem = self[counter]
-        #if elem.dtypes is None:  # fixme
-        #    return elem.conn
         if isinstance(elem, np.ndarray):
             return elem
         elif len(elem.groups) == 1:
