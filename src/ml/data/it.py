@@ -392,14 +392,15 @@ class BatchIterator(BaseIterator):
 
     def cut_batch(self, length: int):
         end = 0
-        for batch in self:
-            end += batch.shape[0]
+        for slice_obj in self:
+            end += slice_obj.batch.shape[0]
             if end > length:
                 mod = length % self.batch_size
                 if mod > 0:
-                    yield batch[:mod]
+                    stop = slice_obj.slice.stop - mod - 1
+                    yield Slice(batch=slice_obj.batch[:mod], slice=slice(slice_obj.slice.start, stop))
                 break
-            yield batch
+            yield slice_obj
 
     def num_splits(self) -> int:
         return num_splits(self.length, self.batch_size)
