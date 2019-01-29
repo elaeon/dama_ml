@@ -80,9 +80,9 @@ class TestDriver(unittest.TestCase):
     #    self.assertEqual((data_list_index[:2].to_ndarray() == self.array_c1[[3, 5, 7]][:2]).all(), True)
     #    self.driver.exit()
 
-    def test_to_da(self):
+    def test_to_dagroup(self):
         self.driver.enter(self.url)
-        stc_da = self.driver.data.to_structured_da(chunks=(3,))
+        stc_da = self.driver.data.to_dagroup(chunks=(3,))
         self.assertEqual((stc_da["c0"].compute() == self.array_c0).all(), True)
         self.assertEqual((stc_da["c1"].compute() == self.array_c1).all(), True)
         self.driver.exit()

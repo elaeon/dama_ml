@@ -12,7 +12,6 @@ from ml.utils.logger import log_config
 from ml.abc.data import AbsData
 from ml.abc.group import AbsGroup
 from ml.utils.numeric_functions import nested_shape
-from ml.data.groups import NumpyArrayGroup
 
 
 log = log_config(__name__)
@@ -110,8 +109,10 @@ class BaseIterator(object):
         elif self.type_elem == Slice:
             for chunk in self:
                 for e in chunk.batch.reshape(-1):
-                    if hasattr(e, "__iter__") and len(e) == 1:
-                        yield e[0]
+                    #if hasattr(e, "__iter__") and len(e) == 1:
+                    #    yield e[0]
+                    if len(self.groups) == 1:
+                        yield e[self.groups[0]]
                     else:
                         yield e
         elif self.type_elem == pd.DataFrame:
@@ -155,6 +156,9 @@ class BaseIterator(object):
         return isinstance(self.shape, dict)
 
     def _cycle_it(self):
+        if self.rewind is False:
+            raise Exception("This object is not cyclical, try to saved it in an AbsData")
+
         while True:
             for elem in self:
                 yield elem
@@ -200,10 +204,11 @@ class Iterator(BaseIterator):
         elif isinstance(fn_iter, Iterator):
             pass
         elif isinstance(fn_iter, dict):
-            self.data = StructArray(fn_iter.items())
-            self.rewind = True
-            dtypes = self.data.dtypes
-            length = len(self.data)
+            #self.data = StructArray(fn_iter.items())
+            #self.rewind = True
+            #dtypes = self.data.dtypes
+            #length = len(self.data)
+            raise NotImplementedError
         elif isinstance(fn_iter, pd.DataFrame):
             self.data = fn_iter.itertuples(index=False)
             dtypes = np.dtype(list(zip(fn_iter.columns.values, fn_iter.dtypes.values)))
@@ -213,7 +218,7 @@ class Iterator(BaseIterator):
             self.data = iter(fn_iter)
             length = fn_iter.shape[0] if length == np.inf else length
             self.rewind = False
-        elif isinstance(fn_iter, StructArray) or isinstance(fn_iter, AbsData):
+        elif isinstance(fn_iter, AbsData):
             self.data = fn_iter
             dtypes = fn_iter.dtypes
             length = len(fn_iter) if length == np.inf else length
@@ -400,7 +405,7 @@ class BatchIterator(BaseIterator):
             if end >= length:
                 mod = self.batch_size - (end - length)
                 if mod > 0:
-                    stop = slice_obj.slice.stop - mod - 1
+                    stop = length#slice_obj.slice.stop - mod - 1
                     yield Slice(batch=slice_obj.batch[:mod], slice=slice(slice_obj.slice.start, stop))
                 break
             else:
@@ -470,13 +475,8 @@ class BatchIterator(BaseIterator):
                 stop += self.batch_size
 
     def to_iter(self):
-        groups = self.groups
-        for batch in self:
-            print(batch)
-            #row = []
-            #for group in groups:
-            #    row.append(batch[group])
-            #yield row
+        for slice_obj in self:
+            yield slice_obj.batch
 
     @classmethod
     def builder(cls, it: BaseIterator, batch_size: int):

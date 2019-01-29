@@ -7,13 +7,13 @@ from zarr.core import Array as ZArray
 from zarr.hierarchy import Group as ZGroup
 from h5py.highlevel import Group as H5Group
 
-from collections import OrderedDict
 from numcodecs import MsgPack
 from ml.abc.driver import AbsDriver
 from ml.utils.basic import Shape
 from ml.utils.files import rm
 from ml.utils.numeric_functions import max_dtype
 from ml.abc.group import AbsGroup
+from ml.data.groups import DaGroup
 
 
 class HDF5(AbsDriver):
@@ -189,6 +189,8 @@ class ZarrGroup(AbsGroup):
                 self.conn[group][item] = value.batch[group]
         elif isinstance(value, numbers.Number):
             self.conn[item] = value
+        elif isinstance(value, np.ndarray):
+            self.conn[item] = value
         else:
             if isinstance(item, str):
                 self.conn[item] = value
@@ -234,36 +236,34 @@ class ZarrGroup(AbsGroup):
             if len(self.groups) == 1:
                 array = self.conn[self.groups[0]][self.slice]
             else:
-                raise NotImplementedError
+                array = np.empty(self.shape.to_tuple(), dtype=self.dtype)
+                for i, group in enumerate(self.groups):
+                    array[:, i] = self.conn[group][self.slice]
+                return array
 
         if dtype is not None and self.dtype != dtype:
             return array.astype(dtype)
         else:
             return array
 
-    def to_structured_da(self, chunks=None) -> dict:
-        import dask.array as da
-        groups = OrderedDict()
-        print(self.shape)
-        for group in self.groups:
-            groups[group] = da.from_array(self[group], chunks=chunks)
-        return groups
+    def to_dagroup(self, chunks=None) -> DaGroup:
+        return DaGroup(self, chunks=chunks)
 
-    def apply_slice(self):
-        if isinstance(self.conn, ZArray):
-            return self.conn[self.slice]
+    #def apply_slice(self):
+    #    if isinstance(self.conn, ZArray):
+    #        return self.conn[self.slice]
 
 
-def build_array(array_group, groups, dtype) -> np.ndarray:
-    shape = array_group.shape.to_tuple()
-    if len(shape) == 1:
-        for i, group in enumerate(groups):
-            return array_group[group].apply_slice().astype(dtype)
-    else:
-        array = np.empty(shape, dtype=dtype)
-        for i, group in enumerate(groups):
-            array[:, i] = array_group[group].apply_slice()
-        return array
+#def build_array(array_group, groups, dtype) -> np.ndarray:
+#    shape = array_group.shape.to_tuple()
+#    if len(shape) == 1:
+#        for i, group in enumerate(groups):
+#            return array_group[group].apply_slice().astype(dtype)
+#    else:
+#        array = np.empty(shape, dtype=dtype)
+#        for i, group in enumerate(groups):
+#            array[:, i] = array_group[group].apply_slice()
+#        return array
 
 
 class HDF5Group(object):

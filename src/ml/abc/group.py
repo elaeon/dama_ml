@@ -146,3 +146,6 @@ class AbsGroup(ABC):
     @property
     def groups(self) -> tuple:
         return self.dtypes.names
+
+    def items(self):
+        return [(group, self.conn[group]) for group in self.groups]

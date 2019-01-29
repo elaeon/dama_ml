@@ -23,9 +23,9 @@ class AbsData(ABC):
     def __getitem__(self, key):
         return NotImplemented
 
-    @abstractmethod
-    def __setitem__(self, key, value):
-        return NotImplemented
+    #@abstractmethod
+    #def __setitem__(self, key, value):
+    #    return NotImplemented
 
     @abstractmethod
     def __next__(self):

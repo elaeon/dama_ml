@@ -136,10 +136,10 @@ class Data(AbsData):
     def __getitem__(self, key):
         return self.data[key]
 
-    def __setitem__(self, key, value):
+    #def __setitem__(self, key, value):
         # print(key, value, self.groups, "DS")
-        for group in self.groups:
-            self.driver.data[group][key] = value
+    #    for group in self.groups:
+    #        self.driver.data[group][key] = value
 
     def __iter__(self):
         return self
@@ -281,21 +281,25 @@ class Data(AbsData):
         self.clean_data()
         if isinstance(data, da.Array):
             data = Array.from_da(data)
+        elif isinstance(data, AbsGroup):
+            pass
         elif isinstance(data, StructArray):
-            data = Iterator(data).batchs(batch_size=batch_size)
+            raise Exception
+            #data = Iterator(data).batchs(batch_size=batch_size)
         elif isinstance(data, Iterator):
             data = data.batchs(batch_size=batch_size)
         elif isinstance(data, dict):
-            str_arrays = []
-            for elem in data.values():
-                if isinstance(elem, StructArray):
-                    str_arrays.append(elem)
-                else:
-                    if len(str_arrays) > 0:
-                        raise NotImplementedError("Mixed content is not supported.")
-            if len(str_arrays) > 0:
-                data = sum(str_arrays)
-            data = Iterator(data).batchs(batch_size=batch_size)
+            #str_arrays = []
+            #for elem in data.values():
+            #    if isinstance(elem, StructArray):
+            #        str_arrays.append(elem)
+            #    else:
+            #        if len(str_arrays) > 0:
+            #            raise NotImplementedError("Mixed content is not supported.")
+            #if len(str_arrays) > 0:
+            #    data = sum(str_arrays)
+            #data = Iterator(data).batchs(batch_size=batch_size)
+            raise Exception
         elif not isinstance(data, BaseIterator):
             data = Iterator(data).batchs(batch_size=batch_size)
         self.dtypes = data.dtypes

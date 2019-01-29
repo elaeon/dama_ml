@@ -1,6 +1,48 @@
 from ml.abc.group import AbsGroup
 from ml.utils.basic import Shape
 import numpy as np
+from collections import OrderedDict
+import dask.array as da
+
+
+class DaGroup(AbsGroup):
+    def __init__(self, conn, name=None, dtypes=None, index=None, alias_map=None, chunks=None):
+        if isinstance(conn, AbsGroup):
+            groups = OrderedDict()
+            for group in conn.groups:
+                groups[group] = conn.conn[group]
+            conn = self.convert(groups, chunks=chunks)
+        else:
+            conn = self.convert(conn, chunks=chunks)
+        super(DaGroup, self).__init__(conn, name=name, dtypes=dtypes, alias_map=alias_map)
+
+    def convert(self, groups_dict, chunks) -> dict:
+        groups = OrderedDict()
+        for group, data in groups_dict.items():
+            groups[group] = da.from_array(data, chunks=chunks)
+        return groups
+
+    @property
+    def dtypes(self) -> np.dtype:
+        return np.dtype([(group, data.dtype) for group, data in self.conn.items()])
+
+    def __getitem__(self, item):
+        return self.conn[item]
+
+    def __setitem__(self, key, value):
+        pass
+
+    @property
+    def shape(self) -> 'Shape':
+        shape = {group: data.shape for group, data in self.conn.items()}
+        return Shape(shape)
+
+    def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)):
+        pass
+
+    def store(self, dataset):
+        for group in self.groups:
+            self[group].store(dataset.data[group])
 
 
 class StructuredGroup(AbsGroup):
