@@ -19,7 +19,7 @@ class Hash:
     def update(self, it):
         if it.dtype == np.dtype('<M8[ns]'):
             for chunk in it:
-                self.hash.update(chunk.to_ndarray().astype('object'))
+                self.hash.update(chunk.astype('object'))
         else:
             for chunk in it:
                 self.hash.update(chunk)

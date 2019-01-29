@@ -173,7 +173,6 @@ class Data(AbsData):
         log.info("Writing with batch size {}".format(batch_size))
         if batch_size > 0:
             for smx in tqdm(data, total=data.num_splits()):
-                print(smx)
                 self.driver.data[smx.slice] = smx
         else:
             for i, smx in tqdm(enumerate(data), total=data.num_splits()):

@@ -186,7 +186,7 @@ class ZarrGroup(AbsGroup):
         elif hasattr(value, 'batch'):
             #print(value.batch, item, value.batch.dtype)
             for group in value.batch.dtype.names:
-                self.conn[group][item] = value.batch
+                self.conn[group][item] = value.batch[group]
         elif isinstance(value, numbers.Number):
             self.conn[item] = value
         else:
@@ -232,7 +232,7 @@ class ZarrGroup(AbsGroup):
             array = self.conn[self.slice]
         else:
             if len(self.groups) == 1:
-                return self.conn[self.groups[0]][self.slice]
+                array = self.conn[self.groups[0]][self.slice]
             else:
                 raise NotImplementedError
 

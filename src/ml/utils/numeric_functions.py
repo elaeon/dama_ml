@@ -269,11 +269,11 @@ def wsrj(stream, k):
 def nested_shape(chunk, dtypes):
     shapes = {}
     if len(chunk) == len(dtypes):
-        for (group, _), x in zip(dtypes, chunk):
-            shapes[group] = nested_shape_aux(x)
+        for group, value in zip(dtypes.names, chunk):
+            shapes[group] = nested_shape_aux(value)
     else:
         if len(dtypes) == 1:
-            shapes[dtypes[0][0]] = nested_shape_aux(chunk)
+            shapes[dtypes.names[0]] = nested_shape_aux(chunk)
         else:
             raise Exception("Not defined shape")
     return shapes
