@@ -34,11 +34,31 @@ def assign_struct_array(it, type_elem, start_i, end_i, dtype, dims):
     elif len(dtype) == 1:
         group = dtype.names[0]
         for i, row in enumerate(it):
-            stc_arr[group][i] = row
+            if isnamedtupleinstance(row):
+                stc_arr[i] = row
+            else:
+                stc_arr[group][i] = row
     else:
         for i, row in enumerate(it):
             stc_arr[i] = row
     return stc_arr
+
+
+def str_array(shape, batch_size, data, dtypes):
+    start_i = 0
+    end_i = 0
+    if len(shape) > 1:
+        dims = shape[1:]
+    else:
+        dims = 1
+
+    for smx in grouper_chunk(batch_size, data):
+        end_i += shape[0]
+        if data.length is not None and data.length < end_i:
+            end_i = data.length
+        array = assign_struct_array(smx, data.type_elem, start_i, end_i, dtypes, dims)
+        yield start_i, end_i, array
+        start_i = end_i
 
 
 class BaseIterator(object):
@@ -109,7 +129,7 @@ class BaseIterator(object):
         elif self.type_elem == Slice:
             for chunk in self:
                 for e in chunk.batch.reshape(-1):
-                    #if hasattr(e, "__iter__") and len(e) == 1:
+                    # if hasattr(e, "__iter__") and len(e) == 1:
                     #    yield e[0]
                     if len(self.groups) == 1:
                         yield e[self.groups[0]]
@@ -218,7 +238,7 @@ class Iterator(BaseIterator):
             self.data = iter(fn_iter)
             length = fn_iter.shape[0] if length == np.inf else length
             self.rewind = False
-        elif isinstance(fn_iter, AbsData):
+        elif isinstance(fn_iter, AbsData) or isinstance(fn_iter, AbsGroup):
             self.data = fn_iter
             dtypes = fn_iter.dtypes
             length = len(fn_iter) if length == np.inf else length
@@ -347,7 +367,7 @@ class Iterator(BaseIterator):
         if isinstance(key, slice):
             if key.stop is not None:
                 if self.rewind is False:
-                    _it = islice(self, key.stop)  # islice(self.data, self.num_splits() - len(self.pushedback))
+                    _it = islice(self, key.stop)
                 else:
                     _it = self
                 return Iterator(_it, dtypes=self.dtypes, length=key.stop)
@@ -405,8 +425,7 @@ class BatchIterator(BaseIterator):
             if end >= length:
                 mod = self.batch_size - (end - length)
                 if mod > 0:
-                    stop = length#slice_obj.slice.stop - mod - 1
-                    yield Slice(batch=slice_obj.batch[:mod], slice=slice(slice_obj.slice.start, stop))
+                    yield Slice(batch=slice_obj.batch[:mod], slice=slice(slice_obj.slice.start, length))
                 break
             else:
                 yield slice_obj
@@ -484,7 +503,7 @@ class BatchIterator(BaseIterator):
 
     @classmethod
     def from_batchs(cls, iterable: iter, dtypes: np.dtype = None, from_batch_size: int = 0,
-                    length: int = None, type_elem=None):
+                    length: int = None):
         it = Iterator(iterable, dtypes=dtypes, length=length)
         batcher_len = num_splits(length, from_batch_size)
         shape_dict = {}
@@ -498,7 +517,7 @@ class BatchIterator(BaseIterator):
 
     def cycle(self):
         return BatchIterator.from_batchs(self._cycle_it(),  dtypes=self.dtypes, from_batch_size=self.batch_size,
-                                         length=np.inf, type_elem=self.type_elem)
+                                         length=np.inf)
 
 
 class BatchGroup(BatchIterator):
@@ -522,50 +541,5 @@ class BatchItGroup(BatchIterator):
     type_elem = Slice
 
     def batch_from_it(self, shape):
-        for start_i, end_i, stc_array in BatchItDataFrame.str_array(shape, self.batch_size,
-                                                                    self.data, self.data.dtypes):
+        for start_i, end_i, stc_array in str_array(shape, self.batch_size, self.data, self.data.dtypes):
             yield Slice(batch=stc_array, slice=slice(start_i, end_i))
-
-
-class BatchItDataFrame(BatchIterator):
-    batch_type = 'df'
-
-    @staticmethod
-    def str_array(shape, batch_size, data, dtypes):
-        start_i = 0
-        end_i = 0
-        if len(shape) > 1:
-            dims = shape[1:]
-        else:
-            dims = 1
-
-        for smx in grouper_chunk(batch_size, data):
-            end_i += shape[0]
-            if data.length is not None and data.length < end_i:
-                end_i = data.length
-            array = assign_struct_array(smx, data.type_elem, start_i, end_i, dtypes, dims)
-            yield start_i, end_i, array
-            start_i = end_i
-
-    def batch_from_it(self, shape):
-        if len(shape) > 1 and len(self.groups) < shape[1]:
-            self.dtypes = np.dtype([("c{}".format(i), self.dtype) for i in range(shape[1])])
-            columns = self.groups
-        else:
-            columns = self.groups
-
-        for start_i, end_i, stc_array in BatchItDataFrame.str_array(shape[:1], self.batch_size, self.data, self.dtypes):
-            df = pd.DataFrame(stc_array, index=np.arange(start_i, end_i), columns=columns)
-            yield Slice(batch=df, slice=slice(start_i, end_i))
-
-
-class BatchDataFrame(BatchGroup):
-    batch_type = "df"
-
-    def run(self):
-        init = 0
-        end = self.batch_size
-        for slice_obj in self.batch_from_it():
-            yield slice_obj.batch.to_df(init_i=init, end_i=end)
-            init = end
-            end += self.batch_size

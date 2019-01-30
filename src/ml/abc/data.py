@@ -23,9 +23,9 @@ class AbsData(ABC):
     def __getitem__(self, key):
         return NotImplemented
 
-    #@abstractmethod
-    #def __setitem__(self, key, value):
-    #    return NotImplemented
+    @property
+    def data(self):
+        return NotImplemented
 
     @abstractmethod
     def __next__(self):
@@ -57,10 +57,6 @@ class AbsData(ABC):
     @abstractmethod
     def dtypes(self):
         return NotImplemented
-
-    #@abstractmethod
-    #def to_df(self):
-    #    return NotImplemented
 
     @abstractmethod
     def to_ndarray(self):

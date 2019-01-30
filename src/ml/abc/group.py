@@ -2,68 +2,7 @@ from abc import ABC, abstractmethod
 from ml.utils.numeric_functions import max_dtype
 from ml.utils.basic import Shape
 import numpy as np
-
-
-class Slice(object):
-    def __init__(self, start=None, stop=None, step=None, index=None):
-        self.slice = slice(start, stop, step)
-        self.index = index
-
-    def update(self, item) -> 'Slice':
-        if isinstance(item, slice) and self.index is None:
-            return Slice(item.start, item.stop, item.step)
-        elif isinstance(item, slice) and self.index is not None:
-            index = self.index[item]
-            return Slice(item.start, item.stop, item.step, index=index)
-        elif isinstance(item, list):
-            index = self.range_index(item, self.slice)
-            return Slice(self.slice.start, self.slice.stop, self.slice.step, index=index)
-        else:
-            return Slice(self.slice.start, self.slice.stop, self.slice.step)
-
-    def range_index(self, index, item):
-        nindex = []
-        start, stop = self.start_stop(item)
-        for elem in index:
-            if start <= elem <= stop:
-                nindex.append(elem)
-        return nindex
-
-    def start_stop(self, item):
-        if item.start is None:
-            start = 0
-        else:
-            start = item.start
-
-        if item.stop is None:
-            stop = np.inf
-        else:
-            stop = item.stop
-        return start, stop
-
-    @property
-    def stop(self):
-        return self.slice.stop
-
-    @property
-    def start(self):
-        return self.slice.start
-
-    @property
-    def idx(self):
-        if self.index is not None:
-            return self.index
-        else:
-            return self.slice
-
-    def __str__(self):
-        if self.index is not None:
-            if len(self.index) > 3:
-                return "{} ...".format(",".join([str(e) for e in self.index[:3]]))
-            else:
-                return "{}".format(",".join([str(e) for e in self.index]))
-        else:
-            return str(self.slice)
+import pandas as pd
 
 
 class AbsGroup(ABC):
@@ -141,6 +80,10 @@ class AbsGroup(ABC):
 
     @abstractmethod
     def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
+        return NotImplemented
+
+    @abstractmethod
+    def to_df(self) -> pd.DataFrame:
         return NotImplemented
 
     @property

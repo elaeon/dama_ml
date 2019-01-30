@@ -22,14 +22,16 @@ class TestDataset(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_from_unique_dtype(self):
-        with Data(name="test_ds_0", dataset_path="/tmp/") as dataset:
+    def test_simple_write(self):
+        with Data(name="test", dataset_path="/tmp/") as dataset:
             array = np.random.rand(10, 2)
             dataset.from_data(array)
             self.assertEqual(dataset.shape, (10, 2))
+            self.assertEqual(dataset.groups, ("c0",))
+            self.assertEqual((dataset.to_ndarray() == array).all(), True)
             dataset.destroy()
 
-    def test_to_list(self):
+    def test_from_df_iter(self):
         with Data(name="test_ds_0", dataset_path="/tmp/") as dataset:
             x0 = np.random.rand(10).astype(int)
             x1 = np.random.rand(10).astype(float)
@@ -39,8 +41,11 @@ class TestDataset(unittest.TestCase):
             self.assertEqual(list(dataset["X0"]), list(x0))
             self.assertEqual(list(dataset["X1"]), list(x1))
             self.assertEqual(list(dataset["X2"]), list(x2))
+            self.assertEqual(dataset["X0"].dtype, int)
+            self.assertEqual(dataset["X1"].dtype, float)
+            self.assertEqual(dataset["X2"].dtype, object)
 
-    def test_from_dtypes(self):
+    def test_from_df(self):
         with Data(name="test_ds_0", dataset_path="/tmp/") as dataset:
             x0 = np.random.rand(10).astype(int)
             x1 = np.random.rand(10).astype(float)
@@ -50,52 +55,39 @@ class TestDataset(unittest.TestCase):
             self.assertCountEqual(dataset["X0"].to_ndarray(), x0)
             self.assertCountEqual(dataset["X1"].to_ndarray(), x1)
             self.assertCountEqual(dataset["X2"].to_ndarray(), x2)
-            self.assertEqual(dataset["X0"].dtype, int)
-            self.assertEqual(dataset["X1"].dtype, float)
-            self.assertEqual(dataset["X2"].dtype, object)
-            self.assertCountEqual(dataset[:]["X0"].to_ndarray(), x0)
-            dataset.destroy()
-
-    def test_from_data_dim_7_1_2(self):
-        with Data(name="test_ds_0", dataset_path="/tmp/") as data:
-            data.from_data({"x": self.X, "y": self.Y})
-
-            cv = CV("x", "y", train_size=.7, valid_size=.1)
-            stc = cv.apply(data)
-            self.assertEqual(stc["train_x"].to_ndarray().shape, (7, 10))
-            self.assertEqual(stc["test_x"].to_ndarray().shape, (2, 10))
-            self.assertEqual(stc["validation_x"].to_ndarray().shape, (1, 10))
-            self.assertEqual(stc["train_y"].shape, (7,))
-            self.assertEqual(stc["validation_y"].to_ndarray().shape, (1,))
-            self.assertEqual(stc["test_y"].to_ndarray().shape, (2,))
-            data.destroy()
-
-    def test_only_column(self):
-        with Data(name="test_ds", dataset_path="/tmp/") as dataset:
-            xy = np.hstack((self.X, self.Y.reshape(-1, 1)))
-            dataset.from_data(self.X)
-            self.assertEqual((dataset["c0"][:, 0].to_ndarray() == xy[:, 0]).all(), True)
             dataset.destroy()
 
     def test_groups(self):
         with Data(name="test_ds", dataset_path="/tmp/") as dataset:
             dataset.from_data(self.X)
-            self.assertEqual(dataset.groups, ['c0'])
+            self.assertEqual(dataset.groups, ('c0',))
             dataset.destroy()
 
     def test_groups_df(self):
         with Data(name="test_ds", dataset_path="/tmp/") as dataset:
             df = pd.DataFrame({"X": self.X[:, 0], "Y": self.Y})
             dataset.from_data(df)
-            df = dataset.to_df()
-            self.assertEqual(list(df.columns), ['X', 'Y'])
+            self.assertEqual(dataset.groups, ('X', 'Y'))
             dataset.destroy()
 
     def test_to_df(self):
+        array_x = np.random.rand(10)
+        array_y = np.random.rand(10)
         with Data(name="test0", dataset_path="/tmp") as data:
-            array = np.random.rand(10)
-            data.from_data(array)
-            self.assertEqual((data.to_df().values.reshape(-1) == array).all(), True)
+            odf = pd.DataFrame({"x": array_x, "y": array_y})
+            data.from_data(odf)
+            self.assertEqual((data.to_df().values == odf.values).all(), True)
+            data.destroy()
+
+        with Data(name="test0", dataset_path="/tmp") as data:
+            odf = pd.DataFrame({"x": array_x})
+            data.from_data(odf)
+            self.assertEqual((data.to_df().values == odf.values).all(), True)
+            data.destroy()
+
+        with Data(name="test0", dataset_path="/tmp") as data:
+            data.from_data(array_x)
+            self.assertEqual((data.to_df().values.reshape(-1) == array_x).all(), True)
             data.destroy()
 
     def test_to_ndarray(self):
@@ -103,15 +95,6 @@ class TestDataset(unittest.TestCase):
             array = np.random.rand(10, 2)
             data.from_data(array)
             self.assertEqual((data.to_ndarray() == array).all(), True)
-            data.destroy()
-
-    def test_to_xrds(self):
-        with Data(name="test") as data:
-            array = np.array([[1, 'x1'], [2, 'x2'], [3, 'x3'], [4, 'x4'],
-                          [5, 'x5'], [6, 'x6'], [7, 'x7'], [8, 'x8'],
-                          [9, 'x9'], [10, 'x10']])
-            data.from_data(array)
-            self.assertEqual((data.to_xrds()["c0"] == array).all(), True)
             data.destroy()
 
     def test_ds_build(self):
@@ -156,10 +139,6 @@ class TestDataset(unittest.TestCase):
         rm("/tmp/test.txt")
 
     def test_filename(self):
-        with Data(name="test", dataset_path="/tmp", driver=HDF5(GZip(level=5))) as data:
-            self.assertEqual(data.url, "/tmp/{}/test.h5".format(HDF5.cls_name()))
-            data.destroy()
-
         with Data(name="test", dataset_path="/tmp", driver=Zarr(GZip(level=5))) as data:
             self.assertEqual(data.url, "/tmp/{}/test.zarr".format(Zarr.cls_name()))
             data.destroy()
@@ -170,15 +149,15 @@ class TestDataset(unittest.TestCase):
             data.destroy()
 
     def test_no_data(self):
-        with Data(name="test", dataset_path="/tmp", driver=HDF5(GZip(level=5))) as data:
+        with Data(name="test", dataset_path="/tmp", driver=Zarr(GZip(level=5))) as data:
             data.author = "AGMR"
             data.description = "description text"
 
-        with Data(name="test", dataset_path="/tmp", driver=HDF5(mode='r')) as data:
+        with Data(name="test", dataset_path="/tmp", driver=Zarr(mode='r')) as data:
             self.assertEqual(data.author, "AGMR")
             self.assertEqual(data.description, "description text")
 
-        with Data(name="test", dataset_path="/tmp", driver=HDF5(mode="a")) as data:
+        with Data(name="test", dataset_path="/tmp", driver=Zarr(mode="a")) as data:
             data.from_data([1,2,3,4])
             self.assertEqual(data.compressor_params["compression_opts"], 5)
             self.assertEqual(data.author, "AGMR")
@@ -414,6 +393,20 @@ class TestDataset(unittest.TestCase):
             self.assertEqual((data["x"].to_ndarray()[100] == x[100]).all(), True)
             self.assertEqual(data["y"].to_ndarray()[100], y[100])
             self.assertEqual(data["z"].to_ndarray()[100], z[100])
+            data.destroy()
+
+    def test_from_data_dim_7_1_2(self):
+        with Data(name="test_ds_0", dataset_path="/tmp/") as data:
+            data.from_data({"x": self.X, "y": self.Y})
+
+            cv = CV("x", "y", train_size=.7, valid_size=.1)
+            stc = cv.apply(data)
+            self.assertEqual(stc["train_x"].to_ndarray().shape, (7, 10))
+            self.assertEqual(stc["test_x"].to_ndarray().shape, (2, 10))
+            self.assertEqual(stc["validation_x"].to_ndarray().shape, (1, 10))
+            self.assertEqual(stc["train_y"].shape, (7,))
+            self.assertEqual(stc["validation_y"].to_ndarray().shape, (1,))
+            self.assertEqual(stc["test_y"].to_ndarray().shape, (2,))
             data.destroy()
 
 

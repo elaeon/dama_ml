@@ -6,11 +6,16 @@ import dask.array as da
 
 
 class DaGroup(AbsGroup):
-    def __init__(self, conn, name=None, dtypes=None, index=None, alias_map=None, chunks=None):
+    def __init__(self, conn, name=None, dtypes=None, alias_map=None, chunks=None, from_groups=None):
         if isinstance(conn, AbsGroup):
             groups = OrderedDict()
-            for group in conn.groups:
-                groups[group] = conn.conn[group]
+            if from_groups is not None:
+                for group in conn.groups:
+                    if group in from_groups:
+                        groups[group] = conn.conn[group]
+            else:
+                for group in conn.groups:
+                    groups[group] = conn.conn[group]
             conn = self.convert(groups, chunks=chunks)
         else:
             conn = self.convert(conn, chunks=chunks)
@@ -38,7 +43,11 @@ class DaGroup(AbsGroup):
         return Shape(shape)
 
     def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)):
-        pass
+        from ml.data.drivers import Memory
+        from ml.data.ds import Data
+        with Data(driver=Memory()) as data:
+            data.from_data(self)
+            return data.to_ndarray(dtype=dtype)
 
     def store(self, dataset):
         for group in self.groups:

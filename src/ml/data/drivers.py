@@ -14,6 +14,9 @@ from ml.utils.files import rm
 from ml.utils.numeric_functions import max_dtype
 from ml.abc.group import AbsGroup
 from ml.data.groups import DaGroup
+from ml.utils.logger import log_config
+
+log = log_config(__name__)
 
 
 class HDF5(AbsDriver):
@@ -104,6 +107,8 @@ class Zarr(AbsDriver):
         return os.path.exists(scope)
 
     def set_schema(self, dtypes:np.dtype):
+        if self.metadata_tag in self.conn:
+           log.debug("Rewriting dtypes")
         self.conn.require_group(self.metadata_tag)
         self.require_dataset(self.metadata_tag, "dtypes", (len(dtypes), 2), dtype=np.dtype('object'))
         for i, (group, (dtype, _)) in enumerate(dtypes.fields.items()):
@@ -169,11 +174,11 @@ class ZarrGroup(AbsGroup):
             group.slice = slice(item, item + 1)
             return group
         elif isinstance(item, list):
-            raise NotImplementedError
-            #group = ZarrGroup(self.conn, name=self.name, alias_map=self.alias_map.copy(),
-            #                  dtypes=self.dtypes)
-            #group.slice = self.slice.update(item)
-            #return group.to_ndarray()
+            from ml.data.groups import DaGroup
+            if isinstance(self.conn, ZGroup):
+                return DaGroup(self, chunks=(10,), from_groups=item)
+            else:
+                raise NotImplementedError
         elif isinstance(item, tuple):
             group = ZarrGroup(self.conn, name=self.name, alias_map=self.alias_map.copy(), dtypes=self.dtypes)
             group.slice = item # self.slice.update(item)
@@ -249,21 +254,35 @@ class ZarrGroup(AbsGroup):
     def to_dagroup(self, chunks=None) -> DaGroup:
         return DaGroup(self, chunks=chunks)
 
-    #def apply_slice(self):
-    #    if isinstance(self.conn, ZArray):
-    #        return self.conn[self.slice]
+    def to_df(self):
+        from ml.data.it import Iterator
+        import pandas as pd
+        shape = self.shape
+        if len(shape) > 1 and len(self.groups) < shape[1]:
+            dtypes = np.dtype([("c{}".format(i), self.dtype) for i in range(shape[1])])
+            columns = self.groups
+        else:
+            dtypes = self.dtypes
+            columns = self.groups
 
-
-#def build_array(array_group, groups, dtype) -> np.ndarray:
-#    shape = array_group.shape.to_tuple()
-#    if len(shape) == 1:
-#        for i, group in enumerate(groups):
-#            return array_group[group].apply_slice().astype(dtype)
-#    else:
-#        array = np.empty(shape, dtype=dtype)
-#        for i, group in enumerate(groups):
-#            array[:, i] = array_group[group].apply_slice()
-#        return array
+        data = Iterator(self).batchs(batch_size=258)
+        stc_arr = np.empty(shape.to_tuple()[0], dtype=dtypes)
+        if len(self.groups) == 1:
+            init = 0
+            end = data.batch_size
+            for e in data:
+                stc_arr[init:end] = e
+                init = end
+                end += data.batch_size
+        else:
+            for i, group in enumerate(self.groups):
+                init = 0
+                end = data.batch_size
+                for e in data:
+                    stc_arr[group][init:end] = e[:, i]
+                    init = end
+                    end += data.batch_size
+        return pd.DataFrame(stc_arr, index=np.arange(0, stc_arr.shape[0]), columns=columns)
 
 
 class HDF5Group(object):

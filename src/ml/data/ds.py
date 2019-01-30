@@ -3,7 +3,6 @@ import os
 import json
 import numpy as np
 import pandas as pd
-import xarray as xr
 import dask.array as da
 import re
 
@@ -30,22 +29,22 @@ class Data(AbsData):
     def __init__(self, name: str = None, dataset_path: str = None, driver: AbsDriver = None,
                  group_name: str = None):
 
-        if name is None and not isinstance(self.driver, Memory):
-            raise Exception("I can't build a dataset without a name, plese add a name to this dataset.")
-
-        self.name = name
-        self.header_map = ["author", "description"]
         if driver is None:
             self.driver = Memory()
         else:
             self.driver = driver
-        self.group_name = group_name
+
+        if name is None and not isinstance(self.driver, Memory):
+            raise Exception("I can't build a dataset without a name, plese add a name to this dataset.")
 
         if dataset_path is None:
             self.dataset_path = settings["data_path"]
         else:
             self.dataset_path = dataset_path
 
+        self.name = name
+        self.header_map = ["author", "description"]
+        self.group_name = group_name
         self.dtypes = None
         self.hash = None
         self.author = None
@@ -135,11 +134,6 @@ class Data(AbsData):
 
     def __getitem__(self, key):
         return self.data[key]
-
-    #def __setitem__(self, key, value):
-        # print(key, value, self.groups, "DS")
-    #    for group in self.groups:
-    #        self.driver.data[group][key] = value
 
     def __iter__(self):
         return self
@@ -299,7 +293,7 @@ class Data(AbsData):
             #if len(str_arrays) > 0:
             #    data = sum(str_arrays)
             #data = Iterator(data).batchs(batch_size=batch_size)
-            raise Exception
+            raise NotImplementedError
         elif not isinstance(data, BaseIterator):
             data = Iterator(data).batchs(batch_size=batch_size)
         self.dtypes = data.dtypes
@@ -317,14 +311,11 @@ class Data(AbsData):
         self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
         self.write_metadata()
 
-    # def to_df(self) -> pd.DataFrame:
-    #    return self.data.to_df()
+    def to_df(self) -> pd.DataFrame:
+        return self.data.to_df()
 
     def to_ndarray(self, dtype=None) -> np.ndarray:
         return self.data.to_ndarray(dtype=dtype)
-
-    # def to_xrds(self) -> xr.Dataset:
-    #    return self.data.to_xrds()
 
     def to_libsvm(self, target, save_to=None):
         """
@@ -333,7 +324,7 @@ class Data(AbsData):
         from ml.utils.seq import libsvm_row
         from sklearn.preprocessing import LabelEncoder
         le = LabelEncoder()
-        target_t = le.fit_transform(self.driver.data[target].compute())
+        target_t = le.fit_transform(self.driver.data[target])
         groups = [group for group in self.groups if group != target]
         with open(save_to, 'w') as f:
             for row in libsvm_row(target_t, self.data[groups].to_ndarray()):

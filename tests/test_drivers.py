@@ -2,7 +2,6 @@ import unittest
 import numpy as np
 from ml.data.drivers import Memory, Zarr
 from ml.utils.basic import Shape
-import dask.array as da
 
 
 class TestDriver(unittest.TestCase):
@@ -79,6 +78,15 @@ class TestDriver(unittest.TestCase):
     #    self.assertEqual((data_list_index.to_ndarray() == self.array_c1[[3, 5, 7]]).all(), True)
     #    self.assertEqual((data_list_index[:2].to_ndarray() == self.array_c1[[3, 5, 7]][:2]).all(), True)
     #    self.driver.exit()
+
+    def test_multicolum_get(self):
+        self.driver.enter(self.url)
+        da_group = self.driver.data[["c0", "c1"]]
+        array = da_group.to_ndarray()
+        self.assertEqual((array[:, 0] == self.driver.data["c0"][:]).all(), True)
+        self.assertEqual((array[:, 1] == self.driver.data["c1"][:]).all(), True)
+        self.driver.exit()
+
 
     def test_to_dagroup(self):
         self.driver.enter(self.url)
