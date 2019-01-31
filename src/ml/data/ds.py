@@ -19,6 +19,7 @@ from ml.utils.config import get_settings
 from ml.utils.decorators import cache, clean_cache
 from ml.utils.files import get_dir_file_size, rm
 from ml.utils.order import order_table
+from ml.data.groups import DaGroup
 
 
 settings = get_settings("paths")
@@ -268,7 +269,7 @@ class Data(AbsData):
         hash_obj.hash.update("".join(header).encode("utf-8"))
         for group in self.groups:
             it = Iterator(self.data[group]).batchs(batch_size=batch_size)
-            hash_obj.update(it)
+            hash_obj.update(it.only_data())
         return str(hash_obj)
 
     def from_data(self, data, batch_size: int = 258, with_hash: str = "sha1"):
@@ -283,17 +284,7 @@ class Data(AbsData):
         elif isinstance(data, Iterator):
             data = data.batchs(batch_size=batch_size)
         elif isinstance(data, dict):
-            #str_arrays = []
-            #for elem in data.values():
-            #    if isinstance(elem, StructArray):
-            #        str_arrays.append(elem)
-            #    else:
-            #        if len(str_arrays) > 0:
-            #            raise NotImplementedError("Mixed content is not supported.")
-            #if len(str_arrays) > 0:
-            #    data = sum(str_arrays)
-            #data = Iterator(data).batchs(batch_size=batch_size)
-            raise NotImplementedError
+            data = DaGroup(data, chunks=(10, 1))
         elif not isinstance(data, BaseIterator):
             data = Iterator(data).batchs(batch_size=batch_size)
         self.dtypes = data.dtypes

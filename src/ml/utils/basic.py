@@ -8,7 +8,6 @@ import time
 
 from collections import OrderedDict
 from .decorators import cache
-from .numeric_functions import max_dtype
 
 
 class Hash:
@@ -18,11 +17,11 @@ class Hash:
 
     def update(self, it):
         if it.dtype == np.dtype('<M8[ns]'):
-            for chunk in it:
-                self.hash.update(chunk.astype('object'))
+            for data in it:
+                self.hash.update(data.astype('object'))
         else:
-            for chunk in it:
-                self.hash.update(chunk)
+            for data in it:
+                self.hash.update(data)
 
     def __str__(self):
         return "${hash_fn}${digest}".format(hash_fn=self.hash_fn, digest=self.hash.hexdigest())
@@ -106,18 +105,26 @@ class Shape(object):
         shapes = list(self._shape.values())
         if len(shapes) == 0:
             return tuple([0])
-
-        dim = 0
-        nshape = []
-        while dim < len(max(shapes)):
-            nshape.append(max(Shape.get_dim_shape(dim, shapes)))
-            dim += 1
-        num_groups = len(self._shape)
-        if num_groups > 1:
-            nshape.insert(1, num_groups)
-        elif num_groups == 1 and len(nshape) == 0:
-            nshape.append(num_groups)
-        return tuple(nshape)
+        elif len(shapes) == 1:
+            return shapes[0]
+        else:
+            nshape = []
+            length = self.max_length
+            max_shape = max(self.values())
+            sum_groups = 0
+            for shape in self.values():
+                dim = shape[1:2]
+                if len(dim) == 0:
+                    sum_groups += 1
+                else:
+                    if len(shape) == len(max_shape):
+                        sum_groups += dim[0]
+                    else:
+                        sum_groups += 1
+            nshape.append(length)
+            nshape.append(sum_groups)
+            remaining = list(max_shape[2:])
+            return tuple(nshape + remaining)
 
     @property
     def max_length(self) -> int:

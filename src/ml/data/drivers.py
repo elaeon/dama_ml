@@ -174,14 +174,13 @@ class ZarrGroup(AbsGroup):
             group.slice = slice(item, item + 1)
             return group
         elif isinstance(item, list):
-            from ml.data.groups import DaGroup
             if isinstance(self.conn, ZGroup):
                 return DaGroup(self, chunks=(10,), from_groups=item)
             else:
                 raise NotImplementedError
         elif isinstance(item, tuple):
             group = ZarrGroup(self.conn, name=self.name, alias_map=self.alias_map.copy(), dtypes=self.dtypes)
-            group.slice = item # self.slice.update(item)
+            group.slice = item
             return group.to_ndarray()
 
     def __setitem__(self, item, value):
@@ -189,7 +188,6 @@ class ZarrGroup(AbsGroup):
             for group in value.groups:
                 self.conn[group][item] = value[group].to_ndarray()
         elif hasattr(value, 'batch'):
-            #print(value.batch, item, value.batch.dtype)
             for group in value.batch.dtype.names:
                 self.conn[group][item] = value.batch[group]
         elif isinstance(value, numbers.Number):
@@ -212,16 +210,13 @@ class ZarrGroup(AbsGroup):
 
     @property
     def shape(self) -> Shape:
+        # fixme: not slice a array because this will send the data to memory,
+        # try to calculate the shape from a slice object
         if isinstance(self.conn, ZGroup):
-            if self.slice.stop is None:
-                shape = dict([(self.alias_map.get(group, group), self.conn[self.alias_map.get(group, group)].shape) for group in self.groups])
-            else:
-                shape = dict([(self.alias_map.get(group, group), self.conn[self.alias_map.get(group, group)][self.slice].shape) for group in self.groups])
+            shape = dict([(self.alias_map.get(group, group),
+                           self.conn[self.alias_map.get(group, group)][self.slice].shape) for group in self.groups])
         else:
-            if self.slice.stop is None:
-                shape = dict([(self.alias_map.get(group, group), self.conn.shape) for group in self.groups])
-            else:
-                shape = dict([(self.alias_map.get(group, group), self.conn[self.slice].shape) for group in self.groups])
+            shape = dict([(self.alias_map.get(group, group), self.conn[self.slice].shape) for group in self.groups])
         return Shape(shape)
 
     def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
@@ -237,14 +232,24 @@ class ZarrGroup(AbsGroup):
 
         if isinstance(self.conn, ZArray):
             array = self.conn[self.slice]
+        elif len(self.groups) == 1:
+            array = self.conn[self.groups[0]][self.slice]
         else:
-            if len(self.groups) == 1:
-                array = self.conn[self.groups[0]][self.slice]
-            else:
+            if len(self.shape.to_tuple()) == 2:
+                total_cols = 0
                 array = np.empty(self.shape.to_tuple(), dtype=self.dtype)
-                for i, group in enumerate(self.groups):
-                    array[:, i] = self.conn[group][self.slice]
+                for group in self.groups:
+                    try:
+                        num_cols = self.shape[group][1]
+                        slice_grp = (slice(None, None), slice(total_cols, total_cols + num_cols))
+                    except IndexError:
+                        num_cols = 1
+                        slice_grp = (slice(None, None), total_cols)
+                    array[slice_grp] = self.conn[group][self.slice]
+                    total_cols += num_cols
                 return array
+            else:
+                raise NotImplementedError
 
         if dtype is not None and self.dtype != dtype:
             return array.astype(dtype)
@@ -268,20 +273,20 @@ class ZarrGroup(AbsGroup):
         data = Iterator(self).batchs(batch_size=258)
         stc_arr = np.empty(shape.to_tuple()[0], dtype=dtypes)
         if len(self.groups) == 1:
-            init = 0
-            end = data.batch_size
-            for e in data:
-                stc_arr[init:end] = e
-                init = end
-                end += data.batch_size
+            #init = 0
+            #end = data.batch_size
+            for slice_obj in data:
+                stc_arr[slice_obj.slice] = slice_obj.batch
+                #init = end
+                #end += data.batch_size
         else:
             for i, group in enumerate(self.groups):
-                init = 0
-                end = data.batch_size
-                for e in data:
-                    stc_arr[group][init:end] = e[:, i]
-                    init = end
-                    end += data.batch_size
+                #init = 0
+                #end = data.batch_size
+                for slice_obj in data:
+                    stc_arr[group][slice_obj.slice] = slice_obj.batch[:, i]
+                    #init = end
+                    #end += data.batch_size
         return pd.DataFrame(stc_arr, index=np.arange(0, stc_arr.shape[0]), columns=columns)
 
 

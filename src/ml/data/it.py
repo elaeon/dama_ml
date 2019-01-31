@@ -481,17 +481,16 @@ class BatchIterator(BaseIterator):
             return self.batch_from_it(batch_shape)
 
     def batch_from_it(self, batch_shape):
-        for data in self.data:
-            yield data
+        return NotImplemented
 
     def _cycle_it(self):
         while True:
-            start = 0
-            stop = self.batch_size
+            #start = 0
+            #stop = self.batch_size
             for elem in self:
-                yield Slice(batch=elem, slice=slice(start, stop))
-                start = stop
-                stop += self.batch_size
+                yield elem#Slice(batch=elem, slice=slice(start, stop))
+                #start = stop
+                #stop += self.batch_size
 
     def to_iter(self):
         for slice_obj in self:
@@ -519,6 +518,14 @@ class BatchIterator(BaseIterator):
         return BatchIterator.from_batchs(self._cycle_it(),  dtypes=self.dtypes, from_batch_size=self.batch_size,
                                          length=np.inf)
 
+    def only_data(self):
+        def _it():
+            for data in self:
+                yield data.batch
+
+        return BatchIterator.from_batchs(_it(),  dtypes=self.dtypes, from_batch_size=self.batch_size,
+                                         length=self.length)
+
 
 class BatchGroup(BatchIterator):
     type_elem = AbsGroup
@@ -529,7 +536,7 @@ class BatchGroup(BatchIterator):
         while True:
             batch = self.data.data[init:end]
             if len(batch) > 0:
-                yield batch
+                yield Slice(batch=batch, slice=slice(init, end))
                 init = end
                 end += self.batch_size
             else:

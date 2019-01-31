@@ -409,7 +409,7 @@ class TestIteratorToData(unittest.TestCase):
             data.from_data(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
             array_l = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10]]
             it = Iterator(data).batchs(batch_size=3)
-            for batch, array in zip(it, array_l):
+            for batch, array in zip(it.only_data(), array_l):
                 self.assertCountEqual(batch, array)
             data.destroy()
 

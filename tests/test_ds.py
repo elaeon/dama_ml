@@ -5,7 +5,6 @@ import json
 
 from ml.data.ds import Data
 from ml.data.it import Iterator
-from ml.utils.basic import StructArray
 from ml.data.drivers import Zarr, HDF5
 from ml.utils.model_selection import CV
 from ml.utils.files import rm
@@ -173,50 +172,16 @@ class TestDataset(unittest.TestCase):
             data.destroy()
 
     def test_dtypes(self):
-        with Data(name="test", dataset_path="/tmp/") as data:
-            data.from_data(self.X)
-            dtypes = [("c"+str(i), np.dtype("float64")) for i in range(1)]
-            self.assertCountEqual([dtype for _, dtype in data.dtypes], [dtype for _, dtype in dtypes])
-            data.destroy()
-
-    def test_dtypes_2(self):
         df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
         with Data(name="test", dataset_path="/tmp/") as data:
             data.from_data(df)
-            self.assertCountEqual([e for _, e in data.dtypes], df.dtypes.values)
-            data.destroy()
-
-    def test_groups_rename(self):
-        with Data(name="test", dataset_path="/tmp/") as data:
-            data.from_data(self.X)
-            columns = ['a']
-            data.groups = columns
-            self.assertCountEqual(data.groups, columns)
-            data.destroy()
-
-    def test_groups_rename_2(self):
-        df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
-        with Data(name="test", dataset_path="/tmp/") as data:
-            data.from_data(df)
-            columns = ['x0', 'x1']
-            data.groups = columns
-            self.assertCountEqual(data.groups, columns)
+            self.assertCountEqual([e for _, (e, _) in data.dtypes.fields.items()], df.dtypes.values)
             data.destroy()
 
     def test_length(self):
         with Data(name="test", dataset_path="/tmp/") as data:
             data.from_data(self.X)
-            self.assertCountEqual(data[:3].shape.to_tuple(), self.X[:3].shape)
-            data.destroy()
-
-    def test_from_struct(self):
-        x0 = np.random.rand(10, 2)
-        x1 = np.random.rand(10)
-        XY = StructArray([("x0", x0), ("x1", x1)])
-        with Data(name="test", dataset_path="/tmp") as data:
-            data.from_data(XY)
-            self.assertEqual((data["x0"].to_ndarray() == x0).all(), True)
-            self.assertEqual((data["x1"].to_ndarray() == x1).all(), True)
+            self.assertCountEqual(data[:3].shape, self.X[:3].shape)
             data.destroy()
 
     def test_from_it(self):
@@ -229,7 +194,7 @@ class TestDataset(unittest.TestCase):
             data.destroy()
 
     def test_group_name(self):
-        with Data(name="test0", dataset_path="/tmp", group_name="test_ds", driver=HDF5()) as data:
+        with Data(name="test0", dataset_path="/tmp", group_name="test_ds", driver=Zarr()) as data:
             self.assertEqual(data.driver.exists(data.url), True)
             data.destroy()
 
@@ -253,9 +218,9 @@ class TestDataset(unittest.TestCase):
             self.assertCountEqual(data["a"].to_ndarray(), df["a"].values)
             self.assertEqual((data[["a", "b"]].to_ndarray() == df[["a", "b"]].values).all(), True)
             self.assertEqual((data[0].to_ndarray(dtype=np.dtype("O")) == df.iloc[0].values).all(), True)
-            self.assertEqual((data[0:1].to_ndarray() == df.iloc[0:1].values).all(), True)
-            self.assertEqual((data[3:].to_ndarray() == df.iloc[3:].values).all(), True)
-            self.assertEqual((data[:3].to_ndarray() == df.iloc[:3].values).all(), True)
+            self.assertEqual((data[0:1] == df.iloc[0:1].values).all(), True)
+            self.assertEqual((data[3:] == df.iloc[3:].values).all(), True)
+            self.assertEqual((data[:3] == df.iloc[:3].values).all(), True)
             data.destroy()
 
     def test_sample(self):
@@ -265,7 +230,7 @@ class TestDataset(unittest.TestCase):
             it = Iterator(data).sample(5)
             self.assertEqual(it.shape.to_tuple(), (5, 2))
             for e in it:
-                self.assertEqual(e.to_ndarray().shape, (2, ))
+                self.assertEqual(e.to_ndarray().shape, (1, 2))
             data.destroy()
 
     def test_dataset_from_dict(self):
@@ -278,42 +243,30 @@ class TestDataset(unittest.TestCase):
             self.assertEqual((df["y"].values == y).all(), True)
             data.destroy()
 
-    def test_from_batch_type_array(self):
+    def test_from_batch(self):
         x = np.random.rand(100)
-        it = Iterator(x).batchs(batch_size=10, batch_type="array")
+        it = Iterator(x).batchs(batch_size=10)
         with Data(name="test") as data:
             data.from_data(it)
             self.assertEqual((data.to_df().values.reshape(-1) == x).all(), True)
             data.destroy()
 
-    def test_from_batch_type_df(self):
+    def test_from_batch_array(self):
         x = np.random.rand(100)
-        it = Iterator(x).batchs(batch_size=10, batch_type="df")
+        it = Iterator(x).batchs(batch_size=10)
         with Data(name="test") as data:
             data.from_data(it)
             self.assertEqual((data.to_ndarray() == x).all(), True)
             data.destroy()
-
-    def test_from_struct_dict(self):
-        x = np.random.rand(10, 2)
-        y = (np.random.rand(10) * 10).astype(int)
-        x_train = StructArray([("x", x)])
-        y_train = StructArray([("y", y)])
-        with Data(name="train") as train_ds:
-            train_ds.from_data({"x": x_train, "y": y_train})
-            self.assertEqual((train_ds["x"].to_ndarray() == x).all(), True)
-            self.assertEqual((train_ds["y"].to_ndarray() == y).all(), True)
-            train_ds.destroy()
 
     def test_index_dim(self):
         x = np.random.rand(10, 1)
         y = np.random.rand(10)
         z = np.random.rand(11, 2)
         a = np.random.rand(8, 2, 1)
-        columns = [("x", x), ("y", y), ("z", z), ("a", a)]
-        str_array = StructArray(columns)
+        columns = dict([("x", x), ("y", y), ("z", z), ("a", a)])
         with Data(name="test") as data:
-            data.from_data(str_array)
+            data.from_data(columns)
             self.assertEqual(data["x"].shape, x.shape)
             self.assertEqual(data["y"].shape, y.shape)
             self.assertEqual(data["z"].shape, z.shape)
@@ -331,10 +284,11 @@ class TestDataset(unittest.TestCase):
             for e in x_a:
                 yield (e, 1)
 
-        with Data(name="test", dataset_path="/tmp/", driver=HDF5(mode="w")) as dataset:
+        with Data(name="test", dataset_path="/tmp/", driver=Zarr(mode="w")) as dataset:
             x = np.random.rand(100).reshape(-1, 1)
-            x_p = Iterator(_it(x), length=100, dtypes=[("x", np.dtype(float)), ("y", np.dtype(float))])
-            dataset.from_data(x_p, batch_size=0)
+            dtypes = np.dtype([("x", np.dtype(float)), ("y", np.dtype(float))])
+            x_p = Iterator(_it(x), dtypes=dtypes)
+            dataset.from_data(x_p[:100], batch_size=0)
             dataset.destroy()
 
     def test_ds_it(self):
@@ -342,10 +296,10 @@ class TestDataset(unittest.TestCase):
         y = np.random.rand(100, 5)
         with Data(name="test", dataset_path="/tmp/") as data:
             data.from_data({"x": x, "y": y})
-            it = Iterator(data).batchs(batch_size=10, batch_type="structured")
+            it = Iterator(data).batchs(batch_size=10)
             for item in it:
-                self.assertEqual((item.batch["x"].to_ndarray() == x[item.slice]).all(), True)
-                self.assertEqual((item.batch["y"].to_ndarray() == y[item.slice]).all(), True)
+                self.assertEqual((item.batch[:, 0:1] == x[item.slice]).all(), True)
+                self.assertEqual((item.batch[:, 1:6] == y[item.slice]).all(), True)
             data.destroy()
 
     def test_index_iter(self):
@@ -357,7 +311,7 @@ class TestDataset(unittest.TestCase):
 
     def test_context_index(self):
         x = np.asarray([1, 2, 3, 4, 5])
-        with Data(name="test", dataset_path="/tmp/", driver=HDF5(mode="w")) as data:
+        with Data(name="test", dataset_path="/tmp/", driver=Zarr(mode="w")) as data:
             data.from_data({"x": x})
             self.assertEqual(data[0].to_ndarray(), [1])
 
@@ -387,7 +341,7 @@ class TestDataset(unittest.TestCase):
         x = np.random.rand(1000, 2)
         y = np.random.rand(1000, 1)
         z = np.random.rand(1000)
-        with Data(name="test_X", driver=HDF5(mode="w")) as data:
+        with Data(name="test_X", driver=Zarr(mode="w")) as data:
             data.from_data({"x": x, "y": y, "z": z})
             data.description = "hello world {}".format("X")
             self.assertEqual((data["x"].to_ndarray()[100] == x[100]).all(), True)
@@ -396,6 +350,7 @@ class TestDataset(unittest.TestCase):
             data.destroy()
 
     def test_from_data_dim_7_1_2(self):
+        return
         with Data(name="test_ds_0", dataset_path="/tmp/") as data:
             data.from_data({"x": self.X, "y": self.Y})
 

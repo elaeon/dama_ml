@@ -17,13 +17,16 @@ class DaGroup(AbsGroup):
                 for group in conn.groups:
                     groups[group] = conn.conn[group]
             conn = self.convert(groups, chunks=chunks)
-        else:
+        elif isinstance(conn, dict):
             conn = self.convert(conn, chunks=chunks)
+        else:
+            raise NotImplementedError("Type {} does not supported".format(type(conn)))
         super(DaGroup, self).__init__(conn, name=name, dtypes=dtypes, alias_map=alias_map)
 
     def convert(self, groups_dict, chunks) -> dict:
         groups = OrderedDict()
         for group, data in groups_dict.items():
+            chunks = data.shape
             groups[group] = da.from_array(data, chunks=chunks)
         return groups
 
@@ -48,6 +51,9 @@ class DaGroup(AbsGroup):
         with Data(driver=Memory()) as data:
             data.from_data(self)
             return data.to_ndarray(dtype=dtype)
+
+    def to_df(self):
+        pass
 
     def store(self, dataset):
         for group in self.groups:
