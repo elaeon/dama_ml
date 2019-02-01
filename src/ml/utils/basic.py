@@ -1,7 +1,5 @@
 import hashlib
 import numpy as np
-import pandas as pd
-import xarray as xr
 import dask.array as da
 import numbers
 import time
@@ -25,31 +23,6 @@ class Hash:
 
     def __str__(self):
         return "${hash_fn}${digest}".format(hash_fn=self.hash_fn, digest=self.hash.hexdigest())
-
-
-class StructArray:
-
-    def __add__(self, other: 'StructArray') -> 'StructArray':
-        if other == 0:
-            return self
-        groups = {}
-        groups.update(self.o_columns)
-        groups.update(other.o_columns)
-        return StructArray(groups.items())
-
-    def __radd__(self, other):
-        return self.__add__(other)
-
-    def is_multidim(self) -> bool:
-        shape_values = list(self.shape.values())
-        if len(shape_values) == 0:
-            return False
-
-        group_shape_0 = shape_values[0]
-        for group_shape in shape_values[1:]:
-            if group_shape != group_shape_0:
-                return True
-        return False
 
 
 class Shape(object):

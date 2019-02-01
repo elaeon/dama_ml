@@ -350,7 +350,6 @@ class TestDataset(unittest.TestCase):
             data.destroy()
 
     def test_from_data_dim_7_1_2(self):
-        return
         with Data(name="test_ds_0", dataset_path="/tmp/") as data:
             data.from_data({"x": self.X, "y": self.Y})
 

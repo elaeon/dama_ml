@@ -178,6 +178,10 @@ class ZarrGroup(AbsGroup):
                 return DaGroup(self, chunks=(10,), from_groups=item)
             else:
                 raise NotImplementedError
+        elif isinstance(item, np.ndarray):
+            if isinstance(self.conn, ZArray):
+                return DaGroup(self, chunks=(10,)).sample(item)
+            raise NotImplementedError
         elif isinstance(item, tuple):
             group = ZarrGroup(self.conn, name=self.name, alias_map=self.alias_map.copy(), dtypes=self.dtypes)
             group.slice = item
@@ -219,14 +223,13 @@ class ZarrGroup(AbsGroup):
             shape = dict([(self.alias_map.get(group, group), self.conn[self.slice].shape) for group in self.groups])
         return Shape(shape)
 
-    def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
-        #if isinstance(self.slice.idx, list):
-        #    shape = [len(self.slice.idx)] + list(self.shape.to_tuple())[1:]
-        #    array = np.empty(shape, dtype=self.dtype)
-        #    for i, idx in enumerate(self.slice.idx):
-        #        array[i] = self.conn[idx]
-        #    return array
+    def get_conn_group(self, group):
+        if isinstance(self.conn, ZGroup):
+            return self.conn[group]
+        else:
+            return self.conn
 
+    def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
         if self.dtype is None:
             return np.asarray([])
 
@@ -273,20 +276,12 @@ class ZarrGroup(AbsGroup):
         data = Iterator(self).batchs(batch_size=258)
         stc_arr = np.empty(shape.to_tuple()[0], dtype=dtypes)
         if len(self.groups) == 1:
-            #init = 0
-            #end = data.batch_size
             for slice_obj in data:
                 stc_arr[slice_obj.slice] = slice_obj.batch
-                #init = end
-                #end += data.batch_size
         else:
             for i, group in enumerate(self.groups):
-                #init = 0
-                #end = data.batch_size
                 for slice_obj in data:
                     stc_arr[group][slice_obj.slice] = slice_obj.batch[:, i]
-                    #init = end
-                    #end += data.batch_size
         return pd.DataFrame(stc_arr, index=np.arange(0, stc_arr.shape[0]), columns=columns)
 
 

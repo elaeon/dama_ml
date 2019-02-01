@@ -7,7 +7,7 @@ from collections import namedtuple
 from collections import defaultdict, deque
 from ml.utils.numeric_functions import max_type, num_splits, wsrj, max_dtype
 from ml.utils.seq import grouper_chunk
-from ml.utils.basic import StructArray, isnamedtupleinstance, Shape
+from ml.utils.basic import isnamedtupleinstance, Shape
 from ml.utils.logger import log_config
 from ml.abc.data import AbsData
 from ml.abc.group import AbsGroup
@@ -69,14 +69,10 @@ class BaseIterator(object):
         self.dtypes = dtypes
         self.dtype = max_dtype(dtypes)
         self.type_elem = type_elem
-        if isinstance(it, StructArray):
-            raise Exception
-            # self.shape = self.calc_shape_stc(length, it.shape)
+        if isinstance(shape, Shape):
+            self.shape = self.calc_shape_stc(length, shape)
         else:
-            if isinstance(shape, Shape):
-                self.shape = self.calc_shape_stc(length, shape)
-            else:
-                self.shape = None
+            self.shape = None
         self.rewind = False
 
     @property
@@ -380,7 +376,7 @@ class Iterator(BaseIterator):
 
     def cycle(self):
         shape = self.shape.change_length(np.inf)
-        return BaseIterator(self._cycle_it(), dtypes=self.dtypes, type_elem=StructArray, shape=shape)
+        return BaseIterator(self._cycle_it(), dtypes=self.dtypes, type_elem=self.type_elem, shape=shape)
 
 
 class BatchIterator(BaseIterator):

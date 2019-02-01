@@ -1,12 +1,16 @@
 from ml.abc.group import AbsGroup
+from ml.abc.data import AbsData
 from ml.utils.basic import Shape
 import numpy as np
 from collections import OrderedDict
 import dask.array as da
 
+class DaGroupDict(OrderedDict):
+    pass
 
-class DaGroup(AbsGroup):
-    def __init__(self, conn, name=None, dtypes=None, alias_map=None, chunks=None, from_groups=None):
+
+class DaGroup(object):
+    def __init__(self, conn, chunks=None, from_groups=None):
         if isinstance(conn, AbsGroup):
             groups = OrderedDict()
             if from_groups is not None:
@@ -15,30 +19,60 @@ class DaGroup(AbsGroup):
                         groups[group] = conn.conn[group]
             else:
                 for group in conn.groups:
-                    groups[group] = conn.conn[group]
-            conn = self.convert(groups, chunks=chunks)
+                    groups[group] = conn.get_conn_group(group)
+            self.conn = self.convert(groups, chunks=chunks)
+        elif isinstance(conn, DaGroupDict):
+            self.conn = conn
         elif isinstance(conn, dict):
-            conn = self.convert(conn, chunks=chunks)
+            self.conn = self.convert(conn, chunks=chunks)
         else:
             raise NotImplementedError("Type {} does not supported".format(type(conn)))
-        super(DaGroup, self).__init__(conn, name=name, dtypes=dtypes, alias_map=alias_map)
 
     def convert(self, groups_dict, chunks) -> dict:
-        groups = OrderedDict()
+        groups = DaGroupDict()
         for group, data in groups_dict.items():
             chunks = data.shape
             groups[group] = da.from_array(data, chunks=chunks)
         return groups
 
+    def sample(self, index):
+        conn = DaGroupDict()
+        for group, values in self.conn.items():
+            conn[group] = self.conn[group][index]
+        return DaGroup(conn=conn)
+
     @property
     def dtypes(self) -> np.dtype:
-        return np.dtype([(group, data.dtype) for group, data in self.conn.items()])
+        return np.dtype([(group, self.conn[group].dtype) for group in self.conn.keys()])
+
+    @property
+    def groups(self):
+        return self.dtypes.names
 
     def __getitem__(self, item):
-        return self.conn[item]
+        if isinstance(item, slice):
+            dict_conn = DaGroupDict()
+            for group in self.groups:
+                dict_conn[group] = self.conn[group][item]
+            return DaGroup(dict_conn)
+        elif isinstance(item, str):
+            dict_conn = DaGroupDict()
+            dict_conn[item] =  self.conn[item]
+            return DaGroup(dict_conn)
 
     def __setitem__(self, key, value):
         pass
+
+    def __add__(self, other: 'DaGroup') -> 'DaGroup':
+        if other == 0:
+            return self
+        groups = DaGroupDict()
+        groups.update(self.conn)
+        groups.update(other.conn)
+        return DaGroup(groups)
+
+    def __radd__(self, other):
+        return self.__add__(other)
 
     @property
     def shape(self) -> 'Shape':
@@ -52,12 +86,13 @@ class DaGroup(AbsGroup):
             data.from_data(self)
             return data.to_ndarray(dtype=dtype)
 
-    def to_df(self):
-        pass
+    def rename_group(self, old_name, new_name):
+        self.conn[new_name] = self.conn[old_name]
+        del self.conn[old_name]
 
-    def store(self, dataset):
+    def store(self, dataset: AbsData):
         for group in self.groups:
-            self[group].store(dataset.data[group])
+            self.conn[group].store(dataset.data[group])
 
 
 class StructuredGroup(AbsGroup):
@@ -84,9 +119,6 @@ class StructuredGroup(AbsGroup):
         if hasattr(value, "groups"):
             for group in value.groups:
                 self.conn[group][item] = value[group]
-        #else:
-        #    group = list(value.keys())[0]
-        #    self.conn[group][item] = value[group]
 
     @property
     def dtypes(self) -> np.dtype:
@@ -111,54 +143,4 @@ class StructuredGroup(AbsGroup):
         return Shape(shape)
 
     def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
-        #print(self.conn, self.slice)
         return self.conn[self.slice]
-
-
-class NumpyArrayGroup(AbsGroup):
-    def __init__(self, conn, name=None, dtypes=None):
-        super(NumpyArrayGroup, self).__init__(conn, name=name, dtypes=dtypes)
-
-    def __getitem__(self, item):
-        if isinstance(item, str):
-            group = NumpyArrayGroup(self.conn[item])
-        elif isinstance(item, slice):
-            group = NumpyArrayGroup(self.conn[item], dtypes=self.dtypes)
-            group.slice = item
-        elif isinstance(item, int):
-            group = NumpyArrayGroup(self.conn[item], dtypes=self.dtypes)
-            group.slice = slice(item, item + 1)
-        else:
-            group = NumpyArrayGroup(self.conn[item], dtypes=self.dtypes)
-            group.slice = self.slice
-        return group
-
-    def __setitem__(self, item, value):
-        if hasattr(value, "groups"):
-            for group in value.groups:
-                self.conn[group][item] = value[group]
-        #else:
-        #    group = list(value.keys())[0]
-        #    self.conn[group][item] = value[group]
-
-    @property
-    def dtypes(self) -> np.dtype:
-        if isinstance(self.conn, dict):
-            return np.dtype([(self.inv_map.get(group, group), elem.dtype) for group, elem in self.conn.items()])
-        elif isinstance(self.conn, np.ndarray):
-            return np.dtype([(self.inv_map.get(group, group), dtype)
-                             for group, (dtype, _) in self.static_dtypes.fields.items()])
-
-    @property
-    def shape(self) -> Shape:
-        if isinstance(self.conn, dict):
-            shape = dict([(group, self.conn[group].shape) for group in self.groups])
-        else:
-            shape = dict([(group, self.conn.shape) for group in self.groups])
-        return Shape(shape)
-
-    def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
-        if isinstance(self.conn, dict):
-            return self.conn[self.groups[0]]
-        else:
-            return self.conn

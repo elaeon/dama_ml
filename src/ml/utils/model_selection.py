@@ -1,5 +1,5 @@
 from sklearn.model_selection import train_test_split
-from ml.utils.basic import StructArray
+from ml.data.groups import DaGroup
 
 
 class CV(object):
@@ -11,7 +11,7 @@ class CV(object):
         self.group_target = group_target
         self.group_data = group_data
 
-    def apply(self, data) -> StructArray:
+    def apply(self, data) -> DaGroup:
         train_size = round(self.train_size + self.valid_size, 2)
         if self.group_target is not None:
             x_train, x_test, y_train, y_test = train_test_split(
@@ -22,7 +22,6 @@ class CV(object):
             y_validation = y_train[:valid_size_index]
             x_train = x_train[valid_size_index:]
             y_train = y_train[valid_size_index:]
-
             if self.unbalanced is not None:
                 return NotImplemented
             else:
