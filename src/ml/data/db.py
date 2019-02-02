@@ -20,6 +20,9 @@ log = log_config(__name__)
 class Postgres(AbsDriver):
     persistent = True
     ext = 'sql'
+    data_tag = None
+    metadata_tag = None
+    inblock = True
 
     def __contains__(self, item):
         return self.exists(item)
@@ -41,9 +44,9 @@ class Postgres(AbsDriver):
     def __exit__(self, exc_type, exc_val, exc_tb):
         return self.exit()
 
-    def __getitem__(self, item):
-        if isinstance(item, str):
-            return Table(self.conn, name=item)
+    @property
+    def data(self):
+        return Table(self.conn, name=self.data_tag)
 
     def exists(self, scope) -> bool:
         cur = self.conn.cursor()
@@ -58,22 +61,22 @@ class Postgres(AbsDriver):
             log.debug(e)
         self.conn.commit()
 
-    def dtypes(self, name) -> list:
-        return self[name].dtypes
+    def dtypes(self) -> np.dtype:
+        return Table(self.conn, name=self.data_tag).dtypes
 
-    def set_schema(self, name, dtypes):
+    def set_schema(self, dtypes: np.dtype):
         idx = None
-        if not self.exists(name):
+        if not self.exists(self.data_tag):
             columns_types = ["id serial PRIMARY KEY"]
-            for col, dtype in dtypes:
+            for group, (dtype, _) in dtypes.fields.items():
                 fmtype = fmtypes_map[dtype]
-                columns_types.append("{col} {type}".format(col=col, type=fmtype.db_type))
+                columns_types.append("{col} {type}".format(col=group, type=fmtype.db_type))
             cols = "("+", ".join(columns_types)+")"
             cur = self.conn.cursor()
             cur.execute("""
                 CREATE TABLE {name}
                 {columns};
-            """.format(name=name, columns=cols))
+            """.format(name=self.data_tag, columns=cols))
             if isinstance(idx, list):
                 for index in idx:
                     if isinstance(index, tuple):
@@ -107,44 +110,62 @@ class Table(AbsGroup):
         query_parts = self.query_parts.copy()
         if isinstance(item, str):
             query_parts["columns"] = [item]
+            return Table(self.conn, name=self.name, query_parts=query_parts)
         elif isinstance(item, list) or isinstance(item, tuple):
             if all_int(item):
                 query_parts["slice"] = [slice(index, index + 1) for index in item]
             else:
                 query_parts["columns"] = item
+            return Table(self.conn, name=self.name, query_parts=query_parts)
         elif isinstance(item, int):
             query_parts["slice"] = slice(item, item + 1)
+            return Table(self.conn, name=self.name, query_parts=query_parts).to_ndarray()
         elif isinstance(item, slice):
             query_parts["slice"] = item
-        return Table(self.conn, name=self.name, query_parts=query_parts)
+            return Table(self.conn, name=self.name, query_parts=query_parts).to_ndarray()
 
     def __setitem__(self, item, value):
-        if isinstance(item, slice):
-            last_id = self.last_id()
-            if last_id < item.stop:
-                self.insert(value, batch_size=abs(item.stop - item.start))
+        if hasattr(value, 'batch'):
+            value = value.batch
+
+        if isinstance(item, tuple):
+            if len(item) == 1:
+                stop = item[0].stop
+                start = item[0].start
             else:
-                self.update(value)
+                raise NotImplementedError
+        elif isinstance(item, slice):
+            stop = item.stop
+            start = item.start
+
+        last_id = self.last_id()
+        if last_id < stop:
+            self.insert(value, batch_size=abs(stop - start))
+        else:
+            self.update(value)
 
     def __iter__(self):
         pass
 
     def insert(self, data, batch_size=258):
         if not isinstance(data, BatchIterator):
-            data = Iterator(data).batchs(batch_size=batch_size, batch_type="array")
-        columns = "(" + ", ".join([name for name, _ in self.dtypes]) + ")"
+            data = Iterator(data).batchs(batch_size=batch_size)
+        columns = "(" + ", ".join(self.groups) + ")"
         insert_str = "INSERT INTO {name} {columns} VALUES".format(
             name=self.name, columns=columns)
         insert = insert_str + " %s"
         cur = self.conn.cursor()
         for row in tqdm(data, total=len(data)):
-            execute_values(cur, insert, row, page_size=data.batch_size)
+            execute_values(cur, insert, row.batch["c0"], page_size=len(data))
         self.conn.commit()
 
     def update(self, value):
         raise NotImplementedError
 
-    def compute(self, chunksize=(258,)):
+    def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
+        if self.dtype is None:
+            return np.asarray([])
+
         slice_item, _ = self.build_limit_info()
         query = self.build_query()
         cur = self.conn.cursor(uuid.uuid4().hex, scrollable=False, withhold=False)
@@ -158,7 +179,14 @@ class Table(AbsGroup):
         else:
             array[:] = cur.fetchall()
         self.conn.commit()
-        return array
+
+        if dtype is not None and self.dtype != dtype:
+            return array.astype(dtype)
+        else:
+            return array
+
+    def to_df(self):
+        pass
 
     @property
     @cache
@@ -174,12 +202,12 @@ class Table(AbsGroup):
                 start=slice_item.start, stop=slice_item.stop, table_name=self.name)
             cur.execute(query)
             length = cur.fetchone()[0]
-        shape = dict([(group, (length,)) for group, _ in self.dtypes])
+        shape = dict([(group, (length,)) for group in self.groups])
         return Shape(shape)
 
     @property
     @cache
-    def dtypes(self) -> list:
+    def dtypes(self) -> np.dtype:
         cur = self.conn.cursor()
         query = "SELECT * FROM information_schema.columns WHERE table_name=%(table_name)s ORDER BY ordinal_position"
         cur.execute(query, {"table_name": self.name})
@@ -200,7 +228,7 @@ class Table(AbsGroup):
             del dtypes["id"]
 
         if len(dtypes) > 0:
-            return list(dtypes.items())
+            return np.dtype(list(dtypes.items()))
 
     def last_id(self):
         cur = self.conn.cursor()

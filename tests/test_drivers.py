@@ -72,13 +72,6 @@ class TestDriver(unittest.TestCase):
         self.assertEqual(data["group0"][9].to_ndarray(), -1)
         self.driver.exit()
 
-    #def test_list_index(self):
-    #    self.driver.enter(self.url)
-    #    data_list_index = self.driver.data["c1"][[3, 5, 7]]
-    #    self.assertEqual((data_list_index.to_ndarray() == self.array_c1[[3, 5, 7]]).all(), True)
-    #    self.assertEqual((data_list_index[:2].to_ndarray() == self.array_c1[[3, 5, 7]][:2]).all(), True)
-    #    self.driver.exit()
-
     def test_multicolum_get(self):
         self.driver.enter(self.url)
         da_group = self.driver.data[["c0", "c1"]]

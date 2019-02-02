@@ -31,7 +31,7 @@ class DaGroup(object):
     def convert(self, groups_dict, chunks) -> dict:
         groups = DaGroupDict()
         for group, data in groups_dict.items():
-            chunks = data.shape
+            chunks = data.shape  # fixme
             groups[group] = da.from_array(data, chunks=chunks)
         return groups
 
@@ -91,8 +91,37 @@ class DaGroup(object):
         del self.conn[old_name]
 
     def store(self, dataset: AbsData):
-        for group in self.groups:
-            self.conn[group].store(dataset.data[group])
+        from ml.data.it import Iterator
+        if dataset.driver.inblock is True:
+            batch_size = 2
+            init = 0
+            end = batch_size
+            init_g = init
+            end_g = end
+            shape = tuple([batch_size] + list(self.shape.to_tuple())[1:])
+            while True:
+                total_cols = 0
+                data = np.empty(shape, dtype=float)
+                for group in self.groups:
+                    try:
+                        num_cols = self.shape[group][1]
+                        slice_grp = (slice(init_g, end_g), slice(total_cols, total_cols + num_cols))
+                    except IndexError:
+                        num_cols = 1
+                        slice_grp = (slice(init_g, end_g), total_cols)
+                    data[slice_grp] = self.conn[group][init:end].compute()
+                    total_cols += num_cols
+                init_g = 0
+                end_g = batch_size
+                dataset.data[init:end] = data
+                if end < self.shape.to_tuple()[0]:
+                    init = end
+                    end += batch_size
+                else:
+                    break
+        else:
+            for group in self.groups:
+                self.conn[group].store(dataset.data[group])
 
 
 class StructuredGroup(AbsGroup):

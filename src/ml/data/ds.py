@@ -125,6 +125,8 @@ class Data(AbsData):
     def __enter__(self):
         self.driver.enter(self.url)
         if self.driver.mode in ["w", "a", "r+"]:
+            if self.driver.data_tag is None:
+                self.driver.data_tag = self.name
             if len(self.driver.compressor_params) > 0:
                 self.compressor_params = self.driver.compressor_params
         return self
@@ -279,7 +281,7 @@ class Data(AbsData):
         elif isinstance(data, Iterator):
             data = data.batchs(batch_size=batch_size)
         elif isinstance(data, dict):
-            data = DaGroup(data, chunks=(10, 1))
+            data = DaGroup(data, chunks=(10,))
         elif isinstance(data, DaGroup) or type(data) == DaGroup:
             pass
         elif not isinstance(data, BaseIterator):
