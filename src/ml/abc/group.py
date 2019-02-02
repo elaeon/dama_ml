@@ -52,8 +52,8 @@ class AbsGroup(ABC):
             return elem
         elif len(elem.groups) == 1:
             array = elem.to_ndarray()
-            if len(elem.shape[elem.groups[0]]) == 0:  # fixme
-                array = array[0]
+            #if len(elem.shape[elem.groups[0]]) == 0:  # fixme
+            #    array = array[0]
             return array
         else:
             return elem

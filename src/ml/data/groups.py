@@ -4,14 +4,21 @@ from ml.utils.basic import Shape
 import numpy as np
 from collections import OrderedDict
 import dask.array as da
+import numbers
 
 class DaGroupDict(OrderedDict):
     pass
 
 
-class DaGroup(object):
+class DaGroup(AbsGroup):
     def __init__(self, conn, chunks=None, from_groups=None):
-        if isinstance(conn, AbsGroup):
+        self.slice = None
+        self.counter = 0
+        if isinstance(conn, DaGroupDict):
+            self.conn = conn
+        elif isinstance(conn, dict):
+            self.conn = self.convert(conn, chunks=chunks)
+        elif isinstance(conn, AbsGroup):
             groups = OrderedDict()
             if from_groups is not None:
                 for group in conn.groups:
@@ -21,10 +28,7 @@ class DaGroup(object):
                 for group in conn.groups:
                     groups[group] = conn.get_conn_group(group)
             self.conn = self.convert(groups, chunks=chunks)
-        elif isinstance(conn, DaGroupDict):
-            self.conn = conn
-        elif isinstance(conn, dict):
-            self.conn = self.convert(conn, chunks=chunks)
+            self.write_conn = conn
         else:
             raise NotImplementedError("Type {} does not supported".format(type(conn)))
 
@@ -59,9 +63,27 @@ class DaGroup(object):
             dict_conn = DaGroupDict()
             dict_conn[item] =  self.conn[item]
             return DaGroup(dict_conn)
+        elif isinstance(item, int):
+            dict_conn = DaGroupDict()
+            for group in self.groups:
+                dict_conn[group] = self.conn[group][item]
+            return DaGroup(dict_conn)
 
-    def __setitem__(self, key, value):
-        pass
+    def __setitem__(self, item, value):
+        if hasattr(value, "groups"):
+            for group in value.groups:
+                self.write_conn.conn[group][item] = value[group].to_ndarray()
+        elif hasattr(value, 'batch'):
+            for group in value.batch.dtype.names:
+                print(self.conn[group])
+                self.write_conn.conn[group][item] = value.batch[group]
+        elif isinstance(value, numbers.Number):
+            self.write_conn.conn[item] = value
+        elif isinstance(value, np.ndarray):
+            self.write_conn.conn[item] = value
+        else:
+            if isinstance(item, str):
+                self.write_conn.conn[item] = value
 
     def __add__(self, other: 'DaGroup') -> 'DaGroup':
         if other == 0:
@@ -82,9 +104,14 @@ class DaGroup(object):
     def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)):
         from ml.data.drivers import Memory
         from ml.data.ds import Data
-        with Data(driver=Memory()) as data:
-            data.from_data(self)
-            return data.to_ndarray(dtype=dtype)
+        if len(self.groups) == 1:
+            return self.conn[self.groups[0]].compute()
+        #with Data(driver=Memory()) as data:
+        #    data.from_data(self)
+        #    return data.to_ndarray(dtype=dtype)
+
+    def to_df(self):
+        pass
 
     def rename_group(self, old_name, new_name):
         self.conn[new_name] = self.conn[old_name]

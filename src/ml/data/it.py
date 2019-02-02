@@ -12,7 +12,7 @@ from ml.utils.logger import log_config
 from ml.abc.data import AbsData
 from ml.abc.group import AbsGroup
 from ml.utils.numeric_functions import nested_shape
-
+from ml.data.groups import DaGroup
 
 log = log_config(__name__)
 Slice = namedtuple('Slice', 'batch slice')
@@ -218,13 +218,15 @@ class Iterator(BaseIterator):
             self.data = fn_iter
             self.rewind = False
         elif isinstance(fn_iter, Iterator):
-            pass
-        elif isinstance(fn_iter, dict):
-            #self.data = StructArray(fn_iter.items())
-            #self.rewind = True
-            #dtypes = self.data.dtypes
-            #length = len(self.data)
-            raise NotImplementedError
+            self.data = fn_iter.data
+            length = fn_iter.length if length == np.inf else length
+            self.shape = self.calc_shape_stc(length, fn_iter.shape)
+            self.dtype = fn_iter.dtype
+            self.type_elem = fn_iter.type_elem
+            self.pushedback = fn_iter.pushedback
+            self.dtypes = fn_iter.dtypes
+            self.rewind = fn_iter.rewind
+            return
         elif isinstance(fn_iter, pd.DataFrame):
             self.data = fn_iter.itertuples(index=False)
             dtypes = np.dtype(list(zip(fn_iter.columns.values, fn_iter.dtypes.values)))
@@ -234,29 +236,22 @@ class Iterator(BaseIterator):
             self.data = iter(fn_iter)
             length = fn_iter.shape[0] if length == np.inf else length
             self.rewind = False
-        elif isinstance(fn_iter, AbsData) or isinstance(fn_iter, AbsGroup):
+        elif isinstance(fn_iter, AbsData) or isinstance(fn_iter, AbsGroup) or type(fn_iter) == DaGroup:
             self.data = fn_iter
-            dtypes = fn_iter.dtypes
+            self.dtypes = fn_iter.dtypes
+            self.dtype = fn_iter.dtype
             length = len(fn_iter) if length == np.inf else length
             self.rewind = True
+            self.shape = self.calc_shape_stc(length, fn_iter.shape)
+            return
         else:
             self.data = iter(fn_iter)
             self.rewind = False
             if hasattr(fn_iter, '__len__'):
                 length = len(fn_iter)
 
-        if isinstance(fn_iter, Iterator):
-            self.data = fn_iter.data
-            length = fn_iter.length if length == np.inf else length
-            self.shape = self.calc_shape_stc(length, fn_iter.shape)
-            self.dtype = fn_iter.dtype
-            self.type_elem = fn_iter.type_elem
-            self.pushedback = fn_iter.pushedback
-            self.dtypes = fn_iter.dtypes
-            self.rewind = fn_iter.rewind
-        else:
-            # obtain dtypes, shape, dtype, type_elem and length
-            self.chunk_taste(length, dtypes)
+        # obtain dtypes, shape, dtype, type_elem and length
+        self.chunk_taste(length, dtypes)
 
     def chunk_taste(self, length, dtypes) -> None:
         """Check for the dtype and global dtype in a chunk"""
@@ -481,12 +476,8 @@ class BatchIterator(BaseIterator):
 
     def _cycle_it(self):
         while True:
-            #start = 0
-            #stop = self.batch_size
             for elem in self:
-                yield elem#Slice(batch=elem, slice=slice(start, stop))
-                #start = stop
-                #stop += self.batch_size
+                yield elem
 
     def to_iter(self):
         for slice_obj in self:
@@ -516,8 +507,12 @@ class BatchIterator(BaseIterator):
 
     def only_data(self):
         def _it():
-            for data in self:
-                yield data.batch
+            if self.type_elem == AbsGroup:
+                for data in self:
+                    yield data.batch.to_ndarray()
+            else:
+                for data in self:
+                    yield data.batch
 
         return BatchIterator.from_batchs(_it(),  dtypes=self.dtypes, from_batch_size=self.batch_size,
                                          length=self.length)

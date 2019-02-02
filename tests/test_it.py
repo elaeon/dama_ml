@@ -414,6 +414,36 @@ class TestIteratorToData(unittest.TestCase):
             data.destroy()
 
 
+class TestIteratorFromData(unittest.TestCase):
+
+    def test_da_group(self):
+        x = np.random.rand(10)
+        with Data(name="test") as data:
+            data.from_data(x)
+            da_group = data.data.to_dagroup(chunks=(2,))
+            it = Iterator(da_group)
+            self.assertEqual(it.shape, (10,))
+            self.assertEqual([(g, d) for g, (d, _) in it.dtypes.fields.items()], [("c0", np.dtype(float))])
+
+    def test_da_group_it(self):
+        x = np.random.rand(10)
+        with Data(name="test") as data:
+            data.from_data(x)
+            da_group = data.data.to_dagroup(chunks=(2,))
+            it = Iterator(da_group)
+            for i, e in enumerate(it):
+                self.assertEqual(e, x[i])
+
+    def test_da_group_it_batch(self):
+        x = np.random.rand(10)
+        with Data(name="test") as data:
+            data.from_data(x)
+            da_group = data.data.to_dagroup(chunks=(2,))
+            it = Iterator(da_group).batchs(batch_size=3)
+            for i, e in enumerate(it):
+                self.assertEqual((e.batch.to_ndarray() == x[e.slice]).all(), True)
+
+
 class TestIteratorLoop(unittest.TestCase):
     def test_cycle_it(self):
         array = np.arange(10)
