@@ -1,4 +1,4 @@
-from ml.abc.group import AbsGroup
+from ml.abc.group import AbsGroup, AbsBaseGroup
 from ml.abc.data import AbsData
 from ml.utils.basic import Shape
 import numpy as np
@@ -12,13 +12,13 @@ class DaGroupDict(OrderedDict):
 
 class DaGroup(AbsGroup):
     def __init__(self, conn, chunks=None, from_groups=None):
-        self.slice = None
-        self.counter = 0
         if isinstance(conn, DaGroupDict):
-            self.conn = conn
+            gconn = conn
+            write_conn = None
         elif isinstance(conn, dict):
-            self.conn = self.convert(conn, chunks=chunks)
-        elif isinstance(conn, AbsGroup):
+            gconn = self.convert(conn, chunks=chunks)
+            write_conn = None
+        elif isinstance(conn, AbsBaseGroup):
             groups = OrderedDict()
             if from_groups is not None:
                 for group in conn.groups:
@@ -26,11 +26,12 @@ class DaGroup(AbsGroup):
                         groups[group] = conn.conn[group]
             else:
                 for group in conn.groups:
-                    groups[group] = conn.get_conn_group(group)
-            self.conn = self.convert(groups, chunks=chunks)
-            self.write_conn = conn
+                    groups[group] = conn.get_group(group)
+            gconn = self.convert(groups, chunks=chunks)
+            write_conn = conn
         else:
             raise NotImplementedError("Type {} does not supported".format(type(conn)))
+        super(DaGroup, self).__init__(gconn, write_conn=write_conn)
 
     def convert(self, groups_dict, chunks) -> dict:
         groups = DaGroupDict()
@@ -49,10 +50,6 @@ class DaGroup(AbsGroup):
     def dtypes(self) -> np.dtype:
         return np.dtype([(group, self.conn[group].dtype) for group in self.conn.keys()])
 
-    @property
-    def groups(self):
-        return self.dtypes.names
-
     def __getitem__(self, item):
         if isinstance(item, slice):
             dict_conn = DaGroupDict()
@@ -68,6 +65,8 @@ class DaGroup(AbsGroup):
             for group in self.groups:
                 dict_conn[group] = self.conn[group][item]
             return DaGroup(dict_conn)
+        elif isinstance(item, list):
+            print(item)
 
     def __setitem__(self, item, value):
         if hasattr(value, "groups"):
@@ -102,16 +101,35 @@ class DaGroup(AbsGroup):
         return Shape(shape)
 
     def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)):
-        from ml.data.drivers import Memory
-        from ml.data.ds import Data
         if len(self.groups) == 1:
             return self.conn[self.groups[0]].compute()
-        #with Data(driver=Memory()) as data:
-        #    data.from_data(self)
-        #    return data.to_ndarray(dtype=dtype)
+        else:
+            data = np.empty(self.shape.to_tuple(), dtype=self.dtype)
+            for i, group in enumerate(self.groups):
+                data[:, i] = self.conn[group].compute()
+            return data
 
     def to_df(self):
-        pass
+        from ml.data.it import Iterator
+        import pandas as pd
+        shape = self.shape
+        if len(shape) > 1 and len(self.groups) < shape[1]:
+            dtypes = np.dtype([("c{}".format(i), self.dtype) for i in range(shape[1])])
+            columns = self.groups
+        else:
+            dtypes = self.dtypes
+            columns = self.groups
+
+        data = Iterator(self).batchs(batch_size=258)
+        stc_arr = np.empty(shape.to_tuple()[0], dtype=dtypes)
+        if len(self.groups) == 1:
+            for slice_obj in data:
+                stc_arr[slice_obj.slice] = slice_obj.batch.to_ndarray()
+        else:
+            for i, group in enumerate(self.groups):
+                for slice_obj in data:
+                    stc_arr[group][slice_obj.slice] = slice_obj.batch.to_ndarray()[:, i]
+        return pd.DataFrame(stc_arr, index=np.arange(0, stc_arr.shape[0]), columns=columns)
 
     def rename_group(self, old_name, new_name):
         self.conn[new_name] = self.conn[old_name]

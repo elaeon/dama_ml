@@ -5,25 +5,31 @@ import numpy as np
 import pandas as pd
 
 
-class AbsGroup(ABC):
-
-    def __init__(self, conn, name=None, dtypes=None, index=None, alias_map=None):
+class AbsBaseGroup(ABC):
+    def __init__(self, conn):
         self.conn = conn
-        self.name = name
-        self.static_dtypes = dtypes
-        self.index = index
-        self.slice = slice(0, None)
-        self.counter = 0
-        if alias_map is None:
-            self.alias_map = {}
-            self.inv_map = {}
-        else:
-            self.alias_map = alias_map
-            self.inv_map = {value: key for key, value in self.alias_map.items()}
 
-    def set_alias(self, name, alias):
-        self.alias_map[alias] = name
-        self.inv_map[name] = alias
+    @property
+    @abstractmethod
+    def dtypes(self):
+        return NotImplemented
+
+    @abstractmethod
+    def get_group(self, group):
+        return NotImplemented
+
+    @property
+    def groups(self) -> tuple:
+        return self.dtypes.names
+
+
+class AbsGroup(ABC):
+    __slots__ = ['conn', 'write_conn', 'counter']
+
+    def __init__(self, conn, write_conn=None):
+        self.conn = conn
+        self.write_conn = write_conn
+        self.counter = 0
 
     @abstractmethod
     def __getitem__(self, item):
@@ -62,7 +68,7 @@ class AbsGroup(ABC):
         return self.shape.to_tuple()[0]
 
     def __repr__(self):
-        return "{} {}".format(self.__class__.__name__, self.slice)
+        return "{} {}".format(self.__class__.__name__, self.shape)#self.slice)
 
     @property
     @abstractmethod
