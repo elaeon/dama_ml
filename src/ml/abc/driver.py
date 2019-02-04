@@ -26,6 +26,12 @@ class AbsDriver(ABC):
         log.debug("Driver: {}, mode: {}, compressor: {}".format(self.__class__.__name__,
                                                                 self.mode, self.compressor))
 
+    def __enter__(self):
+        return self.enter()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.exit()
+
     @property
     @abstractmethod
     def data(self):
@@ -44,7 +50,7 @@ class AbsDriver(ABC):
         return NotImplemented
 
     @abstractmethod
-    def enter(self, url):
+    def enter(self):
         return NotImplemented
 
     @abstractmethod
@@ -65,9 +71,13 @@ class AbsDriver(ABC):
         return NotImplemented
 
     @abstractmethod
-    def destroy(self, scope):
+    def destroy(self):
         return NotImplemented
 
     @abstractmethod
     def exists(self, scope):
+        return NotImplemented
+
+    @abstractmethod
+    def spaces(self):
         return NotImplemented

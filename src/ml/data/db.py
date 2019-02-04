@@ -9,10 +9,11 @@ from psycopg2.extras import execute_values
 from ml.fmtypes import fmtypes_map
 from ml.utils.basic import Shape
 from ml.abc.driver import AbsDriver
-from ml.utils.numeric_functions import max_dtype, all_int
+from ml.utils.numeric_functions import all_int
 from ml.data.it import Iterator, BatchIterator
 from ml.utils.decorators import cache
-from ml.abc.group import AbsGroup
+from ml.abc.group import AbsGroup, AbsBaseGroup
+from ml.data.groups import DaGroup
 
 log = log_config(__name__)
 
@@ -27,7 +28,7 @@ class Postgres(AbsDriver):
     def __contains__(self, item):
         return self.exists(item)
 
-    def enter(self, url):
+    def enter(self):
         self.conn = psycopg2.connect(
             "dbname={db_name} user={username}".format(db_name=self.login.resource, username=self.login.username))
         self.conn.autocommit = False
@@ -39,28 +40,30 @@ class Postgres(AbsDriver):
         self.attrs = None
 
     def __enter__(self):
-        return self.enter(None)
+        return self.enter()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         return self.exit()
 
     @property
     def data(self):
-        return Table(self.conn, name=self.data_tag)
+        return DaGroup(Table(self.conn, name=self.data_tag))
+        # return DaGroup(ZarrGroup(self.conn[self.data_tag]))
 
     def exists(self, scope) -> bool:
         cur = self.conn.cursor()
         cur.execute("select exists(select relname from pg_class where relname='{name}')".format(name=scope))
         return True if cur.fetchone()[0] else False
 
-    def destroy(self, scope):
+    def destroy(self):
         cur = self.conn.cursor()
         try:
-            cur.execute("DROP TABLE {name}".format(name=scope))
+            cur.execute("DROP TABLE {name}".format(name=self.data_tag))
         except psycopg2.ProgrammingError as e:
             log.debug(e)
         self.conn.commit()
 
+    @property
     def dtypes(self) -> np.dtype:
         return Table(self.conn, name=self.data_tag).dtypes
 
@@ -86,7 +89,7 @@ class Postgres(AbsDriver):
                         index_columns = index
                         index_name = index
                     index_q = "CREATE INDEX {i_name}_{name}_index ON {name} ({i_columns})".format(
-                        name=name, i_name=index_name, i_columns=index_columns)
+                        name=self.data_tag, i_name=index_name, i_columns=index_columns)
                     cur.execute(index_q)
             self.conn.commit()
 
@@ -97,10 +100,14 @@ class Postgres(AbsDriver):
         table = Table(self.conn, table_name)
         table.insert(data)
 
+    def spaces(self) -> list:
+        return ["data", "metadata"]
+
 
 class Table(AbsGroup):
     def __init__(self, conn, name=None, query_parts=None):
-        super(Table, self).__init__(conn, name=name)
+        super(Table, self).__init__(conn)
+        self.name = name
         if query_parts is None:
             self.query_parts = {"columns": None, "slice": None}
         else:

@@ -131,10 +131,13 @@ class Array(da.Array):
 
 
 class Login(object):
-    def __init__(self, username, resource, passwd: str = None):
+    __slots__ = ['username', 'passwd', 'resource', 'url']
+
+    def __init__(self, username, resource, passwd: str = None, url=None):
         self.username = username
         self.passwd = passwd
         self.resource = resource
+        self.url = url
 
 
 def unique_dtypes(dtypes) -> np.ndarray:

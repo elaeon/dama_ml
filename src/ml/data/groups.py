@@ -6,8 +6,22 @@ from collections import OrderedDict
 import dask.array as da
 import numbers
 
+
 class DaGroupDict(OrderedDict):
-    pass
+    def __init__(self, *args, map_rename=None, **kwargs):
+        super(DaGroupDict, self).__init__(*args, **kwargs)
+        if map_rename is None:
+            self.map_rename = {}
+        else:
+            self.map_rename = map_rename
+
+    def rename(self, key, new_key) -> 'DaGroupDict':
+        map_rename = self.map_rename.copy()
+        map_rename[new_key] = key
+        return DaGroupDict(((new_key if k == key else k, v) for k, v in self.items()), map_rename=map_rename)
+
+    def get_oldname(self, name) -> str:
+        return self.map_rename.get(name, name)
 
 
 class DaGroup(AbsGroup):
@@ -16,15 +30,15 @@ class DaGroup(AbsGroup):
             reader_conn = conn
         elif isinstance(conn, dict):
             reader_conn = self.convert(conn, chunks=chunks)
-        elif isinstance(conn, AbsBaseGroup):
+        elif isinstance(conn, AbsBaseGroup) or AbsGroup:
             groups = OrderedDict()
-            if from_groups is not None:
-                for group in conn.groups:
-                    if group in from_groups:
-                        groups[group] = conn.conn[group]
-            else:
-                for group in conn.groups:
-                    groups[group] = conn.get_group(group)
+            #if from_groups is not None:
+            #    for group in conn.groups:
+            #        if group in from_groups:
+            #            groups[group] = conn.conn[group]
+            #else:
+            for group in conn.groups:
+                groups[group] = conn.get_group(group)
             reader_conn = self.convert(groups, chunks=chunks)
             if writer_conn is None:
                 writer_conn = conn
@@ -40,53 +54,82 @@ class DaGroup(AbsGroup):
         return groups
 
     def sample(self, index):
-        conn = DaGroupDict()
-        for group, values in self.conn.items():
-            conn[group] = self.conn[group][index]
-        return DaGroup(conn=conn)
+        return self.set_values(self.groups, index)
 
     @property
     def dtypes(self) -> np.dtype:
         return np.dtype([(group, self.conn[group].dtype) for group in self.conn.keys()])
 
+    def set_values(self, groups, item) -> 'DaGroup':
+        dict_conn = DaGroupDict(map_rename=self.conn.map_rename)
+        for group in groups:
+            dict_conn[group] = self.conn[group][item]
+        return DaGroup(dict_conn, writer_conn=self.writer_conn)
+
     def __getitem__(self, item) -> 'DaGroup':
         if isinstance(item, slice):
-            dict_conn = DaGroupDict()
-            for group in self.groups:
-                dict_conn[group] = self.conn[group][item]
-            return DaGroup(dict_conn, writer_conn=self.writer_conn)
+            return self.set_values(self.groups, item)
         elif isinstance(item, str):
-            dict_conn = DaGroupDict()
+            dict_conn = DaGroupDict(map_rename=self.conn.map_rename)
             dict_conn[item] =  self.conn[item]
             return DaGroup(dict_conn, writer_conn=self.writer_conn)
         elif isinstance(item, int):
-            dict_conn = DaGroupDict()
-            for group in self.groups:
-                dict_conn[group] = self.conn[group][item]
-            return DaGroup(dict_conn, writer_conn=self.writer_conn)
+            return self.set_values(self.groups, item)
         elif isinstance(item, list):
-            dict_conn = DaGroupDict()
-            for group in self.groups:
-                if group in item:
-                    dict_conn[group] = self.conn[group]
+            dict_conn = DaGroupDict(map_rename=self.conn.map_rename)
+            for group in item:
+                dict_conn[group] = self.conn[group]
             return DaGroup(dict_conn, writer_conn=self.writer_conn)
+        elif isinstance(item, np.ndarray) and item.dtype == np.dtype(int):
+            return self.sample(item)
 
     def __setitem__(self, item, value):
-        if hasattr(value, "groups"):
-            for group in value.groups:
-                self.writer_conn.conn[group][item] = value[group].to_ndarray()
-        elif hasattr(value, 'batch'):
-            for group in value.batch.dtype.names:
-                self.writer_conn.conn[group][item] = value.batch[group]
-        elif isinstance(value, numbers.Number):
-            group = self.groups[0]
-            self.writer_conn.conn[group][item] = value
-        elif isinstance(value, np.ndarray):
-            group = self.groups[0]
-            self.writer_conn.conn[group][item] = value
+        if self.writer_conn:#.inblock is True:
+            print(item)
+            batch_size = 2
+            init = 0
+            end = batch_size
+            init_g = init
+            end_g = end
+            shape = tuple([batch_size] + list(self.shape.to_tuple())[1:])
+            while True:
+                total_cols = 0
+                data = np.empty(shape, dtype=float)
+                for group in self.groups:
+                    try:
+                        num_cols = self.shape[group][1]
+                        slice_grp = (slice(init_g, end_g), slice(total_cols, total_cols + num_cols))
+                    except IndexError:
+                        num_cols = 1
+                        slice_grp = (slice(init_g, end_g), total_cols)
+                    data[slice_grp] = self.conn[group][init:end].compute()
+                    total_cols += num_cols
+                init_g = 0
+                end_g = batch_size
+                dataset.data[init:end] = data
+                if end < self.shape.to_tuple()[0]:
+                    init = end
+                    end += batch_size
+                else:
+                    break
         else:
-            if isinstance(item, str):
-                self.writer_conn.conn[item] = value
+            if hasattr(value, "groups"):
+                for group in value.groups:
+                    group = self.conn.get_oldname(group)
+                    self.writer_conn.conn[group][item] = value[group].to_ndarray()
+            elif hasattr(value, 'batch'):
+                for group in value.batch.dtype.names:
+                    group = self.conn.get_oldname(group)
+                    self.writer_conn.conn[group][item] = value.batch[group]
+            elif isinstance(value, numbers.Number):
+                group = self.conn.get_oldname(self.groups[0])
+                self.writer_conn.conn[group][item] = value
+            elif isinstance(value, np.ndarray):
+                group = self.conn.get_oldname(self.groups[0])
+                self.writer_conn.conn[group][item] = value
+            else:
+                if isinstance(item, str):
+                    self.writer_conn.conn[item] = value
 
     def __add__(self, other: 'DaGroup') -> 'DaGroup':
         if other == 0:
@@ -145,42 +188,12 @@ class DaGroup(AbsGroup):
         return pd.DataFrame(stc_arr, index=np.arange(0, stc_arr.shape[0]), columns=columns)
 
     def rename_group(self, old_name, new_name):
-        self.conn[new_name] = self.conn[old_name]
-        del self.conn[old_name]
+        self.conn = self.conn.rename(old_name, new_name)
 
     def store(self, dataset: AbsData):
-        from ml.data.it import Iterator
-        if dataset.driver.inblock is True:
-            batch_size = 2
-            init = 0
-            end = batch_size
-            init_g = init
-            end_g = end
-            shape = tuple([batch_size] + list(self.shape.to_tuple())[1:])
-            while True:
-                total_cols = 0
-                data = np.empty(shape, dtype=float)
-                for group in self.groups:
-                    try:
-                        num_cols = self.shape[group][1]
-                        slice_grp = (slice(init_g, end_g), slice(total_cols, total_cols + num_cols))
-                    except IndexError:
-                        num_cols = 1
-                        slice_grp = (slice(init_g, end_g), total_cols)
-                    data[slice_grp] = self.conn[group][init:end].compute()
-                    total_cols += num_cols
-                init_g = 0
-                end_g = batch_size
-                dataset.data[init:end] = data
-                if end < self.shape.to_tuple()[0]:
-                    init = end
-                    end += batch_size
-                else:
-                    break
-        else:
-            self.writer_conn = dataset.data.writer_conn
-            for group in self.groups:
-                self.conn[group].store(dataset.data[group])
+        self.writer_conn = dataset.data.writer_conn
+        for group in self.groups:
+            self.conn[group].store(dataset.data[group])
 
 
 class StructuredGroup(AbsGroup):

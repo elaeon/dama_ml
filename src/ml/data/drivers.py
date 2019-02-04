@@ -80,9 +80,9 @@ class Zarr(AbsDriver):
     def data(self) -> DaGroup:
         return DaGroup(ZarrGroup(self.conn[self.data_tag]))
 
-    def enter(self, url):
+    def enter(self):
         if self.conn is None:
-            self.conn = zarr.open(url, mode=self.mode)
+            self.conn = zarr.open(self.login.url, mode=self.mode)
             self.attrs = self.conn.attrs
 
     def exit(self):
@@ -98,8 +98,8 @@ class Zarr(AbsDriver):
                                          exact=True, object_codec=object_codec,
                                          compressor=self.compressor)
 
-    def destroy(self, scope):
-        rm(scope)
+    def destroy(self):
+        rm(self.login.url)
 
     def exists(self, scope):
         return os.path.exists(scope)

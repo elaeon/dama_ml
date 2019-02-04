@@ -22,15 +22,18 @@ class AbsBaseGroup(ABC):
     def groups(self) -> tuple:
         return self.dtypes.names
 
+    @property
+    def dtype(self) -> np.dtype:
+        return max_dtype(self.dtypes)
 
-class AbsGroup(ABC):
-    __slots__ = ['conn', 'writer_conn', 'counter', 'tmp_writer_conn']
+
+class AbsGroup(AbsBaseGroup):
+    __slots__ = ['conn', 'writer_conn', 'counter']
 
     def __init__(self, conn, writer_conn=None):
-        self.conn = conn
+        super(AbsGroup, self).__init__(conn)
         self.writer_conn = writer_conn
         self.counter = 0
-        self.tmp_writer_conn = None
 
     @abstractmethod
     def __getitem__(self, item):
@@ -71,14 +74,13 @@ class AbsGroup(ABC):
     def __repr__(self):
         return "{} {}".format(self.__class__.__name__, self.shape)#self.slice)
 
+    def get_group(self, group):
+        return self[group]
+
     @property
     @abstractmethod
     def dtypes(self) -> np.dtype:
         return NotImplemented
-
-    @property
-    def dtype(self) -> np.dtype:
-        return max_dtype(self.dtypes)
 
     @property
     @abstractmethod
@@ -92,10 +94,6 @@ class AbsGroup(ABC):
     @abstractmethod
     def to_df(self) -> pd.DataFrame:
         return NotImplemented
-
-    @property
-    def groups(self) -> tuple:
-        return self.dtypes.names
 
     def items(self):
         return [(group, self.conn[group]) for group in self.groups]
