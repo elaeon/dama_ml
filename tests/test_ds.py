@@ -148,7 +148,7 @@ class TestDataset(unittest.TestCase):
             data.destroy()
 
     def test_no_data(self):
-        with Data(name="test", dataset_path="/tmp", driver=Zarr(GZip(level=5))) as data:
+        with Data(name="test", dataset_path="/tmp", driver=Zarr(GZip(level=5), mode='w')) as data:
             data.author = "AGMR"
             data.description = "description text"
 
@@ -218,9 +218,9 @@ class TestDataset(unittest.TestCase):
             self.assertCountEqual(data["a"].to_ndarray(), df["a"].values)
             self.assertEqual((data[["a", "b"]].to_ndarray() == df[["a", "b"]].values).all(), True)
             self.assertEqual((data[0].to_ndarray(dtype=np.dtype("O")) == df.iloc[0].values).all(), True)
-            self.assertEqual((data[0:1] == df.iloc[0:1].values).all(), True)
-            self.assertEqual((data[3:] == df.iloc[3:].values).all(), True)
-            self.assertEqual((data[:3] == df.iloc[:3].values).all(), True)
+            self.assertEqual((data[0:1].to_ndarray() == df.iloc[0:1].values).all(), True)
+            self.assertEqual((data[3:].to_ndarray() == df.iloc[3:].values).all(), True)
+            self.assertEqual((data[:3].to_ndarray() == df.iloc[:3].values).all(), True)
             data.destroy()
 
     def test_sample(self):
@@ -298,8 +298,9 @@ class TestDataset(unittest.TestCase):
             data.from_data({"x": x, "y": y})
             it = Iterator(data).batchs(batch_size=10)
             for item in it:
-                self.assertEqual((item.batch[:, 0:1] == x[item.slice]).all(), True)
-                self.assertEqual((item.batch[:, 1:6] == y[item.slice]).all(), True)
+                value = item.batch.to_ndarray()
+                self.assertEqual((value[:, 0:1] == x[item.slice]).all(), True)
+                self.assertEqual((value[:, 1:6] == y[item.slice]).all(), True)
             data.destroy()
 
     def test_index_iter(self):

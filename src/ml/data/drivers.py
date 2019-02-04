@@ -77,7 +77,7 @@ class Zarr(AbsDriver):
         return item in self.conn
 
     @property
-    def data(self):
+    def data(self) -> DaGroup:
         return DaGroup(ZarrGroup(self.conn[self.data_tag]))
 
     def enter(self, url):

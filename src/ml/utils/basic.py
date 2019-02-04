@@ -81,8 +81,7 @@ class Shape(object):
         elif len(shapes) == 1:
             return shapes[0]
         else:
-            nshape = []
-            length = self.max_length
+            nshape = [self.max_length]
             max_shape = max(self.values())
             sum_groups = 0
             for shape in self.values():
@@ -94,9 +93,10 @@ class Shape(object):
                         sum_groups += dim[0]
                     else:
                         sum_groups += 1
-            nshape.append(length)
             nshape.append(sum_groups)
             remaining = list(max_shape[2:])
+            if nshape[0] == 0 and len(max_shape) == 0:
+                nshape[0] = 1
             return tuple(nshape + remaining)
 
     @property

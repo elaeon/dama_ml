@@ -24,12 +24,13 @@ class AbsBaseGroup(ABC):
 
 
 class AbsGroup(ABC):
-    __slots__ = ['conn', 'write_conn', 'counter']
+    __slots__ = ['conn', 'writer_conn', 'counter', 'tmp_writer_conn']
 
-    def __init__(self, conn, write_conn=None):
+    def __init__(self, conn, writer_conn=None):
         self.conn = conn
-        self.write_conn = write_conn
+        self.writer_conn = writer_conn
         self.counter = 0
+        self.tmp_writer_conn = None
 
     @abstractmethod
     def __getitem__(self, item):

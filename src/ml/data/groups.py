@@ -11,13 +11,11 @@ class DaGroupDict(OrderedDict):
 
 
 class DaGroup(AbsGroup):
-    def __init__(self, conn, chunks=None, from_groups=None):
+    def __init__(self, conn, chunks=None, from_groups=None, writer_conn=None):
         if isinstance(conn, DaGroupDict):
-            gconn = conn
-            write_conn = None
+            reader_conn = conn
         elif isinstance(conn, dict):
-            gconn = self.convert(conn, chunks=chunks)
-            write_conn = None
+            reader_conn = self.convert(conn, chunks=chunks)
         elif isinstance(conn, AbsBaseGroup):
             groups = OrderedDict()
             if from_groups is not None:
@@ -27,11 +25,12 @@ class DaGroup(AbsGroup):
             else:
                 for group in conn.groups:
                     groups[group] = conn.get_group(group)
-            gconn = self.convert(groups, chunks=chunks)
-            write_conn = conn
+            reader_conn = self.convert(groups, chunks=chunks)
+            if writer_conn is None:
+                writer_conn = conn
         else:
             raise NotImplementedError("Type {} does not supported".format(type(conn)))
-        super(DaGroup, self).__init__(gconn, write_conn=write_conn)
+        super(DaGroup, self).__init__(reader_conn, writer_conn=writer_conn)
 
     def convert(self, groups_dict, chunks) -> dict:
         groups = DaGroupDict()
@@ -50,39 +49,44 @@ class DaGroup(AbsGroup):
     def dtypes(self) -> np.dtype:
         return np.dtype([(group, self.conn[group].dtype) for group in self.conn.keys()])
 
-    def __getitem__(self, item):
+    def __getitem__(self, item) -> 'DaGroup':
         if isinstance(item, slice):
             dict_conn = DaGroupDict()
             for group in self.groups:
                 dict_conn[group] = self.conn[group][item]
-            return DaGroup(dict_conn)
+            return DaGroup(dict_conn, writer_conn=self.writer_conn)
         elif isinstance(item, str):
             dict_conn = DaGroupDict()
             dict_conn[item] =  self.conn[item]
-            return DaGroup(dict_conn)
+            return DaGroup(dict_conn, writer_conn=self.writer_conn)
         elif isinstance(item, int):
             dict_conn = DaGroupDict()
             for group in self.groups:
                 dict_conn[group] = self.conn[group][item]
-            return DaGroup(dict_conn)
+            return DaGroup(dict_conn, writer_conn=self.writer_conn)
         elif isinstance(item, list):
-            print(item)
+            dict_conn = DaGroupDict()
+            for group in self.groups:
+                if group in item:
+                    dict_conn[group] = self.conn[group]
+            return DaGroup(dict_conn, writer_conn=self.writer_conn)
 
     def __setitem__(self, item, value):
         if hasattr(value, "groups"):
             for group in value.groups:
-                self.write_conn.conn[group][item] = value[group].to_ndarray()
+                self.writer_conn.conn[group][item] = value[group].to_ndarray()
         elif hasattr(value, 'batch'):
             for group in value.batch.dtype.names:
-                print(self.conn[group])
-                self.write_conn.conn[group][item] = value.batch[group]
+                self.writer_conn.conn[group][item] = value.batch[group]
         elif isinstance(value, numbers.Number):
-            self.write_conn.conn[item] = value
+            group = self.groups[0]
+            self.writer_conn.conn[group][item] = value
         elif isinstance(value, np.ndarray):
-            self.write_conn.conn[item] = value
+            group = self.groups[0]
+            self.writer_conn.conn[group][item] = value
         else:
             if isinstance(item, str):
-                self.write_conn.conn[item] = value
+                self.writer_conn.conn[item] = value
 
     def __add__(self, other: 'DaGroup') -> 'DaGroup':
         if other == 0:
@@ -104,9 +108,18 @@ class DaGroup(AbsGroup):
         if len(self.groups) == 1:
             return self.conn[self.groups[0]].compute()
         else:
-            data = np.empty(self.shape.to_tuple(), dtype=self.dtype)
+            shape = self.shape.to_tuple()
+            data = np.empty(shape, dtype=self.dtype)
+            total_cols = 0
             for i, group in enumerate(self.groups):
-                data[:, i] = self.conn[group].compute()
+                try:
+                    num_cols = self.shape[group][1]
+                    slice_grp = (slice(None, None), slice(total_cols, total_cols + num_cols))
+                except IndexError:
+                    num_cols = 1
+                    slice_grp = (slice(None, None), total_cols)
+                total_cols += num_cols
+                data[slice_grp] = self.conn[group].compute()
             return data
 
     def to_df(self):
@@ -165,6 +178,7 @@ class DaGroup(AbsGroup):
                 else:
                     break
         else:
+            self.writer_conn = dataset.data.writer_conn
             for group in self.groups:
                 self.conn[group].store(dataset.data[group])
 

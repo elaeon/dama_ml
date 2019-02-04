@@ -39,6 +39,16 @@ class TestShape(unittest.TestCase):
         shape = Shape({"y": (10, 1)})
         self.assertEqual(shape.to_tuple(), (10, 1))
 
+    def test_to_tuple_scalar(self):
+        shape = Shape({"x": (), "y": ()})
+        self.assertEqual(shape.to_tuple(), (1, 2))
+        shape = Shape({"x": ()})
+        self.assertEqual(shape.to_tuple(), ())
+
+    def test_to_tuple_zero(self):
+        shape = Shape({"x": (0,), "y": (0,)})
+        self.assertEqual(shape.to_tuple(), (0, 2))
+
     def test_length(self):
         shape = Shape({"x": (10, 2), "y": (3, 2), "z": (11, 1, 1)})
         self.assertEqual(shape.max_length, 11)
