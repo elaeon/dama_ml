@@ -85,7 +85,6 @@ class DaGroup(AbsGroup):
 
     def __setitem__(self, item, value):
         if self.writer_conn:#.inblock is True:
-            print(item)
             batch_size = 2
             init = 0
             end = batch_size
@@ -102,11 +101,17 @@ class DaGroup(AbsGroup):
                     except IndexError:
                         num_cols = 1
                         slice_grp = (slice(init_g, end_g), total_cols)
-                    data[slice_grp] = self.conn[group][init:end].compute()
+
+                    if len(shape) == 1:
+                        data[slice_grp[0]] = self.conn[group][init:end].compute()
+                    else:
+                        data[slice_grp] = self.conn[group][init:end].compute()
                     total_cols += num_cols
                 init_g = 0
                 end_g = batch_size
-                dataset.data[init:end] = data
+                #dataset.data[init:end] = data
+                print(data, self.writer_conn, item)
+                self.writer_conn[init:end] = data
                 if end < self.shape.to_tuple()[0]:
                     init = end
                     end += batch_size

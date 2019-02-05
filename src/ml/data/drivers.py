@@ -84,6 +84,7 @@ class Zarr(AbsDriver):
         if self.conn is None:
             self.conn = zarr.open(self.login.url, mode=self.mode)
             self.attrs = self.conn.attrs
+        return self
 
     def exit(self):
         self.conn = None

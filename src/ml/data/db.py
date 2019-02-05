@@ -9,7 +9,6 @@ from psycopg2.extras import execute_values
 from ml.fmtypes import fmtypes_map
 from ml.utils.basic import Shape
 from ml.abc.driver import AbsDriver
-from ml.utils.numeric_functions import all_int
 from ml.data.it import Iterator, BatchIterator
 from ml.utils.decorators import cache
 from ml.abc.group import AbsGroup, AbsBaseGroup
@@ -119,11 +118,14 @@ class Table(AbsGroup):
             query_parts["columns"] = [item]
             return Table(self.conn, name=self.name, query_parts=query_parts)
         elif isinstance(item, list) or isinstance(item, tuple):
-            if all_int(item):
+            it = Iterator(item)
+            if it.type_elem == int:
                 query_parts["slice"] = [slice(index, index + 1) for index in item]
-            else:
+            elif it.type_elem == slice:
+                query_parts["slice"] = item
+            elif it.type_elem == str:
                 query_parts["columns"] = item
-            return Table(self.conn, name=self.name, query_parts=query_parts)
+            return Table(self.conn, name=self.name, query_parts=query_parts).to_ndarray()
         elif isinstance(item, int):
             query_parts["slice"] = slice(item, item + 1)
             return Table(self.conn, name=self.name, query_parts=query_parts).to_ndarray()
@@ -132,6 +134,7 @@ class Table(AbsGroup):
             return Table(self.conn, name=self.name, query_parts=query_parts).to_ndarray()
 
     def __setitem__(self, item, value):
+        print(item, value)
         if hasattr(value, 'batch'):
             value = value.batch
 
@@ -146,6 +149,7 @@ class Table(AbsGroup):
             start = item.start
 
         last_id = self.last_id()
+        print(last_id, stop)
         if last_id < stop:
             self.insert(value, batch_size=abs(stop - start))
         else:
@@ -178,9 +182,12 @@ class Table(AbsGroup):
         cur = self.conn.cursor(uuid.uuid4().hex, scrollable=False, withhold=False)
         cur.execute(query)
         cur.itersize = chunksize[0]
-        cur.scroll(slice_item.start)
-        array = np.empty(self.shape, self.dtype)
-        if len(self.shape.groups()) == 1:
+        if abs(slice_item.start - slice_item.stop) == 1:
+            cur.scroll(0)
+        else:
+            cur.scroll(slice_item.start)
+        array = np.empty(self.shape, dtype=self.dtype)
+        if len(self.groups) == 1:
             for i, row in enumerate(cur):
                 array[i] = row[0]
         else:
@@ -251,12 +258,15 @@ class Table(AbsGroup):
 
     def build_limit_info(self) -> tuple:
         if isinstance(self.query_parts["slice"], list):
-            index = [index.start - 1 for index in self.query_parts["slice"]]
-            min_elem = min(index)
-            stop = len(index)
-            return slice(min_elem, stop), "LIMIT {}".format(stop)
-
-        item = self.query_parts["slice"]
+            index_start = [index.start for index in self.query_parts["slice"]]
+            index_stop = [index.stop for index in self.query_parts["slice"]]
+            min_elem = min(index_start)
+            max_elem = max(index_stop)
+            return slice(min_elem, max_elem), "LIMIT {}".format(max_elem)
+        elif isinstance(self.query_parts["slice"], tuple):
+            item = self.query_parts["slice"][0]
+        else:
+            item = self.query_parts["slice"]
         if item is None:
             start = 0
             stop = None

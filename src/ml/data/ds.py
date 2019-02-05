@@ -52,6 +52,7 @@ class Data(AbsData):
         self.description = None
         self.timestamp = None
         self.compressor_params = None
+        self.driver.login.url = self.url
 
     def clean_data(self):
         ds_exist = self.driver.exists(self.url)
@@ -123,7 +124,7 @@ class Data(AbsData):
         pass
 
     def __enter__(self):
-        self.driver.enter(self.url)
+        self.driver.enter()
         if self.driver.mode in ["w", "a", "r+"]:
             if self.driver.data_tag is None:
                 self.driver.data_tag = self.name
@@ -177,7 +178,7 @@ class Data(AbsData):
                     self.driver.data[group][i] = smx[j]
 
     def destroy(self):
-        self.driver.destroy(scope=self.name)
+        self.driver.destroy()
         meta_url = self.metadata_url()
         if meta_url is not None:
             rm(meta_url)
