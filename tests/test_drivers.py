@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from ml.data.drivers import Memory, Zarr
+from ml.data.drivers import Memory, Zarr, HDF5
 from ml.utils.basic import Shape, Login
 from ml.data.db import Postgres
 
@@ -13,18 +13,20 @@ class TestDriver(unittest.TestCase):
         self.shape = Shape({"c0": self.array_c0.shape, "c1": self.array_c1.shape})
         self.dtype = np.dtype([("c0", self.array_c0.dtype), ("c1", self.array_c1.dtype)])
         self.login = Login(username="alejandro", resource="ml", url=self.url)
-        self.driver = Postgres(login=self.login)
+        #self.driver = Postgres(login=self.login)
         #self.driver = Zarr(login=self.login)
-        self.driver.data_tag = "test"
+        #self.driver = Memory()
+        self.driver = HDF5(login=self.login)
+        #self.driver.data_tag = "test"
         with self.driver:
             self.driver.set_schema(self.dtype)
             self.driver.set_data_shape(self.shape)
-            if self.driver.inblock is True:
+            if self.driver.data.writer_conn.inblock is True:
                 array = np.concatenate((self.array_c0.reshape(-1, 1), self.array_c1.reshape(-1, 1)), axis=1)
                 self.driver.data.writer_conn.insert(array)
             else:
-                self.driver.data.writer_conn.conn["c0"] = self.array_c0
-                self.driver.data.writer_conn.conn["c1"] = self.array_c1
+                self.driver.data.writer_conn.conn["c0"][0:10] = self.array_c0
+                self.driver.data.writer_conn.conn["c1"][0:10] = self.array_c1
 
     def tearDown(self):
         with self.driver:
@@ -53,6 +55,7 @@ class TestDriver(unittest.TestCase):
 
             self.assertEqual((self.driver.data.conn["c0"][4:9].compute() == self.array_c0[4:9]).all(), True)
             self.assertEqual((self.driver.data.conn["c0"][0:10].compute() == self.array_c0[0:10]).all(), True)
+            self.assertEqual((self.driver.data.conn["c0"][1].compute() == self.array_c0[1]).all(), True)
 
     def test_iteration(self):
         with self.driver:
@@ -67,7 +70,9 @@ class TestDriver(unittest.TestCase):
 
     def test_setitem(self):
         with self.driver:
-            self.driver.data["c0"][11:13] = [1, 2]
+            self.driver.data[11] = [1., 2.]
+            print(self.driver.data["c0"][0:10].to_ndarray(), "TEST")
+            print(self.driver.data["c0"][10:11].to_ndarray(), "TEST")
 
     def test_rename(self):
         with self.driver:
@@ -76,15 +81,15 @@ class TestDriver(unittest.TestCase):
             self.assertEqual(data.dtypes, [("group0", self.array_c0.dtype), ("c1", self.array_c1.dtype)])
             self.assertEqual(data["group0"].dtypes, [("group0", self.array_c0.dtype)])
 
-            data["group0"][9] = -1
-            self.assertEqual(data["group0"][9].to_ndarray(), -1)
+            data["group0"][8] = -1
+            self.assertEqual(data["group0"][8].to_ndarray(), -1)
 
     def test_multicolum_get(self):
         with self.driver:
             da_group = self.driver.data[["c0", "c1"]]
             array = da_group.to_ndarray()
-            self.assertEqual((array[:, 0] == self.driver.data["c0"][:]).all(), True)
-            self.assertEqual((array[:, 1] == self.driver.data["c1"][:]).all(), True)
+            self.assertEqual((array[:, 0] == self.driver.data["c0"].to_ndarray()).all(), True)
+            self.assertEqual((array[:, 1] == self.driver.data["c1"].to_ndarray()).all(), True)
 
     def test_to_dagroup(self):
         with self.driver:

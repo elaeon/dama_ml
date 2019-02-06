@@ -9,7 +9,6 @@ log = log_config(__name__)
 class AbsDriver(ABC):
     persistent = None
     ext = None
-    inblock = False
 
     def __init__(self, compressor: Codec = None, login=None, mode: str= 'a'):
         self.compressor = compressor
@@ -75,7 +74,7 @@ class AbsDriver(ABC):
         return NotImplemented
 
     @abstractmethod
-    def exists(self, scope):
+    def exists(self):
         return NotImplemented
 
     @abstractmethod

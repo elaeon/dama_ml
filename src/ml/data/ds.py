@@ -10,7 +10,7 @@ from tqdm import tqdm
 from ml.abc.data import AbsData
 from ml.data.it import Iterator, BaseIterator, BatchIterator
 from ml.utils.files import build_path
-from ml.utils.basic import Hash, Array
+from ml.utils.basic import Hash, Array, Login
 from ml.abc.driver import AbsDriver
 from ml.data.drivers import Memory
 from ml.abc.group import AbsGroup
@@ -52,11 +52,15 @@ class Data(AbsData):
         self.description = None
         self.timestamp = None
         self.compressor_params = None
-        self.driver.login.url = self.url
+        if self.driver.login is None:
+            self.driver.login = Login(url=self.url)
+        else:
+            self.driver.login.url = self.url
 
     def clean_data(self):
-        ds_exist = self.driver.exists(self.url)
+        ds_exist = self.driver.exists()
         if ds_exist and self.driver.mode == "w":
+            log.debug("CLEANING DATA")
             self.destroy()
             build_path(self.dir_levels())
 
@@ -125,11 +129,15 @@ class Data(AbsData):
 
     def __enter__(self):
         self.driver.enter()
+        self.clean_data()
         if self.driver.mode in ["w", "a", "r+"]:
             if self.driver.data_tag is None:
                 self.driver.data_tag = self.name
             if len(self.driver.compressor_params) > 0:
                 self.compressor_params = self.driver.compressor_params
+        elif self.driver.mode == "r":
+            if self.driver.data_tag is None:
+                self.driver.data_tag = self.name
         return self
 
     def __exit__(self, exc_type, value, traceback):
@@ -276,7 +284,6 @@ class Data(AbsData):
         return str(hash_obj)
 
     def from_data(self, data, batch_size: int = 258, with_hash: str = "sha1"):
-        self.clean_data()
         if isinstance(data, da.Array):
             data = Array.from_da(data)
         elif isinstance(data, Iterator):

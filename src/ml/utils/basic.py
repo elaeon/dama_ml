@@ -133,7 +133,7 @@ class Array(da.Array):
 class Login(object):
     __slots__ = ['username', 'passwd', 'resource', 'url']
 
-    def __init__(self, username, resource, passwd: str = None, url=None):
+    def __init__(self, username: str = None, resource: str = None, passwd: str = None, url=None):
         self.username = username
         self.passwd = passwd
         self.resource = resource

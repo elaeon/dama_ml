@@ -11,7 +11,7 @@ from ml.utils.basic import Shape
 from ml.abc.driver import AbsDriver
 from ml.data.it import Iterator, BatchIterator
 from ml.utils.decorators import cache
-from ml.abc.group import AbsGroup, AbsBaseGroup
+from ml.abc.group import AbsGroup
 from ml.data.groups import DaGroup
 
 log = log_config(__name__)
@@ -22,7 +22,6 @@ class Postgres(AbsDriver):
     ext = 'sql'
     data_tag = None
     metadata_tag = None
-    inblock = True
 
     def __contains__(self, item):
         return self.exists(item)
@@ -47,11 +46,10 @@ class Postgres(AbsDriver):
     @property
     def data(self):
         return DaGroup(Table(self.conn, name=self.data_tag))
-        # return DaGroup(ZarrGroup(self.conn[self.data_tag]))
 
-    def exists(self, scope) -> bool:
+    def exists(self) -> bool:
         cur = self.conn.cursor()
-        cur.execute("select exists(select relname from pg_class where relname='{name}')".format(name=scope))
+        cur.execute("select exists(select relname from pg_class where relname='{name}')".format(name=self.data_tag))
         return True if cur.fetchone()[0] else False
 
     def destroy(self):
@@ -68,7 +66,7 @@ class Postgres(AbsDriver):
 
     def set_schema(self, dtypes: np.dtype):
         idx = None
-        if not self.exists(self.data_tag):
+        if not self.exists():
             columns_types = ["id serial PRIMARY KEY"]
             for group, (dtype, _) in dtypes.fields.items():
                 fmtype = fmtypes_map[dtype]
@@ -104,6 +102,8 @@ class Postgres(AbsDriver):
 
 
 class Table(AbsGroup):
+    inblock = True
+
     def __init__(self, conn, name=None, query_parts=None):
         super(Table, self).__init__(conn)
         self.name = name
@@ -134,7 +134,6 @@ class Table(AbsGroup):
             return Table(self.conn, name=self.name, query_parts=query_parts).to_ndarray()
 
     def __setitem__(self, item, value):
-        print(item, value)
         if hasattr(value, 'batch'):
             value = value.batch
 
@@ -144,19 +143,33 @@ class Table(AbsGroup):
                 start = item[0].start
             else:
                 raise NotImplementedError
+            batch_size = abs(stop - start)
         elif isinstance(item, slice):
             stop = item.stop
             start = item.start
+            batch_size = abs(stop - start)
+        elif isinstance(item, int):
+            start = item
+            stop = item + 1
+            if hasattr(value, '__len__'):
+                batch_size = len(value)
+            else:
+                batch_size = 1
 
         last_id = self.last_id()
-        print(last_id, stop)
         if last_id < stop:
-            self.insert(value, batch_size=abs(stop - start))
+            self.insert(value, batch_size=batch_size)
         else:
-            self.update(value)
+            self.update(value, item)
 
     def __iter__(self):
         pass
+
+    def get_group(self, group):
+        return self[group]
+
+    def get_conn(self, group):
+        return self[group]
 
     def insert(self, data, batch_size=258):
         if not isinstance(data, BatchIterator):
@@ -167,22 +180,37 @@ class Table(AbsGroup):
         insert = insert_str + " %s"
         cur = self.conn.cursor()
         for row in tqdm(data, total=len(data)):
-            execute_values(cur, insert, row.batch["c0"], page_size=len(data))
+            if len(row.batch["c0"].shape) < 2:
+                value = row.batch["c0"].reshape(1, -1)
+            else:
+                value = row.batch["c0"]
+            execute_values(cur, insert, value, page_size=len(data))
         self.conn.commit()
 
-    def update(self, value):
-        raise NotImplementedError
+    def update(self, value, item):
+        if isinstance(item, int):
+            columns_values = [[self.groups[0], value]]
+            columns_values = ["{col}={val}".format(col=col, val=val) for col, val in columns_values]
+            query = "UPDATE {name} SET {columns_val} WHERE ID = {id}".format(
+                name=self.name, columns_val=",".join(columns_values), id=item+1
+            )
+            cur = self.conn.cursor()
+            cur.execute(query)
+            self.conn.commit()
+        else:
+            raise NotImplementedError
 
     def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
         if self.dtype is None:
             return np.asarray([])
 
         slice_item, _ = self.build_limit_info()
-        query = self.build_query()
+        query, one_row = self.build_query()
         cur = self.conn.cursor(uuid.uuid4().hex, scrollable=False, withhold=False)
         cur.execute(query)
         cur.itersize = chunksize[0]
-        if abs(slice_item.start - slice_item.stop) == 1:
+        print("GET DATA", query)
+        if one_row:
             cur.scroll(0)
         else:
             cur.scroll(slice_item.start)
@@ -286,15 +314,17 @@ class Table(AbsGroup):
 
         return slice(start, stop), limit_txt
 
-    def build_query(self) -> str:
+    def build_query(self) -> tuple:
         if isinstance(self.query_parts["slice"], list):
             id_list = [index.start + 1 for index in self.query_parts["slice"]]
             query = "SELECT {columns} FROM {table_name} WHERE ID IN ({id_list}) ORDER BY {order_by}".format(
                 columns=self.format_columns(), table_name=self.name, order_by="id",
                 id_list=",".join(map(str, id_list)))
+            one_row = True
         else:
             slice_item, limit_txt = self.build_limit_info()
             query = "SELECT {columns} FROM {table_name} ORDER BY {order_by} {limit}".format(
                 columns=self.format_columns(), table_name=self.name, order_by="id",
                 limit=limit_txt)
-        return query
+            one_row = False
+        return query, one_row

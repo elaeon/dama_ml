@@ -7,10 +7,8 @@ from h5py.highlevel import Group as H5Group
 
 from numcodecs import MsgPack
 from ml.abc.driver import AbsDriver
-from ml.utils.basic import Shape
 from ml.utils.files import rm
-from ml.utils.numeric_functions import max_dtype
-from ml.abc.group import AbsGroup, AbsBaseGroup
+from ml.abc.group import AbsBaseGroup
 from ml.data.groups import DaGroup
 from ml.utils.logger import log_config
 
@@ -21,16 +19,18 @@ class HDF5(AbsDriver):
     persistent = True
     ext = 'h5'
     data_tag = "data"
+    metadata_tag = "metadata"
 
     def __contains__(self, item):
         return item in self.conn
 
-    def __getitem__(self, item):
-        return HDF5Group(self.conn[self.data_tag])
+    @property
+    def data(self) -> DaGroup:
+        return DaGroup(HDF5Group(self.conn[self.data_tag]))
 
-    def enter(self, url):
+    def enter(self):
         if self.conn is None:
-            self.conn = h5py.File(url, mode=self.mode)
+            self.conn = h5py.File(self.login.url, mode=self.mode)
             self.attrs = self.conn.attrs
 
     def exit(self):
@@ -45,26 +45,36 @@ class HDF5(AbsDriver):
         self.conn[level].require_dataset(group, shape, dtype=dtype, chunks=True, exact=True,
                                          **self.compressor_params)
 
-    def destroy(self, scope):
-        rm(scope)
+    def destroy(self):
+        rm(self.login.url)
 
-    def exists(self, scope):
-        return os.path.exists(scope)
+    def exists(self):
+        return os.path.exists(self.login.url)
 
-    def set_schema(self, name, dtypes):
-        self.conn.require_group("metadata")
-        self.require_dataset("metadata", "dtypes", (len(dtypes), 2), dtype=np.dtype('object'))
-        for i, (group, dtype) in enumerate(dtypes):
-            self.conn["metadata"]["dtypes"][i] = (group, dtype.str)
+    def set_schema(self, dtypes: np.dtype):
+        if self.metadata_tag in self.conn:
+           log.debug("Rewriting dtypes")
+
+        self.conn.require_group(self.metadata_tag)
+        self.require_dataset(self.metadata_tag, "dtypes", (len(dtypes), 2), dtype=np.dtype('object'))
+        for i, (group, (dtype, _)) in enumerate(dtypes.fields.items()):
+            self.conn[self.metadata_tag]["dtypes"][i] = (group, dtype.str)
 
     def set_data_shape(self, shape):
         self.conn.require_group(self.data_tag)
-        for group, dtype in self.dtypes("metadata"):
-            self.require_dataset(self.data_tag, group, shape[group], dtype)
+        dtypes = self.dtypes
+        if dtypes is not None:
+            for group, (dtype, _) in dtypes.fields.items():
+                self.require_dataset(self.data_tag, group, shape[group], dtype)
 
-    def dtypes(self, name) -> list:
-        dtypes = self.conn["metadata"]["dtypes"]
-        return [(col, np.dtype(dtype)) for col, dtype in dtypes]
+    @property
+    def dtypes(self) -> np.dtype:
+        if self.metadata_tag in self.conn:
+            dtypes = self.conn[self.metadata_tag]["dtypes"]
+            return np.dtype([(col, np.dtype(dtype)) for col, dtype in dtypes])
+
+    def spaces(self) -> list:
+        return list(self.conn.keys())
 
 
 class Zarr(AbsDriver):
@@ -82,6 +92,7 @@ class Zarr(AbsDriver):
 
     def enter(self):
         if self.conn is None:
+            print(self.login.url, "URL", self.mode)
             self.conn = zarr.open(self.login.url, mode=self.mode)
             self.attrs = self.conn.attrs
         return self
@@ -102,8 +113,8 @@ class Zarr(AbsDriver):
     def destroy(self):
         rm(self.login.url)
 
-    def exists(self, scope):
-        return os.path.exists(scope)
+    def exists(self):
+        return os.path.exists(self.login.url)
 
     def set_schema(self, dtypes:np.dtype):
         if self.metadata_tag in self.conn:
@@ -141,55 +152,46 @@ class Memory(Zarr):
     def exit(self):
         pass
 
+    def destroy(self):
+        pass
+
 
 
 class ZarrGroup(AbsBaseGroup):
+    inblock = False
 
     @property
     def dtypes(self) -> np.dtype:
         return np.dtype([(group, self.conn[group].dtype) for group in self.conn.keys()])
 
-    def get_group(self, group):
+    def get_group(self, group) -> AbsBaseGroup:
+        if isinstance(self.conn, ZGroup):
+            return ZarrGroup(self.conn[group])
+        else:
+            return ZarrGroup(self.conn)
+
+    def get_conn(self, group):
         if isinstance(self.conn, ZGroup):
             return self.conn[group]
         else:
             return self.conn
 
 
-class HDF5Group(object):
-    def __init__(self, conn, name=None):
-        self.conn = conn
-        self.name = name
+class HDF5Group(AbsBaseGroup):
+    inblock = False
 
-    def __getitem__(self, item):
+    @property
+    def dtypes(self) -> np.dtype:
+        return np.dtype([(group, self.conn[group].dtype) for group in self.conn.keys()])
+
+    def get_group(self, group) -> AbsBaseGroup:
         if isinstance(self.conn, H5Group):
-            return HDF5Group(self.conn[item], name=item)
+            return ZarrGroup(self.conn[group])
         else:
-            return HDF5Group(self.conn[item], name=self.name)
+            return ZarrGroup(self.conn)
 
-    def __setitem__(self, item, value):
-        if hasattr(value, "groups"):
-            for group in value.groups:
-                self.conn[group][item] = value[group]
-
-    def __len__(self):
-        return self.shape.to_tuple()[0]
-
-    @property
-    def dtypes(self):
+    def get_conn(self, group):
         if isinstance(self.conn, H5Group):
-            return [(key, self.conn[key].dtype) for key in self.conn.keys()]
+            return self.conn[group]
         else:
-            return [(self.name, self.conn.dtype)]
-
-    @property
-    def dtype(self) -> np.dtype:
-        return max_dtype(self.dtypes)
-
-    @property
-    def shape(self) -> Shape:
-        shape = dict([(group, self.conn.shape) for group, _ in self.dtypes])
-        return Shape(shape)
-
-    def compute(self, chunksize=(258,)):
-        return self.conn
+            return self.conn

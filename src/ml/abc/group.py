@@ -18,6 +18,10 @@ class AbsBaseGroup(ABC):
     def get_group(self, group):
         return NotImplemented
 
+    @abstractmethod
+    def get_conn(self, group):
+        return NotImplemented
+
     @property
     def groups(self) -> tuple:
         return self.dtypes.names
@@ -75,6 +79,9 @@ class AbsGroup(AbsBaseGroup):
         return "{} {}".format(self.__class__.__name__, self.shape)#self.slice)
 
     def get_group(self, group):
+        return self[group]
+
+    def get_conn(self, group):
         return self[group]
 
     @property
