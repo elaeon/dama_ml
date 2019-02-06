@@ -57,10 +57,10 @@ class Data(AbsData):
         else:
             self.driver.login.url = self.url
 
-    def clean_data(self):
+    def drop_data(self):
         ds_exist = self.driver.exists()
         if ds_exist and self.driver.mode == "w":
-            log.debug("CLEANING DATA")
+            log.debug("DROP DATA")
             self.destroy()
             build_path(self.dir_levels())
 
@@ -127,17 +127,18 @@ class Data(AbsData):
     def data(self, v):
         pass
 
+    def clean_data_cache(self):
+        self.data = None
+
     def __enter__(self):
         self.driver.enter()
-        self.clean_data()
+        self.drop_data()
+        if self.driver.data_tag is None:
+            self.driver.data_tag = self.name
+
         if self.driver.mode in ["w", "a", "r+"]:
-            if self.driver.data_tag is None:
-                self.driver.data_tag = self.name
             if len(self.driver.compressor_params) > 0:
                 self.compressor_params = self.driver.compressor_params
-        elif self.driver.mode == "r":
-            if self.driver.data_tag is None:
-                self.driver.data_tag = self.name
         return self
 
     def __exit__(self, exc_type, value, traceback):

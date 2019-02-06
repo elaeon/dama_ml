@@ -87,9 +87,9 @@ class DaGroup(AbsGroup):
                     group = self.conn.get_oldname(group)
                     self.writer_conn.conn[group][item] = value[group].to_ndarray()
             elif hasattr(value, 'batch'):
-                for group in value.batch.dtype.names:
+                for group in value.batch.groups:
                     group = self.conn.get_oldname(group)
-                    self.writer_conn.conn[group][item] = value.batch[group]
+                    self.writer_conn.conn[group][item] = value.batch[group].to_ndarray()
             elif isinstance(value, numbers.Number):
                 self.writer_conn.conn[item] = value
             elif isinstance(value, np.ndarray):
@@ -115,8 +115,8 @@ class DaGroup(AbsGroup):
         return Shape(shape)
 
     def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)):
+        self.writer_conn.attrs["dtype"] = dtype
         if len(self.groups) == 1:
-            print("DDDD", self.conn, self.writer_conn)
             return self.conn[self.groups[0]].compute()
         else:
             shape = self.shape.to_tuple()
@@ -160,7 +160,7 @@ class DaGroup(AbsGroup):
 
     def store(self, dataset: AbsData):
         self.writer_conn = dataset.data.writer_conn
-        if dataset.data.writer_conn.inblock is True:
+        if self.writer_conn.inblock is True:
             from ml.data.it import Iterator
             for e in Iterator(self).batchs(batch_size=258):
                 dataset.data[e.slice] = e.batch.to_ndarray()
@@ -169,52 +169,15 @@ class DaGroup(AbsGroup):
                 self.conn[group].store(dataset.data[group])
 
 
-class StructuredGroup(AbsGroup):
-    def __init__(self, conn, name=None):
-        super(StructuredGroup, self).__init__(conn, name=name)
-
-    def __getitem__(self, item):
-        if isinstance(item, str):
-            key = self.alias_map.get(item, item)
-            group = StructuredGroup(self.conn[key])
-            group.slice = self.slice
-            return group
-        else:
-            group = StructuredGroup(self.conn)
-            if isinstance(item, slice):
-                group.slice = item
-            elif isinstance(item, int):
-                group.slice = slice(item, item + 1)
-            else:
-                group.slice = self.slice
-            return group.to_ndarray()
-
-    def __setitem__(self, item, value):
-        if hasattr(value, "groups"):
-            for group in value.groups:
-                self.conn[group][item] = value[group]
+class StcArrayGroup(AbsBaseGroup):
+    inblock = False
 
     @property
     def dtypes(self) -> np.dtype:
-        if isinstance(self.conn, np.ndarray):
-            if self.conn.dtype.fields is None:
-                return self.conn.dtype
-            else:
-                return np.dtype([(self.inv_map.get(group, group), dtype) for group, (dtype, _) in self.conn.dtype.fields.items()])
-        elif isinstance(self.conn, np.void):
-            return np.dtype(
-                [(self.inv_map.get(group, group), dtype) for group, (dtype, _) in self.conn.dtype.fields.items()])
+        return self.conn.dtype
 
-    @property
-    def shape(self) -> Shape:
-        if isinstance(self.conn, np.ndarray):
-            if self.groups is None:
-                shape = dict([("c0", self.conn.shape)])
-            else:
-                shape = dict([(group, self.conn[group].shape) for group in self.groups])
-        else:
-            shape = dict([(group, self.conn.shape) for group in self.groups])
-        return Shape(shape)
+    def get_group(self, group) -> AbsBaseGroup:
+        return StcArrayGroup(self.conn[group])
 
-    def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
-        return self.conn[self.slice]
+    def get_conn(self, group):
+        return self.conn[group]

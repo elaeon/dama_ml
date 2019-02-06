@@ -12,7 +12,7 @@ from ml.utils.logger import log_config
 from ml.abc.data import AbsData
 from ml.abc.group import AbsGroup
 from ml.utils.numeric_functions import nested_shape
-from ml.data.groups import DaGroup
+from ml.data.groups import DaGroup, StcArrayGroup
 
 log = log_config(__name__)
 Slice = namedtuple('Slice', 'batch slice')
@@ -525,7 +525,7 @@ class BatchGroup(BatchIterator):
         init = 0
         end = self.batch_size
         while True:
-            batch = self.data.data[init:end]
+            batch = self.data.data[init:end]  # Always return a Dagroup
             if len(batch) > 0:
                 yield Slice(batch=batch, slice=slice(init, end))
                 init = end
@@ -540,4 +540,5 @@ class BatchItGroup(BatchIterator):
 
     def batch_from_it(self, shape):
         for start_i, end_i, stc_array in str_array(shape, self.batch_size, self.data, self.data.dtypes):
-            yield Slice(batch=stc_array, slice=slice(start_i, end_i))
+            da_group = DaGroup(StcArrayGroup(stc_array))
+            yield Slice(batch=da_group, slice=slice(start_i, end_i))

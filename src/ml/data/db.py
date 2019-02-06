@@ -125,13 +125,16 @@ class Table(AbsGroup):
                 query_parts["slice"] = item
             elif it.type_elem == str:
                 query_parts["columns"] = item
-            return Table(self.conn, name=self.name, query_parts=query_parts).to_ndarray()
+            dtype = self.attrs.get("dtype", None)
+            return Table(self.conn, name=self.name, query_parts=query_parts).to_ndarray(dtype=dtype)
         elif isinstance(item, int):
             query_parts["slice"] = slice(item, item + 1)
-            return Table(self.conn, name=self.name, query_parts=query_parts).to_ndarray()
+            dtype = self.attrs.get("dtype", None)
+            return Table(self.conn, name=self.name, query_parts=query_parts).to_ndarray(dtype=dtype)
         elif isinstance(item, slice):
             query_parts["slice"] = item
-            return Table(self.conn, name=self.name, query_parts=query_parts).to_ndarray()
+            dtype = self.attrs.get("dtype", None)
+            return Table(self.conn, name=self.name, query_parts=query_parts).to_ndarray(dtype=dtype)
 
     def __setitem__(self, item, value):
         if hasattr(value, 'batch'):
@@ -180,10 +183,11 @@ class Table(AbsGroup):
         insert = insert_str + " %s"
         cur = self.conn.cursor()
         for row in tqdm(data, total=len(data)):
-            if len(row.batch["c0"].shape) < 2:
-                value = row.batch["c0"].reshape(1, -1)
+            shape = row.batch.shape.to_tuple()
+            if len(shape) == 1:
+                value = row.batch.to_ndarray().reshape(-1, 1)
             else:
-                value = row.batch["c0"]
+                value = row.batch.to_ndarray()
             execute_values(cur, insert, value, page_size=len(data))
         self.conn.commit()
 
@@ -209,7 +213,6 @@ class Table(AbsGroup):
         cur = self.conn.cursor(uuid.uuid4().hex, scrollable=False, withhold=False)
         cur.execute(query)
         cur.itersize = chunksize[0]
-        print("GET DATA", query)
         if one_row:
             cur.scroll(0)
         else:

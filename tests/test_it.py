@@ -420,8 +420,7 @@ class TestIteratorFromData(unittest.TestCase):
         x = np.random.rand(10)
         with Data(name="test") as data:
             data.from_data(x)
-            da_group = data.data.to_dagroup(chunks=(2,))
-            it = Iterator(da_group)
+            it = Iterator(data)
             self.assertEqual(it.shape, (10,))
             self.assertEqual([(g, d) for g, (d, _) in it.dtypes.fields.items()], [("c0", np.dtype(float))])
 
@@ -429,8 +428,7 @@ class TestIteratorFromData(unittest.TestCase):
         x = np.random.rand(10)
         with Data(name="test") as data:
             data.from_data(x)
-            da_group = data.data.to_dagroup(chunks=(2,))
-            it = Iterator(da_group)
+            it = Iterator(data)
             for i, e in enumerate(it):
                 self.assertEqual(e, x[i])
 
@@ -438,8 +436,7 @@ class TestIteratorFromData(unittest.TestCase):
         x = np.random.rand(10)
         with Data(name="test") as data:
             data.from_data(x)
-            da_group = data.data.to_dagroup(chunks=(2,))
-            it = Iterator(da_group).batchs(batch_size=3)
+            it = Iterator(data).batchs(batch_size=3)
             for i, e in enumerate(it):
                 self.assertEqual((e.batch.to_ndarray() == x[e.slice]).all(), True)
 
@@ -452,7 +449,7 @@ class TestIteratorLoop(unittest.TestCase):
             it = Iterator(data).cycle()[:20]
             elems = []
             for i, e in enumerate(it):
-                elems.append(e)
+                elems.append(e.to_ndarray())
         self.assertEqual(elems, list(range(10))*2)
 
     def test_it2iter(self):
@@ -465,9 +462,9 @@ class TestIteratorLoop(unittest.TestCase):
             data.from_data(da_group)
             it = Iterator(data).batchs(batch_size=1).cycle().to_iter()
             for i, x_y_z in enumerate(it):
-                self.assertEqual(x_y_z[0][0], x_array[i])
-                self.assertEqual(x_y_z[0][1], y_array[i])
-                self.assertEqual(x_y_z[0][2], z_array[i])
+                self.assertEqual(x_y_z["x"][0].to_ndarray(), x_array[i])
+                self.assertEqual(x_y_z["y"][0].to_ndarray(), y_array[i])
+                self.assertEqual(x_y_z["z"][0].to_ndarray(), z_array[i])
                 break
 
     def test_cycle_it_batch_cut(self):
@@ -477,7 +474,7 @@ class TestIteratorLoop(unittest.TestCase):
             it = Iterator(data).batchs(batch_size=3).cycle()[:22]
             elems = []
             for i, e in enumerate(it):
-                elems.append(e.batch)
+                elems.append(e.batch.to_ndarray())
 
         self.assertCountEqual(elems[0], [0, 1, 2])
         self.assertCountEqual(elems[3], [9])

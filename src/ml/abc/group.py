@@ -8,6 +8,7 @@ import pandas as pd
 class AbsBaseGroup(ABC):
     def __init__(self, conn):
         self.conn = conn
+        self.attrs = Attrs()
 
     @property
     @abstractmethod
@@ -31,8 +32,20 @@ class AbsBaseGroup(ABC):
         return max_dtype(self.dtypes)
 
 
+class Singleton(type):
+    _instances = {}
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class Attrs(dict, metaclass=Singleton):
+    pass
+
+
 class AbsGroup(AbsBaseGroup):
-    __slots__ = ['conn', 'writer_conn', 'counter']
+    __slots__ = ['conn', 'writer_conn', 'counter', 'attrs']
 
     def __init__(self, conn, writer_conn=None):
         super(AbsGroup, self).__init__(conn)
@@ -65,10 +78,10 @@ class AbsGroup(AbsBaseGroup):
         if isinstance(elem, np.ndarray):
             return elem
         elif len(elem.groups) == 1:
-            array = elem.to_ndarray()
+            #array = elem.to_ndarray()
             #if len(elem.shape[elem.groups[0]]) == 0:  # fixme
             #    array = array[0]
-            return array
+            return elem
         else:
             return elem
 

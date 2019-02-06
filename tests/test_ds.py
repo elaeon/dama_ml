@@ -420,10 +420,33 @@ class TestPsqlDriver(unittest.TestCase):
         with Data(name="test", driver=Postgres(login=self.login, mode="w")) as data:
             data.destroy()
             data.from_data({"x": x, "y": y}, batch_size=3)
-            print(data["x"])
+            data.clean_data_cache()
+            self.assertEqual((data["x"].to_ndarray(dtype=np.dtype("int8")) == x.astype("int8")).all(), True)
+            self.assertEqual((data["y"].to_ndarray(dtype=np.dtype("int8")) == y.astype("int8")).all(), True)
+            data.destroy()
 
-        with Data(name="test", driver=Postgres(login=self.login, mode="r")) as data:
-            print(data["x"].to_ndarray(np.dtype("int8")))
-            #self.assertEqual((data["x"].to_ndarray(dtype=np.dtype("int8")) == x.astype("int8")).all(), True)
-            #self.assertEqual((data["y"].to_ndarray(dtype=np.dtype("int8")) == y.astype("int8")).all(), True)
+    def test_iter(self):
+        from ml.data.db import Postgres
+        login = Login(username="alejandro", resource="ml")
+        df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
+        with Data(name="test0", dataset_path="/tmp", driver=Postgres(login=login)) as data:
+            data.destroy()
+            data.from_data(df)
+            it = Iterator(data)
+            self.assertEqual(it.shape.to_tuple(), (5, 2))
+            for i, e in enumerate(it):
+                self.assertEqual((e.to_ndarray()[0] == df.iloc[i].values).all(), True)
+            data.destroy()
+
+    def test_iter_uni(self):
+        from ml.data.db import Postgres
+        login = Login(username="alejandro", resource="ml")
+        array = [1., 2., 3., 4., 5.]
+        with Data(name="test0", dataset_path="/tmp", driver=Postgres(login=login)) as data:
+            data.destroy()
+            data.from_data(array)
+            it = Iterator(data)
+            self.assertEqual(it.shape.to_tuple(), (5,))
+            for i, e in enumerate(it):
+                self.assertEqual((e.to_ndarray()[0] == array[i]).all(), True)
             data.destroy()
