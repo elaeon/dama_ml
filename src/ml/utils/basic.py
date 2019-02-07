@@ -114,22 +114,6 @@ class Shape(object):
         return Shape(shapes)
 
 
-class Array(da.Array):
-    @property
-    def shape(self) -> Shape:
-        tuple_shape = super(Array, self).shape
-        shape = Shape({"c0": tuple_shape})
-        return shape
-
-    @property
-    def dtypes(self) -> list:
-        return [("c0", self.dtype)]
-
-    @staticmethod
-    def from_da(array):
-        return Array(array.dask, chunks=array.chunks, dtype=array.dtype, name=array.name)
-
-
 class Login(object):
     __slots__ = ['username', 'passwd', 'resource', 'url']
 

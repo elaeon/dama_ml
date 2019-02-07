@@ -34,6 +34,9 @@ class AbsBaseGroup(ABC):
     def base_cls(self):
         return self.__class__.__bases__[0]
 
+    def cast(self, value):
+        return value
+
 
 class Singleton(type):
     _instances = {}
@@ -78,15 +81,7 @@ class AbsGroup(AbsBaseGroup):
 
     def _iterator(self, counter):
         elem = self[counter]
-        if isinstance(elem, np.ndarray):
-            return elem
-        elif len(elem.groups) == 1:
-            #array = elem.to_ndarray()
-            #if len(elem.shape[elem.groups[0]]) == 0:  # fixme
-            #    array = array[0]
-            return elem
-        else:
-            return elem
+        return elem
 
     def __len__(self):
         return self.shape.to_tuple()[0]

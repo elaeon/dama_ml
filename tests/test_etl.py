@@ -222,35 +222,32 @@ class TestETL(unittest.TestCase):
         x = np.asarray(range(10))
         array = da.from_array(x, chunks=(2,))
         array = array + 1
-        ds = Data(name="test", dataset_path="/tmp/", driver=Zarr())
-        ds.from_data(array)
-        with ds:
-            self.assertEqual((ds[:5].to_ndarray() == (x[:5] + 1)).all(), True)
-        ds.destroy()
+        with Data(name="test", dataset_path="/tmp/", driver=Zarr()) as data:
+            data.from_data(array)
+            self.assertEqual((data[:5].to_ndarray() == (x[:5] + 1)).all(), True)
+            data.destroy()
 
     def test_pipeline_store_array(self):
         x = np.random.rand(5, 2)
-        data = Data(name="test_store_pipeline", dataset_path="/tmp/", driver=HDF5(), clean=True)
-        pipeline = Pipeline(x, shape=x.shape)
-        a = pipeline.map(inc)
-        b = pipeline.map(dec)
-        pipeline.fold(a, b).map(add)
-        pipeline.store(data)
-        with data:
+        with Data(name="test_store_pipeline", dataset_path="/tmp/", driver=HDF5()) as data:
+            pipeline = Pipeline(x, shape=x.shape)
+            a = pipeline.map(inc)
+            b = pipeline.map(dec)
+            pipeline.fold(a, b).map(add)
+            pipeline.store(data)
             self.assertEqual(data.to_ndarray().shape, x.shape)
-        data.destroy()
+            data.destroy()
 
     def test_pipeline_store_df(self):
         x = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": [1, 1, 1, 1, 1]})
-        data = Data(name="test_store_pipeline", dataset_path="/tmp/", driver=HDF5(), clean=True)
-        pipeline = Pipeline(x, shape=x.shape)
-        a = pipeline.map(inc)
-        b = pipeline.map(dec)
-        pipeline.fold(a, b).map(add)
-        pipeline.store(data)
-        with data:
+        with Data(name="test_store_pipeline", dataset_path="/tmp/", driver=HDF5()) as data:
+            pipeline = Pipeline(x, shape=x.shape)
+            a = pipeline.map(inc)
+            b = pipeline.map(dec)
+            pipeline.fold(a, b).map(add)
+            pipeline.store(data)
             self.assertEqual(data.to_ndarray().shape, x.shape)
-        data.destroy()
+            data.destroy()
 
     def test_short_etl(self):
         data = np.asarray([
@@ -270,30 +267,15 @@ class TestETL(unittest.TestCase):
 
         self.filepath = "/tmp/test.zip"
         pipeline = Pipeline(data)
-        csv_write = pipeline.map(write_to_csv, kwargs=dict(filepath=self.filepath, header=["letra", "nat", "real"], delimiter=","))
-        post_build = csv_write.map(write_to_db, kwargs=dict(name="test_schema_db", filename="test.csv"))
-        csv, schema = pipeline.compute()[0]
-        for e in csv.read(batch_size=5):
-            self.assertEqual((e.iloc[4].values == data[4]).all(), True)
-            break
-        csv.destroy()
-        with schema:
-            schema.destroy("test_schema_db")
+        # csv_write = pipeline.map(write_to_csv, kwargs=dict(filepath=self.filepath, header=["letra", "nat", "real"], delimiter=","))
+        # csv = pipeline.compute()[0]
+        # for e in csv.read(batch_size=5):
+        #    self.assertEqual((e.iloc[4].values == data[4]).all(), True)
+        #    break
+        #csv.destroy()
 
 
 def write_to_csv(data, filepath=None, header=None, delimiter=None):
     csv = ZIPFile(filepath)
     csv.write(data, header=header, delimiter=delimiter)
     return csv
-
-
-def write_to_db(csv, name=None, filename=None):
-    login = Login(username="alejandro", resource="ml")
-    try:
-        with Schema(login) as schema:
-            schema.build(name, csv.dtypes)
-            schema.insert(name, csv.read(filename=filename, batch_size=4, batch_type="array", delimiter=","))
-    except psycopg2.OperationalError:
-        return None, None
-    else:
-        return csv, schema

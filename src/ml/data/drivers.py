@@ -41,6 +41,8 @@ class HDF5(AbsDriver):
     def require_dataset(self, level: str, group: str, shape: tuple, dtype: np.dtype) -> None:
         if dtype == np.dtype("O") or dtype.type == np.str_:
             dtype = h5py.special_dtype(vlen=str)
+        elif dtype == np.dtype("datetime64[ns]"):
+            dtype = np.dtype("int8")
 
         self.conn[level].require_dataset(group, shape, dtype=dtype, chunks=True, exact=True,
                                          **self.compressor_params)
@@ -92,7 +94,6 @@ class Zarr(AbsDriver):
 
     def enter(self):
         if self.conn is None:
-            print(self.login.url, "URL", self.mode)
             self.conn = zarr.open(self.login.url, mode=self.mode)
             self.attrs = self.conn.attrs
         return self
@@ -195,3 +196,9 @@ class HDF5Group(AbsBaseGroup):
             return self.conn[group]
         else:
             return self.conn
+
+    def cast(self, value):
+        if value.dtype == np.dtype("datetime64[ns]"):
+            return value.astype("int8")
+        else:
+            return value

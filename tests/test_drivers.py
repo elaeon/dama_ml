@@ -7,26 +7,42 @@ from ml.data.db import Postgres
 
 class TestDriver(unittest.TestCase):
     def setUp(self):
-        self.url = "/tmp/test.dr"
         self.array_c0 = np.arange(10)
         self.array_c1 = (np.arange(10) + 1).astype(np.dtype(float))
-        self.shape = Shape({"c0": self.array_c0.shape, "c1": self.array_c1.shape})
-        self.dtype = np.dtype([("c0", self.array_c0.dtype), ("c1", self.array_c1.dtype)])
+        self.array_c2 = np.asarray([
+            "2018-01-01 08:31:28",
+            "2018-01-01 09:31:28",
+            "2018-01-01 10:31:28",
+            "2018-01-01 11:31:28",
+            "2018-01-01 12:31:28",
+            "2018-01-01 13:31:28",
+            "2018-01-01 14:31:28",
+            "2018-01-01 15:31:28",
+            "2018-01-01 16:31:28",
+            "2018-01-01 17:31:28"], dtype=np.dtype("datetime64[ns]"))
+        self.shape = Shape({"c0": self.array_c0.shape, "c1": self.array_c1.shape, "c2": self.array_c2.shape})
+        self.dtype = np.dtype([("c0", self.array_c0.dtype), ("c1", self.array_c1.dtype), ("c2", self.array_c2.dtype)])
+
+        self.url = "/tmp/test_{}".format(np.random.randint(0, 10))
         self.login = Login(username="alejandro", resource="ml", url=self.url)
         #self.driver = Postgres(login=self.login)
         #self.driver = Zarr(login=self.login)
-        #self.driver = Memory()
-        self.driver = HDF5(login=self.login)
+        self.driver = Memory()
+        #self.driver = HDF5(login=self.login)
         #self.driver.data_tag = "test"
         with self.driver:
             self.driver.set_schema(self.dtype)
             self.driver.set_data_shape(self.shape)
             if self.driver.data.writer_conn.inblock is True:
-                array = np.concatenate((self.array_c0.reshape(-1, 1), self.array_c1.reshape(-1, 1)), axis=1)
+                array = np.concatenate((self.array_c0.reshape(-1, 1),
+                                        self.array_c1.reshape(-1, 1),
+                                        self.array_c2.reshape(-1, 1).astype(str)), axis=1)
                 self.driver.data.writer_conn.insert(array)
             else:
-                self.driver.data.writer_conn.conn["c0"][0:10] = self.array_c0
-                self.driver.data.writer_conn.conn["c1"][0:10] = self.array_c1
+                cast = self.driver.data.writer_conn.cast
+                self.driver.data.writer_conn.conn["c0"][0:10] = cast(self.array_c0)
+                self.driver.data.writer_conn.conn["c1"][0:10] = cast(self.array_c1)
+                self.driver.data.writer_conn.conn["c2"][0:10] = cast(self.array_c2)
 
     def tearDown(self):
         with self.driver:
@@ -60,9 +76,9 @@ class TestDriver(unittest.TestCase):
     def test_iteration(self):
         with self.driver:
             for d, a in zip(self.driver.data["c0"], self.array_c0):
-                self.assertEqual(d, a)
+                self.assertEqual(d.to_ndarray(), a)
             for d, a in zip(self.driver.data["c1"], self.array_c1):
-                self.assertEqual(d, a)
+                self.assertEqual(d.to_ndarray(), a)
 
             for ac0, ac1, driver in zip(self.array_c0, self.array_c1, self.driver.data):
                 self.assertEqual(driver["c0"].to_ndarray(), ac0)
@@ -78,7 +94,7 @@ class TestDriver(unittest.TestCase):
         with self.driver:
             data = self.driver.data
             data.rename_group("c0", "group0")
-            self.assertEqual(data.dtypes, [("group0", self.array_c0.dtype), ("c1", self.array_c1.dtype)])
+            self.assertEqual(data.dtypes.names[1:], self.dtype.names[1:])
             self.assertEqual(data["group0"].dtypes, [("group0", self.array_c0.dtype)])
 
             data["group0"][8] = -1
@@ -98,22 +114,9 @@ class TestDriver(unittest.TestCase):
             self.assertEqual((stc_da["c1"].to_ndarray() == self.array_c1).all(), True)
 
     def test_datetime(self):
-        data = [
-            ["a", "2018-01-01 08:31:28"],
-            ["b", "2018-01-01 09:31:28"],
-            ["c", "2018-01-01 10:31:28"],
-            ["d", "2018-01-01 11:31:28"],
-            ["e", "2018-01-01 12:31:28"],
-            ["f", "2018-01-01 13:31:28"],
-            ["g", "2018-01-01 14:31:28"],
-            ["h", "2018-01-01 15:31:28"]
-        ]
-        dtypes = [("x0", np.dtype(object)), ("x1", np.dtype("datetime64[ns]"))]
-        try:
-            with Schema(login=self.login) as schema:
-                schema.build("test_schema_db", dtypes)
-                schema.insert("test_schema_db", Iterator(data).batchs(batch_size=10, batch_type="array"))
-                self.assertEqual(schema["test_schema_db"].shape, (8, 2))
-                schema.destroy("test_schema_db")
-        except psycopg2.OperationalError:
-            pass
+        with self.driver:
+            if isinstance(self.driver, HDF5):
+                self.assertEqual(self.driver.data["c2"].to_ndarray().dtype, np.dtype("int8"))
+            else:
+                self.assertEqual(self.driver.data["c2"].to_ndarray().dtype, np.dtype("datetime64[ns]"))
+            self.assertEqual(self.driver.data.to_ndarray(dtype=np.dtype(float)).dtype, np.dtype(float))

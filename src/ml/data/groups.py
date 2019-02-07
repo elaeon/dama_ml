@@ -1,6 +1,7 @@
 from ml.abc.group import AbsGroup, AbsBaseGroup
 from ml.abc.data import AbsData
 from ml.utils.basic import Shape
+from ml.fmtypes import DEFAUL_GROUP_NAME
 import numpy as np
 from collections import OrderedDict
 import dask.array as da
@@ -30,7 +31,7 @@ class DaGroup(AbsGroup):
             reader_conn = conn
         elif isinstance(conn, dict):
             reader_conn = self.convert(conn, chunks=chunks)
-        elif isinstance(conn, AbsBaseGroup) or AbsGroup:
+        elif isinstance(conn, AbsBaseGroup):  # or AbsGroup:
             groups = OrderedDict()
             for group in conn.groups:
                 groups[group] = conn.get_conn(group)
@@ -123,7 +124,9 @@ class DaGroup(AbsGroup):
             return computed_array
         else:
             shape = self.shape.to_tuple()
-            data = np.empty(shape, dtype=self.dtype)
+            if dtype is None:
+                dtype = self.dtype
+            data = np.empty(shape, dtype=dtype)
             total_cols = 0
             for i, group in enumerate(self.groups):
                 try:
@@ -133,7 +136,7 @@ class DaGroup(AbsGroup):
                     num_cols = 1
                     slice_grp = (slice(None, None), total_cols)
                 total_cols += num_cols
-                data[slice_grp] = self.conn[group].compute(dtype=self.dtype)
+                data[slice_grp] = self.conn[group].compute(dtype=dtype)
             return data
 
     def to_df(self):
@@ -170,6 +173,14 @@ class DaGroup(AbsGroup):
         else:
             for group in self.groups:
                 self.conn[group].store(dataset.data[group])
+
+    @staticmethod
+    def from_da(da_array: da.Array, group_name: str = DEFAUL_GROUP_NAME):
+        da_group_dict = DaGroupDict()
+        da_group_dict[group_name] = da.Array(da_array.dask, chunks=da_array.chunks,
+                                             dtype=da_array.dtype, name=da_array.name)
+        return DaGroup(da_group_dict)
+
 
 
 class StcArrayGroup(AbsBaseGroup):

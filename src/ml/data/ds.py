@@ -10,7 +10,7 @@ from tqdm import tqdm
 from ml.abc.data import AbsData
 from ml.data.it import Iterator, BaseIterator, BatchIterator
 from ml.utils.files import build_path
-from ml.utils.basic import Hash, Array, Login
+from ml.utils.basic import Hash, Login
 from ml.abc.driver import AbsDriver
 from ml.data.drivers import Memory
 from ml.abc.group import AbsGroup
@@ -286,7 +286,7 @@ class Data(AbsData):
 
     def from_data(self, data, batch_size: int = 258, with_hash: str = "sha1"):
         if isinstance(data, da.Array):
-            data = Array.from_da(data)
+            data = DaGroup.from_da(data)
         elif isinstance(data, Iterator):
             data = data.batchs(batch_size=batch_size)
         elif isinstance(data, dict):
