@@ -96,3 +96,24 @@ class TestDriver(unittest.TestCase):
             stc_da = self.driver.data
             self.assertEqual((stc_da["c0"].to_ndarray() == self.array_c0).all(), True)
             self.assertEqual((stc_da["c1"].to_ndarray() == self.array_c1).all(), True)
+
+    def test_datetime(self):
+        data = [
+            ["a", "2018-01-01 08:31:28"],
+            ["b", "2018-01-01 09:31:28"],
+            ["c", "2018-01-01 10:31:28"],
+            ["d", "2018-01-01 11:31:28"],
+            ["e", "2018-01-01 12:31:28"],
+            ["f", "2018-01-01 13:31:28"],
+            ["g", "2018-01-01 14:31:28"],
+            ["h", "2018-01-01 15:31:28"]
+        ]
+        dtypes = [("x0", np.dtype(object)), ("x1", np.dtype("datetime64[ns]"))]
+        try:
+            with Schema(login=self.login) as schema:
+                schema.build("test_schema_db", dtypes)
+                schema.insert("test_schema_db", Iterator(data).batchs(batch_size=10, batch_type="array"))
+                self.assertEqual(schema["test_schema_db"].shape, (8, 2))
+                schema.destroy("test_schema_db")
+        except psycopg2.OperationalError:
+            pass

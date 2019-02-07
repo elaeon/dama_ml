@@ -117,8 +117,8 @@ class DaGroup(AbsGroup):
     def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)):
         self.writer_conn.attrs["dtype"] = dtype
         if len(self.groups) == 1:
-            computed_array = self.conn[self.groups[0]].compute()
-            if self.writer_conn.base_cls() == AbsBaseGroup:
+            computed_array = self.conn[self.groups[0]].compute(dtype=self.dtype)
+            if self.writer_conn.base_cls() == AbsBaseGroup and dtype is not None and dtype != self.dtype:
                 return computed_array.astype(dtype)
             return computed_array
         else:
@@ -133,7 +133,7 @@ class DaGroup(AbsGroup):
                     num_cols = 1
                     slice_grp = (slice(None, None), total_cols)
                 total_cols += num_cols
-                data[slice_grp] = self.conn[group].compute()
+                data[slice_grp] = self.conn[group].compute(dtype=self.dtype)
             return data
 
     def to_df(self):

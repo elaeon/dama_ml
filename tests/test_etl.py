@@ -12,7 +12,6 @@ from ml.utils.files import rm
 from ml.data.ds import Data
 from ml.data.drivers import Zarr, HDF5
 from ml.data.csv import ZIPFile
-from ml.data.db import Schema
 from ml.utils.basic import Login
 
 # from dask import get # single thread
@@ -219,7 +218,7 @@ class TestETL(unittest.TestCase):
         pipeline_cl = Pipeline.load(json_stc, os.path.dirname(__file__))
         self.assertEqual(pipeline.compute()[0], pipeline_cl.compute()[0])
 
-    def test_store(self):
+    def test_store_da_array(self):
         x = np.asarray(range(10))
         array = da.from_array(x, chunks=(2,))
         array = array + 1

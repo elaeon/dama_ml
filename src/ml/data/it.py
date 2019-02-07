@@ -116,28 +116,23 @@ class BaseIterator(object):
 
     def flatter(self):
         if self.type_elem == np.ndarray:
-            for chunk in self:
-                for e in chunk.reshape(-1):
-                    if hasattr(e, "__iter__") and len(e) == 1:
-                        yield e[0]
+            for array in self:
+                for elem in array.reshape(-1):
+                    if hasattr(elem, "__iter__") and len(elem) == 1:
+                        yield elem[0]
                     else:
-                        yield e
+                        yield elem
         elif self.type_elem == Slice:
-            for chunk in self:
-                for e in chunk.batch.reshape(-1):
-                    # if hasattr(e, "__iter__") and len(e) == 1:
-                    #    yield e[0]
-                    if len(self.groups) == 1:
-                        yield e[self.groups[0]]
-                    else:
-                        yield e
+            for data in self:
+                for elem in data.batch.to_ndarray().reshape(-1):
+                    yield elem
         elif self.type_elem == pd.DataFrame:
-            for chunk in self:
-                for e in chunk.values.reshape(-1):
-                    yield e
+            for data in self:
+                for elem in data.values.reshape(-1):
+                    yield elem
         elif self.type_elem.__module__ == 'builtins':
-            for e in chain.from_iterable(self):
-                yield e
+            for elem in chain.from_iterable(self):
+                yield elem
         else:
             raise Exception("Type of elem {} does not supported".format(self.type_elem))
 
@@ -425,7 +420,7 @@ class BatchIterator(BaseIterator):
         values = defaultdict(lambda: 0)
         group = self.groups[0]
         for batch in self:
-            u_values, counter = np.unique(batch.batch[group], return_counts=True)
+            u_values, counter = np.unique(batch.batch[group].to_ndarray(), return_counts=True)
             for k, v in dict(zip(u_values, counter)).items():
                 values[k] += v
         return values
