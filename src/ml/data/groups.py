@@ -117,7 +117,10 @@ class DaGroup(AbsGroup):
     def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)):
         self.writer_conn.attrs["dtype"] = dtype
         if len(self.groups) == 1:
-            return self.conn[self.groups[0]].compute()
+            computed_array = self.conn[self.groups[0]].compute()
+            if self.writer_conn.base_cls() == AbsBaseGroup:
+                return computed_array.astype(dtype)
+            return computed_array
         else:
             shape = self.shape.to_tuple()
             data = np.empty(shape, dtype=self.dtype)

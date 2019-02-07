@@ -401,7 +401,7 @@ class TestIteratorToData(unittest.TestCase):
             data.from_data(array)
             it = Iterator(data)
             for it_array, array_elem in zip(it, array):
-                self.assertEqual(it_array, array_elem)
+                self.assertEqual(it_array.to_ndarray(), array_elem)
             data.destroy()
 
     def test_batch_ads(self):

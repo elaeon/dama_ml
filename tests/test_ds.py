@@ -37,9 +37,9 @@ class TestDataset(unittest.TestCase):
             x2 = np.random.rand(10).astype(object)
             df = pd.DataFrame({"X0": x0, "X1": x1, "X2": x2})
             dataset.from_data(df)
-            self.assertEqual(list(dataset["X0"]), list(x0))
-            self.assertEqual(list(dataset["X1"]), list(x1))
-            self.assertEqual(list(dataset["X2"]), list(x2))
+            self.assertEqual([e.to_ndarray() for e in dataset["X0"]], list(x0))
+            self.assertEqual([e.to_ndarray() for e in dataset["X1"]], list(x1))
+            self.assertEqual([e.to_ndarray() for e in dataset["X2"]], list(x2))
             self.assertEqual(dataset["X0"].dtype, int)
             self.assertEqual(dataset["X1"].dtype, float)
             self.assertEqual(dataset["X2"].dtype, object)
@@ -292,7 +292,7 @@ class TestDataset(unittest.TestCase):
         with Data(name="test", dataset_path="/tmp/") as data:
             data.from_data(x)
             for i, e in enumerate(data, 1):
-                self.assertEqual(e, [i])
+                self.assertEqual(e.to_ndarray(), [i])
 
     def test_context_index(self):
         x = np.asarray([1, 2, 3, 4, 5])

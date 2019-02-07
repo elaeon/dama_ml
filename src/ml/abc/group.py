@@ -31,6 +31,9 @@ class AbsBaseGroup(ABC):
     def dtype(self) -> np.dtype:
         return max_dtype(self.dtypes)
 
+    def base_cls(self):
+        return self.__class__.__bases__[0]
+
 
 class Singleton(type):
     _instances = {}
