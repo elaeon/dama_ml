@@ -5,14 +5,13 @@ import lightgbm as lgb
 class LightGBM(LGB):
 
     def prepare_model(self, obj_fn=None, num_steps=0, model_params=None, batch_size: int = None):
-        with self.ds:
-            data_train = self.ds[self.data_groups["data_train_group"]].to_ndarray()
-            target_train = self.ds[self.data_groups["target_train_group"]].to_ndarray()
-            data_val = self.ds[self.data_groups["data_validation_group"]].to_ndarray()
-            target_val = self.ds[self.data_groups["target_validation_group"]].to_ndarray()
-            columns = None
-            data_train_ds = lgb.Dataset(data_train, label=target_train, feature_name=columns)
-            data_valid_ds = lgb.Dataset(data_val, label=target_val, feature_name=columns)
+        data_train = self.ds[self.data_groups["data_train_group"]].to_ndarray()
+        target_train = self.ds[self.data_groups["target_train_group"]].to_ndarray()
+        data_val = self.ds[self.data_groups["data_validation_group"]].to_ndarray()
+        target_val = self.ds[self.data_groups["target_validation_group"]].to_ndarray()
+        columns = None
+        data_train_ds = lgb.Dataset(data_train, label=target_train, feature_name=columns)
+        data_valid_ds = lgb.Dataset(data_val, label=target_val, feature_name=columns)
 
         num_round = num_steps
         bst = lgb.train(model_params, data_train_ds, num_round, valid_sets=[data_valid_ds],

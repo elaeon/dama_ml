@@ -15,7 +15,7 @@ except ImportError:
 
 from ml.reg.extended.w_sklearn import RandomForestRegressor, GradientBoostingRegressor
 from ml.utils.model_selection import CV
-from ml.data.drivers import HDF5
+from ml.data.drivers import HDF5, Zarr
 
 
 def mulp(row):
@@ -159,39 +159,37 @@ class TestLightGBM(unittest.TestCase):
         np.random.seed(0)
         x = np.random.rand(100, 10)
         y = (x[:, 0] > .5).astype(int)
-        self.dataset = Data(name="test", dataset_path="/tmp/", clean=True)
-        self.dataset.from_data({"x": x, "y": y})
-        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
-        with self.dataset:
+        with  Data(name="test", dataset_path="/tmp/") as self.dataset,\
+            Data(name="test_cv", dataset_path="/tmp/", driver=HDF5()) as ds:
+            self.dataset.from_data({"x": x, "y": y})
+            cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(self.dataset)
-            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
             ds.from_data(stc)
-
-        if LightGBM == RandomForestRegressor:
-            self.params = {}
-        else:
-            self.params = {'max_depth': 4, 'subsample': 0.9, 'colsample_bytree': 0.9,
-                           'objective': 'regression', 'seed': 99, "verbosity": 0, "learning_rate": 0.1,
-                           'boosting_type': "gbdt", 'max_bin': 255, 'num_leaves': 25,
-                           'metric': 'mse'}
-        reg = LightGBM()
-        self.num_steps = 10
-        self.model_version = "1"
-        reg.train(ds, num_steps=self.num_steps, data_train_group="train_x", target_train_group='train_y',
-                      data_test_group="test_x", target_test_group='test_y', model_params=self.params,
-                      data_validation_group="validation_x", target_validation_group="validation_y")
-        reg.save(name="test", path="/tmp/", model_version=self.model_version)
+            if LightGBM == RandomForestRegressor:
+                self.params = {}
+            else:
+                self.params = {'max_depth': 4, 'subsample': 0.9, 'colsample_bytree': 0.9,
+                               'objective': 'regression', 'seed': 99, "verbosity": 0, "learning_rate": 0.1,
+                               'boosting_type': "gbdt", 'max_bin': 255, 'num_leaves': 25,
+                               'metric': 'mse'}
+            reg = LightGBM()
+            self.num_steps = 10
+            self.model_version = "1"
+            reg.train(ds, num_steps=self.num_steps, data_train_group="train_x", target_train_group='train_y',
+                          data_test_group="test_x", target_test_group='test_y', model_params=self.params,
+                          data_validation_group="validation_x", target_validation_group="validation_y")
+            reg.save(name="test", path="/tmp/", model_version=self.model_version)
 
     def tearDown(self):
-        self.dataset.destroy()
+        with self.dataset:
+            self.dataset.destroy()
 
     def test_predict(self):
-        reg = LightGBM.load(model_name="test", path="/tmp/", model_version=self.model_version)
-        with self.dataset:
+        with LightGBM.load(model_name="test", path="/tmp/", model_version=self.model_version) as reg:
             predict = reg.predict(self.dataset["x"], batch_size=1)[:1]
-            for pred in predict:
+            for pred in predict.only_data():
                 self.assertEqual(pred[0] <= 1, True)
-        reg.destroy()
+            reg.destroy()
 
     def test_feature_importance(self):
         reg = LightGBM.load(model_name="test", path="/tmp/", model_version=self.model_version)
@@ -204,27 +202,25 @@ class TestWrappers(unittest.TestCase):
         np.random.seed(0)
         x = np.random.rand(100)
         y = x > .5
-        dataset = Data(name="test", dataset_path="/tmp", driver=HDF5(), clean=True)
-        dataset.from_data({"x": x.reshape(-1, 1), "y": y})
-
-        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
-        with dataset:
+        with Data(name="test", dataset_path="/tmp", driver=HDF5()) as dataset, \
+                Data(name="test_cv", dataset_path="/tmp/", driver=HDF5()) as ds:
+            dataset.from_data({"x": x.reshape(-1, 1), "y": y})
+            cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(dataset)
-            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
             ds.from_data(stc)
             reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                           data_test_group="test_x", target_test_group='test_y', model_params=model_params,
                           data_validation_group="validation_x", target_validation_group="validation_y")
             reg.save("test", path="/tmp/", model_version="1")
-        dataset.destroy()
+            dataset.destroy()
         return reg
 
     def test_gbr(self):
-        reg = GradientBoostingRegressor()
+        reg =  GradientBoostingRegressor()
         reg = self.train(reg, model_params=dict(learning_rate=0.2, random_state=3))
         with reg.ds:
-            self.assertEqual(reg.ds.hash, "$sha1$fb894bc728ca9a70bad40b856bc8e37bf67f74b6")
-        reg.destroy()
+            self.assertEqual(reg.ds.hash, "$sha1$0d60c62130c4a95634a79abc8e27cebd5fe5bb70")
+            reg.destroy()
 
 
 if __name__ == '__main__':

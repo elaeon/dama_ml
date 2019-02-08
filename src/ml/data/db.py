@@ -31,6 +31,8 @@ class Postgres(AbsDriver):
             "dbname={db_name} user={username}".format(db_name=self.login.resource, username=self.login.username))
         self.conn.autocommit = False
         self.attrs = {}
+        if self.mode == "w":
+            self.destroy()
         return self
 
     def exit(self):

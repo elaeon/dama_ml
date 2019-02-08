@@ -57,13 +57,6 @@ class Data(AbsData):
         else:
             self.driver.login.url = self.url
 
-    def drop_data(self):
-        ds_exist = self.driver.exists()
-        if ds_exist and self.driver.mode == "w":
-            log.debug("DROP DATA")
-            self.destroy()
-            build_path(self.dir_levels())
-
     @property
     def author(self):
         return self._get_attr('author')
@@ -132,7 +125,10 @@ class Data(AbsData):
 
     def __enter__(self):
         self.driver.enter()
-        self.drop_data()
+        if not self.driver.exists():
+            log.debug("Buiding path")
+            build_path(self.dir_levels())
+
         if self.driver.data_tag is None:
             self.driver.data_tag = self.name
 

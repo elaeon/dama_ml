@@ -200,7 +200,10 @@ class BaseModel(Metadata, ABC):
         }
 
     def __enter__(self):
-        self.ds = self.get_dataset()
+        self.ds, meta_hash = self.get_dataset()
+        self.ds.driver.enter()
+        if meta_hash != self.ds.hash:
+            log.info("The dataset hash is not equal to the model '{}'".format(self.__class__.__name__))
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -212,12 +215,8 @@ class BaseModel(Metadata, ABC):
         meta = Metadata.get_metadata(self.path_metadata).get("model", {})
         driver = locate(meta["ds_basic_params"]["driver"])
         dataset = Data(name=meta["ds_basic_params"]["name"], group_name=meta["ds_basic_params"]["group_name"],
-              dataset_path=meta["ds_basic_params"]["dataset_path"], driver=driver())
-        dataset.driver.enter()
-        if meta.get('hash', None) != dataset.hash:
-            log.info("The dataset hash is not equal to the model '{}'".format(
-                self.__class__.__name__))
-        return dataset
+              dataset_path=meta["ds_basic_params"]["dataset_path"], driver=driver(mode='r'))
+        return dataset, meta.get("hash", None)
 
     def preload_model(self):
         self.model = MLModel(fit_fn=None,  predictors=None, load_fn=self.load_fn, save_fn=None)
