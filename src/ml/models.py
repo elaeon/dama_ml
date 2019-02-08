@@ -42,7 +42,7 @@ class MLModel:
                     batch = row.to_ndarray().reshape(1, -1)
                     predict = self.predictors(batch)
                     yield output_format_fn(predict, output=output)[0]
-            return Iterator(_it()).batchs(batch_size=batch_size)
+            return Iterator(_it(), length=len(data)).batchs(batch_size=batch_size)
         else:
             return Iterator(output_format_fn(self.predictors(data), output=output)).batchs(batch_size=batch_size)
 

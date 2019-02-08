@@ -502,7 +502,7 @@ class BatchIterator(BaseIterator):
 
     def only_data(self):
         def _it():
-            if self.type_elem == AbsGroup:
+            if self.type_elem == AbsGroup or self.type_elem == Slice:
                 for data in self:
                     yield data.batch.to_ndarray()
             else:

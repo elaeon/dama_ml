@@ -13,7 +13,7 @@ class RegModel(SupervicedModel):
         self.labels_dim = 1
         super(RegModel, self).__init__(**params)
 
-    def scores(self, measures="msle", batch_size: int=20):
+    def scores(self, measures="msle", batch_size: int=2000):
         if measures is None or isinstance(measures, str):
             measure = metrics.MeasureBatch(name=self.model_name, batch_size=batch_size)
             measures = measure.make_metrics(measures=measures, discrete=False)

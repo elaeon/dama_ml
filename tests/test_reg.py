@@ -33,7 +33,7 @@ class TestRegSKL(unittest.TestCase):
 
     def test_load_meta(self):
         with Data(name="reg0", dataset_path="/tmp/") as dataset,\
-            Data(name="test_cv", dataset_path="/tmp/", driver=HDF5()) as ds:
+            Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(mode="w")) as ds:
             dataset.from_data({"x": self.X, "y": self.Y})
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(dataset)
@@ -53,71 +53,71 @@ class TestRegSKL(unittest.TestCase):
             reg.destroy()
 
     def test_empty_load(self):
-        dataset = Data(name="reg0", dataset_path="/tmp/", clean=True)
-        with dataset:
+        with Data(name="reg0", dataset_path="/tmp/") as dataset, \
+            Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(mode="w")) as ds:
             dataset.from_data({"x": self.X, "y": self.Y})
-        reg = RandomForestRegressor()
-        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
-        stc = cv.apply(dataset)
-        ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
-        ds.from_data(stc)
-        model_params = dict(n_estimators=25, min_samples_split=2)
-        reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
+            reg = RandomForestRegressor()
+            cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
+            stc = cv.apply(dataset)
+            ds.from_data(stc)
+            model_params = dict(n_estimators=25, min_samples_split=2)
+            reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                   data_test_group="test_x", target_test_group='test_y', model_params=model_params,
                   data_validation_group="validation_x", target_validation_group="validation_y")
-        reg.save(name="test_model", path="/tmp/", model_version="1")
-        reg = RandomForestRegressor.load(model_name="test_model", path="/tmp/", model_version="1")
-        self.assertEqual(reg.base_path, "/tmp/")
-        reg.destroy()
-        dataset.destroy()
+            reg.save(name="test_model", path="/tmp/", model_version="1")
+
+        with RandomForestRegressor.load(model_name="test_model", path="/tmp/", model_version="1") as reg:
+            self.assertEqual(reg.base_path, "/tmp/")
+            reg.destroy()
+            dataset.destroy()
 
     def test_scores(self):
-        dataset = Data(name="test", dataset_path="/tmp/", clean=True)
-        with dataset:
+        with Data(name="test", dataset_path="/tmp/") as dataset, \
+                Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(mode="w")) as ds:
             dataset.from_data({"x": self.X, "y": self.Y})
-
-        reg = RandomForestRegressor()
-        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
-        stc = cv.apply(dataset)
-        ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
-        ds.from_data(stc)
-        model_params = dict(n_estimators=25, min_samples_split=2)
-        reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
+            reg = RandomForestRegressor()
+            cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
+            stc = cv.apply(dataset)
+            ds.from_data(stc)
+            model_params = dict(n_estimators=25, min_samples_split=2)
+            reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                       data_test_group="test_x", target_test_group='test_y', model_params=model_params,
                       data_validation_group="validation_x", target_validation_group="validation_y")
-        reg.save(name="test", path="/tmp/", model_version="1")
-        scores_table = reg.scores2table()
-        reg.destroy()
-        dataset.destroy()
-        self.assertCountEqual(list(scores_table.headers), ['', 'mse', 'msle', 'gini_normalized'])
-        self.assertEqual(scores_table.measures[0][1] <= 1, True)
+            reg.save(name="test", path="/tmp/", model_version="1")
+            scores_table = reg.scores2table()
+            reg.destroy()
+            dataset.destroy()
+            self.assertCountEqual(list(scores_table.headers), ['', 'mse', 'msle', 'gini_normalized'])
+            self.assertEqual(scores_table.measures[0][1] <= 1, True)
 
     def test_predict(self):
         np.random.seed(0)
         x = np.random.rand(100)
         y = np.random.rand(100)
-        dataset = Data(name="test", dataset_path="/tmp", driver=HDF5(), clean=True)
-        dataset.from_data({"x": x.reshape(-1, 1), "y": y})
-        reg = RandomForestRegressor()
-        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
-        with dataset:
+        with Data(name="test", dataset_path="/tmp", driver=HDF5(mode="w")) as dataset, \
+                Data(name="test_cv", dataset_path="/tmp/", driver=HDF5()) as ds:
+            dataset.from_data({"x": x.reshape(-1, 1), "y": y})
+            reg = RandomForestRegressor()
+            cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(dataset)
-            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
             ds.from_data(stc)
             model_params = dict(n_estimators=25, min_samples_split=2)
             reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                           data_test_group="test_x", target_test_group='test_y', model_params=model_params,
                           data_validation_group="validation_x", target_validation_group="validation_y")
             reg.save(name="test", path="/tmp/", model_version="1")
+            dataset.destroy()
+
         values = np.asarray([1, 2, .4, .1, 0, 1])
-        ds = Data(name="test2", clean=True)
-        ds.from_data(values)
-        with ds:
+        with Data(name="test2") as ds:
+            ds.from_data(values)
             for pred in reg.predict(ds):
-                self.assertCountEqual(pred > .5, [False, False, True, False, True, False])
-        dataset.destroy()
-        reg.destroy()
-        ds.destroy()
+                pred_array = pred.batch.to_ndarray()
+                self.assertCountEqual(pred_array > .5, [False, False, True, False, True, False])
+            ds.destroy()
+
+        with reg.ds:
+            reg.destroy()
 
 
 class TestXgboost(unittest.TestCase):
@@ -125,36 +125,33 @@ class TestXgboost(unittest.TestCase):
         np.random.seed(0)
         x = np.random.rand(100, 10)
         y = (x[:, 0] > .5).astype(int)
-        self.dataset = Data(name="test", dataset_path="/tmp/", clean=True)
-        self.dataset.from_data({"x": x, "y": y})
-        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
-        with self.dataset:
+        with Data(name="test", dataset_path="/tmp/") as self.dataset, \
+                Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(mode="w")) as ds:
+            self.dataset.from_data({"x": x, "y": y})
+            cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(self.dataset)
-            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
             ds.from_data(stc)
 
-        if Xgboost == RandomForestRegressor:
-            params = {}
-        else:
-            params = {'max_depth': 2, 'eta': 1, 'silent': 1, 'objective': 'binary:logistic'}
-        reg = Xgboost()
-        reg.train(ds, num_steps=100, data_train_group="train_x", target_train_group='train_y',
-                      data_test_group="test_x", target_test_group='test_y', model_params=params,
-                      data_validation_group="validation_x", target_validation_group="validation_y")
-        reg.save(name="test", path="/tmp/", model_version="1")
+            if Xgboost == RandomForestRegressor:
+                params = {}
+            else:
+                params = {'max_depth': 2, 'eta': 1, 'silent': 1, 'objective': 'binary:logistic'}
+            reg = Xgboost()
+            reg.train(ds, num_steps=100, data_train_group="train_x", target_train_group='train_y',
+                          data_test_group="test_x", target_test_group='test_y', model_params=params,
+                          data_validation_group="validation_x", target_validation_group="validation_y")
+            reg.save(name="test", path="/tmp/", model_version="1")
 
     def tearDown(self):
         self.dataset.destroy()
 
     def test_predict(self):
-        reg = Xgboost.load(model_name="test", path="/tmp/", model_version="1")
-        with self.dataset:
+        with Xgboost.load(model_name="test", path="/tmp/", model_version="1") as reg, self.dataset:
             predict = reg.predict(self.dataset["x"], batch_size=1)
-            for pred in predict:
-                print(pred)
+            for pred in predict.only_data():
                 self.assertEqual(pred[0] <= 1, True)
                 break
-        reg.destroy()
+            reg.destroy()
 
 
 class TestLightGBM(unittest.TestCase):
