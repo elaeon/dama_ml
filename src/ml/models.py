@@ -1,7 +1,7 @@
 import os
 from abc import ABC, abstractmethod
 from ml.data.ds import Data
-from ml.data.it import Iterator
+from ml.data.it import Iterator, BatchIterator
 from ml.utils.files import check_or_create_path_dir
 from ml.measures import ListMeasure
 from ml.utils.logger import log_config
@@ -30,7 +30,7 @@ class MLModel:
     def fit(self, *args, **kwargs):
         return self.fit_fn(*args, **kwargs)
 
-    def predict(self, data, output_format_fn=None, output=None, batch_size: int = 258) -> Iterator:
+    def predict(self, data, output_format_fn=None, output=None, batch_size: int = 258) -> BatchIterator:
         data = self.input_transform(data)
         if hasattr(data, '__iter__'):
             #if data:
@@ -39,8 +39,8 @@ class MLModel:
             #else:
             def _it():
                 for row in data:  # fixme add batch_size
-                    print(row.to_ndarray())
-                    predict = self.predictors(row.reshape(1, -1))
+                    batch = row.to_ndarray().reshape(1, -1)
+                    predict = self.predictors(batch)
                     yield output_format_fn(predict, output=output)[0]
             return Iterator(_it()).batchs(batch_size=batch_size)
         else:
@@ -175,18 +175,17 @@ class BaseModel(Metadata, ABC):
         return self.model.predict(data, output_format_fn=self.output_format, output=output, batch_size=batch_size)
 
     def metadata_model(self):
-        with self.ds:
-            return {
-                "group_name": self.group_name,
-                "model_module": self.module_cls_name(),
-                "model_name": self.model_name,
-                "meta_path": self.path_metadata,
-                "base_path": self.base_path,
-                "ds_basic_params": self.ds.basic_params,
-                "hash": self.ds.hash,
-                "data_groups": self.data_groups,
-                "versions": []
-            }
+        return {
+            "group_name": self.group_name,
+            "model_module": self.module_cls_name(),
+            "model_name": self.model_name,
+            "meta_path": self.path_metadata,
+            "base_path": self.base_path,
+            "ds_basic_params": self.ds.basic_params,
+            "hash": self.ds.hash,
+            "data_groups": self.data_groups,
+            "versions": []
+        }
 
     def metadata_train(self):
         return {
@@ -200,18 +199,24 @@ class BaseModel(Metadata, ABC):
             "model_json": self.model.to_json()
         }
 
+    def __enter__(self):
+        self.ds = self.get_dataset()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.ds.driver.exit()
+
     def get_dataset(self):
         log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name,
                                                              self.model_version, self.base_path))
         meta = Metadata.get_metadata(self.path_metadata).get("model", {})
         driver = locate(meta["ds_basic_params"]["driver"])
         dataset = Data(name=meta["ds_basic_params"]["name"], group_name=meta["ds_basic_params"]["group_name"],
-                       dataset_path=meta["ds_basic_params"]["dataset_path"],
-                       driver=driver())
-        with dataset:
-            if meta.get('hash', None) != dataset.hash:
-                log.info("The dataset hash is not equal to the model '{}'".format(
-                    self.__class__.__name__))
+              dataset_path=meta["ds_basic_params"]["dataset_path"], driver=driver())
+        dataset.driver.enter()
+        if meta.get('hash', None) != dataset.hash:
+            log.info("The dataset hash is not equal to the model '{}'".format(
+                self.__class__.__name__))
         return dataset
 
     def preload_model(self):
@@ -260,6 +265,7 @@ class BaseModel(Metadata, ABC):
         self.num_steps = metadata["train"]["num_steps"]
         self.base_path = metadata["model"]["base_path"]
         self.batch_size = metadata["train"]["batch_size"]
+        self.data_groups = metadata["model"]["data_groups"]
 
     @abstractmethod
     def train(self, ds: Data, batch_size: int = 0, num_steps: int = 0, n_splits=None, obj_fn=None,
@@ -289,7 +295,6 @@ class SupervicedModel(BaseModel):
         path_metadata_version = Metadata.make_model_version_file(model_name, path, model.cls_name(),
                                                                  model.metaext, model_version=model_version)
         model.load_metadata(path_metadata, path_metadata_version)
-        model.ds = model.get_dataset()
         model.load_model()
         return model
 
@@ -319,7 +324,6 @@ class UnsupervisedModel(BaseModel):
         path_metadata_version = Metadata.make_model_version_file(model_name, path, model.cls_name(),
                                                                  model.metaext, model_version=model_version)
         model.load_metadata(path_metadata, path_metadata_version)
-        model.ds = model.get_dataset()
         model.load_model()
         return model
 

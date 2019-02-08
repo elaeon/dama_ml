@@ -35,21 +35,22 @@ class TestRegSKL(unittest.TestCase):
         with Data(name="reg0", dataset_path="/tmp/") as dataset,\
             Data(name="test_cv", dataset_path="/tmp/", driver=HDF5()) as ds:
             dataset.from_data({"x": self.X, "y": self.Y})
-            reg = RandomForestRegressor()
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(dataset)
             ds.from_data(stc)
+            reg = RandomForestRegressor()
             model_params = dict(n_estimators=25, min_samples_split=2)
             reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                           data_test_group="test_x", target_test_group='test_y', model_params=model_params,
                           data_validation_group="validation_x", target_validation_group="validation_y")
             reg.save(name="test_model", path="/tmp/", model_version="1")
-            reg = RandomForestRegressor.load(model_name="test_model", path="/tmp/", model_version="1")
+            dataset.destroy()
+
+        with RandomForestRegressor.load(model_name="test_model", path="/tmp/", model_version="1") as reg:
             self.assertEqual(reg.model_version, "1")
             self.assertEqual(reg.ds.driver.module_cls_name(), "ml.data.drivers.HDF5")
+            self.assertEqual(len(reg.metadata_train()), 8)
             reg.destroy()
-            dataset.destroy()
-            ds.destroy()
 
     def test_empty_load(self):
         dataset = Data(name="reg0", dataset_path="/tmp/", clean=True)
