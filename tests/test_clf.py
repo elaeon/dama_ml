@@ -180,35 +180,33 @@ class TestXgboost(unittest.TestCase):
         np.random.seed(0)
         x = np.random.rand(100, 10)
         y = (x[:, 0] > .5).astype(int)
-        self.dataset = Data(name="test", dataset_path="/tmp/", clean=True)
-        self.dataset.from_data({"x": x, "y": y})
-        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
-        with self.dataset:
+        with Data(name="test", dataset_path="/tmp/") as self.dataset,\
+            Data(name="test_cv", dataset_path="/tmp/", driver=HDF5()) as ds:
+            self.dataset.from_data({"x": x, "y": y})
+            cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(self.dataset)
-            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
             ds.from_data(stc)
 
-        if Xgboost == RandomForest:
-            params = {}
-        else:
-            params = {'max_depth': 2, 'eta': 1, 'silent': 1, 'objective': 'binary:logistic'}
-        classif = Xgboost()
-        classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
-                      data_test_group="test_x", target_test_group='test_y', model_params=params,
-                      data_validation_group="validation_x", target_validation_group="validation_y")
-        classif.save(name="test", path="/tmp/", model_version="1")
+            if Xgboost == RandomForest:
+                params = {}
+            else:
+                params = {'max_depth': 2, 'eta': 1, 'silent': 1, 'objective': 'binary:logistic'}
+            classif = Xgboost()
+            classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
+                          data_test_group="test_x", target_test_group='test_y', model_params=params,
+                          data_validation_group="validation_x", target_validation_group="validation_y")
+            classif.save(name="test", path="/tmp/", model_version="1")
 
     def tearDown(self):
         self.dataset.destroy()
 
     def test_predict(self):
-        classif = Xgboost.load(model_name="test", path="/tmp/", model_version="1")
-        with self.dataset:
+        with Xgboost.load(model_name="test", path="/tmp/", model_version="1") as classif:
             predict = classif.predict(self.dataset["x"], batch_size=1)
-            for pred in predict:
+            for pred in predict.only_data():
                 self.assertEqual(pred[0] >= 0, True)
                 break
-        classif.destroy()
+            classif.destroy()
 
 
 class TestLightGBM(unittest.TestCase):
@@ -216,81 +214,79 @@ class TestLightGBM(unittest.TestCase):
         np.random.seed(0)
         x = np.random.rand(100, 10)
         y = (x[:, 0] > .5).astype(int)
-        self.dataset = Data(name="test", dataset_path="/tmp/", clean=True)
-        self.dataset.from_data({"x": x, "y": y})
-        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
-        with self.dataset:
+        with Data(name="test", dataset_path="/tmp/") as self.dataset, \
+                Data(name="test_cv", dataset_path="/tmp/", driver=HDF5()) as ds:
+            self.dataset.from_data({"x": x, "y": y})
+            cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(self.dataset)
-            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
             ds.from_data(stc)
 
-        classif = LightGBM()
-        if LightGBM== RandomForest:
-            self.params = {}
-        else:
-            self.params={'max_depth': 4, 'subsample': 0.9, 'colsample_bytree': 0.9,
+            classif = LightGBM()
+            if LightGBM== RandomForest:
+                self.params = {}
+            else:
+                self.params={'max_depth': 4, 'subsample': 0.9, 'colsample_bytree': 0.9,
                      'objective': 'binary', 'seed': 99, "verbosity": 0, "learning_rate": 0.1,
                      'boosting_type': "gbdt", 'max_bin': 255, 'num_leaves': 25,
                      'metric': 'binary_logloss'}
-        self.num_steps = 10
-        self.model_version = "1"
-        classif.train(ds, num_steps=self.num_steps, data_train_group="train_x", target_train_group='train_y',
+            self.num_steps = 10
+            self.model_version = "1"
+            classif.train(ds, num_steps=self.num_steps, data_train_group="train_x", target_train_group='train_y',
                       data_test_group="test_x", target_test_group='test_y', model_params=self.params,
                       data_validation_group="validation_x", target_validation_group="validation_y")
-        classif.save(name="test", path="/tmp/", model_version=self.model_version)
+            classif.save(name="test", path="/tmp/", model_version=self.model_version)
 
     def tearDown(self):
         self.dataset.destroy()
 
     def test_train_params(self):
-        classif = LightGBM.load(model_name="test", path="/tmp/", model_version=self.model_version)
-        self.assertCountEqual(classif.model_params.keys(), self.params.keys())
-        self.assertEqual(classif.model_version, self.model_version)
-        self.assertEqual(classif.num_steps, self.num_steps)
-        self.assertEqual(len(classif.scores2table().measures[0]), 7)
-        classif.destroy()
+        with LightGBM.load(model_name="test", path="/tmp/", model_version=self.model_version) as classif:
+            self.assertCountEqual(classif.model_params.keys(), self.params.keys())
+            self.assertEqual(classif.model_version, self.model_version)
+            self.assertEqual(classif.num_steps, self.num_steps)
+            self.assertEqual(len(classif.scores2table().measures[0]), 7)
+            classif.destroy()
 
     def test_predict(self):
-        classif = LightGBM.load(model_name="test", path="/tmp/", model_version=self.model_version)
-        with self.dataset:
+        with LightGBM.load(model_name="test", path="/tmp/", model_version=self.model_version) as classif:
             predict = classif.predict(self.dataset["x"], batch_size=1)[:1]
-            for pred in predict:
+            for pred in predict.only_data():
                 self.assertEqual(pred[0] >= 0, 1)
-        classif.destroy()
+            classif.destroy()
 
 
 class TestModelVersion(unittest.TestCase):
     def test_load_add_version(self):
         x = np.random.rand(100)
         y = x > .5
-        dataset = Data(name="test", dataset_path="/tmp", driver=HDF5(), clean=True)
-        dataset.from_data({"x": x.reshape(-1, 1), "y": y})
+        with Data(name="test", dataset_path="/tmp", driver=HDF5()) as dataset, \
+                Data(name="test_cv", dataset_path="/tmp/", driver=HDF5()) as ds:
+            dataset.from_data({"x": x.reshape(-1, 1), "y": y})
 
-        classif = RandomForest()
-        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
-        with dataset:
+            classif = RandomForest()
+            cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(dataset)
-            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
             ds.from_data(stc)
             classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                           data_test_group="test_x", target_test_group='test_y',
                           data_validation_group="validation_x", target_validation_group="validation_y")
             classif.save("test", path="/tmp/", model_version="1")
 
-        classif = RandomForest.load("test", path="/tmp/", model_version="1")
-        classif.train(ds, num_steps=10, data_train_group="train_x", target_train_group='train_y',
+        with RandomForest.load("test", path="/tmp/", model_version="1") as classif:
+            classif.train(classif.ds, num_steps=10, data_train_group="train_x", target_train_group='train_y',
                       data_test_group="test_x", target_test_group='test_y',
                       data_validation_group="validation_x", target_validation_group="validation_y")
-        classif.save("test", path="/tmp/", model_version="2")
+            classif.save("test", path="/tmp/", model_version="2")
 
-        classif2 = RandomForest.load("test", path="/tmp/", model_version="2")
-        self.assertEqual(classif2.model_version, "2")
-        self.assertEqual(classif2.base_path, "/tmp/")
-        self.assertEqual(classif2.num_steps, 10)
-        self.assertEqual(classif2.model_name, "test")
-        classif.destroy()
-        classif2.destroy()
-        dataset.destroy()
+        with RandomForest.load("test", path="/tmp/", model_version="2") as classif2:
+            self.assertEqual(classif2.model_version, "2")
+            self.assertEqual(classif2.base_path, "/tmp/")
+            self.assertEqual(classif2.num_steps, 10)
+            self.assertEqual(classif2.model_name, "test")
+            classif2.destroy()
+
+        with dataset:
+            dataset.destroy()
 
 
 class TestKeras(unittest.TestCase):
@@ -298,19 +294,18 @@ class TestKeras(unittest.TestCase):
         np.random.seed(0)
         x = np.random.rand(100)
         y = x > .5
-        dataset = Data(name="test", dataset_path="/tmp", driver=HDF5(), clean=True)
-        dataset.from_data({"x": x.reshape(-1, 1), "y": y})
+        with Data(name="test", dataset_path="/tmp", driver=HDF5()) as dataset, \
+                Data(name="test_cv", dataset_path="/tmp/", driver=HDF5()) as ds:
+            dataset.from_data({"x": x.reshape(-1, 1), "y": y})
 
-        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
-        with dataset:
+            cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(dataset)
-            ds = Data(name="test_cv", dataset_path="/tmp/", driver=HDF5(), clean=True)
             ds.from_data(stc)
             clf.train(ds, num_steps=2, data_train_group="train_x", target_train_group='train_y', batch_size=10,
                           data_test_group="test_x", target_test_group='test_y', model_params=model_params,
                           data_validation_group="validation_x", target_validation_group="validation_y")
             clf.save("test", path="/tmp/", model_version="1")
-        dataset.destroy()
+            dataset.destroy()
         return clf
 
     def test_predict(self):
@@ -319,7 +314,8 @@ class TestKeras(unittest.TestCase):
         self.assertEqual(len(clf.scores2table().measures[0]), 7)
         metadata = Metadata.get_metadata(clf.path_metadata, clf.path_metadata_version)
         self.assertEqual(len(metadata["train"]["model_json"]) > 0, True)
-        clf.destroy()
+        with clf:
+            clf.destroy()
 
 
 class TestWrappers(unittest.TestCase):

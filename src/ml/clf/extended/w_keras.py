@@ -14,8 +14,7 @@ class FCNet(Keras):
     def prepare_model(self, obj_fn=None, num_steps: int = 0, model_params=None, batch_size: int = None):
         layers = [128, 64]
         model = Sequential()
-        with self.ds:
-            input_shape = self.ds[self.data_groups["data_train_group"]].shape.to_tuple()
+        input_shape = self.ds[self.data_groups["data_train_group"]].shape.to_tuple()
         model.add(Dense(layers[0], input_shape=input_shape[1:]))
         for layer_size in layers[1:]:
             model.add(Dense(layer_size, activation='tanh', 
@@ -24,14 +23,13 @@ class FCNet(Keras):
 
         model.add(Dense(2, activation='softmax'))
         model.compile(optimizer='sgd', loss='categorical_crossentropy')
-        with self.ds:
-            model.fit(self.ds[self.data_groups["data_train_group"]].to_ndarray(),
-                      self.int2vector(self.ds[self.data_groups["target_train_group"]].to_ndarray()),
-                      epochs=num_steps,
-                      batch_size=batch_size,
-                      shuffle="batch",
-                      validation_data=(self.ds[self.data_groups["data_validation_group"]].to_ndarray(),
-                                       self.int2vector(self.ds[self.data_groups["target_validation_group"]].to_ndarray())))
+        model.fit(self.ds[self.data_groups["data_train_group"]].to_ndarray(),
+                  self.int2vector(self.ds[self.data_groups["target_train_group"]].to_ndarray()),
+                  epochs=num_steps,
+                  batch_size=batch_size,
+                  shuffle="batch",
+                  validation_data=(self.ds[self.data_groups["data_validation_group"]].to_ndarray(),
+                                   self.int2vector(self.ds[self.data_groups["target_validation_group"]].to_ndarray())))
         return self.ml_model(model)
 
 
