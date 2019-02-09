@@ -12,7 +12,7 @@ from ml.utils.logger import log_config
 from ml.abc.data import AbsData
 from ml.abc.group import AbsGroup
 from ml.utils.numeric_functions import nested_shape
-from ml.data.groups import DaGroup, StcArrayGroup
+from ml.data.groups import DaGroup, StcArrayGroup, TupleGroup
 
 log = log_config(__name__)
 Slice = namedtuple('Slice', 'batch slice')
@@ -368,6 +368,17 @@ class Iterator(BaseIterator):
         shape = self.shape.change_length(np.inf)
         return BaseIterator(self._cycle_it(), dtypes=self.dtypes, type_elem=self.type_elem, shape=shape)
 
+    def to_slice(self, batch_size):
+        if self.type_elem != Slice:
+            start = 0
+            end = batch_size
+            for elem in self:
+                batch = DaGroup(TupleGroup(elem, dtypes=self.dtypes))
+                yield Slice(batch=batch, slice=slice(start, end))
+                start = end
+                end += batch_size
+        return self
+
 
 class BatchIterator(BaseIterator):
     type_elem = None
@@ -493,7 +504,7 @@ class BatchIterator(BaseIterator):
         shape = Shape(shape_dict)
         if batcher_len == 0:
             batcher_len = None
-        return cls.builder(BaseIterator(it[:batcher_len], shape=shape, dtypes=dtypes),
+        return cls.builder(BaseIterator(it[:batcher_len].to_slice(from_batch_size), shape=shape, dtypes=dtypes),
                            batch_size=from_batch_size)
 
     def cycle(self):

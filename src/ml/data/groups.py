@@ -4,6 +4,7 @@ from ml.utils.basic import Shape
 from ml.fmtypes import DEFAUL_GROUP_NAME
 import numpy as np
 from collections import OrderedDict
+from ml.utils.decorators import cache
 import dask.array as da
 import numbers
 
@@ -195,3 +196,64 @@ class StcArrayGroup(AbsBaseGroup):
 
     def get_conn(self, group):
         return self.conn[group]
+
+
+class TupleGroup(AbsGroup):
+    inblock = False
+
+    def __init__(self, conn, dtypes=None):
+        self.dtypes = dtypes
+        super(TupleGroup, self).__init__(conn)
+
+    def __getitem__(self, item):
+        if isinstance(item, str):
+            for index, group in enumerate(self.groups):
+                if group == item:
+                    return TupleGroup(self.conn[index], dtypes=self.dtypes)
+        elif isinstance(item, list) or isinstance(item, tuple):
+            #print(item, self.conn)
+            print("GET ITEM TUPLE", item)
+            if isinstance(self.conn, np.ndarray):
+                return self.conn[item]
+            else:
+                raise NotImplementedError
+        elif isinstance(item, int):
+            raise NotImplementedError
+        elif isinstance(item, slice):
+            raise NotImplementedError
+
+    def __setitem__(self, item, value):
+        pass
+
+    def __iter__(self):
+        pass
+
+    def get_group(self, group):
+        return self[group]
+
+    def get_conn(self, group):
+        return self[group]
+
+    def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
+        if self.dtype is None:
+            return np.asarray([])
+        pass
+
+    def to_df(self):
+        pass
+
+    @property
+    @cache
+    def shape(self) -> Shape:
+        shape = {}
+        for index, group in enumerate(self.groups):
+            shape[group] = self.conn[index].shape
+        return Shape(shape)
+
+    @property
+    def dtypes(self) -> np.dtype:
+        return self.dtypes_cache
+
+    @dtypes.setter
+    def dtypes(self, v):
+        self.dtypes_cache = v

@@ -44,8 +44,7 @@ class PTsne(UnsupervisedModel):
                        to_json_fn=model.to_json)
 
     def prepare_model(self, obj_fn=None, num_steps: int = 0, model_params=None, batch_size: int = None) -> MLModel:
-        with self.ds:
-            input_shape = self.ds[self.data_groups["data_train_group"]].shape.to_tuple()
+        input_shape = self.ds[self.data_groups["data_train_group"]].shape.to_tuple()
 
         model = Sequential()
         model.add(Dense(500, input_shape=input_shape[1:]))
@@ -56,13 +55,12 @@ class PTsne(UnsupervisedModel):
         model.add(Activation('relu'))
         model.add(Dense(2))
         model.compile(optimizer='sgd', loss=KLdivergence)
-        with self.ds:
-            x_stc = self.ds[[self.data_groups["data_train_group"], self.data_groups["target_train_group"]]]
-            z_stc = self.ds[[self.data_groups["data_validation_group"], self.data_groups["target_validation_group"]]]
-            x_it = Iterator(x_stc).batchs(batch_size=batch_size, batch_type="structured").cycle().to_iter()
-            z_it = Iterator(z_stc).batchs(batch_size=batch_size, batch_type="structured").cycle().to_iter()
-            x_iter = clean_iter(x_it)
-            z_iter = clean_iter(z_it)
+        x_stc = self.ds[[self.data_groups["data_train_group"], self.data_groups["target_train_group"]]]
+        z_stc = self.ds[[self.data_groups["data_validation_group"], self.data_groups["target_validation_group"]]]
+        x_it = Iterator(x_stc).batchs(batch_size=batch_size).cycle().to_iter()
+        z_it = Iterator(z_stc).batchs(batch_size=batch_size).cycle().to_iter()
+        x_iter = clean_iter(x_it)
+        z_iter = clean_iter(z_it)
 
         steps = round(len(x_stc)/batch_size/num_steps, 0)
         vsteps = round(len(z_stc)/batch_size/num_steps, 0)
