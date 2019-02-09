@@ -20,13 +20,12 @@ class ClassifModel(SupervicedModel):
         if measures is None or isinstance(measures, str):
             measure = metrics.MeasureBatch(name=self.model_name, batch_size=batch_size)
             measures = measure.make_metrics(measures=measures)
-        with self.ds:
-            test_data = self.ds[self.data_groups["data_test_group"]]
-            for measure_fn in measures:
-                test_target = Iterator(self.ds[self.data_groups["target_test_group"]]).batchs(batch_size=batch_size)
-                predictions = self.predict(test_data, output=measure_fn.output, batch_size=batch_size)
-                for pred, target in zip(predictions, test_target):
-                    measures.update_fn(pred, target, measure_fn)
+        test_data = self.ds[self.data_groups["data_test_group"]]
+        for measure_fn in measures:
+            test_target = Iterator(self.ds[self.data_groups["target_test_group"]]).batchs(batch_size=batch_size)
+            predictions = self.predict(test_data, output=measure_fn.output, batch_size=batch_size)
+            for pred, target in zip(predictions, test_target):
+                measures.update_fn(pred, target, measure_fn)
         return measures.to_list()
 
 
