@@ -12,7 +12,7 @@ from ml.utils.files import rm
 from ml.data.ds import Data
 from ml.data.drivers import Zarr, HDF5
 from ml.data.csv import ZIPFile
-from ml.utils.basic import Login
+from ml.utils.core import Login
 
 # from dask import get # single thread
 # from dask.multiprocessing import get

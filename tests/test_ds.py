@@ -9,7 +9,7 @@ from ml.data.drivers import Zarr, HDF5
 from ml.utils.model_selection import CV
 from ml.utils.files import rm
 from numcodecs import GZip
-from ml.utils.basic import Login
+from ml.utils.core import Login
 
 
 class TestDataset(unittest.TestCase):

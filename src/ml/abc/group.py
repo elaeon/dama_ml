@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from ml.utils.numeric_functions import max_dtype
-from ml.utils.basic import Shape
+from ml.utils.core import Shape
 import numpy as np
 import pandas as pd
 

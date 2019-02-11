@@ -1,6 +1,6 @@
 from ml.utils.config import get_settings
 from ml.utils.files import file_exists
-from ml.utils.basic import time2str
+from ml.utils.miscellaneous import time2str
 from git import Repo
 import os
 import subprocess

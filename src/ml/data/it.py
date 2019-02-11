@@ -3,19 +3,19 @@ import numpy as np
 import pandas as pd
 import types
 
-from collections import namedtuple
 from collections import defaultdict, deque
 from ml.utils.numeric_functions import max_type, num_splits, wsrj, max_dtype
 from ml.utils.seq import grouper_chunk
-from ml.utils.basic import isnamedtupleinstance, Shape
+from ml.utils.core import Shape
+from ml.utils.miscellaneous import isnamedtupleinstance
 from ml.utils.logger import log_config
 from ml.abc.data import AbsData
 from ml.abc.group import AbsGroup
 from ml.utils.numeric_functions import nested_shape
-from ml.data.groups import DaGroup, StcArrayGroup, TupleGroup
+from ml.data.groups.core import DaGroup, StcArrayGroup, TupleGroup
+from ml.fmtypes import Slice, DEFAUL_GROUP_NAME
 
 log = log_config(__name__)
-Slice = namedtuple('Slice', 'batch slice')
 
 
 def assign_struct_array(it, type_elem, start_i, end_i, dtype, dims):
@@ -103,7 +103,7 @@ class BaseIterator(object):
     @staticmethod
     def default_dtypes(dtype: np.dtype) -> np.dtype:
         if dtype.fields is None:
-            return np.dtype([("c0", dtype)])
+            return np.dtype([(DEFAUL_GROUP_NAME, dtype)])
         else:
             return dtype
 
@@ -253,7 +253,7 @@ class Iterator(BaseIterator):
         try:
             elem = next(self)
         except StopIteration:
-            self.shape = Shape({"c0": (0, )})
+            self.shape = Shape({DEFAUL_GROUP_NAME: (0, )})
             self.dtypes = None
             self.dtype = None
         else:

@@ -10,7 +10,7 @@ from tqdm import tqdm
 from ml.abc.data import AbsData
 from ml.data.it import Iterator, BaseIterator, BatchIterator
 from ml.utils.files import build_path
-from ml.utils.basic import Hash, Login
+from ml.utils.core import Hash, Login
 from ml.abc.driver import AbsDriver
 from ml.data.drivers import Memory
 from ml.abc.group import AbsGroup

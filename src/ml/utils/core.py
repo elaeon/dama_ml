@@ -1,10 +1,9 @@
 import hashlib
 import numpy as np
 import numbers
-import time
 
 from collections import OrderedDict
-from .decorators import cache
+from ml.utils.decorators import cache
 
 
 class Hash:
@@ -121,24 +120,3 @@ class Login(object):
         self.passwd = passwd
         self.resource = resource
         self.url = url
-
-
-def unique_dtypes(dtypes) -> np.ndarray:
-    return np.unique([dtype.name for _, dtype in dtypes])
-
-
-def labels2num(labels):
-    from sklearn.preprocessing import LabelEncoder
-    le = LabelEncoder()
-    le.fit(labels)
-    return le
-
-
-def isnamedtupleinstance(x):
-    f = getattr(x, '_fields', None)
-    shape = getattr(x, 'shape', None)
-    return f is not None and shape is None  # x.__bases__[0] == tuple
-
-
-def time2str(date):
-    return time.strftime("%a, %d %b %Y %H:%M", time.gmtime(date))

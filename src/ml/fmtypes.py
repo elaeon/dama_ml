@@ -2,6 +2,7 @@ from collections import namedtuple
 from numpy import dtype
 
 Fmtype = namedtuple('Fmtype', 'name dtype db_type')
+Slice = namedtuple('Slice', 'batch slice')
 
 DEFAUL_GROUP_NAME = "g0"
 BOOLEAN = Fmtype(name="boolean", dtype=dtype(bool), db_type="BOOLEAN")

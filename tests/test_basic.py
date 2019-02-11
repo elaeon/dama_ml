@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from ml.utils.basic import Shape
+from ml.utils.core import Shape
 
 
 # def test_add(self):
