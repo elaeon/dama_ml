@@ -12,13 +12,10 @@ from keras.models import Sequential
 
 
 def clean_iter(it):
-    for groups in it:
+    for batch in it:
         row = []
-        for group in groups:
-            array = group.to_ndarray()
-            if array.shape[1] > array.shape[0]:
-                array = array[:, :array.shape[0]]
-            row.append(array)
+        for group in batch.groups:
+            row.append(batch[group].to_ndarray())
         yield row
 
 
@@ -61,7 +58,6 @@ class PTsne(UnsupervisedModel):
         z_it = Iterator(z_stc).batchs(batch_size=batch_size).cycle().to_iter()
         x_iter = clean_iter(x_it)
         z_iter = clean_iter(z_it)
-
         steps = round(len(x_stc)/batch_size/num_steps, 0)
         vsteps = round(len(z_stc)/batch_size/num_steps, 0)
         steps = 1 if steps == 0 else steps

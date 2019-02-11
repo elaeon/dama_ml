@@ -369,15 +369,13 @@ class Iterator(BaseIterator):
         return BaseIterator(self._cycle_it(), dtypes=self.dtypes, type_elem=self.type_elem, shape=shape)
 
     def to_slice(self, batch_size):
-        if self.type_elem != Slice:
-            start = 0
-            end = batch_size
-            for elem in self:
-                batch = DaGroup(TupleGroup(elem, dtypes=self.dtypes))
-                yield Slice(batch=batch, slice=slice(start, end))
-                start = end
-                end += batch_size
-        return self
+        start = 0
+        end = batch_size
+        for elem in self:
+            batch = DaGroup(TupleGroup(elem, dtypes=self.dtypes))  # fixme
+            yield Slice(batch=batch, slice=slice(start, end))
+            start = end
+            end += batch_size
 
 
 class BatchIterator(BaseIterator):
@@ -485,9 +483,13 @@ class BatchIterator(BaseIterator):
             for elem in self:
                 yield elem
 
-    def to_iter(self):
-        for slice_obj in self:
-            yield slice_obj.batch
+    def to_iter(self, raw: bool = False):
+        if raw is True:
+            for slice_obj in self:
+                yield slice_obj.batch.to_ndarray()
+        else:
+            for slice_obj in self:
+                yield slice_obj.batch
 
     @classmethod
     def builder(cls, it: BaseIterator, batch_size: int):
@@ -495,7 +497,7 @@ class BatchIterator(BaseIterator):
 
     @classmethod
     def from_batchs(cls, iterable: iter, dtypes: np.dtype = None, from_batch_size: int = 0,
-                    length: int = None):
+                    length: int = None, to_slice=False):
         it = Iterator(iterable, dtypes=dtypes, length=length)
         batcher_len = num_splits(length, from_batch_size)
         shape_dict = {}
@@ -504,7 +506,12 @@ class BatchIterator(BaseIterator):
         shape = Shape(shape_dict)
         if batcher_len == 0:
             batcher_len = None
-        return cls.builder(BaseIterator(it[:batcher_len].to_slice(from_batch_size), shape=shape, dtypes=dtypes),
+
+        if it.type_elem != Slice and to_slice is True:
+            iterator = it[:batcher_len].to_slice(from_batch_size)
+        else:
+            iterator = it[:batcher_len]
+        return cls.builder(BaseIterator(iterator, shape=shape, dtypes=dtypes, type_elem=it.type_elem),
                            batch_size=from_batch_size)
 
     def cycle(self):
@@ -512,20 +519,12 @@ class BatchIterator(BaseIterator):
                                          length=np.inf)
 
     def only_data(self):
-        def _it():
-            if self.type_elem == AbsGroup or self.type_elem == Slice:
-                for data in self:
-                    yield data.batch.to_ndarray()
-            else:
-                for data in self:
-                    yield data.batch
-
-        return BatchIterator.from_batchs(_it(),  dtypes=self.dtypes, from_batch_size=self.batch_size,
+        return BatchIterator.from_batchs(self.to_iter(raw=True),  dtypes=self.dtypes, from_batch_size=self.batch_size,
                                          length=self.length)
 
 
 class BatchGroup(BatchIterator):
-    type_elem = AbsGroup
+    type_elem = Slice
 
     def batch_from_it(self, shape=None):
         init = 0
@@ -541,7 +540,7 @@ class BatchGroup(BatchIterator):
 
 
 class BatchItGroup(BatchIterator):
-    batch_type = 'group'
+    # batch_type = 'group'
     type_elem = Slice
 
     def batch_from_it(self, shape):

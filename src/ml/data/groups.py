@@ -47,6 +47,7 @@ class DaGroup(AbsGroup):
         groups = DaGroupDict()
         for group, data in groups_dict.items():
             chunks = data.shape  # fixme
+            print(chunks)
             groups[group] = da.from_array(data, chunks=chunks)
         return groups
 
@@ -207,12 +208,11 @@ class TupleGroup(AbsGroup):
 
     def __getitem__(self, item):
         if isinstance(item, str):
-            for index, group in enumerate(self.groups):
+            for index, (group, (dtype, _)) in enumerate(self.dtypes.fields.items()):
                 if group == item:
-                    return TupleGroup(self.conn[index], dtypes=self.dtypes)
+                    return TupleGroup(self.conn[index], dtypes=np.dtype([(group, dtype)]))
         elif isinstance(item, list) or isinstance(item, tuple):
             #print(item, self.conn)
-            print("GET ITEM TUPLE", item)
             if isinstance(self.conn, np.ndarray):
                 return self.conn[item]
             else:
