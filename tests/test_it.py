@@ -6,6 +6,7 @@ import collections
 
 from ml.data.it import Iterator, BatchIterator, Slice
 from ml.data.ds import Data
+from ml.data.groups.core import DaGroup
 
 
 def stream():
@@ -452,7 +453,6 @@ class TestIteratorLoop(unittest.TestCase):
         self.assertEqual(elems, list(range(10))*2)
 
     def test_it2iter(self):
-        from ml.data.groups import DaGroup
         x_array = np.random.rand(10)
         y_array = np.random.rand(10)
         z_array = np.random.rand(10)

@@ -5,7 +5,7 @@ import json
 
 from ml.data.ds import Data
 from ml.data.it import Iterator
-from ml.data.drivers import Zarr, HDF5
+from ml.data.drivers.core import Zarr, HDF5
 from ml.utils.model_selection import CV
 from ml.utils.files import rm
 from numcodecs import GZip
@@ -414,7 +414,7 @@ class TestPsqlDriver(unittest.TestCase):
         self.login = Login(username="alejandro", resource="ml")
 
     def test_driver(self):
-        from ml.data.db import Postgres
+        from ml.data.drivers.postgres import Postgres
         x = np.random.rand(10)*100
         y = np.random.rand(10)*100
         with Data(name="test", driver=Postgres(login=self.login, mode="w")) as data:
@@ -426,7 +426,7 @@ class TestPsqlDriver(unittest.TestCase):
             data.destroy()
 
     def test_iter(self):
-        from ml.data.db import Postgres
+        from ml.data.drivers.postgres import Postgres
         login = Login(username="alejandro", resource="ml")
         df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
         with Data(name="test0", dataset_path="/tmp", driver=Postgres(login=login)) as data:
@@ -439,7 +439,7 @@ class TestPsqlDriver(unittest.TestCase):
             data.destroy()
 
     def test_iter_uni(self):
-        from ml.data.db import Postgres
+        from ml.data.drivers.postgres import Postgres
         login = Login(username="alejandro", resource="ml")
         array = [1., 2., 3., 4., 5.]
         with Data(name="test0", dataset_path="/tmp", driver=Postgres(login=login)) as data:

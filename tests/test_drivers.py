@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
-from ml.data.drivers import Memory, Zarr, HDF5
+from ml.data.drivers.core import Memory, Zarr, HDF5
 from ml.utils.core import Shape, Login
-from ml.data.db import Postgres
+from ml.data.drivers.postgres import Postgres
 
 
 class TestDriver(unittest.TestCase):
