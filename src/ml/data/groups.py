@@ -47,7 +47,7 @@ class DaGroup(AbsGroup):
         groups = DaGroupDict()
         for group, data in groups_dict.items():
             chunks = data.shape  # fixme
-            print(chunks)
+            print(chunks, "CONVERT CHUNKS")
             groups[group] = da.from_array(data, chunks=chunks)
         return groups
 

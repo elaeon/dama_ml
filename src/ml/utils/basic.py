@@ -1,6 +1,5 @@
 import hashlib
 import numpy as np
-import dask.array as da
 import numbers
 import time
 

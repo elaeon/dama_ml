@@ -42,7 +42,6 @@ class PTsne(UnsupervisedModel):
 
     def prepare_model(self, obj_fn=None, num_steps: int = 0, model_params=None, batch_size: int = None) -> MLModel:
         input_shape = self.ds[self.data_groups["data_train_group"]].shape.to_tuple()
-
         model = Sequential()
         model.add(Dense(500, input_shape=input_shape[1:]))
         model.add(Activation('relu'))
