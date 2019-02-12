@@ -3,6 +3,7 @@ import os
 from ml.utils.config import get_settings
 from ml.utils.files import get_models_path
 
+
 settings = get_settings("paths")
 
   
