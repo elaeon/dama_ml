@@ -1,15 +1,8 @@
 import numpy as np
-import logging
+from ml.utils.logger import log_config
 
-from ml.utils.config import get_settings
 
-settings = get_settings("ml")
-log = logging.getLogger(__name__)
-logFormatter = logging.Formatter("[%(name)s] - [%(levelname)s] %(message)s")
-handler = logging.StreamHandler()
-handler.setFormatter(logFormatter)
-log.addHandler(handler)
-log.setLevel(int(settings["loglevel"]))
+log = log_config(__name__)
 
 
 def greater_is_better_fn(reverse, output):
@@ -20,32 +13,21 @@ def greater_is_better_fn(reverse, output):
     return view
 
 
-class Measure(object):
-    """
-    For measure the results of the predictors, distincts measures are defined in this class
-    
-    :type predictions: array
-    :param predictions: array of predictions
+class MeasureBase(object):
+    __slots__ = ['name', 'measures']
 
-    :type labels: array
-    :param labels: array of correct labels of type float for compare with the predictions
-
-    :type labels2classes_fn: function
-    :param labels2classes_fn: function for transform the labels to classes
-    """
-
-    def __init__(self, predictions=None, labels=None, name=None):
-        self.predictions = {}
-        self.set_data(predictions, labels)
+    def __init__(self, name: str = None):
         self.name = name
         self.measures = []
 
-    def add(self, measure, greater_is_better=True, output=None):
-        self.measures.append(greater_is_better_fn(greater_is_better, output)(measure))
+    def __iter__(self) -> iter:
+        return iter(self.measures)
 
-    def set_data(self, predictions, labels, output=None):
-        self.labels = labels
-        self.predictions[output] = predictions
+    def scores(self):
+        return []
+
+    def add(self, measure, greater_is_better: bool = True, output=None) -> None:
+        self.measures.append(greater_is_better_fn(greater_is_better, output)(measure))
 
     def outputs(self):
         groups = {}
@@ -53,36 +35,88 @@ class Measure(object):
             groups[str(measure.output)] = measure.output
         return groups.values()
 
-    def scores(self):
-        for measure in self.measures:
-            yield measure(self.labels, self.predictions[measure.output])
-
-    def to_list(self):
+    def to_list(self) -> 'ListMeasure':
         list_measure = ListMeasure(headers=[""]+[fn.__name__ for fn in self.measures],
-                    order=[True]+[fn.reverse for fn in self.measures],
-                    measures=[[self.name] + list(self.scores())])
+                                   order=[True]+[fn.reverse for fn in self.measures],
+                                   measures=[[self.name] + list(self.scores())])
         return list_measure
 
-    @classmethod
-    def make_metrics(self, measures=None, name=None):
-        measure = Measure(name=name)
-        if measures is None:
-            measure.add(accuracy, greater_is_better=True, output='discrete')
-            measure.add(precision, greater_is_better=True, output='discrete')
-            measure.add(recall, greater_is_better=True, output='discrete')
-            measure.add(f1, greater_is_better=True, output='discrete')
-            measure.add(auc, greater_is_better=True, output='discrete')
-            measure.add(logloss, greater_is_better=False, output='n_dim')
+    @staticmethod
+    def make_metrics(measure_cls, measures: str = None, discrete: bool = True):
+        if measures is None and discrete is True:
+            measure_cls.add(accuracy, greater_is_better=True, output='discrete')
+            measure_cls.add(precision, greater_is_better=True, output='discrete')
+            measure_cls.add(recall, greater_is_better=True, output='discrete')
+            measure_cls.add(f1, greater_is_better=True, output='discrete')
+            measure_cls.add(auc, greater_is_better=True, output='discrete')
+            measure_cls.add(logloss, greater_is_better=False, output='n_dim')
+        elif measures is None and discrete is False:
+            measure_cls.add(mse, greater_is_better=False, output='n_dim')
+            measure_cls.add(msle, greater_is_better=False, output='n_dim')
+            measure_cls.add(gini_normalized, greater_is_better=True, output='n_dim')
         elif isinstance(measures, str):
             import sys
             m = sys.modules['ml.measures']
             if hasattr(m, measures) and measures != 'logloss':
-                measure.add(getattr(m, measures), greater_is_better=True, 
-                            output='discrete')
+                measure_cls.add(getattr(m, measures), greater_is_better=True,
+                                output='discrete')
             elif measures == 'logloss':
-                measure.add(getattr(m, measures), greater_is_better=False, 
-                            output='n_dim')
-        return measure
+                measure_cls.add(getattr(m, measures), greater_is_better=False,
+                                output='n_dim')
+        return measure_cls
+
+
+class Measure(MeasureBase):
+    __slots__ = ['score', 'name', 'measures']
+
+    def __init__(self, name: str = None):
+        super(Measure, self).__init__(name=name)
+        self.score = {}
+
+    def update(self, predictions, target) -> None:
+        for measure_fn in self:
+            self.update_fn(predictions, target, measure_fn)
+
+    def update_fn(self, predictions, target, measure_fn) -> None:
+        self.score[measure_fn.__name__] = measure_fn(target, predictions)
+
+    def scores(self):
+        for measure in self.measures:
+            yield self.score[measure.__name__]
+
+    def make_metrics(self, measures=None, discrete: bool = True) -> 'Measure':
+        return MeasureBase.make_metrics(self, measures=measures, discrete=discrete)
+
+
+class MeasureBatch(MeasureBase):
+    __slots__ = ['score', 'name', 'measures', 'batch_size']
+
+    def __init__(self, name: str = None, batch_size: int = 0):
+        super(MeasureBatch, self).__init__(name=name)
+        self.score = {}
+        self.batch_size = batch_size
+
+    def update(self, predictions, target) -> None:
+        for measure_fn in self:
+            self.update_fn(predictions, target, measure_fn)
+
+    def update_fn(self, predictions, target, measure_fn) -> None:
+        log.debug("Set measure {}".format(measure_fn.__name__))
+        target_= target.batch.to_ndarray()
+        predictions_ = predictions.batch.to_ndarray()
+        try:
+            self.score[measure_fn.__name__][0] += measure_fn(target_, predictions_) * (len(predictions_) / self.batch_size)
+            self.score[measure_fn.__name__][1] += (len(predictions_) / self.batch_size)
+        except KeyError:
+            self.score[measure_fn.__name__] = [measure_fn(target_, predictions_), 1]
+
+    def scores(self):
+        for measure in self.measures:
+            value, size = self.score[measure.__name__]
+            yield value / size
+
+    def make_metrics(self, measures=None, discrete: bool = True) -> 'MeasureBatch':
+        return MeasureBase.make_metrics(self, measures=measures, discrete=discrete)
 
 
 def accuracy(labels, predictions):
@@ -143,9 +177,30 @@ def logloss(labels, predictions):
     return log_loss(labels, predictions)
 
 
-def msle(labels, predictions):
+def mse(labels, predictions):
     from sklearn.metrics import mean_squared_error
     return mean_squared_error(labels, predictions)
+
+
+def msle(labels, predicitions):
+    from sklearn.metrics import mean_squared_log_error
+    return mean_squared_log_error(labels, predicitions)
+
+
+def gini(actual, pred):
+    assert (len(actual) == len(pred))
+    actual = np.asarray(actual, dtype=np.float)
+    n = actual.shape[0]
+    a_s = actual[np.argsort(pred)]
+    a_c = a_s.cumsum()
+    gini_sum = a_c.sum() / a_s.sum() - (n + 1) / 2.0
+    return gini_sum / n
+
+
+def gini_normalized(a, p):
+    if p.ndim == 2:
+        p = p[:, 1]  # just pick class 1 if is a binary array
+    return gini(a, p) / gini(a, a)
 
 
 class ListMeasure(object):
@@ -173,14 +228,7 @@ class ListMeasure(object):
         self.measures = measures
         self.order = order
 
-    def add_measure(self, name, value, i=0, reverse=False):
-        """
-        :type name: string
-        :param name: column name
-
-        :type value: float
-        :param value: value to add
-        """
+    def add_measure(self, name: str, value, i: int = 0, reverse: bool = False):
         self.headers.append(name)
         try:
             self.measures[i].append(value)
@@ -189,11 +237,7 @@ class ListMeasure(object):
             self.measures[len(self.measures) - 1].append(value)
         self.order.append(reverse)
 
-    def get_measure(self, name):
-        """
-        :type name: string
-        :param name: by name of the column you can get his values. 
-        """
+    def get_measure(self, name: str):
         return self.measures_to_dict().get(name, None)
 
     def measures_to_dict(self):
@@ -209,25 +253,17 @@ class ListMeasure(object):
         return measures
              
     @classmethod
-    def dict_to_measures(self, data_dict):
+    def dict_to_measures(cls, data_dict):
         headers = data_dict.keys()
         measures = [[v["values"][0] for k, v in data_dict.items()]]
         order = [v["reverse"] for k, v in data_dict.items()]
         return ListMeasure(headers=headers, measures=measures, order=order)
 
-    def to_tabulate(self, order_column=None):
-        """
-        :type order_column: string
-        :param order_column: order the matrix by the order_column name that you pass
-        
-        :type reverse: bool
-        :param reverse: if False the order is ASC else DESC
-
-        print the matrix
-        """
+    def to_tabulate(self, order_column: str = None, limit=None):
         from ml.utils.order import order_table
         self.drop_empty_columns()
-        return order_table(self.headers, self.measures, order_column, natural_order=self.order)
+        return order_table(self.headers, self.measures, order_column,
+                           natural_order=self.order, limit=limit)
 
     def __str__(self):
         return self.to_tabulate()
@@ -267,24 +303,35 @@ class ListMeasure(object):
     def __add__(self, other):
         for hs, ho in zip(self.headers, other.headers):
             if hs != ho:
-                raise Exception
+                raise Exception("Could not add new headers to the table")
 
-        diff_len = abs(len(self.headers) - len(other.headers)) + 1
-        if len(self.headers) < len(other.headers):
+        if len(self.headers) == 0:
             headers = other.headers
-            this_measures = [m +  ([None] * diff_len) for m in self.measures]
+            this_measures = []
             other_measures = other.measures
             order = other.order
-        elif len(self.headers) > len(other.headers):
+        elif len(other.headers) == 0:
             headers = self.headers
             this_measures = self.measures
-            other_measures = [m + ([None] * diff_len) for m in other.measures]
+            other_measures = []
             order = self.order
         else:
-            headers = self.headers
-            this_measures = self.measures
-            other_measures = other.measures
-            order = self.order
+            diff_len = abs(len(self.headers) - len(other.headers))
+            if len(self.headers) < len(other.headers):
+                headers = other.headers
+                this_measures = [m + ([""] * diff_len) for m in self.measures]
+                other_measures = other.measures
+                order = other.order
+            elif len(self.headers) > len(other.headers):
+                headers = self.headers
+                this_measures = self.measures
+                other_measures = [m + ([""] * diff_len) for m in other.measures]
+                order = self.order
+            else:
+                headers = self.headers
+                this_measures = self.measures
+                other_measures = other.measures
+                order = self.order
 
         list_measure = ListMeasure(
             headers=headers, 

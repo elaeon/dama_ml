@@ -1,4 +1,4 @@
-from itertools import izip, chain
+from functools import reduce
 import operator
 import logging
 
@@ -17,13 +17,13 @@ log.setLevel(int(settings["loglevel"]))
 
 def avg(iters, method="arithmetic"):
     size = len(iters)
-    dtype = iters[0].dtype
-    chunks_size = iters[0].chunks_size
+    dtypes = iters[0].dtypes
+    batch_size = getattr(iters[0], 'batch_size', 0)
     if method == "arithmetic":
-        iter_ = (sum(x) / float(size) for x in izip(*iters))
+        iter_ = (sum(x) / float(size) for x in zip(*iters))
     else:
-        iter_ = (reduce(operator.mul, x)**(1. / size) for x in izip(*iters))
-    return Iterator(iter_, dtype=dtype, chunks_size=chunks_size)
+        iter_ = (reduce(operator.mul, x)**(1. / size) for x in zip(*iters))
+    return Iterator(iter_, dtypes=dtypes).batchs(batch_size=batch_size)
 
 
 def max_counter(iters_b, weights=None):
@@ -32,23 +32,14 @@ def max_counter(iters_b, weights=None):
             return ((label, 1) for label in labels)
         else:
             values = {}
-            for label, w in izip(labels, weights):
+            for label, w in zip(labels, weights):
                 values.setdefault(label, 0)
                 values[label] += w
             return values.items()
 
     iters = iter(iters_b)
     base_iter = next(iters)
-    iter_ = (max(merge(x, weights), key=lambda x: x[1])[0] for x in izip(base_iter, *iters))
-    return Iterator(iter_, dtype=base_iter.dtype, chunks_size=base_iter.chunks_size)
+    batch_size = getattr(base_iter, 'batch_size', 0)
+    iter_ = (max(merge(x, weights), key=lambda x: x[1])[0] for x in zip(base_iter, *iters))
+    return Iterator(iter_, dtypes=base_iter.dtypes).batchs(batch_size=batch_size)
 
-
-def concat(iters):
-    if len(iters) > 1:
-        base_iter = iters[0]
-        length = sum(it.length for it in iters if it.length is not None)
-        it = Iterator(chain(*iters), chunks_size=base_iter.chunks_size)
-        it.set_length(None if length == 0 else length)
-        return it
-    elif len(iters) == 1:
-        return iters[0]

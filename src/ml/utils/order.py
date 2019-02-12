@@ -1,4 +1,5 @@
 from operator import itemgetter
+from tabulate import tabulate
 
 
 def order_2d(list_2d, index=(0, 1), block_size=60):
@@ -34,7 +35,7 @@ def build_blocks(list_2d, block_size, index):
     return blocks
 
 
-def order_table(headers, table, order_column, natural_order=None):
+def order_table(headers, table, order_column, natural_order=None, limit=None):
     """
     :type natural_order: list
     :param natural_order: define the order for each column.
@@ -44,7 +45,6 @@ def order_table(headers, table, order_column, natural_order=None):
 
     build the table
     """
-    from tabulate import tabulate
     if len(headers) > 0:
         headers_lower = [h.lower() for h in headers]
         try:
@@ -58,7 +58,7 @@ def order_table(headers, table, order_column, natural_order=None):
             reverse = True
 
         table = sorted(table, key=lambda x: x[order_index], reverse=reverse)
-        return tabulate(table, headers)
+        return tabulate(table[:limit], headers)
 
 
 def order_from_ordered(ordered, data):

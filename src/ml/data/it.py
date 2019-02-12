@@ -1,258 +1,154 @@
-from itertools import izip, imap, chain, tee, islice
-import operator
-import types
+from itertools import chain, islice
 import numpy as np
 import pandas as pd
-import psycopg2
-import logging
-import datetime
+import types
 
-from collections import defaultdict, Iterable
-from ml.utils.config import get_settings
+from collections import defaultdict, deque
+from ml.utils.numeric_functions import max_type, num_splits, wsrj, max_dtype
 from ml.utils.seq import grouper_chunk
-from ml.utils.numeric_functions import max_type, num_splits, filter_sample, wsrj
+from ml.utils.core import Shape
+from ml.utils.miscellaneous import isnamedtupleinstance
+from ml.utils.logger import log_config
+from ml.abc.data import AbsData
+from ml.abc.group import AbsGroup
+from ml.utils.numeric_functions import nested_shape
+from ml.data.groups.core import DaGroup, StcArrayGroup, TupleGroup
+from ml.fmtypes import Slice, DEFAUL_GROUP_NAME
+
+log = log_config(__name__)
 
 
-settings = get_settings("ml")
-log = logging.getLogger(__name__)
-logFormatter = logging.Formatter("[%(name)s] - [%(levelname)s] %(message)s")
-handler = logging.StreamHandler()
-handler.setFormatter(logFormatter)
-log.addHandler(handler)
-log.setLevel(int(settings["loglevel"]))
+def assign_struct_array(it, type_elem, start_i, end_i, dtype, dims):
+    length = end_i - start_i
+    if isinstance(dims, list) and len(dims) == 1 and len(dtype) == dims[0] and dims[0] > 1:
+        shape = length
+    elif isinstance(dims, list):
+        shape = [length] + dims
+    else:
+        shape = length
 
-
-def choice(operator):
-    def inner(fn):
-        def view(x, y):
-            if isinstance(x, Iterator) and isinstance(y, Iterator):
-                return x.stream_operation(operator, y)
-            elif isinstance(y, Iterable):
-                return x.stream_operation(operator, Iterator(y))
+    stc_arr = np.empty(shape, dtype=dtype)
+    if type_elem == np.ndarray and len(stc_arr.shape) == 1:
+        for i, row in enumerate(it):
+            stc_arr[i] = tuple(row)
+    elif len(dtype) == 1:
+        group = dtype.names[0]
+        for i, row in enumerate(it):
+            if isnamedtupleinstance(row):
+                stc_arr[i] = row
             else:
-                return x.scalar_operation(operator, y)
-        return view
-    return inner
+                stc_arr[group][i] = row
+    elif type_elem == str or type_elem == np.str_ or type_elem == int or type_elem == np.string_\
+            or type_elem == np.object or type_elem == object or type_elem == float:
+        for (group, (_, _)), row in zip(dtype.fields.items(), it):
+            stc_arr[group] = row
+    else:
+        for i, row in enumerate(it):
+            stc_arr[i] = row
+    return stc_arr
 
 
-def cut(fn):
-    def check_params(*args, **kwargs):
-        smx, end, length = fn(*args, **kwargs)
-        if end < length:
-            return smx[:end]
-        return smx
-    return check_params
+def str_array(shape, batch_size, data, dtypes):
+    start_i = 0
+    end_i = 0
+    if len(shape) > 1:
+        dims = shape[1:]
+    else:
+        dims = 1
+
+    for smx in grouper_chunk(batch_size, data):
+        end_i += shape[0]
+        if data.length is not None and data.length < end_i:
+            end_i = data.length
+        array = assign_struct_array(smx, data.type_elem, start_i, end_i, dtypes, dims)
+        yield start_i, end_i, array
+        start_i = end_i
 
 
-class Iterator(object):
-    def __init__(self, fn_iter, dtype=None, chunks_size=0):
-        if isinstance(fn_iter, types.GeneratorType) or isinstance(fn_iter, psycopg2.extensions.cursor):
-            self.it = fn_iter
-        elif isinstance(fn_iter, Iterator):
-            self.it = fn_iter
-        elif isinstance(fn_iter, pd.DataFrame):
-            self.it = fn_iter.itertuples(index=False)
-            dtype = zip(fn_iter.columns.values, fn_iter.dtypes.values)
+class BaseIterator(object):
+    def __init__(self, it, length: int = np.inf, dtypes: np.dtype = None, shape=None,
+                 type_elem=None, pushedback=None) -> None:
+        self.data = it
+        self.pushedback = [] if pushedback is None else pushedback
+        self.dtypes = dtypes
+        self.dtype = max_dtype(dtypes)
+        self.type_elem = type_elem
+        if isinstance(shape, Shape):
+            self.shape = self.calc_shape_stc(length, shape)
         else:
-            self.it = iter(fn_iter)
+            self.shape = None
+        self.rewind = False
 
-        self.pushedback = []
-        self.chunks_size = chunks_size
-        self.has_chunks = True if chunks_size > 0 else False
-        self.features_dim = None
-        self.length = None
-        self.iter_init = True
-        #to obtain dtype, shape, global_dtype and type_elem
-        self.chunk_taste(dtype)
-    
-    def columns(self):
-        if hasattr(self.dtype, '__iter__'):
-            return [c for c, _ in self.dtype]
-        else:
-            return None
+    @property
+    def length(self):
+        if self.shape is not None:
+            if isinstance(self.shape, Shape):
+                return self.shape.max_length
+            elif self.shape[0] is not None:
+                return self.shape[0]
+        return np.inf
 
-    def pushback(self, val):
+    @staticmethod
+    def calc_shape_stc(length: int, shape: Shape) -> Shape:
+        length_shape = {}
+        for group, g_shape in shape.items():
+            group_length = shape[group][0]
+            group_length = length if group_length > length else shape[group][0]
+            length_shape[group] = tuple([group_length] + list(g_shape[1:]))
+        return Shape(length_shape)
+
+    @property
+    def groups(self) -> tuple:
+        return self.dtypes.names
+
+    def pushback(self, val) -> None:
         self.pushedback.append(val)
 
-    def chunk_type_elem(self):
-        try:
-            chunk = next(self)
-        except StopIteration:
-            return
+    @staticmethod
+    def default_dtypes(dtype: np.dtype) -> np.dtype:
+        if dtype.fields is None:
+            return np.dtype([(DEFAUL_GROUP_NAME, dtype)])
         else:
-            self.pushback(chunk)
-            return type(chunk)
+            return dtype
 
-    def chunk_taste(self, dtypes):
-        """Check for the dtype and global dtype in a chunk"""
-        try:
-            chunk = next(self)
-        except StopIteration:
-            self.global_dtype = None
-            self.dtype = None
-            self.shape = (0,)            
-            self.type_elem = None
-            return
+    def window(self, win_size: int = 2):
+        win = deque((next(self.data, None) for _ in range(win_size)), maxlen=win_size)
+        yield win
+        for e in self.data:
+            win.append(e)
+            yield win
 
-        if dtypes is not None and hasattr(dtypes, '__iter__'):
-            self.dtype = self.replace_str_type_to_obj(dtypes)
-            global_dtype = self._get_global_dtype(self.dtype)
-        elif isinstance(chunk, pd.DataFrame):
-            self.dtype = []
-            for c, cdtype in zip(chunk.columns.values, chunk.dtypes.values):
-                self.dtype.append((c, cdtype))
-            global_dtype = self._get_global_dtype(self.dtype)
-        elif isinstance(chunk, np.ndarray):
-            self.dtype = chunk.dtype
-            global_dtype = self.dtype
-        else:#scalars
-            if type(chunk).__module__ == '__builtin__':
-                if hasattr(chunk, '__iter__'):
-                    type_e = max_type(chunk)
-                    if type_e == list or type_e == tuple or\
-                        type_e == str or type_e == unicode or type_e ==  np.ndarray:
-                        self.dtype = "|O"
+    def flatter(self):
+        if self.type_elem == np.ndarray:
+            for array in self:
+                for elem in array.reshape(-1):
+                    if hasattr(elem, "__iter__") and len(elem) == 1:
+                        yield elem[0]
                     else:
-                        self.dtype = type_e
-                else:
-                    if dtypes is not None:
-                        self.dtype = dtypes
-                    else:
-                        self.dtype = type(chunk)
-
-                    if self.dtype == str:
-                        self.dtype = "|O"
-            else:
-                self.dtype = chunk.dtype
-            global_dtype = self.dtype
-
-        try:
-            shape = [None] + list(chunk.shape)
-        except AttributeError:
-            if hasattr(chunk, '__iter__'):
-                shape = (None, len(chunk))
-            else:
-                shape = (None,)
-
-        self.shape = shape
-        self.global_dtype = global_dtype
-        self.pushback(chunk)
-        self.type_elem = type(chunk)
-
-    def replace_str_type_to_obj(self, dtype):
-        if hasattr(dtype, '__iter__'):
-            dtype_tmp = []
-            for c, dtp in dtype:
-                if dtp == "str" or dtp == str:
-                    dtype_tmp.append((c, "|O"))
-                else:
-                    dtype_tmp.append((c, dtp))
+                        yield elem
+        elif self.type_elem == Slice:
+            for data in self:
+                for elem in data.batch.to_ndarray().reshape(-1):
+                    yield elem
+        elif self.type_elem == pd.DataFrame:
+            for data in self:
+                for elem in data.values.reshape(-1):
+                    yield elem
+        elif self.type_elem.__module__ == 'builtins':
+            for elem in chain.from_iterable(self):
+                yield elem
         else:
-            if dtype == "str" or dtype == str:
-                dtype_tmp = "|O"
-            else:
-                dtype_tmp = dtype
-        return dtype_tmp
+            raise Exception("Type of elem {} does not supported".format(self.type_elem))
 
-    def _get_global_dtype(self, dtype):
-        sizeof = [(np.dtype(cdtype), cdtype) for _, cdtype in dtype]
-        return max(sizeof, key=lambda x: x[0])[1]
-
-    def to_chunks(self, chunks_size, dtype=None):
-        if self.has_chunks is False and chunks_size > 0:
-            if dtype is None:
-                dtype = self.dtype
-            it = Iterator(self.chunks_gen(chunks_size, dtype),
-                chunks_size=chunks_size, dtype=dtype)
-            it.set_length(self.length)
-            return it
+    def flat(self) -> 'Iterator':
+        if self.length != np.inf:
+            length = self.length * sum(self.shape[1:])
         else:
-            return self
-    
-    def chunks_gen(self, chunks_size, dtype):
-        if chunks_size < 1:
-            chunks_size = self.shape[0]
+            length = self.length
+        return Iterator(self.flatter(), dtypes=self.dtypes, length=length)
 
-        if len(self.shape) == 1:
-            chunk_shape = [chunks_size]
-        else:
-            i_features = self.shape[1:]
-            chunk_shape = [chunks_size] + list(i_features)
-
-        if not isinstance(dtype, list):
-            for smx in grouper_chunk(chunks_size, self):
-                smx_a = np.empty(chunk_shape, dtype=dtype)
-                for i, row in enumerate(smx):
-                    if hasattr(row, '__iter__') and len(row) == 1:
-                        smx_a[i] = row[0]
-                    else:
-                        smx_a[i] = row
-                yield smx_a[:i+1]
-        else:
-            columns = [c for c, _ in dtype]
-            for smx in grouper_chunk(chunks_size, self):
-                yield self._assign_struct_array2df(smx, chunk_shape[0], dtype, 
-                    columns, chunks_size=chunks_size)
-    
-    def check_datatime(self, dtype):
-        cols = []
-        for col_i, (_, type_) in enumerate(dtype):
-            if type_ == np.dtype('<M8[ns]'):
-                cols.append(col_i)
-        return cols
-
-    def flat(self):
-        def _iter():
-            if self.type_elem == np.ndarray:
-                for chunk in self:
-                    for e in chunk.reshape(-1):
-                        if hasattr(e, '__iter__') and len(e) == 1:
-                            yield e[0]
-                        else:
-                            yield e
-            elif self.type_elem == pd.DataFrame:
-                for chunk in self:
-                    for e in chunk.values.reshape(-1):
-                        yield e
-            elif self.type_elem.__module__ == '__builtin__':
-                for e in chain.from_iterable(self):
-                    yield e
-        
-        it = Iterator(_iter(), dtype=self.dtype)
-        if self.length is not None:
-            it.set_length(self.length*sum(self.features_dim))
-
-        if self.has_chunks:
-            it = it.to_chunks(self.chunks_size, dtype=self.global_dtype)  
-        return it
-
-    def sample(self, k, col=None, weight_fn=None):
-        if self.has_chunks:
-            data = self.clean_chunks()
-        else:
-            data = self
-        it = Iterator(wsrj(self.weights_gen(data, col, weight_fn), k), dtype=self.dtype)
-        it.set_length(k)
-        return it
-
-    def split(self, i):
-        if self.type_elem == pd.DataFrame:
-            a, b = tee((row.iloc[:, :i], row.iloc[:, i:]) for row in self)
-        else:
-            a, b = tee((row[:i], row[i:]) for row in self)
-
-        if hasattr(self.dtype, '__iter__'):
-            dtype_0 = self.dtype[:i]
-            dtype_1 = self.dtype[i:]
-        else:
-            dtype_0 = self.dtype
-            dtype_1 = self.dtype
-
-        it0 = Iterator((item for item, _ in a), dtype=dtype_0, 
-                chunks_size=self.chunks_size)
-        it1 = Iterator((item for _, item in b), dtype=dtype_1, 
-                chunks_size=self.chunks_size)
-        return it0, it1
+    def sample(self, length: int, col=None, weight_fn=None) -> 'Iterator':
+        return Iterator(wsrj(self.weights_gen(self, col, weight_fn), length), dtypes=self.dtypes, length=length)
 
     def weights_gen(self, data, col, weight_fn):
         if not hasattr(self.type_elem, '__iter__') and weight_fn is not None:
@@ -261,246 +157,396 @@ class Iterator(object):
         elif col is not None and weight_fn is not None:
             for row in data:
                 yield row, weight_fn(row[col])
+        elif col is not None:
+            for row in data:
+                yield row[col], 1
         else:
             for row in data:
                 yield row, 1
 
-    def clean_chunks(self):
-        if self.has_chunks:
-            def cleaner():
-                for chunk in self:
-                    for row in chunk:
-                        yield row
-            return Iterator(cleaner(), chunks_size=0, dtype=None)
+    def num_splits(self) -> int:
+        return self.length
+
+    def is_multidim(self) -> bool:
+        return isinstance(self.shape, dict)
+
+    def _cycle_it(self):
+        if self.rewind is False:
+            raise Exception("This object is not cyclical, try to saved it in an AbsData")
+
+        while True:
+            for elem in self:
+                yield elem
+
+    def __iter__(self) -> 'BaseIterator':
+        if isinstance(self.data, AbsData):
+            self.data.data.counter = 0
+            if len(self.pushedback) > 0:
+                self.pushedback.pop()
         return self
 
-    @property
-    def shape(self):
-        return self._shape
+    def __next__(self):
+        if len(self.pushedback) > 0:
+            return self.pushedback.pop()
+        else:
+            return next(self.data)
 
-    @shape.setter
-    def shape(self, v):
-        if hasattr(v, '__iter__'):
-            if len(v) == 1:
-                self._shape = tuple(v)
-                self.features_dim = ()
-            else:
-                if self.has_chunks:
-                    self._shape = tuple([v[0]] + v[2:])
-                    self.features_dim = tuple(self._shape[1:])
+    def to_iter(self):
+        groups = self.groups
+        for batch in self:
+            row = []
+            for group in groups:
+                row.append(batch[group])
+            yield row
+
+    def __getitem__(self, key) -> 'Iterator':
+        if isinstance(key, slice):
+            if key.stop is not None:
+                if self.rewind is False:
+                    _it = islice(self.data, key.stop)
                 else:
-                    self._shape = tuple(v)
-                    self.features_dim = tuple(v[1:])
-        else:
-            self._shape = (v,)
-            self.features_dim = ()
+                    _it = self
+                return Iterator(_it, dtypes=self.dtypes, length=key.stop)
+        return NotImplemented
 
-    def set_length(self, length):
-        self.length = length
-        if length is not None and self.features_dim is not None:
-            self._shape = tuple([length] + list(self.features_dim))
 
-    def it_length(self, length):
-        if self.has_chunks:
-            it = Iterator(self.cut_it_chunk(length), dtype=self.dtype,
-                chunks_size=self.chunks_size)
-            it.set_length(length)
-            return it
+class Iterator(BaseIterator):
+    def __init__(self, fn_iter, dtypes: np.dtype = None, length: int = np.inf) -> None:
+        super(Iterator, self).__init__(fn_iter, dtypes=dtypes, length=length)
+        if isinstance(fn_iter, types.GeneratorType):
+            self.data = fn_iter
+            self.rewind = False
+        elif isinstance(fn_iter, Iterator):
+            self.data = fn_iter.data
+            length = fn_iter.length if length == np.inf else length
+            self.shape = self.calc_shape_stc(length, fn_iter.shape)
+            self.dtype = fn_iter.dtype
+            self.type_elem = fn_iter.type_elem
+            self.pushedback = fn_iter.pushedback
+            self.dtypes = fn_iter.dtypes
+            self.rewind = fn_iter.rewind
+            return
+        elif isinstance(fn_iter, pd.DataFrame):
+            self.data = fn_iter.itertuples(index=False)
+            dtypes = np.dtype(list(zip(fn_iter.columns.values, fn_iter.dtypes.values)))
+            length = fn_iter.shape[0] if length == np.inf else length
+            self.rewind = False
+        elif isinstance(fn_iter, np.ndarray):
+            self.data = iter(fn_iter)
+            length = fn_iter.shape[0] if length == np.inf else length
+            self.rewind = False
+        elif isinstance(fn_iter, AbsData) or isinstance(fn_iter, AbsGroup) or type(fn_iter) == DaGroup:
+            self.data = fn_iter
+            self.dtypes = fn_iter.dtypes
+            self.dtype = fn_iter.dtype
+            length = len(fn_iter) if length == np.inf else length
+            self.rewind = True
+            self.shape = self.calc_shape_stc(length, fn_iter.shape)
+            return
         else:
-            self.set_length(length)
+            self.data = iter(fn_iter)
+            self.rewind = False
+            if hasattr(fn_iter, '__len__'):
+                length = len(fn_iter)
+
+        # obtain dtypes, shape, dtype, type_elem and length
+        self.chunk_taste(length, dtypes)
+
+    def chunk_taste(self, length, dtypes) -> None:
+        """Check for the dtype and global dtype in a chunk"""
+        try:
+            elem = next(self)
+        except StopIteration:
+            self.shape = Shape({DEFAUL_GROUP_NAME: (0, )})
+            self.dtypes = None
+            self.dtype = None
+        else:
+            self.dtypes = self._define_dtypes(elem, dtypes)
+            self.shape = self._define_shape(elem, length)
+            self.dtype = max_dtype(self.dtypes)
+            self.pushback(elem)
+            self.type_elem = type(elem)
+
+    def _define_shape(self, elem, length) -> Shape:
+        try:
+            shape = elem.shape
+        except AttributeError:
+            if isnamedtupleinstance(elem):
+                shape = ()
+            elif hasattr(elem, '__iter__') and not isinstance(elem, str):
+                shape = Shape(nested_shape(elem, self.dtypes))
+            else:
+                shape = None
+
+        if not isinstance(shape, Shape):
+            shapes = {}
+            if shape is None:
+                shape = []
+
+            if len(self.dtypes) > 1:
+                for group in self.groups:
+                    shapes[group] = tuple([length] + list(shape[1:]))
+            else:
+                for group in self.groups:
+                    shapes[group] = tuple([length] + list(shape))
+            return self.calc_shape_stc(length, Shape(shapes))
+        elif isinstance(shape, Shape):
+            shapes = {}
+            for group in self.groups:
+                shapes[group] = tuple([length] + list(shape[group]))
+            return self.calc_shape_stc(length, Shape(shapes))
+
+    def _define_dtypes(self, chunk, dtypes) -> np.dtype:
+        if isinstance(dtypes, np.dtype):
+            return self.replace_str_type_to_obj(dtypes)
+        elif isinstance(chunk, pd.DataFrame):
+            ndtypes = []
+            for c, cdtype in zip(chunk.columns.values, chunk.dtypes.values):
+                ndtypes.append((c, cdtype))
+            return np.dtype(ndtypes)
+        elif isinstance(chunk, np.ndarray):
+            return self.default_dtypes(chunk.dtype)
+        else:  # scalars
+            if type(chunk).__module__ == 'builtins':
+                if hasattr(chunk, "__iter__"):
+                    type_e = max_type(chunk)
+                    if type_e == list or type_e == tuple or type_e == str or type_e == np.ndarray:
+                        return self.default_dtypes(np.dtype("|O"))
+                    elif type_e == float or type_e == int:
+                        return self.default_dtypes(np.dtype(type_e))
+                else:
+                    if dtypes is not None:
+                        return dtypes
+                    else:
+                        return self.default_dtypes(np.dtype(type(chunk)))
+            else:
+                if isnamedtupleinstance(chunk):
+                    dtypes_l = []
+                    for v, field in zip(chunk, chunk._fields):
+                        dtypes_l.append((field, np.dtype(type(v))))
+                    return np.dtype(dtypes_l)
+                else:
+                    return self.default_dtypes(chunk.dtype)
+
+    @staticmethod
+    def replace_str_type_to_obj(dtype: np.dtype) -> np.dtype:
+        if dtype.fields is not None:
+            dtype_tmp = []
+            for c, (dtp, _) in dtype.fields.items():
+                if dtp == "str" or dtp == str:
+                    dtype_tmp.append((c, np.dtype("O")))
+                else:
+                    dtype_tmp.append((c, dtp))
+        else:
+            if dtype == "str" or dtype == str:
+                dtype_tmp = "|O"
+            else:
+                dtype_tmp = dtype
+        return np.dtype(dtype_tmp)
+
+    def batchs(self, batch_size: int) -> 'BatchIterator':
+        if batch_size > 0:
+            if isinstance(self.data, AbsData) or isinstance(self.data, AbsGroup):
+                return BatchGroup(self, batch_size=batch_size)
+            else:
+                return BatchItGroup(self, batch_size=batch_size)
+        else:
             return self
 
-    def scalar_operation(self, operator, scalar):
-        iter_ = imap(lambda x: operator(x, scalar), self)
-        return Iterator(iter_, dtype=self.dtype, 
-            chunks_size=self.chunks_size)
-
-    def stream_operation(self, operator, stream):
-        iter_ = imap(lambda x: operator(x[0], x[1]), izip(self, stream))
-        return Iterator(iter_, dtype=self.dtype, 
-            chunks_size=self.chunks_size)
-
-    @choice(operator.add)
-    def __add__(self, x):
-        return
-
-    @choice(operator.sub)
-    def __sub__(self, x):
-        return
-
-    @choice(operator.mul)
-    def __mul__(self, x):
-        return
-
-    @choice(operator.div)
-    def __div__(self, x):
-        return
-
-    @choice(pow)
-    def __pow__(self, x):
-        return
-
-    __rmul__ = __mul__
-    __radd__ = __add__
-
-    @choice(operator.iadd)
-    def __iadd__(self, x):
-        return
-
-    @choice(operator.isub)
-    def __isub__(self, x):
-        return
-
-    @choice(operator.imul)
-    def __imul__(self, x):
-        return
-
-    @choice(operator.idiv)
-    def __idiv__(self, x):
-        return
-
-    @choice(operator.ipow)
-    def __ipow__(self, x):
-        return
-
-    def concat_elems(self, data):
-        iter_ = (list(chain(x0, x1)) for x0, x1 in izip(self, data))
-        return Iterator(iter_, dtype=self.dtype, chunks_size=self.chunks_size)
-
-    def compose(self, fn, *args, **kwargs):
-        iter_ = (fn(x, *args, **kwargs) for x in self)
-        return Iterator(iter_, dtype=self.dtype, 
-            chunks_size=self.chunks_size)
-
-    def concat(self, it):
-        return Iterator(chain(self, it))
-
-    def to_datamodelset(self, labels, features, size, ltype):
-        from ml.data.ds import DataLabel
-        from ml.utils.config import get_settings
-
-        settings = get_settings("ml")
-
-        data = np.zeros((size, features))
-        label_m = np.empty(size, dtype=ltype)
-        for i, y in enumerate(self):
-            row_c = i % labels.shape[0]
-            data[i] = y
-            label_m[i] = labels[row_c]
-        
-        dataset = DataLabel(dataset_path=settings["dataset_model_path"])
-        with dataset:
-            dataset.from_data(data, label_m)
-        return dataset
-
-    def to_narray(self, dtype=None):
-        if dtype is None:
-            dtype = self.global_dtype
-        if self.has_chunks:
-            return self._to_narray_chunks(self, dtype)
-        else:
-            return self._to_narray_raw(self, dtype)
-
-    @cut
-    def _to_narray_chunks(self, it, dtype):
-        smx_a = np.empty(self.shape, dtype=dtype)
-        init = 0
-        end = 0
-        for smx in self:
-            end += smx.shape[0]
-            smx_a[init:end] = smx
-            init = end
-        return smx_a, end, self.length
-
-    #cut if length > array size
-    @cut
-    def _to_narray_raw(self, it, dtype):
-        smx_a = np.empty(self.shape, dtype=dtype)
-        init = 0
-        end = 0
-        for smx in self:
-            if hasattr(smx, 'shape') and smx.shape == self.shape:
-                end += smx.shape[0]
+    def __getitem__(self, key) -> 'Iterator':
+        if isinstance(key, slice):
+            if key.stop is not None:
+                if self.rewind is False:
+                    _it = islice(self, key.stop)
+                else:
+                    _it = self
+                return Iterator(_it, dtypes=self.dtypes, length=key.stop)
             else:
-                end += 1
-            smx_a[init:end] = smx
-            init = end
-        return smx_a, end, self.length
+                return self
+        return NotImplemented
 
-    def to_df(self):
-        if self.has_chunks:
-            return pd.concat(self, axis=0, copy=False, ignore_index=True)
-        else:
-            if hasattr(self.dtype, '__iter__'):
-                columns = [c for c, _ in self.dtype]
-                return self._assign_struct_array2df(self, self.length, self.dtype, 
-                    columns)
+    def __setitem__(self, key, value):
+        return NotImplemented
+
+    def cycle(self):
+        shape = self.shape.change_length(np.inf)
+        return BaseIterator(self._cycle_it(), dtypes=self.dtypes, type_elem=self.type_elem, shape=shape)
+
+    def to_slice(self, batch_size):
+        start = 0
+        end = batch_size
+        for elem in self:
+            batch = DaGroup(TupleGroup(elem, dtypes=self.dtypes))  # fixme
+            yield Slice(batch=batch, slice=slice(start, end))
+            start = end
+            end += batch_size
+
+
+class BatchIterator(BaseIterator):
+    type_elem = None
+
+    def __init__(self, it: Iterator, batch_size: int = 258, static: bool = False):
+        super(BatchIterator, self).__init__(it, dtypes=it.dtypes, length=it.length, type_elem=self.type_elem)
+        self.batch_size = batch_size
+        self.shape = it.shape
+        self.static = static
+        self._it = self.run()
+
+    def clean_batchs(self) -> Iterator:
+        def cleaner():
+            for chunk in self:
+                for row in chunk.batch:
+                    yield row
+        return Iterator(cleaner(), dtypes=self.dtypes, length=self.length)
+
+    def batch_shape(self) -> list:
+        shape = self.data.shape
+        if isinstance(shape, Shape):
+            if len(shape) == 1:
+                shape = shape.to_tuple()
+
+        if len(shape) == 1:
+            if self.length != np.inf and self.length < self.batch_size:
+                return [self.length]
             else:
-                return pd.DataFrame(self)
+                return [self.batch_size]
+        else:
+            i_features = shape[1:]
+            if self.length != np.inf and self.length < self.batch_size:
+                return [self.length] + list(i_features)
+            else:
+                return [self.batch_size] + list(i_features)
 
-    def cut_it_chunk(self, length):
+    def cut_batch(self, length: int):
         end = 0
-        for chunk in self:
-            end += chunk.shape[0]
-            if end > length:
-                mod = length % self.chunks_size
+        for slice_obj in self:
+            end += slice_obj.batch.shape[0]
+            if end >= length:
+                mod = self.batch_size - (end - length)
                 if mod > 0:
-                    chunk = chunk[:mod]                  
-            yield chunk
+                    yield Slice(batch=slice_obj.batch[:mod], slice=slice(slice_obj.slice.start, length))
+                break
+            else:
+                yield slice_obj
 
-    #cut if length > array size 
-    @cut
-    def _assign_struct_array2df(self, it, length, dtype, columns, chunks_size=0):
-        stc_arr = np.empty(length, dtype=dtype)
-        for i, row in enumerate(it):
-            try:
-                stc_arr[i] = tuple(row)
-            except TypeError:
-                stc_arr[i] = row
-
-        smx = pd.DataFrame(stc_arr,
-            index=np.arange(0, length), 
-            columns=columns)
-        return smx, i+1, length
-
-    def to_memory(self, length=None):
-        if self.length is not None and length is None:
-            length = self.length
-        it = self.it_length(length)
-        if hasattr(it.dtype, '__iter__'):
-            return it.to_df()
-        else:
-            return it.to_narray()
-
-    def num_splits(self):
-        if self.has_chunks:
-            return num_splits(self.length, self.chunks_size)
-        else:
-            return self.length
-
-    def unique(self):
+    def unique(self) -> dict:
         values = defaultdict(lambda: 0)
-        for chunk in self:
-            u_values, counter = np.unique(chunk, return_counts=True)
+        group = self.groups[0]
+        for batch in self:
+            u_values, counter = np.unique(batch.batch[group].to_ndarray(), return_counts=True)
             for k, v in dict(zip(u_values, counter)).items():
                 values[k] += v
         return values
 
-    def __iter__(self):
-        if self.length is None or self.iter_init is False:
-            return self
-        else:
-            self.iter_init = False
-            return islice(self, self.num_splits())
+    def num_splits(self) -> int:
+        return num_splits(self.length, self.batch_size)
 
-    def next(self):
-        if len(self.pushedback) > 0:
-            return self.pushedback.pop()
-        try:
-            return self.it.next()
-        except StopIteration:
-            if hasattr(self.it, 'close'):
-                self.it.close()
-            raise StopIteration
-        except psycopg2.InterfaceError:
-            raise StopIteration
+    def flat(self) -> Iterator:
+        if self.length != np.inf:
+            length = self.length * sum(self.shape[1:])
+        else:
+            length = self.length
+        return Iterator(self.flatter(), dtypes=self.dtypes, length=length)
+
+    def sample(self, length: int, col: str = None, weight_fn=None) -> Iterator:
+        data = self.clean_batchs()
+        return Iterator(wsrj(self.weights_gen(data, col, weight_fn), length), dtypes=self.dtypes, length=length)
+
+    def __next__(self):
+        return next(self._it)
+
+    def __iter__(self) -> 'BatchIterator':
+        self._it = self.run()
+        return self
+
+    def __len__(self):
+        return self.num_splits()
+
+    def __getitem__(self, key) -> 'BatchIterator':
+        if isinstance(key, slice):
+            if key.stop is not None:
+                return self.builder(BaseIterator(self.cut_batch(key.stop), dtypes=self.dtypes,
+                                                 length=key.stop, shape=self.shape),
+                                    batch_size=self.batch_size)
+            else:
+                return self
+        return NotImplemented
+
+    def run(self):
+        if self.static is True:
+            return self.data
+        else:
+            batch_shape = self.batch_shape()
+            return self.batch_from_it(batch_shape)
+
+    def batch_from_it(self, batch_shape):
+        return NotImplemented
+
+    def _cycle_it(self):
+        while True:
+            for elem in self:
+                yield elem
+
+    def to_iter(self, raw: bool = False):
+        if raw is True:
+            for slice_obj in self:
+                yield slice_obj.batch.to_ndarray()
+        else:
+            for slice_obj in self:
+                yield slice_obj.batch
+
+    @classmethod
+    def builder(cls, it: BaseIterator, batch_size: int):
+        return cls(it, batch_size=batch_size, static=True)
+
+    @classmethod
+    def from_batchs(cls, iterable: iter, dtypes: np.dtype = None, from_batch_size: int = 0,
+                    length: int = None, to_slice=False):
+        it = Iterator(iterable, dtypes=dtypes, length=length)
+        batcher_len = num_splits(length, from_batch_size)
+        shape_dict = {}
+        for group, shape in it.shape.items():
+            shape_dict[group] = [shape[0]] + list(shape[2:])
+        shape = Shape(shape_dict)
+        if batcher_len == 0:
+            batcher_len = None
+
+        if it.type_elem != Slice and to_slice is True:
+            iterator = it[:batcher_len].to_slice(from_batch_size)
+        else:
+            iterator = it[:batcher_len]
+        return cls.builder(BaseIterator(iterator, shape=shape, dtypes=dtypes, type_elem=it.type_elem),
+                           batch_size=from_batch_size)
+
+    def cycle(self):
+        return BatchIterator.from_batchs(self._cycle_it(),  dtypes=self.dtypes, from_batch_size=self.batch_size,
+                                         length=np.inf)
+
+    def only_data(self):
+        return BatchIterator.from_batchs(self.to_iter(raw=True),  dtypes=self.dtypes, from_batch_size=self.batch_size,
+                                         length=self.length)
+
+
+class BatchGroup(BatchIterator):
+    type_elem = Slice
+
+    def batch_from_it(self, shape=None):
+        init = 0
+        end = self.batch_size
+        while True:
+            batch = self.data.data[init:end]  # Always return a Dagroup
+            if len(batch) > 0:
+                yield Slice(batch=batch, slice=slice(init, end))
+                init = end
+                end += self.batch_size
+            else:
+                break
+
+
+class BatchItGroup(BatchIterator):
+    type_elem = Slice
+
+    def batch_from_it(self, shape):
+        for start_i, end_i, stc_array in str_array(shape, self.batch_size, self.data, self.data.dtypes):
+            da_group = DaGroup(StcArrayGroup(stc_array))
+            yield Slice(batch=da_group, slice=slice(start_i, end_i))

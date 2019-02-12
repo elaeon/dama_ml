@@ -1,15 +1,14 @@
 import os
 
 from ml.utils.config import get_settings
-from ml.models import DataDrive
-from ml.measures import ListMeasure
-from ml.utils.files import get_models_path, get_models_from_dataset, rm
-from ml.data.ds import Data, load_metadata
+from ml.utils.files import get_models_path
 
-settings = get_settings("ml")
+
+settings = get_settings("paths")
 
   
 def run(args):
+    from ml.measures import ListMeasure
     models_path = get_models_path(settings["checkpoints_path"])
     if args.info:
         table = []
@@ -20,6 +19,8 @@ def run(args):
                 model_path = os.path.join(
                     settings["checkpoints_path"], clf, model_name, "meta.xmeta")
                 meta = load_metadata(model_path)
+                if meta is None:
+                    continue
                 if args.info == meta.get("model_name", None) or\
                     args.info == meta.get("group_name", None):
                     for version in meta.get("versions", ["1"]):
@@ -32,11 +33,11 @@ def run(args):
                             if scores is not None:
                                 selected_score = scores[measure]
                                 score = selected_score['values'][0]
-                                order_m = order_m or selected_score['reverse']
+                                order_m = order_m or selected_score.get('reverse', True)
                             else:
-                                score = None
+                                continue
                         except KeyError:
-                            score = None
+                            continue
 
                         table.append([clf, model_name, version, 
                                     meta.get("group_name", None), score])
