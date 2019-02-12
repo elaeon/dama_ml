@@ -13,6 +13,14 @@ from ml.utils.core import Login
 from ml.fmtypes import DEFAUL_GROUP_NAME
 from ml.utils.files import check_or_create_path_dir
 
+try:
+    from ml.data.drivers.postgres import Postgres
+    driver = Postgres(login=Login(username="alejandro", resource="ml"))
+    driver.enter()
+    driver.exit()
+except:
+    from ml.data.drivers.core import Memory as Postgres
+
 
 TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'softstream_data_test')
 
@@ -419,7 +427,6 @@ class TestPsqlDriver(unittest.TestCase):
         self.login = Login(username="alejandro", resource="ml")
 
     def test_driver(self):
-        from ml.data.drivers.postgres import Postgres
         x = np.random.rand(10)*100
         y = np.random.rand(10)*100
         with Data(name="test", driver=Postgres(login=self.login, mode="w")) as data:
@@ -431,7 +438,6 @@ class TestPsqlDriver(unittest.TestCase):
             data.destroy()
 
     def test_iter(self):
-        from ml.data.drivers.postgres import Postgres
         login = Login(username="alejandro", resource="ml")
         df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
         with Data(name="test0", dataset_path=TMP_PATH, driver=Postgres(login=login)) as data:
@@ -444,7 +450,6 @@ class TestPsqlDriver(unittest.TestCase):
             data.destroy()
 
     def test_iter_uni(self):
-        from ml.data.drivers.postgres import Postgres
         login = Login(username="alejandro", resource="ml")
         array = [1., 2., 3., 4., 5.]
         with Data(name="test0", dataset_path=TMP_PATH, driver=Postgres(login=login)) as data:
@@ -453,5 +458,8 @@ class TestPsqlDriver(unittest.TestCase):
             it = Iterator(data)
             self.assertEqual(it.shape.to_tuple(), (5,))
             for i, e in enumerate(it):
-                self.assertEqual((e.to_ndarray()[0] == array[i]).all(), True)
+                if len(e.to_ndarray().shape) == 1:
+                    self.assertEqual((e.to_ndarray()[0] == array[i]).all(), True)
+                else:
+                    self.assertEqual((e.to_ndarray() == array[i]).all(), True)
             data.destroy()
