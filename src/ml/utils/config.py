@@ -17,6 +17,8 @@ def get_settings(key: str) -> dict:
     except configparser.NoSectionError as e:
         if not build_settings_file(rewrite=True):
             raise configparser.NoSectionError(e.section)
+        else:
+            return get_settings(key)
 
 
 def build_settings_file(rewrite: bool = False) -> bool:
