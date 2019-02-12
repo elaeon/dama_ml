@@ -7,7 +7,7 @@ import pandas as pd
 
 from ml.data.it import Iterator
 from ml.data.etl import Pipeline
-from ml.utils.files import rm
+from ml.utils.files import check_or_create_path_dir
 from ml.data.ds import Data
 from ml.data.drivers.core import Zarr, HDF5
 from ml.data.csv import ZIPFile
@@ -94,6 +94,9 @@ def mov_avg_fn(window):
 
 def line(x, a=0, b=1):
     return a*x + b
+
+
+TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'softstream_data_test')
 
 
 class TestETL(unittest.TestCase):
@@ -227,7 +230,7 @@ class TestETL(unittest.TestCase):
 
     def test_pipeline_store_array(self):
         x = np.random.rand(5, 2)
-        with Data(name="test_store_pipeline", dataset_path="/tmp/", driver=HDF5()) as data:
+        with Data(name="test_store_pipeline", dataset_path=TMP_PATH, driver=HDF5()) as data:
             pipeline = Pipeline(x, shape=x.shape)
             a = pipeline.map(inc)
             b = pipeline.map(dec)
@@ -238,7 +241,7 @@ class TestETL(unittest.TestCase):
 
     def test_pipeline_store_df(self):
         x = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": [1, 1, 1, 1, 1]})
-        with Data(name="test_store_pipeline", dataset_path="/tmp/", driver=HDF5()) as data:
+        with Data(name="test_store_pipeline", dataset_path=TMP_PATH, driver=HDF5()) as data:
             pipeline = Pipeline(x, shape=x.shape)
             a = pipeline.map(inc)
             b = pipeline.map(dec)

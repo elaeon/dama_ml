@@ -124,10 +124,8 @@ class Data(AbsData):
         self.data = None
 
     def __enter__(self):
+        build_path(self.dir_levels())
         self.driver.enter()
-        if not self.driver.exists():
-            log.debug("Buiding path")
-            build_path(self.dir_levels())
 
         if self.driver.data_tag is None:
             self.driver.data_tag = self.name
