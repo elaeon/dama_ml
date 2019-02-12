@@ -1,9 +1,7 @@
-from ml.utils.config import get_settings
 from ml.models import MLModel, UnsupervisedModel
 from ml.utils.logger import log_config
 from keras import backend
 
-settings = get_settings("ml")
 log = log_config(__name__)
 
 if backend._BACKEND == "theano":

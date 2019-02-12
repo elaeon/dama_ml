@@ -9,7 +9,7 @@ from pydoc import locate
 from ml.utils.config import get_settings
 import json
 
-settings = get_settings("ml")
+settings = get_settings("paths")
 log = log_config(__name__)
 
 

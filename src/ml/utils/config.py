@@ -8,17 +8,23 @@ FILENAME = "settings.cfg"
 BASE_DIR = ".softstream"
 
 
-def get_settings(key: str) -> dict:
+def get_config() -> configparser.ConfigParser:
     settings_path = config_filepath()
     config = configparser.ConfigParser()
     config.read(settings_path)
+    return config
+
+
+def get_settings(key: str) -> dict:
+    config = get_config()
     try:
         return {flag: value for flag, value in config.items(key)}
     except configparser.NoSectionError as e:
         if not build_settings_file(rewrite=True):
             raise configparser.NoSectionError(e.section)
         else:
-            return get_settings(key)
+            config = get_config()
+            return {flag: value for flag, value in config.items(key)}
 
 
 def build_settings_file(rewrite: bool = False) -> bool:
