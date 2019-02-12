@@ -33,7 +33,7 @@ def build_settings_file(rewrite: bool = False) -> bool:
 
 
 def set_up_cfg(filepath):
-    setting_expl = pkg_resources.resource_filename('ml', 'data/settings.cfg.example')
+    setting_expl = pkg_resources.resource_filename('ml', 'config/settings.cfg.example')
     base = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
     home = os.path.expanduser("~")
     with open(setting_expl, 'r') as f:

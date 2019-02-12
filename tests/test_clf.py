@@ -7,7 +7,7 @@ from ml.clf.extended.w_sklearn import AdaBoost, GradientBoost, KNN
 from ml.clf.extended.w_keras import FCNet
 from ml.utils.model_selection import CV
 from ml.measures import gini_normalized
-from ml.data.drivers import HDF5
+from ml.data.drivers.core import HDF5
 from ml.measures import Measure, MeasureBatch
 from ml.models import Metadata
 
@@ -60,7 +60,7 @@ class TestSKL(unittest.TestCase):
 
         with RandomForest.load(model_name="test_model", path="/tmp/", model_version="1") as classif:
             self.assertEqual(classif.model_version, "1")
-            self.assertEqual(classif.ds.driver.module_cls_name(), "ml.data.drivers.HDF5")
+            self.assertEqual(classif.ds.driver.module_cls_name(), "ml.data.drivers.core.HDF5")
             self.assertEqual(len(classif.metadata_train()), 8)
             classif.destroy()
 
@@ -222,7 +222,7 @@ class TestLightGBM(unittest.TestCase):
             ds.from_data(stc)
 
             classif = LightGBM()
-            if LightGBM== RandomForest:
+            if LightGBM == RandomForest:
                 self.params = {}
             else:
                 self.params={'max_depth': 4, 'subsample': 0.9, 'colsample_bytree': 0.9,

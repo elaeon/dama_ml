@@ -42,7 +42,7 @@ setup(
     },
     package_dir={'': 'src'},
     packages=find_packages('src', exclude=['docs', 'tests*']),  
-    package_data = {'ml': ['data/settings.cfg.example'],},
+    package_data = {'ml': ['config/settings.cfg.example'],},
     #include_package_data=True,
 
     license='Apache',

@@ -10,7 +10,7 @@ from ml.data.it import Iterator
 from ml.data.etl import Pipeline
 from ml.utils.files import rm
 from ml.data.ds import Data
-from ml.data.drivers import Zarr, HDF5
+from ml.data.drivers.core import Zarr, HDF5
 from ml.data.csv import ZIPFile
 from ml.utils.core import Login
 

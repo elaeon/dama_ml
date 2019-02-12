@@ -15,7 +15,7 @@ except ImportError:
 
 from ml.reg.extended.w_sklearn import RandomForestRegressor, GradientBoostingRegressor
 from ml.utils.model_selection import CV
-from ml.data.drivers import HDF5, Zarr
+from ml.data.drivers.core import HDF5, Zarr
 
 
 def mulp(row):
@@ -48,7 +48,7 @@ class TestRegSKL(unittest.TestCase):
 
         with RandomForestRegressor.load(model_name="test_model", path="/tmp/", model_version="1") as reg:
             self.assertEqual(reg.model_version, "1")
-            self.assertEqual(reg.ds.driver.module_cls_name(), "ml.data.drivers.HDF5")
+            self.assertEqual(reg.ds.driver.module_cls_name(), "ml.data.drivers.core.HDF5")
             self.assertEqual(len(reg.metadata_train()), 8)
             reg.destroy()
 
