@@ -1,4 +1,4 @@
-from h5py.highlevel import Group as NativeH5Group
+from h5py import Group as NativeH5Group
 import numpy as np
 from ml.abc.group import AbsBaseGroup
 

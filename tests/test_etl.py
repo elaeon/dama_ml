@@ -4,7 +4,6 @@ import datetime
 import dask.array as da
 import os
 import pandas as pd
-import psycopg2
 
 from ml.data.it import Iterator
 from ml.data.etl import Pipeline
@@ -12,7 +11,6 @@ from ml.utils.files import rm
 from ml.data.ds import Data
 from ml.data.drivers.core import Zarr, HDF5
 from ml.data.csv import ZIPFile
-from ml.utils.core import Login
 
 # from dask import get # single thread
 # from dask.multiprocessing import get
@@ -183,12 +181,12 @@ class TestETL(unittest.TestCase):
         shape = a.compute().compute().shape
         self.assertEqual(shape, (1000,))
 
-    def test_graph(self):
-        pipeline = Pipeline(None)
-        pipeline.map(ident)
-        rm("/tmp/stream.svg")
-        pipeline.visualize(filename="/tmp/stream", format="svg")
-        self.assertEqual(os.path.exists("/tmp/stream.svg"), True)
+    #def test_graph(self):
+    #    pipeline = Pipeline(None)
+    #    pipeline.map(ident)
+    #    rm("/tmp/stream.svg")
+    #    pipeline.visualize(filename="/tmp/stream", format="svg")
+    #    self.assertEqual(os.path.exists("/tmp/stream.svg"), True)
 
     def test_to_json(self):
         pipeline = Pipeline(1)

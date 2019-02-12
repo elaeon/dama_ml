@@ -3,7 +3,6 @@ import json
 from ml.utils.config import get_settings
 from ml.utils.numeric_functions import humanize_bytesize
 
-
 settings = get_settings("paths")
 
   
@@ -15,16 +14,15 @@ def run(args):
     if args.info:
         path = os.path.join(settings["data_path"])
         driver_class = getattr(drivers, args.driver)
-        dataset = Data(dataset_path=path, name=args.name, group_name=args.group_name, driver=driver_class())
-        with dataset:
+        with Data(dataset_path=path, name=args.name, group_name=args.group_name, driver=driver_class()) as dataset:
             dataset.info()
     elif args.rm:
         path = os.path.join(settings["data_path"])
         driver_class = getattr(drivers, args.driver)
         try:
-            dataset = Data(dataset_path=path, name=args.name, group_name=args.group_name, driver=driver_class())
-            print("Dataset: {}".format(dataset.url))
-            dataset.destroy()
+            with Data(dataset_path=path, name=args.name, group_name=args.group_name, driver=driver_class()) as dataset:
+                print("Dataset: {}".format(dataset.url))
+                dataset.destroy()
         except IOError:
             pass
         print("Done.")
@@ -35,8 +33,7 @@ def run(args):
     elif args.sts:
         path = os.path.join(settings["data_path"])
         driver_class = getattr(drivers, args.driver)
-        dataset = Data(dataset_path=path, name=args.name, group_name=args.group_name, driver=driver_class())
-        with dataset:
+        with Data(dataset_path=path, name=args.name, group_name=args.group_name, driver=driver_class()) as dataset:
             print(dataset.stadistics())
     else:
         metadata_path = os.path.join(settings["data_path"], 'metadata')
@@ -45,10 +42,10 @@ def run(args):
         for filename in files_list:
             with open(filename, "r") as f:
                 metadata = json.load(f)
-                table.append([metadata["name"], humanize_bytesize(metadata["size"]),
+                data = map(str, [metadata["name"], humanize_bytesize(metadata["size"]),
                               metadata["timestamp"], metadata["driver"].split(".")[-1],
                               metadata["hash"], metadata["description"]])
-
+                table.append(list(data))
         headers = ["dataset", "size", "date", "driver", "hash", "description"]
         list_measure = ListMeasure(headers=headers, measures=table)
         print(list_measure.to_tabulate(order_column="dataset", limit=10))

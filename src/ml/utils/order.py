@@ -1,4 +1,5 @@
 from operator import itemgetter
+from tabulate import tabulate
 
 
 def order_2d(list_2d, index=(0, 1), block_size=60):
@@ -44,7 +45,6 @@ def order_table(headers, table, order_column, natural_order=None, limit=None):
 
     build the table
     """
-    from tabulate import tabulate
     if len(headers) > 0:
         headers_lower = [h.lower() for h in headers]
         try:

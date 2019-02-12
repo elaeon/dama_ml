@@ -14,7 +14,6 @@ from ml.abc.group import AbsGroup
 from ml.utils.numeric_functions import nested_shape
 from ml.data.groups.core import DaGroup, StcArrayGroup, TupleGroup
 from ml.fmtypes import Slice, DEFAUL_GROUP_NAME
-from numbers import Number, Integral
 
 log = log_config(__name__)
 
