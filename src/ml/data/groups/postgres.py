@@ -82,18 +82,22 @@ class Table(AbsGroup):
 
     def insert(self, data, batch_size=258):
         if not isinstance(data, BatchIterator):
-            data = Iterator(data).batchs(batch_size=batch_size)
+            data = Iterator(data, dtypes=self.dtypes).batchs(batch_size=batch_size)
+
         columns = "(" + ", ".join(self.groups) + ")"
         insert_str = "INSERT INTO {name} {columns} VALUES".format(
             name=self.name, columns=columns)
         insert = insert_str + " %s"
         cur = self.conn.cursor()
+        num_groups = len(data.groups)
         for row in data:
             shape = row.batch.shape.to_tuple()
-            if len(shape) == 1:
-                value = row.batch.to_ndarray().reshape(-1, 1)
+            if len(shape) == 1 and num_groups > 1:
+                value = row.batch.to_df.values  # .to_ndarray().reshape(1, -1)
+            elif len(shape) == 1 and num_groups == 1:
+                value = row.batch.to_df().values  # .to_ndarray().reshape(-1, 1)
             else:
-                value = row.batch.to_ndarray()
+                value = row.batch.to_df().values
             execute_values(cur, insert, value, page_size=len(data))
         self.conn.commit()
 

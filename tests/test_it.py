@@ -7,6 +7,7 @@ import collections
 from ml.data.it import Iterator, BatchIterator, Slice
 from ml.data.ds import Data
 from ml.data.groups.core import DaGroup
+from ml.fmtypes import DEFAUL_GROUP_NAME
 
 
 def stream():
@@ -33,7 +34,7 @@ class TestIteratorIter(unittest.TestCase):
 
     def test_iteration_dtype2(self):
         array = [1, 2, 3, 4.0, 'xxx', [1], [[2, 3]]]
-        it = Iterator(array, dtypes=np.dtype([("c0", np.dtype("float"))]))
+        it = Iterator(array, dtypes=np.dtype([(DEFAUL_GROUP_NAME, np.dtype("float"))]))
         for a, e in zip(array, it):
             self.assertEqual(a, e)
 
@@ -76,22 +77,22 @@ class TestIteratorIter(unittest.TestCase):
     def test_it_attrs(self):
         it = Iterator(stream())
         self.assertEqual(it.dtype, int)
-        self.assertEqual(it.dtypes, [('c0', np.dtype('int64'))])
+        self.assertEqual(it.dtypes, [(DEFAUL_GROUP_NAME, np.dtype('int64'))])
         self.assertEqual(it.length, np.inf)
         self.assertEqual(it.shape, (np.inf,))
         self.assertEqual(it.num_splits(), np.inf)
         self.assertEqual(it.type_elem, int)
-        self.assertEqual(it.groups, ("c0",))
+        self.assertEqual(it.groups, (DEFAUL_GROUP_NAME,))
 
     def test_it_attrs_length(self):
         it = Iterator(stream())[:10]
         self.assertEqual(it.dtype, int)
-        self.assertEqual(it.dtypes, [('c0', np.dtype('int64'))])
+        self.assertEqual(it.dtypes, [(DEFAUL_GROUP_NAME, np.dtype('int64'))])
         self.assertEqual(it.length, 10)
         self.assertEqual(it.shape, (10,))
         self.assertEqual(it.num_splits(), 10)
         self.assertEqual(it.type_elem, int)
-        self.assertEqual(it.groups, ("c0",))
+        self.assertEqual(it.groups, (DEFAUL_GROUP_NAME,))
 
     def test_sample(self):
         order = (i for i in range(20))
@@ -167,24 +168,24 @@ class TestIteratorBatch(unittest.TestCase):
     def test_mixtype_batch(self):
         array = [1, 2, 3, 4.0, 'xxx', 1, 3, 4, 5]
         np_array = np.asarray(array, dtype=object)
-        it = Iterator(array, dtypes=np.dtype([("c0", np.dtype("object"))])).batchs(batch_size=3)
+        it = Iterator(array, dtypes=np.dtype([(DEFAUL_GROUP_NAME, np.dtype("object"))])).batchs(batch_size=3)
         for slice_obj in it:
             self.assertEqual((slice_obj.batch[it.groups[0]].to_ndarray() == np_array[slice_obj.slice]).all(), True)
 
     def test_mixtype_multidim_batch(self):
         array = [1, 2, 3, 4.0, 'xxx', [1], [[2, 3]]]
         np_array = np.asarray(array, dtype=object)
-        it = Iterator(array, dtypes=np.dtype([("c0", np.dtype("object"))])).batchs(batch_size=3)
+        it = Iterator(array, dtypes=np.dtype([(DEFAUL_GROUP_NAME, np.dtype("object"))])).batchs(batch_size=3)
         for slice_obj in it:
             self.assertEqual((slice_obj.batch[it.groups[0]].to_ndarray() == np_array[slice_obj.slice]).all(), True)
 
     def test_batch_dtype(self):
         array = np.random.rand(10, 2)
-        dtypes = np.dtype([("c0", np.dtype("float")), ("c1", np.dtype("float"))])
+        dtypes = np.dtype([(DEFAUL_GROUP_NAME, np.dtype("float")), ("g1", np.dtype("float"))])
         it = Iterator(array, dtypes=dtypes).batchs(batch_size=3)
         for slice_obj in it:
-            self.assertEqual((slice_obj.batch["c1"].to_ndarray() == array[:, 1][slice_obj.slice]).all(), True)
-            self.assertEqual((slice_obj.batch["c0"].to_ndarray() == array[:, 0][slice_obj.slice]).all(), True)
+            self.assertEqual((slice_obj.batch["g1"].to_ndarray() == array[:, 1][slice_obj.slice]).all(), True)
+            self.assertEqual((slice_obj.batch[DEFAUL_GROUP_NAME].to_ndarray() == array[:, 0][slice_obj.slice]).all(), True)
 
     def test_batch_it_attrs(self):
         df = pd.DataFrame({"x": np.arange(0, 10), "y": np.arange(10, 20)})
@@ -200,13 +201,13 @@ class TestIteratorBatch(unittest.TestCase):
     def test_batch_it_attrs_length(self):
         it = Iterator(stream()).batchs(batch_size=3)
         self.assertEqual(it.dtype, int)
-        self.assertEqual(it.dtypes, [('c0', np.dtype('int64'))])
+        self.assertEqual(it.dtypes, [(DEFAUL_GROUP_NAME, np.dtype('int64'))])
         self.assertEqual(it.length, np.inf)
         self.assertEqual(it.shape, (np.inf,))
         self.assertEqual(it.batch_size, 3)
         self.assertEqual(it.num_splits(), 0)
         self.assertEqual(it.batch_shape(), [3])
-        self.assertEqual(it.groups, ("c0",))
+        self.assertEqual(it.groups, (DEFAUL_GROUP_NAME,))
 
     def test_shape(self):
         data = np.random.rand(10)
@@ -256,7 +257,7 @@ class TestIteratorBatch(unittest.TestCase):
         i = 0
         j = buffer_size
         for elems in it.batchs(batch_size=buffer_size):
-            self.assertCountEqual(elems.batch["c0"].to_ndarray(), list(range(i, j)))
+            self.assertCountEqual(elems.batch[DEFAUL_GROUP_NAME].to_ndarray(), list(range(i, j)))
             i = j
             j += buffer_size
             if j > 100:
@@ -280,14 +281,14 @@ class TestIteratorBatch(unittest.TestCase):
     def test_clean_batchs(self):
         it = Iterator(((i, 'X', 'Z') for i in range(20))).batchs(batch_size=2)
         for i, smx in enumerate(it.clean_batchs()):
-            self.assertEqual((smx["c0"].to_ndarray() == np.asarray([i, 'X', 'Z'], dtype=object)).all(), True)
+            self.assertEqual((smx[DEFAUL_GROUP_NAME].to_ndarray() == np.asarray([i, 'X', 'Z'], dtype=object)).all(), True)
 
     def test_sample_batch(self):
         order = (i for i in range(20))
         array = np.arange(0, 20)
         it = Iterator(order).batchs(batch_size=2)
         samples = []
-        samples_it = it.sample(5, col="c0")
+        samples_it = it.sample(5, col=DEFAUL_GROUP_NAME)
         self.assertEqual(isinstance(samples_it, Iterator), True)
         for e in samples_it:
             samples.append(e)
@@ -422,7 +423,7 @@ class TestIteratorFromData(unittest.TestCase):
             data.from_data(x)
             it = Iterator(data)
             self.assertEqual(it.shape, (10,))
-            self.assertEqual([(g, d) for g, (d, _) in it.dtypes.fields.items()], [("c0", np.dtype(float))])
+            self.assertEqual([(g, d) for g, (d, _) in it.dtypes.fields.items()], [(DEFAUL_GROUP_NAME, np.dtype(float))])
 
     def test_da_group_it(self):
         x = np.random.rand(10)

@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 from ml.data.ds import Data
-from ml.data.drivers import HDF5
+from ml.data.drivers.core import HDF5
 from ml.utils.model_selection import CV
 from ml.ae.extended.w_keras import PTsne
 from ml.models import Metadata

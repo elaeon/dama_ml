@@ -14,6 +14,7 @@ from ml.abc.group import AbsGroup
 from ml.utils.numeric_functions import nested_shape
 from ml.data.groups.core import DaGroup, StcArrayGroup, TupleGroup
 from ml.fmtypes import Slice, DEFAUL_GROUP_NAME
+from numbers import Number, Integral
 
 log = log_config(__name__)
 
@@ -38,6 +39,10 @@ def assign_struct_array(it, type_elem, start_i, end_i, dtype, dims):
                 stc_arr[i] = row
             else:
                 stc_arr[group][i] = row
+    elif type_elem == str or type_elem == np.str_ or type_elem == int or type_elem == np.string_\
+            or type_elem == np.object or type_elem == object or type_elem == float:
+        for (group, (_, _)), row in zip(dtype.fields.items(), it):
+            stc_arr[group] = row
     else:
         for i, row in enumerate(it):
             stc_arr[i] = row
@@ -540,7 +545,6 @@ class BatchGroup(BatchIterator):
 
 
 class BatchItGroup(BatchIterator):
-    # batch_type = 'group'
     type_elem = Slice
 
     def batch_from_it(self, shape):

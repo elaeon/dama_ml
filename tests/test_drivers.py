@@ -86,7 +86,7 @@ class TestDriver(unittest.TestCase):
 
     def test_setitem(self):
         with self.driver:
-            self.driver.data[11] = [1., 2.]
+            self.driver.data[11] = [1, 2., "2018-01-01 11:31:28"]
             print(self.driver.data["c0"][0:10].to_ndarray(), "TEST")
             print(self.driver.data["c0"][10:11].to_ndarray(), "TEST")
 

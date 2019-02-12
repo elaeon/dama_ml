@@ -1,16 +1,5 @@
 import unittest
-import numpy as np
 from ml.utils.core import Shape
-
-
-# def test_add(self):
-#    x = np.random.rand(10, 2)
-#    y = np.random.rand(10)
-#    x_train = StructArray([("x", x)])
-#    y_train = StructArray([("y", y)])
-#    xy_train = x_train + y_train
-#    self.assertEqual((xy_train["x"].to_ndarray() == x).all(), True)
-#    self.assertEqual((xy_train["y"].to_ndarray() == y).all(), True)
 
 
 class TestShape(unittest.TestCase):

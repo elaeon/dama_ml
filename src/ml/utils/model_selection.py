@@ -1,5 +1,5 @@
 from sklearn.model_selection import train_test_split
-from ml.data.groups import DaGroup
+from ml.data.groups.core import DaGroup
 
 
 class CV(object):

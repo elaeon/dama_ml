@@ -5,11 +5,12 @@ import json
 
 from ml.data.ds import Data
 from ml.data.it import Iterator
-from ml.data.drivers.core import Zarr, HDF5
+from ml.data.drivers.core import Zarr
 from ml.utils.model_selection import CV
 from ml.utils.files import rm
 from numcodecs import GZip
 from ml.utils.core import Login
+from ml.fmtypes import DEFAUL_GROUP_NAME
 
 
 class TestDataset(unittest.TestCase):
@@ -26,7 +27,7 @@ class TestDataset(unittest.TestCase):
             array = np.random.rand(10, 2)
             dataset.from_data(array)
             self.assertEqual(dataset.shape, (10, 2))
-            self.assertEqual(dataset.groups, ("c0",))
+            self.assertEqual(dataset.groups, (DEFAUL_GROUP_NAME,))
             self.assertEqual((dataset.to_ndarray() == array).all(), True)
             dataset.destroy()
 
@@ -59,7 +60,7 @@ class TestDataset(unittest.TestCase):
     def test_groups(self):
         with Data(name="test_ds", dataset_path="/tmp/") as dataset:
             dataset.from_data(self.X)
-            self.assertEqual(dataset.groups, ('c0',))
+            self.assertEqual(dataset.groups, (DEFAUL_GROUP_NAME,))
             dataset.destroy()
 
     def test_groups_df(self):
@@ -104,7 +105,7 @@ class TestDataset(unittest.TestCase):
             [-1, 0, -1, 0, -1, 0]], dtype=np.float)
         with Data(name="test", dataset_path="/tmp") as data:
             data.from_data(x)
-            self.assertEqual((data["c0"].to_ndarray()[:, 0] == x[:, 0]).all(), True)
+            self.assertEqual((data[DEFAUL_GROUP_NAME].to_ndarray()[:, 0] == x[:, 0]).all(), True)
             data.destroy()
 
     def test_attrs(self):
@@ -173,7 +174,7 @@ class TestDataset(unittest.TestCase):
         it = Iterator(seq)
         with Data(name="test", dataset_path="/tmp") as data:
             data.from_data(it, batch_size=20)
-            self.assertCountEqual(data.groups, ["c0"])
+            self.assertCountEqual(data.groups, [DEFAUL_GROUP_NAME])
             self.assertEqual((data.to_ndarray() == seq).all(), True)
             data.destroy()
 

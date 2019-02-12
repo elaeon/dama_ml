@@ -12,14 +12,14 @@ from ml.data.it import Iterator, BaseIterator, BatchIterator
 from ml.utils.files import build_path
 from ml.utils.core import Hash, Login
 from ml.abc.driver import AbsDriver
-from ml.data.drivers import Memory
+from ml.data.drivers.core import Memory
 from ml.abc.group import AbsGroup
 from ml.utils.logger import log_config
 from ml.utils.config import get_settings
 from ml.utils.decorators import cache, clean_cache
 from ml.utils.files import get_dir_file_size, rm
 from ml.utils.order import order_table
-from ml.data.groups import DaGroup
+from ml.data.groups.core import DaGroup
 
 
 settings = get_settings("paths")
