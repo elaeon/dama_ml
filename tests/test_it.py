@@ -294,6 +294,29 @@ class TestIteratorBatch(unittest.TestCase):
             samples.append(e)
         self.assertEqual((samples == array[:5]).all(), False)
 
+    def test_one_elem(self):
+        data = [[1, 2, 'a', 's'], [2, 3, 'c', 'e']]
+        dtypes = np.dtype([("a", int), ("b", int), ("c", str), ("s", str)])
+        data = Iterator(data, dtypes=dtypes)
+        ok_shape = {'a': (2, ), 'b': (2, ), 'c': (2, ), 's': (2, )}
+        self.assertEqual(data.shape.items(), ok_shape.items())
+
+        data = [[1, 2, 'a', 's'], [2, 3, 'c', 'e']]
+        data = Iterator(data)
+        ok_shape = {'g0': (2, 4)}
+        self.assertEqual(data.shape.items(), ok_shape.items())
+
+        data = [1, 2, 'a', 's']
+        dtypes = np.dtype([("a", int), ("b", int), ("c", str), ("s", str)])
+        data = Iterator(data, dtypes=dtypes)
+        ok_shape = {'a': (1, ), 'b': (1, ), 'c': (1, ), 's': (1, )}
+        self.assertEqual(data.shape.items(), ok_shape.items())
+
+        data = [1, 2, 'a', 's']
+        data = Iterator(data)
+        ok_shape = {'g0': (4, )}
+        self.assertEqual(data.shape.items(), ok_shape.items())
+
 
 class TestIteratorToData(unittest.TestCase):
 

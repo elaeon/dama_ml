@@ -3,6 +3,7 @@ import numpy as np
 from ml.data.drivers.core import Memory, Zarr, HDF5
 from ml.utils.core import Shape, Login
 from ml.data.drivers.postgres import Postgres
+from ml.data.drivers.sqlite import Sqlite
 
 
 class TestDriver(unittest.TestCase):
@@ -23,13 +24,15 @@ class TestDriver(unittest.TestCase):
         self.shape = Shape({"c0": self.array_c0.shape, "c1": self.array_c1.shape, "c2": self.array_c2.shape})
         self.dtype = np.dtype([("c0", self.array_c0.dtype), ("c1", self.array_c1.dtype), ("c2", self.array_c2.dtype)])
 
-        self.url = "/tmp/test_{}".format(np.random.randint(0, 10))
+        self.url = "/tmp/test_{}".format(10)#np.random.randint(0, 10))
         self.login = Login(username="alejandro", resource="ml", url=self.url)
         #self.driver = Postgres(login=self.login)
+        #self.driver = Sqlite(login=self.login)
         #self.driver = Zarr(login=self.login)
         self.driver = Memory()
         #self.driver = HDF5(login=self.login)
         #self.driver.data_tag = "test"
+
         with self.driver:
             self.driver.set_schema(self.dtype)
             self.driver.set_data_shape(self.shape)
@@ -65,10 +68,14 @@ class TestDriver(unittest.TestCase):
 
     def test_getitem(self):
         with self.driver:
-            for i in range(10):
-                self.assertEqual(self.driver.data.conn["c0"][i].compute(), self.array_c0[i])
-                self.assertEqual(self.driver.data.conn["c1"][i].compute(), self.array_c1[i])
-
+            if self.driver == Sqlite or self.driver == Postgres:
+                for i in range(10):
+                    self.assertEqual(self.driver.data["c0"][i].to_ndarray()[0], self.array_c0[i])
+                    self.assertEqual(self.driver.data["c1"][i].to_ndarray()[0], self.array_c1[i])
+            else:
+                for i in range(10):
+                    self.assertEqual(self.driver.data["c0"][i].to_ndarray(), self.array_c0[i])
+                    self.assertEqual(self.driver.data["c1"][i].to_ndarray(), self.array_c1[i])
             self.assertEqual((self.driver.data.conn["c0"][4:9].compute() == self.array_c0[4:9]).all(), True)
             self.assertEqual((self.driver.data.conn["c0"][0:10].compute() == self.array_c0[0:10]).all(), True)
             self.assertEqual((self.driver.data.conn["c0"][1].compute() == self.array_c0[1]).all(), True)
@@ -87,7 +94,7 @@ class TestDriver(unittest.TestCase):
     def test_setitem(self):
         with self.driver:
             self.driver.data[11] = [1, 2., "2018-01-01 11:31:28"]
-            print(self.driver.data["c0"][0:10].to_ndarray(), "TEST")
+            self.assertEqual((self.driver.data["c0"][0:10].to_ndarray() == self.array_c0[0:10]).all(), True)
             print(self.driver.data["c0"][10:11].to_ndarray(), "TEST")
 
     def test_rename(self):

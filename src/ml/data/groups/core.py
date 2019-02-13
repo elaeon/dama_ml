@@ -47,8 +47,9 @@ class DaGroup(AbsGroup):
         groups = DaGroupDict()
         for group, data in groups_dict.items():
             chunks = data.shape  # fixme
+            lock = False
             print(chunks, "CONVERT CHUNKS")
-            groups[group] = da.from_array(data, chunks=chunks)
+            groups[group] = da.from_array(data, chunks=chunks, lock=lock)
         return groups
 
     def sample(self, index):
@@ -158,9 +159,9 @@ class DaGroup(AbsGroup):
             for slice_obj in data:
                 stc_arr[slice_obj.slice] = slice_obj.batch.to_ndarray()
         else:
-            for i, group in enumerate(self.groups):
-                for slice_obj in data:
-                    stc_arr[group][slice_obj.slice] = slice_obj.batch.to_ndarray()[:, i]
+            for slice_obj in data:
+                for group, (dtype, _) in self.dtypes.fields.items():
+                    stc_arr[group][slice_obj.slice] = slice_obj.batch[group].to_ndarray(dtype)
         return pd.DataFrame(stc_arr, index=np.arange(0, stc_arr.shape[0]), columns=columns)
 
     def rename_group(self, old_name, new_name):

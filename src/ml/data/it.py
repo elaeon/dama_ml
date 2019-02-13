@@ -2,6 +2,7 @@ from itertools import chain, islice
 import numpy as np
 import pandas as pd
 import types
+import numbers
 
 from collections import defaultdict, deque
 from ml.utils.numeric_functions import max_type, num_splits, wsrj, max_dtype
@@ -213,6 +214,11 @@ class BaseIterator(object):
 class Iterator(BaseIterator):
     def __init__(self, fn_iter, dtypes: np.dtype = None, length: int = np.inf) -> None:
         super(Iterator, self).__init__(fn_iter, dtypes=dtypes, length=length)
+        if dtypes is None:
+            self.mapped_dtype = False
+        else:
+            self.mapped_dtype = True
+
         if isinstance(fn_iter, types.GeneratorType):
             self.data = fn_iter
             self.rewind = False
@@ -261,11 +267,11 @@ class Iterator(BaseIterator):
             self.dtypes = None
             self.dtype = None
         else:
+            self.type_elem = type(elem)
             self.dtypes = self._define_dtypes(elem, dtypes)
             self.shape = self._define_shape(elem, length)
             self.dtype = max_dtype(self.dtypes)
             self.pushback(elem)
-            self.type_elem = type(elem)
 
     def _define_shape(self, elem, length) -> Shape:
         try:
@@ -276,19 +282,20 @@ class Iterator(BaseIterator):
             elif hasattr(elem, '__iter__') and not isinstance(elem, str):
                 shape = Shape(nested_shape(elem, self.dtypes))
             else:
-                shape = None
+                # may be the elem is a scalar
+                shape = []
+
+        if len(self.dtypes) > 1 and self.mapped_dtype:
+            if isinstance(elem, numbers.Number) or isinstance(elem, str):
+                length = 1
+            else:
+                if not isinstance(shape, Shape):
+                    shape = shape[1:]
 
         if not isinstance(shape, Shape):
             shapes = {}
-            if shape is None:
-                shape = []
-
-            if len(self.dtypes) > 1:
-                for group in self.groups:
-                    shapes[group] = tuple([length] + list(shape[1:]))
-            else:
-                for group in self.groups:
-                    shapes[group] = tuple([length] + list(shape))
+            for group in self.groups:
+                shapes[group] = tuple([length] + list(shape))
             return self.calc_shape_stc(length, Shape(shapes))
         elif isinstance(shape, Shape):
             shapes = {}

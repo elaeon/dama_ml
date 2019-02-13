@@ -51,6 +51,9 @@ class Shape(object):
     def __str__(self):
         return str(self._shape)
 
+    def __repr__(self):
+        return self.__str__()
+
     def groups(self):
         return self._shape.keys()
 
