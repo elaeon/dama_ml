@@ -116,10 +116,11 @@ class Shape(object):
 
 
 class Login(object):
-    __slots__ = ['username', 'passwd', 'resource', 'url']
+    __slots__ = ['username', 'passwd', 'resource', 'url', 'table']
 
-    def __init__(self, username: str = None, resource: str = None, passwd: str = None, url=None):
+    def __init__(self, username: str = None, resource: str = None, passwd: str = None, url=None, table: str = None):
         self.username = username
         self.passwd = passwd
         self.resource = resource
         self.url = url
+        self.table = table

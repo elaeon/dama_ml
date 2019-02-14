@@ -142,7 +142,8 @@ class Zarr(AbsDriver):
 
 
 class Memory(Zarr):
-    presistent = False
+    ext = None
+    persistent = False
 
     def enter(self, url=None):
         if self.conn is None:

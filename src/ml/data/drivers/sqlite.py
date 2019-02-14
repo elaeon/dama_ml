@@ -20,6 +20,7 @@ class Sqlite(AbsDriver):
 
     def enter(self):
         self.conn = sqlite3.connect(self.login.url, check_same_thread=False)
+        self.data_tag = self.login.table
         self.attrs = {}
         if self.mode == "w":
             self.destroy()
@@ -42,7 +43,8 @@ class Sqlite(AbsDriver):
     def exists(self) -> bool:
         cur = self.conn.cursor()
         cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (self.data_tag, ))
-        return True if cur.fetchone() is not None else False
+        result = cur.fetchone()
+        return result is not None
 
     def destroy(self):
         cur = self.conn.cursor()
@@ -56,13 +58,15 @@ class Sqlite(AbsDriver):
     def dtypes(self) -> np.dtype:
         return Table(self.conn, name=self.data_tag).dtypes
 
-    def set_schema(self, dtypes: np.dtype):
-        idx = None
+    def set_schema(self, dtypes: np.dtype, idx: list = None, unique=None):
         if not self.exists():
             columns_types = ["id INTEGER PRIMARY KEY"]
             for group, (dtype, _) in dtypes.fields.items():
                 fmtype = fmtypes_map[dtype]
-                columns_types.append("{col} {type}".format(col=group, type=fmtype.db_type))
+                if group == unique:
+                    columns_types.append("{col} {type} UNIQUE".format(col=group, type=fmtype.db_type))
+                else:
+                    columns_types.append("{col} {type}".format(col=group, type=fmtype.db_type))
             cols = "("+", ".join(columns_types)+")"
             cur = self.conn.cursor()
             cur.execute("""
@@ -81,12 +85,13 @@ class Sqlite(AbsDriver):
                         name=self.data_tag, i_name=index_name, i_columns=index_columns)
                     cur.execute(index_q)
             self.conn.commit()
+            cur.close()
 
     def set_data_shape(self, shape):
         pass
 
-    def insert(self, table_name: str, data):
-        table = Table(self.conn, table_name)
+    def insert(self, data):
+        table = Table(self.conn, self.data_tag)
         table.insert(data)
 
     def spaces(self) -> list:

@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from numcodecs.abc import Codec
+import numpy as np
 from ml.utils.logger import log_config
-
+from ml.utils.core import Login
 
 log = log_config(__name__)
 
@@ -10,7 +11,7 @@ class AbsDriver(ABC):
     persistent = None
     ext = None
 
-    def __init__(self, compressor: Codec = None, login=None, mode: str= 'a'):
+    def __init__(self, compressor: Codec = None, login: Login = None, mode: str= 'a'):
         self.compressor = compressor
         self.conn = None
         if compressor is not None:
@@ -62,7 +63,7 @@ class AbsDriver(ABC):
         return NotImplemented
 
     @abstractmethod
-    def set_schema(self, dtypes):
+    def set_schema(self, dtypes: np.dtype, idx: list = None, unique=None):
         return NotImplemented
 
     @abstractmethod

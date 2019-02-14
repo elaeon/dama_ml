@@ -182,10 +182,8 @@ class Data(AbsData):
 
     def destroy(self):
         self.driver.destroy()
-        meta_url = self.metadata_url()
-        if meta_url is not None:
-            rm(meta_url)
-            log.debug("METADATA DESTROYED {}".format(meta_url))
+        # fixme
+        # drop metadata from table
 
     def dir_levels(self) -> list:
         if self.group_name is None:
@@ -252,21 +250,33 @@ class Data(AbsData):
         return meta_dict
 
     def metadata_url(self) -> str:
+        return os.path.join(settings["metadata_path"], "metadata.sqlite3")
+
+    def metadata_to_json(self, f):
         metadata = self.metadata()
-        if metadata["hash"] is not None:
-            pattern = "\$.+\$"
-            hash_name = re.sub(pattern, "", metadata["hash"])
-            filename = "{}.json".format(hash_name)
-            return os.path.join(self.dataset_path, 'metadata', filename)
+        json.dump(metadata, f)
 
     def write_metadata(self):
+        from ml.data.drivers.sqlite import Sqlite
+        import sqlite3
         if self.driver.persistent is True:
-            build_path([self.dataset_path, "metadata"])
-            path = self.metadata_url()
-            if path is not None:
-                metadata = self.metadata()
-                with open(path, "w") as f:
-                    json.dump(metadata, f)
+            build_path([settings["metadata_path"]])
+            login = Login(url=self.metadata_url(), table="metadata")
+            metadata = self.metadata()
+            with Sqlite(login=login) as metadata_db:
+                dtype = np.dtype([("hash", object), ("name", object), ("author", object),
+                                  ("description", object), ("size", int), ("driver", object),
+                                  ("path", object), ("timestamp", np.dtype("datetime64[ns]"))])
+                timestamp = metadata["timestamp"]
+                timestamp = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M UTC')
+                metadata_db.set_schema(dtype, unique="hash")
+                try:
+                    metadata_db.insert([metadata["hash"], metadata["name"], metadata["author"],
+                                    metadata["description"], metadata["size"], metadata["driver"],
+                                    os.path.join(*self.dir_levels()), timestamp])
+                except sqlite3.IntegrityError as e:
+                    log.error(e)
+                    log.warning("This dataset already exists with hash {}".format(metadata["hash"]))
 
     def calc_hash(self, with_hash: str = 'sha1', batch_size: int = 1080) -> str:
         hash_obj = Hash(hash_fn=with_hash)

@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 import pandas as pd
-import json
+from io import StringIO
 import os
 from ml.data.ds import Data
 from ml.data.it import Iterator
@@ -23,6 +23,7 @@ except:
 
 
 TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'softstream_data_test')
+np.random.seed(0)
 
 
 class TestDataset(unittest.TestCase):
@@ -326,15 +327,6 @@ class TestDataset(unittest.TestCase):
             self.assertEqual(metadata["hash"], data.hash)
             data.destroy()
 
-    def test_write_metadata(self):
-        with Data(name="test", dataset_path=TMP_PATH, driver=Zarr(mode="w")) as data:
-            data.from_data(np.random.rand(100, 10))
-            metadata = data.metadata()
-            with open(data.metadata_url()) as f:
-                obj = json.load(f)
-                self.assertEqual(obj, metadata)
-            data.destroy()
-
     def test_many_ds(self):
         x = np.random.rand(1000, 2)
         y = np.random.rand(1000, 1)
@@ -359,6 +351,14 @@ class TestDataset(unittest.TestCase):
             self.assertEqual(stc["train_y"].shape, (7,))
             self.assertEqual(stc["validation_y"].to_ndarray().shape, (1,))
             self.assertEqual(stc["test_y"].to_ndarray().shape, (2,))
+            data.destroy()
+
+    def test_metadata_to_json(self):
+        with Data(name="test", dataset_path=TMP_PATH, driver=Zarr(mode="w")) as data:
+            data.from_data(np.random.rand(100, 10))
+            with StringIO() as f:
+                data.metadata_to_json(f)
+                self.assertEqual(len(f.getvalue()) > 10, True)
             data.destroy()
 
 
@@ -420,6 +420,7 @@ class TestDataZarr(unittest.TestCase):
             self.assertEqual(data.author, "AGMR")
             self.assertEqual(data.description, "description text")
             data.destroy()
+
 
 
 class TestPsqlDriver(unittest.TestCase):

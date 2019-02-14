@@ -12,7 +12,7 @@ dataset_parser_group = dataset_parser.add_mutually_exclusive_group()
 dataset_parser_group.add_argument("--rm", action="store_true", help="delete the dataset")
 dataset_parser_group.add_argument("--sts", action="store_true", help="basic stadistic analysis to the dataset")
 dataset_parser_group.add_argument("--info", action="store_true", help="show the author and description")
-dataset_parser.add_argument("--name", type=str, help="dataset name")
+dataset_parser.add_argument("hash", type=str, help="data hash")
 dataset_parser.add_argument("--driver", type=str, help="driver name")
 dataset_parser.add_argument("--group-name", type=str, help="list all datasets who has this group name")
 dataset_parser.set_defaults(func=dataset.run)
@@ -59,7 +59,7 @@ repo_parser_group.set_defaults(func=repo.run)
 def main():
     """Main CLI entrypoint."""
     args = parser.parse_args()
-    try:
+    if hasattr(args, 'func'):
         args.func(args)
-    except AttributeError:
+    else:
         print(parser.format_help())
