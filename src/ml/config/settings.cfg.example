@@ -3,6 +3,7 @@ data_path = {home}/softstream/dataset/
 models_path = {home}/softstream/models/
 code_path = {home}/softstream/code/
 class_path = {home}
+metadata_path = {home}/softstream/metadata/
 
 [log]
 ;Info level

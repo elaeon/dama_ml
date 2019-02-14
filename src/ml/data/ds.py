@@ -4,20 +4,19 @@ import json
 import numpy as np
 import pandas as pd
 import dask.array as da
-import re
 
 from tqdm import tqdm
 from ml.abc.data import AbsData
 from ml.data.it import Iterator, BaseIterator, BatchIterator
 from ml.utils.files import build_path
-from ml.utils.core import Hash, Login
+from ml.utils.core import Hash, Login, Metadata
 from ml.abc.driver import AbsDriver
 from ml.data.drivers.core import Memory
 from ml.abc.group import AbsGroup
 from ml.utils.logger import log_config
 from ml.utils.config import get_settings
 from ml.utils.decorators import cache, clean_cache
-from ml.utils.files import get_dir_file_size, rm
+from ml.utils.files import get_dir_file_size
 from ml.utils.order import order_table
 from ml.data.groups.core import DaGroup
 
@@ -257,26 +256,19 @@ class Data(AbsData):
         json.dump(metadata, f)
 
     def write_metadata(self):
-        from ml.data.drivers.sqlite import Sqlite
-        import sqlite3
         if self.driver.persistent is True:
             build_path([settings["metadata_path"]])
             login = Login(url=self.metadata_url(), table="metadata")
-            metadata = self.metadata()
-            with Sqlite(login=login) as metadata_db:
-                dtype = np.dtype([("hash", object), ("name", object), ("author", object),
-                                  ("description", object), ("size", int), ("driver", object),
-                                  ("path", object), ("timestamp", np.dtype("datetime64[ns]"))])
-                timestamp = metadata["timestamp"]
-                timestamp = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M UTC')
-                metadata_db.set_schema(dtype, unique="hash")
-                try:
-                    metadata_db.insert([metadata["hash"], metadata["name"], metadata["author"],
-                                    metadata["description"], metadata["size"], metadata["driver"],
-                                    os.path.join(*self.dir_levels()), timestamp])
-                except sqlite3.IntegrityError as e:
-                    log.error(e)
-                    log.warning("This dataset already exists with hash {}".format(metadata["hash"]))
+            metadata = Metadata(self.metadata())
+            dtypes = np.dtype([("hash", object), ("name", object), ("author", object),
+                              ("description", object), ("size", int), ("driver", object),
+                              ("dir_levels", object), ("timestamp", np.dtype("datetime64[ns]"))])
+            timestamp = metadata["timestamp"]
+            metadata["timestamp"] = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M UTC')
+            dir_levels = metadata["dir_levels"]
+            metadata["dir_levels"] = os.path.join(*dir_levels)
+            metadata.build_schema(login, dtypes, unique_key="hash")
+            metadata.insert_data(login)
 
     def calc_hash(self, with_hash: str = 'sha1', batch_size: int = 1080) -> str:
         hash_obj = Hash(hash_fn=with_hash)

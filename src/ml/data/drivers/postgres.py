@@ -58,7 +58,7 @@ class Postgres(AbsDriver):
     def dtypes(self) -> np.dtype:
         return Table(self.conn, name=self.data_tag).dtypes
 
-    def set_schema(self, dtypes: np.dtype):
+    def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key=None):
         idx = None
         if not self.exists():
             columns_types = ["id serial PRIMARY KEY"]

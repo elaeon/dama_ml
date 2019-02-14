@@ -116,7 +116,7 @@ class Zarr(AbsDriver):
     def exists(self):
         return os.path.exists(self.login.url)
 
-    def set_schema(self, dtypes:np.dtype):
+    def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key=None):
         if self.metadata_tag in self.conn:
            log.debug("Rewriting dtypes")
         self.conn.require_group(self.metadata_tag)

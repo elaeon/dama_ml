@@ -32,12 +32,9 @@ def logb(x, b):
     return np.log(x) / np.log(b)
 
 
-def humanize_bytesize(size):
+def humanize_bytesize(size: int):
     """
-    :type size: int
-    :param size: number of bytes
-
-    transforms an integer to a human readeable of the bytes.
+    transforms an integer to a human readeable.
     1024 -> 1.0 KB
     """
     if size == 0:

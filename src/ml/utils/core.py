@@ -1,9 +1,14 @@
 import hashlib
 import numpy as np
 import numbers
+import sqlite3
 
 from collections import OrderedDict
 from ml.utils.decorators import cache
+from ml.utils.logger import log_config
+
+
+log = log_config(__name__)
 
 
 class Hash:
@@ -124,3 +129,31 @@ class Login(object):
         self.resource = resource
         self.url = url
         self.table = table
+
+
+class Metadata(dict):
+    def __init__(self, *args, **kwargs):
+        super(Metadata, self).__init__(*args, **kwargs)
+
+    def build_schema(self, login: Login, dtypes: np.dtype, unique_key: str=None):
+        from ml.data.drivers.sqlite import Sqlite
+        with Sqlite(login=login) as metadata_db:
+            metadata_db.set_schema(dtypes, unique_key=unique_key)
+
+    def insert_data(self, login: Login):
+        from ml.data.drivers.sqlite import Sqlite
+        with Sqlite(login=login) as metadata_db:
+            try:
+                data = [self[group] for group in metadata_db.data.groups]
+                metadata_db.insert(data)
+            except sqlite3.IntegrityError as e:
+                log.error(e)
+                log.warning("This dataset already exists.")
+
+    def query(self, login: Login, query: str):
+        from ml.data.drivers.sqlite import Sqlite
+        with Sqlite(login=login) as metadata_db:
+            cur = metadata_db.conn.cursor()
+            data = cur.execute(query).fetchall()
+            cur.close()
+            return data

@@ -58,12 +58,12 @@ class Sqlite(AbsDriver):
     def dtypes(self) -> np.dtype:
         return Table(self.conn, name=self.data_tag).dtypes
 
-    def set_schema(self, dtypes: np.dtype, idx: list = None, unique=None):
+    def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key=None):
         if not self.exists():
             columns_types = ["id INTEGER PRIMARY KEY"]
             for group, (dtype, _) in dtypes.fields.items():
                 fmtype = fmtypes_map[dtype]
-                if group == unique:
+                if group == unique_key:
                     columns_types.append("{col} {type} UNIQUE".format(col=group, type=fmtype.db_type))
                 else:
                     columns_types.append("{col} {type}".format(col=group, type=fmtype.db_type))

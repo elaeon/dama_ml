@@ -1,5 +1,4 @@
 import os
-import json
 from ml.utils.config import get_settings
 from ml.utils.numeric_functions import humanize_bytesize
 
@@ -38,25 +37,21 @@ def run(args):
         with Data(dataset_path=path, name=args.name, group_name=args.group_name, driver=driver_class()) as dataset:
             print(dataset.stadistics())
     else:
-        from ml.utils.core import Login
-        from ml.data.drivers.sqlite import Sqlite
+        from ml.utils.core import Login, Metadata
+        import pandas as pd
         login = Login(url=os.path.join(settings["metadata_path"], "metadata.sqlite3"), table="metadata")
-        with Sqlite(login=login) as metadata_db:
-            if metadata_db.exists():
-                print(metadata_db.data[["hash", "name", "size", "timestamp"]].to_df())
-            else:
-                print("No metadata found.")
-        #metadata_path = os.path.join(settings["data_path"], 'metadata')
-        #files_list = [os.path.join(metadata_path, filename) for filename in os.listdir(metadata_path)]
-        #table = []
-        #for filename in files_list:
-        #    with open(filename, "r") as f:
-        #        metadata = json.load(f)
-        #        data = map(str, [metadata["name"], humanize_bytesize(metadata["size"]),
-        #                      metadata["timestamp"], metadata["driver"].split(".")[-1],
-        #                      metadata["hash"], metadata["description"]])
-        #        table.append(list(data))
-        #headers = ["dataset", "size", "date", "driver", "hash", "description"]
-        #list_measure = ListMeasure(headers=headers, measures=table)
-        #print(list_measure.to_tabulate(order_column="dataset", limit=10))
+        headers = ["hash", "name", "driver", "size", "timestamp"]
+        metadata = Metadata()
+        data = metadata.query(login, "SELECT {} FROM {} order by timestamp desc LIMIT 10".format(",".join(headers), login.table))
+        total = metadata.query(login, "SELECT COUNT(*) FROM {}".format(login.table))
+        data_list = []
+        for elem in data:
+            row = list(elem)
+            row[3] = humanize_bytesize(row[3])
+            row[4] = pd.to_datetime(row[4])
+            data_list.append(row)
+        headers[4] = "datetime UTC"
+        list_measure = ListMeasure(headers=headers, measures=data_list)
+        print("Total {} / {}".format(len(data), total[0][0]))
+        print(list_measure.to_tabulate())
 
