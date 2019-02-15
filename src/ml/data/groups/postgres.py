@@ -100,6 +100,7 @@ class Table(AbsGroup):
                 value = row.batch.to_df().values
             execute_values(cur, insert, value, page_size=len(data))
         self.conn.commit()
+        cur.close()
 
     def update(self, value, item):
         if isinstance(item, int):
@@ -133,8 +134,8 @@ class Table(AbsGroup):
                 array[i] = row[0]
         else:
             array[:] = cur.fetchall()
+        cur.close()
         self.conn.commit()
-
         if dtype is not None and self.dtype != dtype:
             return array.astype(dtype)
         else:
@@ -153,10 +154,11 @@ class Table(AbsGroup):
             cur.execute(query)
             length = cur.fetchone()[0]
         else:
-            query = "SELECT COUNT(*) FROM {table_name} WHERE id > {start} and id <= {stop}".format(
-                start=slice_item.start, stop=slice_item.stop, table_name=self.name)
+            query = "SELECT Count(*) FROM (SELECT id FROM {table_name} LIMIT {limit} OFFSET {start}) as foo".format(
+                table_name=self.name, start=slice_item.start, limit=(abs(slice_item.stop - slice_item.start)))
             cur.execute(query)
             length = cur.fetchone()[0]
+        cur.close()
         shape = dict([(group, (length,)) for group in self.groups])
         return Shape(shape)
 
@@ -179,6 +181,7 @@ class Table(AbsGroup):
             for column in cur.fetchall():
                 dtypes[column[3]] = types.get(column[7], np.dtype("object"))
 
+        cur.close()
         if "id" in dtypes:
             del dtypes["id"]
 
@@ -189,7 +192,9 @@ class Table(AbsGroup):
         cur = self.conn.cursor()
         query = "SELECT last_value FROM {table_name}_id_seq".format(table_name=self.name)
         cur.execute(query)
-        return cur.fetchone()[0]
+        last_id = cur.fetchone()[0]
+        cur.close()
+        return last_id
 
     def format_columns(self):
         columns = self.query_parts["columns"]

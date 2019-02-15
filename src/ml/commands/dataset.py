@@ -1,7 +1,7 @@
 import os
 from ml.utils.config import get_settings
 from ml.utils.numeric_functions import humanize_bytesize
-
+from pydoc import locate
 
 settings = get_settings("paths")
 
@@ -12,11 +12,27 @@ def run(args):
     from ml.data import drivers
 
     if args.info:
-        path = os.path.join(settings["data_path"])
-        #driver_class = getattr(drivers, args.driver)
-        print(args.hash)
-        #with Data(dataset_path=path, name=args.name, group_name=args.group_name, driver=driver_class()) as dataset:
-        #    dataset.info()
+        from ml.utils.core import Login, Metadata
+        from ml.data.drivers.core import DataDoesNotFound
+        login = Login(url=os.path.join(settings["metadata_path"], "metadata.sqlite3"), table="metadata")
+        metadata = Metadata(login=login)
+        data = metadata.query("SELECT name, driver, dir_levels, hash FROM {} WHERE hash = '{}'".format(login.table,
+                                                                                                       args.hash[0]))
+        if len(data) == 0:
+            print("Resource does not exists")
+        else:
+            row = data[0]
+            driver = locate(row[1])
+            path = row[2].replace(driver.cls_name(), "")
+            group_name = None
+            name = row[0]
+            with Data(dataset_path=path, name=name, group_name=group_name, driver=driver()) as dataset:
+                try:
+                    dataset.info()
+                except DataDoesNotFound:
+                    metadata.remove_data(row[3])
+                    print("Resource does not exists. The metadata was removed.")
+
     elif args.rm:
         path = os.path.join(settings["data_path"])
         driver_class = getattr(drivers, args.driver)
@@ -38,20 +54,26 @@ def run(args):
             print(dataset.stadistics())
     else:
         from ml.utils.core import Login, Metadata
-        import pandas as pd
         login = Login(url=os.path.join(settings["metadata_path"], "metadata.sqlite3"), table="metadata")
         headers = ["hash", "name", "driver", "size", "timestamp"]
-        metadata = Metadata()
-        data = metadata.query(login, "SELECT {} FROM {} order by timestamp desc LIMIT 10".format(",".join(headers), login.table))
-        total = metadata.query(login, "SELECT COUNT(*) FROM {}".format(login.table))
-        data_list = []
-        for elem in data:
-            row = list(elem)
-            row[3] = humanize_bytesize(row[3])
-            row[4] = pd.to_datetime(row[4])
-            data_list.append(row)
-        headers[4] = "datetime UTC"
-        list_measure = ListMeasure(headers=headers, measures=data_list)
-        print("Total {} / {}".format(len(data), total[0][0]))
+        metadata = Metadata(login)
+        if args.page is not None:
+            elems = args.page.split(":")
+            stop = None
+            if len(elems) > 1:
+                start = int(elems[0])
+                if elems[1] != '':
+                    stop = int(elems[1])
+            else:
+                start = int(elems[0])
+            page = slice(start, stop)
+        else:
+            page = slice(None, None)
+        total = metadata.query("SELECT COUNT(*) FROM {}".format(login.table))
+        df = metadata.data(headers, page, order_by="timestamp")
+        df.rename(columns={"timestamp": "datetime UTC"}, inplace = True)
+        df["size"] = df["size"].apply(humanize_bytesize)
+        print("Total {} / {}".format(len(df), total[0][0]))
+        list_measure = ListMeasure(headers=df.columns, measures=df[df.columns].values)
         print(list_measure.to_tabulate())
 

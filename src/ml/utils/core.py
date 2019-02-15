@@ -132,17 +132,18 @@ class Login(object):
 
 
 class Metadata(dict):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, login: Login, *args, **kwargs):
         super(Metadata, self).__init__(*args, **kwargs)
+        self.login = login
 
-    def build_schema(self, login: Login, dtypes: np.dtype, unique_key: str=None):
+    def build_schema(self, dtypes: np.dtype, unique_key: str=None):
         from ml.data.drivers.sqlite import Sqlite
-        with Sqlite(login=login) as metadata_db:
+        with Sqlite(login=self.login) as metadata_db:
             metadata_db.set_schema(dtypes, unique_key=unique_key)
 
-    def insert_data(self, login: Login):
+    def insert_data(self):
         from ml.data.drivers.sqlite import Sqlite
-        with Sqlite(login=login) as metadata_db:
+        with Sqlite(login=self.login) as metadata_db:
             try:
                 data = [self[group] for group in metadata_db.data.groups]
                 metadata_db.insert(data)
@@ -150,10 +151,19 @@ class Metadata(dict):
                 log.error(e)
                 log.warning("This dataset already exists.")
 
-    def query(self, login: Login, query: str):
+    def query(self, query: str):
         from ml.data.drivers.sqlite import Sqlite
-        with Sqlite(login=login) as metadata_db:
+        with Sqlite(login=self.login) as metadata_db:
             cur = metadata_db.conn.cursor()
             data = cur.execute(query).fetchall()
             cur.close()
+            metadata_db.conn.commit()
             return data
+
+    def data(self, headers, page, order_by=None):
+        from ml.data.drivers.sqlite import Sqlite
+        with Sqlite(login=self.login) as metadata_db:
+            return metadata_db.data[headers][page].to_df().sort_values(order_by, ascending=False)
+
+    def remove_data(self, hash):
+        self.query("DELETE FROM metadata WHERE hash = '{}'".format(hash))

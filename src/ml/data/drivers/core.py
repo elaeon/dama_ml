@@ -14,6 +14,10 @@ from ml.data.groups.zarr import ZarrGroup
 log = log_config(__name__)
 
 
+class DataDoesNotFound(Exception):
+    pass
+
+
 class HDF5(AbsDriver):
     persistent = True
     ext = 'h5'
@@ -25,7 +29,10 @@ class HDF5(AbsDriver):
 
     @property
     def data(self) -> DaGroup:
-        return DaGroup(HDF5Group(self.conn[self.data_tag]))
+        try:
+            return DaGroup(HDF5Group(self.conn[self.data_tag]))
+        except KeyError:
+            raise DataDoesNotFound
 
     def enter(self):
         if self.conn is None:

@@ -259,7 +259,7 @@ class Data(AbsData):
         if self.driver.persistent is True:
             build_path([settings["metadata_path"]])
             login = Login(url=self.metadata_url(), table="metadata")
-            metadata = Metadata(self.metadata())
+            metadata = Metadata(login, self.metadata())
             dtypes = np.dtype([("hash", object), ("name", object), ("author", object),
                               ("description", object), ("size", int), ("driver", object),
                               ("dir_levels", object), ("timestamp", np.dtype("datetime64[ns]"))])
@@ -267,8 +267,8 @@ class Data(AbsData):
             metadata["timestamp"] = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M UTC')
             dir_levels = metadata["dir_levels"]
             metadata["dir_levels"] = os.path.join(*dir_levels)
-            metadata.build_schema(login, dtypes, unique_key="hash")
-            metadata.insert_data(login)
+            metadata.build_schema(dtypes, unique_key="hash")
+            metadata.insert_data()
 
     def calc_hash(self, with_hash: str = 'sha1', batch_size: int = 1080) -> str:
         hash_obj = Hash(hash_fn=with_hash)

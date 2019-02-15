@@ -147,8 +147,8 @@ class Table(AbsGroup):
             cur.execute(query)
             length = cur.fetchone()[0]
         else:
-            query = "SELECT COUNT(*) FROM {table_name} WHERE id > {start} and id <= {stop}".format(
-                start=slice_item.start, stop=slice_item.stop, table_name=self.name)
+            query = "SELECT Count(*) FROM (SELECT id FROM {table_name} LIMIT {limit} OFFSET {start})".format(
+                table_name=self.name, start=slice_item.start, limit=(abs(slice_item.stop - slice_item.start)))
             cur.execute(query)
             length = cur.fetchone()[0]
         shape = dict([(group, (length,)) for group in self.groups])
@@ -236,8 +236,8 @@ class Table(AbsGroup):
                 query = "SELECT {columns} FROM {table_name} ORDER BY {order_by}".format(
                     columns=self.format_columns(), table_name=self.name, order_by="id")
             else:
-                query = "SELECT {columns} FROM {table_name} WHERE id > {start} and id <= {stop} ORDER BY {order_by}".format(
+                query = "SELECT {columns} FROM {table_name} ORDER BY {order_by} LIMIT {limit} OFFSET {start}".format(
                     columns=self.format_columns(), table_name=self.name, order_by="id", start=slice_item.start,
-                    stop=slice_item.stop)
+                    limit=(abs(slice_item.stop - slice_item.start)))
             one_row = False
         return query, one_row
