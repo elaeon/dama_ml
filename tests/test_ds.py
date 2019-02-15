@@ -361,6 +361,23 @@ class TestDataset(unittest.TestCase):
                 self.assertEqual(len(f.getvalue()) > 10, True)
             data.destroy()
 
+    def test_delete_metadata_info(self):
+        from ml.utils.core import Metadata, Login
+
+        with Data(name="test", dataset_path=TMP_PATH, driver=Zarr(mode="w")) as data:
+            data.from_data(np.random.rand(100, 11))
+            hash = data.hash
+            metadata_url = data.metadata_url()
+        login = Login(url=metadata_url, table="metadata")
+        metadata = Metadata(login=login)
+        self.assertEqual(metadata.exists(hash), True)
+
+        with Data(name="test", dataset_path=TMP_PATH, driver=Zarr(mode="r")) as data:
+            data.destroy()
+        login = Login(url=metadata_url, table="metadata")
+        metadata = Metadata(login=login)
+        self.assertEqual(metadata.exists(hash), False)
+
 
 class TestDataZarr(unittest.TestCase):
     def test_ds(self):

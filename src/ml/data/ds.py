@@ -180,9 +180,11 @@ class Data(AbsData):
                     self.driver.data[group][i] = smx[j]
 
     def destroy(self):
+        hash = self.hash
         self.driver.destroy()
-        # fixme
-        # drop metadata from table
+        login = Login(url=self.metadata_url(), table="metadata")
+        metadata = Metadata(login)
+        metadata.remove_data(hash)
 
     def dir_levels(self) -> list:
         if self.group_name is None:

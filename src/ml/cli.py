@@ -13,7 +13,7 @@ dataset_parser_group.add_argument("--rm", action="store_true", help="delete the 
 dataset_parser_group.add_argument("--sts", action="store_true", help="basic stadistic analysis to the dataset")
 dataset_parser_group.add_argument("--info", action="store_true", help="show the author and description")
 dataset_parser.add_argument("hash", type=str, help="data hash", nargs="*")
-dataset_parser.add_argument("--page", type=str, help="slice syntax for pagination 0:n")
+dataset_parser.add_argument("--items", type=str, help="slice syntax to get elems from 0 to n (0:n)")
 dataset_parser.add_argument("--driver", type=str, help="driver name")
 dataset_parser.add_argument("--group-name", type=str, help="list all datasets who has this group name")
 dataset_parser.set_defaults(func=dataset.run)

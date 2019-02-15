@@ -1,5 +1,6 @@
 import hashlib
 import numpy as np
+import pandas as pd
 import numbers
 import sqlite3
 
@@ -160,10 +161,14 @@ class Metadata(dict):
             metadata_db.conn.commit()
             return data
 
-    def data(self, headers, page, order_by=None):
+    def data(self, headers, page, order_by=None) -> pd.DataFrame:
         from ml.data.drivers.sqlite import Sqlite
         with Sqlite(login=self.login) as metadata_db:
             return metadata_db.data[headers][page].to_df().sort_values(order_by, ascending=False)
 
-    def remove_data(self, hash):
+    def remove_data(self, hash: str):
         self.query("DELETE FROM metadata WHERE hash = '{}'".format(hash))
+
+    def exists(self, hash: str) -> bool:
+        result = self.query("SELECT id FROM metadata WHERE hash = '{}'".format(hash))
+        return len(result) > 0

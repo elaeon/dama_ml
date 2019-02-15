@@ -57,8 +57,8 @@ def run(args):
         login = Login(url=os.path.join(settings["metadata_path"], "metadata.sqlite3"), table="metadata")
         headers = ["hash", "name", "driver", "size", "timestamp"]
         metadata = Metadata(login)
-        if args.page is not None:
-            elems = args.page.split(":")
+        if args.items is not None:
+            elems = args.items.split(":")
             stop = None
             if len(elems) > 1:
                 start = int(elems[0])
