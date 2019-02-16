@@ -11,7 +11,7 @@ class AbsDriver(ABC):
     persistent = None
     ext = None
 
-    def __init__(self, compressor: Codec = None, login: Login = None, mode: str= 'a'):
+    def __init__(self, compressor: Codec = None, login: Login = None, mode: str = 'a'):
         self.compressor = compressor
         self.conn = None
         if compressor is not None:
@@ -63,7 +63,7 @@ class AbsDriver(ABC):
         return NotImplemented
 
     @abstractmethod
-    def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key: str=None):
+    def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key: str = None):
         return NotImplemented
 
     @abstractmethod

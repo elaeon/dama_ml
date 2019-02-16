@@ -62,6 +62,8 @@ class Table(AbsGroup):
                 batch_size = len(value)
             else:
                 batch_size = 1
+        else:
+            raise NotImplementedError
 
         last_id = self.last_id()
         if last_id < stop:

@@ -71,9 +71,8 @@ def run(args):
             page = slice(None, None)
         total = metadata.query("SELECT COUNT(*) FROM {}".format(login.table))
         df = metadata.data(headers, page, order_by="timestamp")
-        df.rename(columns={"timestamp": "datetime UTC"}, inplace = True)
+        df.rename(columns={"timestamp": "datetime UTC"}, inplace=True)
         df["size"] = df["size"].apply(humanize_bytesize)
         print("Total {} / {}".format(len(df), total[0][0]))
         list_measure = ListMeasure(headers=df.columns, measures=df[df.columns].values)
         print(list_measure.to_tabulate())
-

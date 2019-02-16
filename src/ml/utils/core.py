@@ -1,7 +1,6 @@
 import hashlib
 import numpy as np
 import pandas as pd
-import numbers
 import sqlite3
 
 from collections import OrderedDict
@@ -34,7 +33,7 @@ class Shape(object):
         self._shape = shape
 
     def __getitem__(self, item):
-        if isinstance(item, numbers.Integral):
+        if isinstance(item, int):
             return self.to_tuple()[item]
         elif isinstance(item, str):
             return self._shape[item]
@@ -137,7 +136,7 @@ class Metadata(dict):
         super(Metadata, self).__init__(*args, **kwargs)
         self.login = login
 
-    def build_schema(self, dtypes: np.dtype, unique_key: str=None):
+    def build_schema(self, dtypes: np.dtype, unique_key: str = None):
         from ml.data.drivers.sqlite import Sqlite
         with Sqlite(login=self.login) as metadata_db:
             metadata_db.set_schema(dtypes, unique_key=unique_key)
@@ -166,9 +165,9 @@ class Metadata(dict):
         with Sqlite(login=self.login) as metadata_db:
             return metadata_db.data[headers][page].to_df().sort_values(order_by, ascending=False)
 
-    def remove_data(self, hash: str):
-        self.query("DELETE FROM metadata WHERE hash = '{}'".format(hash))
+    def remove_data(self, hash_hex: str):
+        self.query("DELETE FROM metadata WHERE hash = '{}'".format(hash_hex))
 
-    def exists(self, hash: str) -> bool:
-        result = self.query("SELECT id FROM metadata WHERE hash = '{}'".format(hash))
+    def exists(self, hash_hex: str) -> bool:
+        result = self.query("SELECT id FROM metadata WHERE hash = '{}'".format(hash_hex))
         return len(result) > 0

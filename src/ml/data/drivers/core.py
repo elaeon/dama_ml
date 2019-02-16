@@ -59,9 +59,9 @@ class HDF5(AbsDriver):
     def exists(self):
         return os.path.exists(self.login.url)
 
-    def set_schema(self, dtypes: np.dtype):
+    def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key: str = None):
         if self.metadata_tag in self.conn:
-           log.debug("Rewriting dtypes")
+            log.debug("Rewriting dtypes")
 
         self.conn.require_group(self.metadata_tag)
         self.require_dataset(self.metadata_tag, "dtypes", (len(dtypes), 2), dtype=np.dtype('object'))
@@ -125,7 +125,7 @@ class Zarr(AbsDriver):
 
     def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key=None):
         if self.metadata_tag in self.conn:
-           log.debug("Rewriting dtypes")
+            log.debug("Rewriting dtypes")
         self.conn.require_group(self.metadata_tag)
         self.require_dataset(self.metadata_tag, "dtypes", (len(dtypes), 2), dtype=np.dtype('object'))
         for i, (group, (dtype, _)) in enumerate(dtypes.fields.items()):
