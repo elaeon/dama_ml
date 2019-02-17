@@ -5,7 +5,6 @@ import os
 
 from ml.utils.tf_functions import ssim, msssim
 from ml.processing import rgb2gray, merge_offset
-from ml.data.etl import Pipeline
 
 
 class TestMsssiM(unittest.TestCase):
@@ -20,9 +19,7 @@ class TestMsssiM(unittest.TestCase):
 
         image_path = self.img1
         image = np.expand_dims(io.imread(image_path), axis=0)
-        pipeline = Pipeline(image)
-        a = pipeline.map(rgb2gray).map(merge_offset).map(img_as_float)
-        img = a.compute()
+        img = img_as_float(merge_offset(rgb2gray(image)))
         img = img[0]
         rows, cols = img.shape
 
@@ -71,15 +68,12 @@ class TestMsssiM(unittest.TestCase):
         image_path2 = self.img3
 
         image1 = np.expand_dims(io.imread(image_path1), axis=0)
-        pipeline = Pipeline(image1)
-        a = pipeline.map(rgb2gray).map(merge_offset).map(img_as_float)
-        img1 = a.compute()
+        img1 = img_as_float(merge_offset(rgb2gray(image1)))
         img1 = img1[0]
         rows1, cols1 = img1.shape
 
         image2 = np.expand_dims(io.imread(image_path2), axis=0)
-        pipeline.feed(image2)
-        img2 = a.compute()
+        img2 = img_as_float(merge_offset(rgb2gray(image2)))
         img2 = img2[0]
         rows2, cols2 = img2.shape
 
