@@ -378,6 +378,18 @@ class TestDataset(unittest.TestCase):
         metadata = Metadata(login=login)
         self.assertEqual(metadata.exists(hash), False)
 
+    def test_concat_axis_0(self):  # length
+        with Data(name="test", dataset_path=TMP_PATH) as dataset,\
+            Data(name="test2", dataset_path=TMP_PATH) as dataset2:
+            array = np.random.rand(10, 2)
+            dataset.from_data(array)
+            array = np.random.rand(10, 2)
+            dataset2.from_data(array)
+            print(dataset.data)
+            print(dataset2.data)
+            #Data.concat(dataset.data, dataset2.data, axis=0) return a graph with concatenation on length
+            dataset.destroy()
+            dataset2.destroy()
 
 class TestDataZarr(unittest.TestCase):
     def test_ds(self):
