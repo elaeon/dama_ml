@@ -37,6 +37,14 @@ class AbsBaseGroup(ABC):
     def cast(self, value):
         return value
 
+    @classmethod
+    def module_cls_name(cls):
+        return "{}.{}".format(cls.__module__, cls.__name__)
+
+    @classmethod
+    def cls_name(cls):
+        return cls.__name__
+
 
 class Singleton(type):
     _instances = {}
@@ -87,7 +95,7 @@ class AbsGroup(AbsBaseGroup):
         return self.shape.to_tuple()[0]
 
     def __repr__(self):
-        return "{} {}".format(self.__class__.__name__, self.shape)#self.slice)
+        return "{} {}".format(self.cls_name(), self.shape)
 
     def get_group(self, group):
         return self[group]

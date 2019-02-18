@@ -113,10 +113,36 @@ class DaGroup(AbsGroup):
     def __radd__(self, other):
         return self.__add__(other)
 
+    @staticmethod
+    def concat(da_groups, axis=0) -> 'DaGroup':
+        writers = {group.writer_conn.module_cls_name() for group in da_groups}
+        if len(writers) > 1:
+            raise Exception
+        else:
+            if axis == 0:
+                groups = [da_group.groups for da_group in da_groups]
+                intersection_groups = set(groups[0])
+                for group in groups[1:]:
+                    intersection_groups = intersection_groups.intersection(set(group))
+                da_group_dict = DaGroupDict()
+                for group in intersection_groups:
+                    da_arrays = [da_group[group].array() for da_group in da_groups]
+                    da_array_c = da.concatenate(da_arrays, axis=axis)
+                    da_group_dict[group] = da_array_c
+                return DaGroup(da_group_dict)
+            else:
+                raise NotImplementedError
+
     @property
     def shape(self) -> 'Shape':
         shape = {group: data.shape for group, data in self.conn.items()}
         return Shape(shape)
+
+    def array(self):
+        if len(self.groups) == 1:
+            return self.conn[self.groups[0]]
+        else:
+            raise NotImplementedError
 
     def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)):
         self.writer_conn.attrs["dtype"] = dtype

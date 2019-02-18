@@ -23,7 +23,7 @@ class AbsDriver(ABC):
         self.mode = mode
         self.attrs = None
         self.login = login
-        log.debug("Driver: {}, mode: {}, compressor: {}".format(self.__class__.__name__,
+        log.debug("Driver: {}, mode: {}, compressor: {}".format(self.cls_name(),
                                                                 self.mode, self.compressor))
 
     def __enter__(self):

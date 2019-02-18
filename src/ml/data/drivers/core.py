@@ -96,7 +96,10 @@ class Zarr(AbsDriver):
 
     @property
     def data(self) -> DaGroup:
-        return DaGroup(ZarrGroup(self.conn[self.data_tag]))
+        return DaGroup(self.absgroup())
+
+    def absgroup(self):
+        return ZarrGroup(self.conn[self.data_tag])
 
     def enter(self):
         if self.conn is None:

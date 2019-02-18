@@ -328,6 +328,13 @@ class Data(AbsData):
                 f.write(" ".join(row))
                 f.write("\n")
 
+    def concat(self, datasets: tuple, axis=0):
+        da_groups = []
+        for ds in datasets:
+            da_groups.append(ds.data)
+        da_group = DaGroup.concat(da_groups, axis=axis)
+        self.from_data(da_group)
+
     def stadistics(self):
         from collections import defaultdict
         from ml.utils.numeric_functions import unique_size, data_type

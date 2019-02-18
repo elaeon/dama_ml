@@ -380,16 +380,36 @@ class TestDataset(unittest.TestCase):
 
     def test_concat_axis_0(self):  # length
         with Data(name="test", dataset_path=TMP_PATH) as dataset,\
-            Data(name="test2", dataset_path=TMP_PATH) as dataset2:
+            Data(name="test2", dataset_path=TMP_PATH) as dataset2,\
+            Data(name="concat", driver=Zarr(mode="w")) as data_c:
             array = np.random.rand(10, 2)
             dataset.from_data(array)
             array = np.random.rand(10, 2)
             dataset2.from_data(array)
-            print(dataset.data)
-            print(dataset2.data)
-            #Data.concat(dataset.data, dataset2.data, axis=0) return a graph with concatenation on length
+            data_c.concat((dataset, dataset2), axis=0)
+            self.assertEqual((data_c.to_ndarray()[:10] == dataset.to_ndarray()).all(), True)
+            self.assertEqual((data_c.to_ndarray()[10:] == dataset2.to_ndarray()).all(), True)
             dataset.destroy()
             dataset2.destroy()
+            data_c.destroy()
+
+    def test_concat_axis_0_dtypes(self):  # length
+        with Data(name="test", dataset_path=TMP_PATH) as dataset,\
+            Data(name="test2", dataset_path=TMP_PATH) as dataset2,\
+            Data(name="concat", driver=Zarr(mode="w")) as data_c:
+            array0_c0 = np.random.rand(10)
+            array0_c1 = np.random.rand(10)
+            dataset.from_data(pd.DataFrame({"a": array0_c0, "b": array0_c1}))
+            array1_c0 = np.random.rand(10)
+            array1_c1 = np.random.rand(10)
+            dataset2.from_data(pd.DataFrame({"a": array1_c0, "b": array1_c1}))
+            data_c.concat((dataset, dataset2), axis=0)
+            self.assertEqual((data_c.to_ndarray()[:10] == dataset.to_ndarray()).all(), True)
+            self.assertEqual((data_c.to_ndarray()[10:] == dataset2.to_ndarray()).all(), True)
+            dataset.destroy()
+            dataset2.destroy()
+            data_c.destroy()
+
 
 class TestDataZarr(unittest.TestCase):
     def test_ds(self):
