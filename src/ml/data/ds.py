@@ -172,8 +172,12 @@ class Data(AbsData):
         batch_size = getattr(data, 'batch_size', 0)
         log.info("Writing with batch size {}".format(batch_size))
         if batch_size > 0:
+            absgroup = self.driver.absgroup()
             for smx in tqdm(data, total=data.num_splits()):
-                self.driver.data[smx.slice] = smx
+                #self.driver.data[smx.slice] = smx
+                #absgroup.conn[smx.slice] = smx
+                #self.data[smx.slice] = smx
+                absgroup.set(smx.slice, smx)
         else:
             for i, smx in tqdm(enumerate(data), total=data.num_splits()):
                 for j, group in enumerate(self.groups):
@@ -282,17 +286,17 @@ class Data(AbsData):
             hash_obj.update(it.only_data())
         return str(hash_obj)
 
-    def from_data(self, data, batch_size: int = 258, with_hash: str = "sha1"):
+    def from_data(self, data, chunks: tuple=None, with_hash: str = "sha1"):
         if isinstance(data, da.Array):
             data = DaGroup.from_da(data)
         elif isinstance(data, Iterator):
-            data = data.batchs(batch_size=batch_size)
+            data = data.batchs(batch_size=chunks[0])
         elif isinstance(data, dict):
-            data = DaGroup(data, chunks=(10,))
+            data = DaGroup(data, chunks=chunks)
         elif isinstance(data, DaGroup) or type(data) == DaGroup:
             pass
         elif not isinstance(data, BaseIterator):
-            data = Iterator(data).batchs(batch_size=batch_size)
+            data = Iterator(data).batchs(batch_size=chunks[0])
         self.dtypes = data.dtypes
         self.driver.set_data_shape(data.shape)
         if isinstance(data, BatchIterator) or isinstance(data, Iterator):

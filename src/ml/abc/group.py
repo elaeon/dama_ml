@@ -1,11 +1,14 @@
 from abc import ABC, abstractmethod
 from ml.utils.numeric_functions import max_dtype
 from ml.utils.core import Shape
+from numbers import Number
 import numpy as np
 import pandas as pd
 
 
 class AbsBaseGroup(ABC):
+    inblock = None
+
     def __init__(self, conn):
         self.conn = conn
         self.attrs = Attrs()
@@ -45,6 +48,27 @@ class AbsBaseGroup(ABC):
     def cls_name(cls):
         return cls.__name__
 
+    def set(self, item, value):
+        from ml.data.groups.core import DaGroup
+        from ml.fmtypes import Slice
+        if self.inblock is True:
+            self.conn[item] = value
+        else:
+            if type(value) == DaGroup:
+                for group in value.groups:
+                    group = value.conn.get_oldname(group)
+                    self.conn[group][item] = value[group].to_ndarray()
+            elif type(value) == Slice:
+                for group in value.batch.groups:
+                    group = value.batch.conn.get_oldname(group)
+                    self.conn[group][item] = value.batch[group].to_ndarray()
+            elif isinstance(value, Number):
+                self.conn[item] = value
+            elif isinstance(value, np.ndarray):
+                self.conn[item] = value
+            else:
+                if isinstance(item, str):
+                    self.conn[item] = value
 
 class Singleton(type):
     _instances = {}

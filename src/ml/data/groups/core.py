@@ -6,7 +6,6 @@ import numpy as np
 from collections import OrderedDict
 from ml.utils.decorators import cache
 import dask.array as da
-import numbers
 
 
 class DaGroupDict(OrderedDict):
@@ -28,6 +27,7 @@ class DaGroupDict(OrderedDict):
 
 class DaGroup(AbsGroup):
     def __init__(self, conn, chunks=None, writer_conn=None):
+       # print("CHUNKS", chunks, conn)
         if isinstance(conn, DaGroupDict):
             reader_conn = conn
         elif isinstance(conn, dict):
@@ -46,9 +46,9 @@ class DaGroup(AbsGroup):
     def convert(self, groups_dict, chunks) -> dict:
         groups = DaGroupDict()
         for group, data in groups_dict.items():
-            chunks = data.shape  # fixme
+            if chunks is None:
+                chunks = data.shape
             lock = False
-            print(chunks, "CONVERT CHUNKS")
             groups[group] = da.from_array(data, chunks=chunks, lock=lock)
         return groups
 
@@ -83,24 +83,25 @@ class DaGroup(AbsGroup):
             return self.sample(item)
 
     def __setitem__(self, item, value):
-        if self.writer_conn.inblock is True:
-            self.writer_conn[item] = value
-        else:
-            if hasattr(value, "groups"):
-                for group in value.groups:
-                    group = self.conn.get_oldname(group)
-                    self.writer_conn.conn[group][item] = value[group].to_ndarray()
-            elif hasattr(value, 'batch'):
-                for group in value.batch.groups:
-                    group = self.conn.get_oldname(group)
-                    self.writer_conn.conn[group][item] = value.batch[group].to_ndarray()
-            elif isinstance(value, numbers.Number):
-                self.writer_conn.conn[item] = value
-            elif isinstance(value, np.ndarray):
-                self.writer_conn.conn[item] = value
-            else:
-                if isinstance(item, str):
-                    self.writer_conn.conn[item] = value
+        #if self.writer_conn.inblock is True:
+        #    self.writer_conn[item] = value
+        #else:
+        #    if hasattr(value, "groups"):
+        #        for group in value.groups:
+        #            group = self.conn.get_oldname(group)
+        #            self.writer_conn.conn[group][item] = value[group].to_ndarray()
+        #    elif hasattr(value, 'batch'):
+        #        for group in value.batch.groups:
+        #            group = self.conn.get_oldname(group)
+        #            self.writer_conn.conn[group][item] = value.batch[group].to_ndarray()
+        #    elif isinstance(value, numbers.Number):
+        #        self.writer_conn.conn[item] = value
+        #    elif isinstance(value, np.ndarray):
+        #        self.writer_conn.conn[item] = value
+        #    else:
+        #        if isinstance(item, str):
+        #            self.writer_conn.conn[item] = value
+        self.writer_conn.set(item, value)
 
     def __add__(self, other: 'DaGroup') -> 'DaGroup':
         if other == 0:

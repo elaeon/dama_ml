@@ -383,9 +383,9 @@ class TestDataset(unittest.TestCase):
             Data(name="test2", dataset_path=TMP_PATH) as dataset2,\
             Data(name="concat", driver=Zarr(mode="w")) as data_c:
             array = np.random.rand(10, 2)
-            dataset.from_data(array)
+            dataset.from_data(array, chunks=(5, ))
             array = np.random.rand(10, 2)
-            dataset2.from_data(array)
+            dataset2.from_data(array, chunks=(5, ))
             data_c.concat((dataset, dataset2), axis=0)
             self.assertEqual((data_c.to_ndarray()[:10] == dataset.to_ndarray()).all(), True)
             self.assertEqual((data_c.to_ndarray()[10:] == dataset2.to_ndarray()).all(), True)
@@ -396,19 +396,24 @@ class TestDataset(unittest.TestCase):
     def test_concat_axis_0_dtypes(self):  # length
         with Data(name="test", dataset_path=TMP_PATH) as dataset,\
             Data(name="test2", dataset_path=TMP_PATH) as dataset2,\
-            Data(name="concat", driver=Zarr(mode="w")) as data_c:
+            Data(name="concat", dataset_path=TMP_PATH, driver=Zarr(mode="w")) as data_c:
             array0_c0 = np.random.rand(10)
             array0_c1 = np.random.rand(10)
-            dataset.from_data(pd.DataFrame({"a": array0_c0, "b": array0_c1}))
+            dataset.from_data(pd.DataFrame({"a": array0_c0, "b": array0_c1}), chunks=(5, ))
             array1_c0 = np.random.rand(10)
             array1_c1 = np.random.rand(10)
-            dataset2.from_data(pd.DataFrame({"a": array1_c0, "b": array1_c1}))
+            dataset2.from_data(pd.DataFrame({"a": array1_c0, "b": array1_c1}) , chunks=(5, ))
             data_c.concat((dataset, dataset2), axis=0)
             self.assertEqual((data_c.to_ndarray()[:10] == dataset.to_ndarray()).all(), True)
             self.assertEqual((data_c.to_ndarray()[10:] == dataset2.to_ndarray()).all(), True)
             dataset.destroy()
             dataset2.destroy()
             data_c.destroy()
+
+    def test_operation(self):
+        with Data(name="test", dataset_path=TMP_PATH) as dataset:
+            dataset.from_data(np.random.rand(10, 1), chunks=(5,))
+            #print(dataset.to_ndarray())
 
 
 class TestDataZarr(unittest.TestCase):
