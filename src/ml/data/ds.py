@@ -9,7 +9,7 @@ from tqdm import tqdm
 from ml.abc.data import AbsData
 from ml.data.it import Iterator, BaseIterator, BatchIterator
 from ml.utils.files import build_path
-from ml.utils.core import Hash, Login, Metadata
+from ml.utils.core import Hash, Login, Metadata, Chunks
 from ml.abc.driver import AbsDriver
 from ml.data.drivers.core import Memory
 from ml.abc.group import AbsGroup
@@ -27,7 +27,7 @@ log = log_config(__name__)
 
 class Data(AbsData):
     def __init__(self, name: str = None, dataset_path: str = None, driver: AbsDriver = None,
-                 group_name: str = None):
+                 group_name: str = None, chunks=None):
 
         if driver is None:
             self.driver = Memory()
@@ -51,6 +51,7 @@ class Data(AbsData):
         self.description = None
         self.timestamp = None
         self.compressor_params = None
+        self.chunks = chunks
         if self.driver.login is None:
             self.driver.login = Login(url=self.url)
         else:
@@ -112,7 +113,7 @@ class Data(AbsData):
     @property
     @cache
     def data(self) -> AbsGroup:
-        return self.driver.data
+        return self.driver.data(chunks=self.chunks)
 
     @data.setter
     @clean_cache
@@ -170,7 +171,7 @@ class Data(AbsData):
 
     def batchs_writer(self, data):
         batch_size = getattr(data, 'batch_size', 0)
-        log.info("Writing with batch size {}".format(batch_size))
+        log.info("Writing with chunks {}".format(batch_size))
         if batch_size > 0:
             absgroup = self.driver.absgroup()
             for smx in tqdm(data, total=data.num_splits()):
@@ -181,7 +182,7 @@ class Data(AbsData):
         else:
             for i, smx in tqdm(enumerate(data), total=data.num_splits()):
                 for j, group in enumerate(self.groups):
-                    self.driver.data[group][i] = smx[j]
+                    self.data[group][i] = smx[j]
 
     def destroy(self):
         hash = self.hash
@@ -282,21 +283,27 @@ class Data(AbsData):
         header = [attr for attr in header if attr is not None]
         hash_obj.hash.update("".join(header).encode("utf-8"))
         for group in self.groups:
-            it = Iterator(self.data[group]).batchs(batch_size=batch_size)
+            it = Iterator(self.data[group]).batchs(chunks=self.chunks)
             hash_obj.update(it.only_data())
         return str(hash_obj)
 
-    def from_data(self, data, chunks: tuple=None, with_hash: str = "sha1"):
+    def from_data(self, data, chunks=None, with_hash: str = "sha1"):
         if isinstance(data, da.Array):
             data = DaGroup.from_da(data)
         elif isinstance(data, Iterator):
-            data = data.batchs(batch_size=chunks[0])
+            self.chunks = Chunks.build_from(chunks, data.groups)
+            data = data.batchs(chunks=self.chunks)
+            self.chunks = data.chunks
         elif isinstance(data, dict):
-            data = DaGroup(data, chunks=chunks)
+            self.chunks = Chunks.build_from(chunks, tuple(data.keys()))
+            data = DaGroup(data, chunks=self.chunks)
         elif isinstance(data, DaGroup) or type(data) == DaGroup:
             pass
         elif not isinstance(data, BaseIterator):
-            data = Iterator(data).batchs(batch_size=chunks[0])
+            data = Iterator(data)
+            self.chunks = data.shape.to_chunks(chunks)
+            data = data.batchs(chunks=self.chunks)
+            self.chunks = data.chunks
         self.dtypes = data.dtypes
         self.driver.set_data_shape(data.shape)
         if isinstance(data, BatchIterator) or isinstance(data, Iterator):

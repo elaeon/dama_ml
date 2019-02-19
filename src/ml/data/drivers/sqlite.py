@@ -3,6 +3,7 @@ from ml.data.groups.core import DaGroup
 from ml.data.groups.sqlite import Table
 from ml.fmtypes import fmtypes_map
 from ml.utils.logger import log_config
+from ml.utils.core import Chunks
 import numpy as np
 import sqlite3
 
@@ -36,9 +37,12 @@ class Sqlite(AbsDriver):
     def __exit__(self, exc_type, exc_val, exc_tb):
         return self.exit()
 
+    def data(self, chunks: Chunks):
+        return DaGroup(self.absgroup, chunks=chunks)
+
     @property
-    def data(self):
-        return DaGroup(Table(self.conn, name=self.data_tag))
+    def absgroup(self):
+        return Table(self.conn, name=self.data_tag)
 
     def exists(self) -> bool:
         cur = self.conn.cursor()
@@ -56,7 +60,11 @@ class Sqlite(AbsDriver):
 
     @property
     def dtypes(self) -> np.dtype:
-        return Table(self.conn, name=self.data_tag).dtypes
+        return self.absgroup.dtypes
+
+    @property
+    def groups(self) -> tuple:
+        return self.absgroup.groups
 
     def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key=None):
         if not self.exists():

@@ -10,6 +10,8 @@ from ml.data.groups.core import DaGroup
 from ml.utils.logger import log_config
 from ml.data.groups.hdf5 import HDF5Group
 from ml.data.groups.zarr import ZarrGroup
+from ml.utils.core import Chunks
+
 
 log = log_config(__name__)
 
@@ -94,9 +96,8 @@ class Zarr(AbsDriver):
     def __contains__(self, item):
         return item in self.conn
 
-    @property
-    def data(self) -> DaGroup:
-        return DaGroup(self.absgroup())
+    def data(self, chunks: Chunks) -> DaGroup:
+        return DaGroup(self.absgroup(), chunks=chunks)
 
     def absgroup(self):
         return ZarrGroup(self.conn[self.data_tag])

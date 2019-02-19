@@ -1,8 +1,9 @@
 from ml.abc.group import AbsGroup, AbsBaseGroup
 from ml.abc.data import AbsData
-from ml.utils.core import Shape
+from ml.utils.core import Shape, Chunks
 from ml.fmtypes import DEFAUL_GROUP_NAME
 import numpy as np
+import pandas as pd
 from collections import OrderedDict
 from ml.utils.decorators import cache
 import dask.array as da
@@ -26,8 +27,7 @@ class DaGroupDict(OrderedDict):
 
 
 class DaGroup(AbsGroup):
-    def __init__(self, conn, chunks=None, writer_conn=None):
-       # print("CHUNKS", chunks, conn)
+    def __init__(self, conn, chunks: Chunks=None, writer_conn=None):
         if isinstance(conn, DaGroupDict):
             reader_conn = conn
         elif isinstance(conn, dict):
@@ -43,13 +43,13 @@ class DaGroup(AbsGroup):
             raise NotImplementedError("Type {} does not supported".format(type(conn)))
         super(DaGroup, self).__init__(reader_conn, writer_conn=writer_conn)
 
-    def convert(self, groups_dict, chunks) -> dict:
+    def convert(self, groups_dict, chunks: Chunks) -> dict:
+        if chunks is None:
+            raise Exception
         groups = DaGroupDict()
         for group, data in groups_dict.items():
-            if chunks is None:
-                chunks = data.shape
             lock = False
-            groups[group] = da.from_array(data, chunks=chunks, lock=lock)
+            groups[group] = da.from_array(data, chunks=chunks[group], lock=lock)
         return groups
 
     def sample(self, index):
@@ -145,7 +145,7 @@ class DaGroup(AbsGroup):
         else:
             raise NotImplementedError
 
-    def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)):
+    def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
         self.writer_conn.attrs["dtype"] = dtype
         if len(self.groups) == 1:
             computed_array = self.conn[self.groups[0]].compute(dtype=self.dtype)
@@ -169,37 +169,40 @@ class DaGroup(AbsGroup):
                 data[slice_grp] = self.conn[group].compute(dtype=dtype)
             return data
 
-    def to_df(self):
-        from ml.data.it import Iterator
-        import pandas as pd
-        shape = self.shape
-        if len(shape) > 1 and len(self.groups) < shape[1]:
-            dtypes = np.dtype([("c{}".format(i), self.dtype) for i in range(shape[1])])
-            columns = self.groups
-        else:
-            dtypes = self.dtypes
-            columns = self.groups
-
-        data = Iterator(self).batchs(batch_size=258)
-        stc_arr = np.empty(shape.to_tuple()[0], dtype=dtypes)
+    def to_stc_array(self) -> np.ndarray:
         if len(self.groups) == 1:
-            for slice_obj in data:
-                stc_arr[slice_obj.slice] = slice_obj.batch.to_ndarray()
+            computed_array = self.conn[self.groups[0]].compute(dtype=self.dtype)
+            return computed_array
         else:
-            for slice_obj in data:
-                for group, (dtype, _) in self.dtypes.fields.items():
-                    stc_arr[group][slice_obj.slice] = slice_obj.batch[group].to_ndarray(dtype)
-        return pd.DataFrame(stc_arr, index=np.arange(0, stc_arr.shape[0]), columns=columns)
+            shape = self.shape
+            if len(shape) > 1 and len(self.groups) < shape[1]:
+                dtypes = np.dtype([("c{}".format(i), self.dtype) for i in range(shape[1])])
+            else:
+                dtypes = self.dtypes
+
+            shape = self.shape.to_tuple()
+            data = np.empty(shape[0], dtype=dtypes)
+            for i, group in enumerate(self.groups):
+                data[group] = self.conn[group].compute(dtype=self.dtype)
+            return data
+
+    def to_df(self) -> pd.DataFrame:
+        stc_arr = self.to_stc_array()
+        return pd.DataFrame(stc_arr, index=np.arange(0, stc_arr.shape[0]), columns=self.groups)
 
     def rename_group(self, old_name, new_name):
         self.conn = self.conn.rename(old_name, new_name)
 
     def store(self, dataset: AbsData):
-        self.writer_conn = dataset.data.writer_conn
+        print(dataset.driver.absgroup)
+        self.writer_conn = dataset.driver.conn  # dataset.data.writer_conn
         if self.writer_conn.inblock is True:
             from ml.data.it import Iterator
-            for e in Iterator(self).batchs(batch_size=258):
-                dataset.data[e.slice] = e.batch.to_ndarray()
+            data = Iterator(self).batchs(batch_size=258)
+            dataset.batchs_writer(data)
+            #for e in Iterator(self).batchs(batch_size=258):
+                #dataset.data[e.slice] = e.batch.to_ndarray()
+                #dataset.driver.
         else:
             for group in self.groups:
                 self.conn[group].store(dataset.data[group])
@@ -224,6 +227,22 @@ class StcArrayGroup(AbsBaseGroup):
 
     def get_conn(self, group):
         return self.conn[group]
+
+    @staticmethod
+    def fit_shape(shape: Shape) -> Shape:
+        _shape = OrderedDict()
+        if len(shape.groups()) == 1:
+            key = list(shape.groups())[0]
+            _shape[key] = shape[key]
+        else:
+            for group, shape_tuple in shape.items():
+                if len(shape_tuple) == 2 and shape_tuple[1] == 1:
+                    _shape[group] = tuple(shape_tuple[:1])
+                elif len(shape_tuple) == 1:
+                    _shape[group] = shape_tuple
+                else:
+                    raise Exception
+        return Shape(_shape)
 
 
 class TupleGroup(AbsGroup):

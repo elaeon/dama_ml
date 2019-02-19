@@ -82,7 +82,9 @@ class Table(AbsGroup):
 
     def insert(self, data, batch_size=258):
         if not isinstance(data, BatchIterator):
-            data = Iterator(data, dtypes=self.dtypes).batchs(batch_size=batch_size)
+            data = Iterator(data, dtypes=self.dtypes)
+            chunks = data.shape.to_chunks(batch_size)
+            data = data.batchs(chunks=chunks)
 
         columns = "(" + ", ".join(self.groups) + ")"
         values = "(" + "?,".join(("" for _ in self.groups)) + "?)"
@@ -153,7 +155,7 @@ class Table(AbsGroup):
                 table_name=self.name, start=slice_item.start, limit=(abs(slice_item.stop - slice_item.start)))
             cur.execute(query)
             length = cur.fetchone()[0]
-        shape = dict([(group, (length,)) for group in self.groups])
+        shape = OrderedDict([(group, (length,)) for group in self.groups])
         cur.close()
         return Shape(shape)
 

@@ -29,7 +29,7 @@ class Hash:
 
 
 class Shape(object):
-    def __init__(self, shape: dict):
+    def __init__(self, shape: OrderedDict):
         self._shape = shape
 
     def __getitem__(self, item):
@@ -46,8 +46,8 @@ class Shape(object):
         return iter(self.to_tuple())
 
     def __len__(self):
-        """ To add compatibility with shapes that are in tuple form, we define the Shape lenght
-        as the lenght of its tuple"""
+        """ NOT CHANGE THIS!!, to add compatibility with shapes librarys that use shapes in tuple form,
+        we define the Shape length as the tuple length"""
         return len(self.to_tuple())
 
     def __eq__(self, other):
@@ -105,6 +105,9 @@ class Shape(object):
                 nshape[0] = 1
             return tuple(nshape + remaining)
 
+    def to_chunks(self, chunks) -> 'Chunks':
+        return Chunks.build_from(chunks, tuple(self.groups()))
+
     @property
     def max_length(self) -> int:
         if len(self._shape) > 0:
@@ -118,6 +121,27 @@ class Shape(object):
         for group, shape in self.items():
             shapes[group] = tuple([length] + list(shape[1:]))
         return Shape(shapes)
+
+
+class Chunks(dict):
+    def from_groups(self, chunks: tuple, groups: tuple) -> 'Chunks':
+        for group in groups:
+            self[group] = chunks
+        return self
+
+    @staticmethod
+    def build_from(chunks, groups: tuple) -> 'Chunks':
+        if not isinstance(chunks, Chunks):
+            _chunks = Chunks()
+            if not hasattr(chunks, '__iter__'):
+                chunks = tuple([chunks])
+            return _chunks.from_groups(chunks, groups)
+        else:
+            return chunks
+
+    @property
+    def length(self) -> int:
+        return max(r0[0] for r0 in self.values())
 
 
 class Login(object):
@@ -145,7 +169,7 @@ class Metadata(dict):
         from ml.data.drivers.sqlite import Sqlite
         with Sqlite(login=self.login) as metadata_db:
             try:
-                data = [self[group] for group in metadata_db.data.groups]
+                data = [self[group] for group in metadata_db.groups]
                 metadata_db.insert(data)
             except sqlite3.IntegrityError as e:
                 log.error(e)
