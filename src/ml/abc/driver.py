@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 from numcodecs.abc import Codec
 import numpy as np
 from ml.utils.logger import log_config
-from ml.utils.core import Login
+from ml.utils.core import Login, Chunks
+from ml.data.groups.core import DaGroup
 
 log = log_config(__name__)
 
@@ -32,9 +33,11 @@ class AbsDriver(ABC):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.exit()
 
+    def data(self, chunks: Chunks) -> DaGroup:
+        return DaGroup(self.absgroup, chunks=chunks)
+
     @property
-    @abstractmethod
-    def data(self):
+    def absgroup(self):
         return NotImplemented
 
     @classmethod

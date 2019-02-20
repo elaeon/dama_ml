@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from ml.utils.numeric_functions import max_dtype
 from ml.utils.core import Shape
 from numbers import Number
@@ -48,11 +49,18 @@ class AbsBaseGroup(ABC):
     def cls_name(cls):
         return cls.__name__
 
+    @property
+    def shape(self) -> Shape:
+        shape = OrderedDict()
+        for group in self.groups:
+            shape[group] = self.get_conn(group).shape
+        return Shape(shape)
+
     def set(self, item, value):
         from ml.data.groups.core import DaGroup
         from ml.fmtypes import Slice
         if self.inblock is True:
-            self.conn[item] = value
+            self[item] = value
         else:
             if type(value) == DaGroup:
                 for group in value.groups:

@@ -187,7 +187,8 @@ class Metadata(dict):
     def data(self, headers, page, order_by=None) -> pd.DataFrame:
         from ml.data.drivers.sqlite import Sqlite
         with Sqlite(login=self.login) as metadata_db:
-            return metadata_db.data[headers][page].to_df().sort_values(order_by, ascending=False)
+            chunks = Chunks.build_from(10, metadata_db.groups)
+            return metadata_db.data(chunks=chunks)[headers][page].to_df().sort_values(order_by, ascending=False)
 
     def remove_data(self, hash_hex: str):
         self.query("DELETE FROM metadata WHERE hash = '{}'".format(hash_hex))

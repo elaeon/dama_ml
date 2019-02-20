@@ -38,8 +38,8 @@ class Postgres(AbsDriver):
         return self.exit()
 
     @property
-    def data(self):
-        return DaGroup(Table(self.conn, name=self.data_tag))
+    def absgroup(self):
+        return Table(self.conn, name=self.data_tag)
 
     def exists(self) -> bool:
         cur = self.conn.cursor()

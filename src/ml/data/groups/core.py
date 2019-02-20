@@ -83,24 +83,6 @@ class DaGroup(AbsGroup):
             return self.sample(item)
 
     def __setitem__(self, item, value):
-        #if self.writer_conn.inblock is True:
-        #    self.writer_conn[item] = value
-        #else:
-        #    if hasattr(value, "groups"):
-        #        for group in value.groups:
-        #            group = self.conn.get_oldname(group)
-        #            self.writer_conn.conn[group][item] = value[group].to_ndarray()
-        #    elif hasattr(value, 'batch'):
-        #        for group in value.batch.groups:
-        #            group = self.conn.get_oldname(group)
-        #            self.writer_conn.conn[group][item] = value.batch[group].to_ndarray()
-        #    elif isinstance(value, numbers.Number):
-        #        self.writer_conn.conn[item] = value
-        #    elif isinstance(value, np.ndarray):
-        #        self.writer_conn.conn[item] = value
-        #    else:
-        #        if isinstance(item, str):
-        #            self.writer_conn.conn[item] = value
         self.writer_conn.set(item, value)
 
     def __add__(self, other: 'DaGroup') -> 'DaGroup':
@@ -135,9 +117,16 @@ class DaGroup(AbsGroup):
                 raise NotImplementedError
 
     @property
-    def shape(self) -> 'Shape':
-        shape = {group: data.shape for group, data in self.conn.items()}
+    def shape(self) -> Shape:
+        shape = OrderedDict((group, data.shape) for group, data in self.conn.items())
         return Shape(shape)
+
+    @property
+    def chunksize(self) -> Chunks:
+        chunks = Chunks()
+        for group in self.groups:
+            chunks[group] = self.conn[group].chunksize
+        return chunks
 
     def array(self):
         if len(self.groups) == 1:
@@ -194,18 +183,14 @@ class DaGroup(AbsGroup):
         self.conn = self.conn.rename(old_name, new_name)
 
     def store(self, dataset: AbsData):
-        print(dataset.driver.absgroup)
-        self.writer_conn = dataset.driver.conn  # dataset.data.writer_conn
+        self.writer_conn = dataset.driver.absgroup  # dataset.data.writer_conn
         if self.writer_conn.inblock is True:
             from ml.data.it import Iterator
-            data = Iterator(self).batchs(batch_size=258)
+            data = Iterator(self).batchs(chunks=self.chunksize)
             dataset.batchs_writer(data)
-            #for e in Iterator(self).batchs(batch_size=258):
-                #dataset.data[e.slice] = e.batch.to_ndarray()
-                #dataset.driver.
         else:
             for group in self.groups:
-                self.conn[group].store(dataset.data[group])
+                self.conn[group].store(dataset.driver.absgroup.get_conn(group))
 
     @staticmethod
     def from_da(da_array: da.Array, group_name: str = DEFAUL_GROUP_NAME):
@@ -236,7 +221,7 @@ class StcArrayGroup(AbsBaseGroup):
             _shape[key] = shape[key]
         else:
             for group, shape_tuple in shape.items():
-                if len(shape_tuple) == 2 and shape_tuple[1] == 1:
+                if len(shape_tuple) == 2:  # and shape_tuple[1] == 1:
                     _shape[group] = tuple(shape_tuple[:1])
                 elif len(shape_tuple) == 1:
                     _shape[group] = shape_tuple
@@ -290,7 +275,7 @@ class TupleGroup(AbsGroup):
     @property
     @cache
     def shape(self) -> Shape:
-        shape = {}
+        shape = OrderedDict()
         for index, group in enumerate(self.groups):
             shape[group] = self.conn[index].shape
         return Shape(shape)

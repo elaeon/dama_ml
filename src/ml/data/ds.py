@@ -27,7 +27,7 @@ log = log_config(__name__)
 
 class Data(AbsData):
     def __init__(self, name: str = None, dataset_path: str = None, driver: AbsDriver = None,
-                 group_name: str = None, chunks=None):
+                 group_name: str = None, chunks: Chunks = None):
 
         if driver is None:
             self.driver = Memory()
@@ -51,7 +51,7 @@ class Data(AbsData):
         self.description = None
         self.timestamp = None
         self.compressor_params = None
-        self.chunks = chunks
+        self.chunksize = chunks
         if self.driver.login is None:
             self.driver.login = Login(url=self.url)
         else:
@@ -68,7 +68,7 @@ class Data(AbsData):
 
     @property
     def dtype(self):
-        return self.data.dtype
+        return self.driver.absgroup.dtype
 
     @property
     def description(self):
@@ -113,7 +113,7 @@ class Data(AbsData):
     @property
     @cache
     def data(self) -> AbsGroup:
-        return self.driver.data(chunks=self.chunks)
+        return self.driver.data(chunks=self.chunksize)
 
     @data.setter
     @clean_cache
@@ -173,11 +173,8 @@ class Data(AbsData):
         batch_size = getattr(data, 'batch_size', 0)
         log.info("Writing with chunks {}".format(batch_size))
         if batch_size > 0:
-            absgroup = self.driver.absgroup()
+            absgroup = self.driver.absgroup
             for smx in tqdm(data, total=data.num_splits()):
-                #self.driver.data[smx.slice] = smx
-                #absgroup.conn[smx.slice] = smx
-                #self.data[smx.slice] = smx
                 absgroup.set(smx.slice, smx)
         else:
             for i, smx in tqdm(enumerate(data), total=data.num_splits()):
@@ -211,11 +208,11 @@ class Data(AbsData):
 
     @property
     def shape(self):
-        return self.data.shape
+        return self.driver.absgroup.shape
 
     @property
     def groups(self) -> tuple:
-        return self.data.groups
+        return self.driver.absgroup.groups
 
     @groups.setter
     def groups(self, value) -> None:
@@ -223,7 +220,7 @@ class Data(AbsData):
 
     @property
     def dtypes(self) -> np.dtype:
-        return self.data.dtypes
+        return self.driver.dtypes
 
     @dtypes.setter
     def dtypes(self, value):
@@ -277,36 +274,38 @@ class Data(AbsData):
             metadata.build_schema(dtypes, unique_key="hash")
             metadata.insert_data()
 
-    def calc_hash(self, with_hash: str = 'sha1', batch_size: int = 1080) -> str:
+    def calc_hash(self, with_hash: str = 'sha1') -> str:
         hash_obj = Hash(hash_fn=with_hash)
         header = [getattr(self, attr) for attr in self.header_map]
         header = [attr for attr in header if attr is not None]
         hash_obj.hash.update("".join(header).encode("utf-8"))
         for group in self.groups:
-            it = Iterator(self.data[group]).batchs(chunks=self.chunks)
+            it = Iterator(self.data[group]).batchs(chunks=self.chunksize)
             hash_obj.update(it.only_data())
         return str(hash_obj)
 
     def from_data(self, data, chunks=None, with_hash: str = "sha1"):
         if isinstance(data, da.Array):
             data = DaGroup.from_da(data)
+            self.chunksize = data.chunksize
         elif isinstance(data, Iterator):
-            self.chunks = Chunks.build_from(chunks, data.groups)
-            data = data.batchs(chunks=self.chunks)
-            self.chunks = data.chunks
+            self.chunksize = Chunks.build_from(chunks, data.groups)
+            data = data.batchs(chunks=self.chunksize)
+            self.chunksize = data.chunksize
         elif isinstance(data, dict):
-            self.chunks = Chunks.build_from(chunks, tuple(data.keys()))
-            data = DaGroup(data, chunks=self.chunks)
+            self.chunksize = Chunks.build_from(chunks, tuple(data.keys()))
+            data = DaGroup(data, chunks=self.chunksize)
         elif isinstance(data, DaGroup) or type(data) == DaGroup:
-            pass
+            self.chunksize = data.chunksize
         elif not isinstance(data, BaseIterator):
             data = Iterator(data)
-            self.chunks = data.shape.to_chunks(chunks)
-            data = data.batchs(chunks=self.chunks)
-            self.chunks = data.chunks
+            self.chunksize = data.shape.to_chunks(chunks)
+            data = data.batchs(chunks=self.chunksize)
+            self.chunksize = data.chunksize
         self.dtypes = data.dtypes
         self.driver.set_data_shape(data.shape)
         if isinstance(data, BatchIterator) or isinstance(data, Iterator):
+            self.chunksize = data.chunksize
             self.batchs_writer(data)
         else:
             data.store(self)
@@ -332,7 +331,7 @@ class Data(AbsData):
         from ml.utils.seq import libsvm_row
         from sklearn.preprocessing import LabelEncoder
         le = LabelEncoder()
-        target_t = le.fit_transform(self.driver.data[target].to_ndarray())
+        target_t = le.fit_transform(self.data[target].to_ndarray())
         groups = [group for group in self.groups if group != target]
         with open(save_to, 'w') as f:
             for row in libsvm_row(target_t, self.data[groups].to_ndarray()):

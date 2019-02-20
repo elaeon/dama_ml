@@ -37,9 +37,6 @@ class Sqlite(AbsDriver):
     def __exit__(self, exc_type, exc_val, exc_tb):
         return self.exit()
 
-    def data(self, chunks: Chunks):
-        return DaGroup(self.absgroup, chunks=chunks)
-
     @property
     def absgroup(self):
         return Table(self.conn, name=self.data_tag)

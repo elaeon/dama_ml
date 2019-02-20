@@ -67,7 +67,7 @@ class Table(AbsGroup):
 
         last_id = self.last_id()
         if last_id < stop:
-            self.insert(value, batch_size=batch_size)
+            self.insert(value, chunks=(batch_size, ))
         else:
             self.update(value, item)
 
@@ -80,9 +80,9 @@ class Table(AbsGroup):
     def get_conn(self, group):
         return self[group]
 
-    def insert(self, data, batch_size=258):
+    def insert(self, data, chunks=None):
         if not isinstance(data, BatchIterator):
-            data = Iterator(data, dtypes=self.dtypes).batchs(batch_size=batch_size)
+            data = Iterator(data, dtypes=self.dtypes).batchs(chunks=chunks)
 
         columns = "(" + ", ".join(self.groups) + ")"
         insert_str = "INSERT INTO {name} {columns} VALUES".format(
@@ -159,7 +159,7 @@ class Table(AbsGroup):
             cur.execute(query)
             length = cur.fetchone()[0]
         cur.close()
-        shape = dict([(group, (length,)) for group in self.groups])
+        shape = OrderedDict([(group, (length,)) for group in self.groups])
         return Shape(shape)
 
     @property

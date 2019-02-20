@@ -2,10 +2,11 @@ from abc import ABC, abstractmethod
 
 
 class AbsData(ABC):
-    _graphviz_shape = 'ellipse'
-    _graphviz_style = 'rounded,filled'
-    _graphviz_fillcolor = 'white'
-    _graphviz_orientation = 0
+    # _graphviz_shape = 'ellipse'
+    # _graphviz_style = 'rounded,filled'
+    # _graphviz_fillcolor = 'white'
+    # _graphviz_orientation = 0
+    driver = None
 
     @abstractmethod
     def __enter__(self):
