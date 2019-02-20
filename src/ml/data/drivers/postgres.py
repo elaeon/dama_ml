@@ -1,5 +1,4 @@
 from ml.abc.driver import AbsDriver
-from ml.data.groups.core import DaGroup
 from ml.data.groups.postgres import Table
 from ml.fmtypes import fmtypes_map
 from ml.utils.logger import log_config

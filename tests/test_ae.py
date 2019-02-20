@@ -27,6 +27,7 @@ class TestUnsupervicedModel(unittest.TestCase):
             tsne = TSNe(batch_size=batch_size, perplexity=ae.perplexity, dim=2)
             x_p = BatchIterator.from_batchs(tsne.calculate_P(self.x), length=len(self.x), from_batch_size=tsne.batch_size,
                                        dtypes=np.dtype([("x", np.dtype(float)), ("y", np.dtype(float))]), to_slice=True)
+            print(x_p.shape, x_p.dtypes)
             dataset.from_data(x_p)
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(dataset)

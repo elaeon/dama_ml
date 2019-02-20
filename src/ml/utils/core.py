@@ -6,6 +6,7 @@ import sqlite3
 from collections import OrderedDict
 from ml.utils.decorators import cache
 from ml.utils.logger import log_config
+from ml.utils.numeric_functions import calc_chunks
 
 
 log = log_config(__name__)
@@ -138,6 +139,13 @@ class Chunks(dict):
             return _chunks.from_groups(chunks, groups)
         else:
             return chunks
+
+    @staticmethod
+    def build_from_shape(shape: Shape, dtypes: np.dtype, memory_allowed=1) -> 'Chunks':
+        #for group, shape in shape.items():
+        #    print(group, shape)
+        chunks_dict = calc_chunks(shape, dtypes, memory_allowed=memory_allowed)
+        return Chunks(chunks_dict)
 
     @property
     def length(self) -> int:

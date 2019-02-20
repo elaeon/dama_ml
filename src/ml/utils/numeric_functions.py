@@ -2,6 +2,7 @@ import numpy as np
 import heapq as hq
 from collections import defaultdict
 import numbers
+import psutil
 
 
 def pearsoncc(x, y):
@@ -292,3 +293,19 @@ def nested_shape_aux(x) -> list:
         return dim
     elif isinstance(x, numbers.Number) or isinstance(x, str):
         return []
+
+
+def calc_chunks(shape, dtypes, memory_allowed=1, adj_factor=0.095):
+    free_memory = psutil.virtual_memory().free / len(shape.groups())
+    import operator as op
+    from functools import reduce
+    from math import floor
+    chunks = {}
+    for group, (dtype, _) in dtypes.fields.items():
+        chunksize_val = floor(((memory_allowed * free_memory) / dtype.num) * adj_factor)
+        used_total_size = reduce(op.mul, [dtype.num] + list(shape[group]))
+        if used_total_size < chunksize_val:
+            chunks[group] = shape[group]
+        else:
+            pass
+    return chunks

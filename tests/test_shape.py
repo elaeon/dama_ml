@@ -1,5 +1,7 @@
 import unittest
+import numpy as np
 from ml.utils.core import Shape
+from ml.utils.core import Chunks
 
 
 class TestShape(unittest.TestCase):
@@ -48,3 +50,11 @@ class TestShape(unittest.TestCase):
         shape = Shape({"x": (10, 2)})
         for s0, s1 in zip(shape, (10 ,2)):
             self.assertEqual(s0, s1)
+
+class TestChunks(unittest.TestCase):
+
+    def test_auto_chunks(self):
+        dtypes = np.dtype([("x", object), ("y", float), ("z", int)])
+        shape = Shape({"x": (10, ), "y": (20, 1), "z": (20, 10, 2)})
+        chunks = Chunks.build_from_shape(shape, dtypes, memory_allowed=.0001)
+        print(chunks)

@@ -182,11 +182,11 @@ class Data(AbsData):
                     self.data[group][i] = smx[j]
 
     def destroy(self):
-        hash = self.hash
+        hash_hex = self.hash
         self.driver.destroy()
         login = Login(url=self.metadata_url(), table="metadata")
         metadata = Metadata(login)
-        metadata.remove_data(hash)
+        metadata.remove_data(hash_hex)
 
     def dir_levels(self) -> list:
         if self.group_name is None:
@@ -252,7 +252,8 @@ class Data(AbsData):
         meta_dict["description"] = self.description if self.description is None else self.description[:100]
         return meta_dict
 
-    def metadata_url(self) -> str:
+    @staticmethod
+    def metadata_url() -> str:
         return os.path.join(settings["metadata_path"], "metadata.sqlite3")
 
     def metadata_to_json(self, f):

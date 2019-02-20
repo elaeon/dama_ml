@@ -1,4 +1,5 @@
 from itertools import chain, islice
+from collections import OrderedDict
 import numpy as np
 import pandas as pd
 import types
@@ -91,7 +92,7 @@ class BaseIterator(object):
 
     @staticmethod
     def calc_shape_stc(length: int, shape: Shape) -> Shape:
-        length_shape = {}
+        length_shape = OrderedDict()
         for group, g_shape in shape.items():
             group_length = shape[group][0]
             group_length = length if group_length > length else shape[group][0]
@@ -293,12 +294,12 @@ class Iterator(BaseIterator):
                     shape = shape[1:]
 
         if not isinstance(shape, Shape):
-            shapes = {}
+            shapes = OrderedDict()
             for group in self.groups:
                 shapes[group] = tuple([length] + list(shape))
             return self.calc_shape_stc(length, Shape(shapes))
         elif isinstance(shape, Shape):
-            shapes = {}
+            shapes = OrderedDict()
             for group in self.groups:
                 shapes[group] = tuple([length] + list(shape[group]))
             return self.calc_shape_stc(length, Shape(shapes))
@@ -385,7 +386,7 @@ class Iterator(BaseIterator):
         start = 0
         end = batch_size
         for elem in self:
-            batch = DaGroup(TupleGroup(elem, dtypes=self.dtypes))  # fixme
+            batch = DaGroup(TupleGroup(elem, dtypes=self.dtypes))  # fixme use generalized group
             yield Slice(batch=batch, slice=slice(start, end))
             start = end
             end += batch_size
@@ -394,10 +395,13 @@ class Iterator(BaseIterator):
 class BatchIterator(BaseIterator):
     type_elem = None
 
-    def __init__(self, it: Iterator, chunks: Chunks = None, static: bool = False):
+    def __init__(self, it: Iterator, chunks: Chunks = None, static: bool = False, batch_group=StcArrayGroup):
         super(BatchIterator, self).__init__(it, dtypes=it.dtypes, length=it.length, type_elem=self.type_elem)
         self.batch_size = chunks.length
-        self.shape = StcArrayGroup.fit_shape(it.shape)
+        if type(batch_group) is StcArrayGroup:
+            self.shape = StcArrayGroup.fit_shape(it.shape)
+        else:
+            self.shape = it.shape
         if len(self.groups) == 1:
             self.chunksize = chunks
         else:
@@ -510,14 +514,14 @@ class BatchIterator(BaseIterator):
 
     @classmethod
     def builder(cls, it: BaseIterator, chunks: Chunks):
-        return cls(it, chunks=chunks, static=True)
+        return cls(it, chunks=chunks, static=True, batch_group=None)
 
     @classmethod
     def from_batchs(cls, iterable: iter, dtypes: np.dtype = None, from_batch_size: int = 0,
                     length: int = None, to_slice=False):
         it = Iterator(iterable, dtypes=dtypes, length=length)
         batcher_len = num_splits(length, from_batch_size)
-        shape_dict = {}
+        shape_dict = OrderedDict()
         for group, shape in it.shape.items():
             shape_dict[group] = [shape[0]] + list(shape[2:])
         shape = Shape(shape_dict)
