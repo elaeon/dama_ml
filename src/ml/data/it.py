@@ -362,13 +362,10 @@ class Iterator(BaseIterator):
         else:
             raise NotImplementedError
 
-        #if chunks.length > 0:
         if isinstance(self.data, AbsData) or isinstance(self.data, AbsGroup):
             return BatchGroup(self, chunks=chunks)
         else:
             return BatchItGroup(self, chunks=chunks)
-        #else:
-        #    return self
 
     def __getitem__(self, key) -> 'Iterator':
         if isinstance(key, slice):

@@ -17,7 +17,7 @@ class Postgres(AbsDriver):
     def __contains__(self, item):
         return self.exists()
 
-    def enter(self):
+    def open(self):
         self.conn = psycopg2.connect(
             "dbname={db_name} user={username}".format(db_name=self.login.resource, username=self.login.username))
         self.conn.autocommit = False
@@ -26,15 +26,9 @@ class Postgres(AbsDriver):
             self.destroy()
         return self
 
-    def exit(self):
+    def close(self):
         self.conn.close()
         self.attrs = None
-
-    def __enter__(self):
-        return self.enter()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        return self.exit()
 
     @property
     def absgroup(self):

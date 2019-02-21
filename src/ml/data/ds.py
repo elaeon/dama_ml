@@ -27,7 +27,7 @@ log = log_config(__name__)
 
 class Data(AbsData):
     def __init__(self, name: str = None, dataset_path: str = None, driver: AbsDriver = None,
-                 group_name: str = None, chunks: Chunks = None):
+                 group_name: str = None, chunks: Chunks = None, auto_chunks=False):
 
         if driver is None:
             self.driver = Memory()
@@ -52,7 +52,7 @@ class Data(AbsData):
         self.timestamp = None
         self.compressor_params = None
         self.chunksize = chunks
-        self.auto_chunks = False
+        self.auto_chunks = auto_chunks
         if self.driver.login is None:
             self.driver.login = Login(url=self.url)
         else:
@@ -124,9 +124,9 @@ class Data(AbsData):
     def clean_data_cache(self):
         self.data = None
 
-    def __enter__(self):
+    def open(self):
         build_path(self.dir_levels())
-        self.driver.enter()
+        self.driver.open()
 
         if self.driver.data_tag is None:
             self.driver.data_tag = self.name
@@ -137,10 +137,9 @@ class Data(AbsData):
 
         if self.auto_chunks is True:
             self.chunksize = Chunks.build_from_shape(self.shape, self.dtypes)
-        return self
 
-    def __exit__(self, exc_type, value, traceback):
-        self.driver.exit()
+    def close(self):
+        self.driver.close()
         self.data = None
 
     def __getitem__(self, key):

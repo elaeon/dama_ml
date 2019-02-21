@@ -6,7 +6,6 @@ import os
 from numcodecs import MsgPack
 from ml.abc.driver import AbsDriver
 from ml.utils.files import rm
-from ml.data.groups.core import DaGroup
 from ml.utils.logger import log_config
 from ml.data.groups.hdf5 import HDF5Group
 from ml.data.groups.zarr import ZarrGroup
@@ -35,12 +34,12 @@ class HDF5(AbsDriver):
         except KeyError:
             raise DataDoesNotFound
 
-    def enter(self):
+    def open(self):
         if self.conn is None:
             self.conn = h5py.File(self.login.url, mode=self.mode)
             self.attrs = self.conn.attrs
 
-    def exit(self):
+    def close(self):
         self.conn.close()
         self.conn = None
         self.attrs = None
@@ -99,13 +98,13 @@ class Zarr(AbsDriver):
     def absgroup(self):
         return ZarrGroup(self.conn[self.data_tag])
 
-    def enter(self):
+    def open(self):
         if self.conn is None:
             self.conn = zarr.open(self.login.url, mode=self.mode)
             self.attrs = self.conn.attrs
         return self
 
-    def exit(self):
+    def close(self):
         self.conn = None
         self.attrs = None
 
@@ -153,12 +152,12 @@ class Memory(Zarr):
     ext = None
     persistent = False
 
-    def enter(self, url=None):
+    def open(self):
         if self.conn is None:
             self.conn = zarr.group()
             self.attrs = self.conn.attrs
 
-    def exit(self):
+    def close(self):
         pass
 
     def destroy(self):

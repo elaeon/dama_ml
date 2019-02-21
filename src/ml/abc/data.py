@@ -8,13 +8,12 @@ class AbsData(ABC):
     # _graphviz_orientation = 0
     driver = None
 
-    @abstractmethod
     def __enter__(self):
-        return NotImplemented
+        self.open()
+        return self
 
-    @abstractmethod
-    def __exit__(self, type_, value, traceback):
-        return NotImplemented
+    def __exit__(self, exc_type, value, traceback):
+        self.close()
 
     @abstractmethod
     def __iter__(self):
@@ -22,6 +21,14 @@ class AbsData(ABC):
 
     @abstractmethod
     def __getitem__(self, key):
+        return NotImplemented
+
+    @abstractmethod
+    def open(self):
+        return NotImplemented
+
+    @abstractmethod
+    def close(self):
         return NotImplemented
 
     @property

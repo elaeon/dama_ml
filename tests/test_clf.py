@@ -70,7 +70,7 @@ class TestSKL(unittest.TestCase):
 
     def test_empty_load(self):
         with Data(name="test", dataset_path=TMP_PATH) as dataset, \
-                Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5()) as ds:
+                Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as ds:
             dataset.from_data({"x": self.X, "y": self.Y})
             classif = RandomForest()
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)

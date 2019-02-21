@@ -19,7 +19,7 @@ class Sqlite(AbsDriver):
     def __contains__(self, item):
         return self.exists()
 
-    def enter(self):
+    def open(self):
         self.conn = sqlite3.connect(self.login.url, check_same_thread=False)
         self.data_tag = self.login.table
         self.attrs = {}
@@ -27,15 +27,9 @@ class Sqlite(AbsDriver):
             self.destroy()
         return self
 
-    def exit(self):
+    def close(self):
         self.conn.close()
         self.attrs = None
-
-    def __enter__(self):
-        return self.enter()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        return self.exit()
 
     @property
     def absgroup(self):

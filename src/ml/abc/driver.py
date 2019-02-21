@@ -28,10 +28,10 @@ class AbsDriver(ABC):
                                                                 self.mode, self.compressor))
 
     def __enter__(self):
-        return self.enter()
+        return self.open()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.exit()
+        self.close()
 
     def data(self, chunks: Chunks) -> DaGroup:
         return DaGroup(self.absgroup, chunks=chunks)
@@ -53,11 +53,11 @@ class AbsDriver(ABC):
         return NotImplemented
 
     @abstractmethod
-    def enter(self):
+    def open(self):
         return NotImplemented
 
     @abstractmethod
-    def exit(self):
+    def close(self):
         return NotImplemented
 
     @property
