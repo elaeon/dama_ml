@@ -57,4 +57,5 @@ class TestChunks(unittest.TestCase):
         dtypes = np.dtype([("x", object), ("y", float), ("z", int)])
         shape = Shape({"x": (10, ), "y": (20, 1), "z": (20, 10, 2)})
         chunks = Chunks.build_from_shape(shape, dtypes, memory_allowed=.0001)
-        print(chunks)
+        for s, c in zip(shape.values(), chunks.values()):
+            self.assertEqual(s > c, True)

@@ -19,7 +19,7 @@ class RegModel(SupervicedModel):
             measures = measure.make_metrics(measures=measures, discrete=False)
         test_data = self.ds[self.data_groups["data_test_group"]]
         for measure_fn in measures:
-            test_target = Iterator(self.ds[self.data_groups["target_test_group"]]).batchs(batch_size=batch_size)
+            test_target = Iterator(self.ds[self.data_groups["target_test_group"]]).batchs(chunks=(batch_size, ))
             predictions = self.predict(test_data, output=measure_fn.output, batch_size=batch_size)
             for pred, target in zip(predictions, test_target):
                 measures.update_fn(pred, target, measure_fn)

@@ -9,6 +9,7 @@ from ml.models import Metadata
 from ml.utils.tf_functions import TSNe
 from ml.data.it import BatchIterator
 from ml.utils.files import check_or_create_path_dir
+from ml.utils.core import Chunks
 
 
 TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'softstream_data_test')
@@ -27,7 +28,6 @@ class TestUnsupervicedModel(unittest.TestCase):
             tsne = TSNe(batch_size=batch_size, perplexity=ae.perplexity, dim=2)
             x_p = BatchIterator.from_batchs(tsne.calculate_P(self.x), length=len(self.x), from_batch_size=tsne.batch_size,
                                        dtypes=np.dtype([("x", np.dtype(float)), ("y", np.dtype(float))]), to_slice=True)
-            print(x_p.shape, x_p.dtypes)
             dataset.from_data(x_p)
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(dataset)
@@ -47,7 +47,8 @@ class TestUnsupervicedModel(unittest.TestCase):
             dataset.from_data(self.x)
 
         with PTsne.load(model_version="1", model_name="tsne", path=TMP_PATH) as ae,\
-            Data(name="test0", dataset_path=TMP_PATH, driver=HDF5(mode="r")) as dataset:
+            Data(name="test0", dataset_path=TMP_PATH, driver=HDF5(mode="r"),
+                 chunks=Chunks({"g0": (10, 1)})) as dataset:
             self.assertEqual(ae.predict(dataset).shape, (120, 2))
             ae.destroy()
             dataset.destroy()

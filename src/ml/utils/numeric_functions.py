@@ -3,6 +3,9 @@ import heapq as hq
 from collections import defaultdict
 import numbers
 import psutil
+import operator as op
+from functools import reduce
+from math import floor, ceil
 
 
 def pearsoncc(x, y):
@@ -297,15 +300,14 @@ def nested_shape_aux(x) -> list:
 
 def calc_chunks(shape, dtypes, memory_allowed=1, adj_factor=0.095):
     free_memory = psutil.virtual_memory().free / len(shape.groups())
-    import operator as op
-    from functools import reduce
-    from math import floor
     chunks = {}
     for group, (dtype, _) in dtypes.fields.items():
-        chunksize_val = floor(((memory_allowed * free_memory) / dtype.num) * adj_factor)
+        presition = dtype.num if dtype.num > 0 else 1
+        chunksize_val = floor(((memory_allowed * free_memory) / presition) * adj_factor)
         used_total_size = reduce(op.mul, [dtype.num] + list(shape[group]))
         if used_total_size < chunksize_val:
             chunks[group] = shape[group]
         else:
-            pass
+            factor = chunksize_val / used_total_size
+            chunks[group] = tuple([ceil(val*factor) for val in shape[group]])
     return chunks

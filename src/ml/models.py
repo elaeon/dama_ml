@@ -42,9 +42,9 @@ class MLModel:
                     batch = row.to_ndarray().reshape(1, -1)
                     predict = self.predictors(batch)
                     yield output_format_fn(predict, output=output)[0]
-            return Iterator(_it(), length=len(data)).batchs(batch_size=batch_size)
+            return Iterator(_it(), length=len(data)).batchs(chunks=(batch_size, ))
         else:
-            return Iterator(output_format_fn(self.predictors(data), output=output)).batchs(batch_size=batch_size)
+            return Iterator(output_format_fn(self.predictors(data), output=output)).batchs(chunks=(batch_size, ))
 
     def load(self, path):
         return self.load_fn(path)
@@ -201,13 +201,13 @@ class BaseModel(Metadata, ABC):
 
     def __enter__(self):
         self.ds, meta_hash = self.get_dataset()
-        self.ds.driver.enter()
+        self.ds.__enter__()
         if meta_hash != self.ds.hash:
             log.info("The dataset hash is not equal to the model '{}'".format(self.__class__.__name__))
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.ds.driver.exit()
+        self.ds.__exit__(exc_type, exc_val, exc_tb)
 
     def get_dataset(self):
         log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name,
@@ -216,6 +216,7 @@ class BaseModel(Metadata, ABC):
         driver = locate(meta["ds_basic_params"]["driver"])
         dataset = Data(name=meta["ds_basic_params"]["name"], group_name=meta["ds_basic_params"]["group_name"],
               dataset_path=meta["ds_basic_params"]["dataset_path"], driver=driver(mode='r'))
+        dataset.auto_chunks = True
         return dataset, meta.get("hash", None)
 
     def preload_model(self):

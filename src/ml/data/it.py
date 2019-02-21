@@ -382,11 +382,11 @@ class Iterator(BaseIterator):
         shape = self.shape.change_length(np.inf)
         return BaseIterator(self._cycle_it(), dtypes=self.dtypes, type_elem=self.type_elem, shape=shape)
 
-    def to_slice(self, batch_size):
+    def to_slice(self, batch_size, chunks):
         start = 0
         end = batch_size
         for elem in self:
-            batch = DaGroup(TupleGroup(elem, dtypes=self.dtypes))  # fixme use generalized group
+            batch = DaGroup(TupleGroup(elem, dtypes=self.dtypes), chunks=chunks)  # fixme use generalized group
             yield Slice(batch=batch, slice=slice(start, end))
             start = end
             end += batch_size
@@ -398,7 +398,7 @@ class BatchIterator(BaseIterator):
     def __init__(self, it: Iterator, chunks: Chunks = None, static: bool = False, batch_group=StcArrayGroup):
         super(BatchIterator, self).__init__(it, dtypes=it.dtypes, length=it.length, type_elem=self.type_elem)
         self.batch_size = chunks.length
-        if type(batch_group) is StcArrayGroup:
+        if batch_group is StcArrayGroup:
             self.shape = StcArrayGroup.fit_shape(it.shape)
         else:
             self.shape = it.shape
@@ -523,16 +523,21 @@ class BatchIterator(BaseIterator):
         batcher_len = num_splits(length, from_batch_size)
         shape_dict = OrderedDict()
         for group, shape in it.shape.items():
-            shape_dict[group] = [shape[0]] + list(shape[2:])
+            shape_dict[group] = tuple([shape[0]] + list(shape[2:]))
         shape = Shape(shape_dict)
         if batcher_len == 0:
             batcher_len = None
 
         if it.type_elem != Slice and to_slice is True:
-            iterator = it[:batcher_len].to_slice(from_batch_size)
+            chunks_tuple_group = Chunks()
+            for group, _shape in shape.items():
+                chunks_tuple_group[group] = _shape[1:]
+            iterator = it[:batcher_len].to_slice(from_batch_size, chunks_tuple_group)
+            chunks = Chunks.build_from_shape(shape, dtypes)
         else:
+            chunks = Chunks.build_from(from_batch_size, it.groups)
             iterator = it[:batcher_len]
-        chunks = Chunks.build_from(from_batch_size, it.groups)
+
         return cls.builder(BaseIterator(iterator, shape=shape, dtypes=dtypes, type_elem=it.type_elem),
                            chunks=chunks)
 

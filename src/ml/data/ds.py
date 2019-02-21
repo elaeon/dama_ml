@@ -9,7 +9,7 @@ from tqdm import tqdm
 from ml.abc.data import AbsData
 from ml.data.it import Iterator, BaseIterator, BatchIterator
 from ml.utils.files import build_path
-from ml.utils.core import Hash, Login, Metadata, Chunks
+from ml.utils.core import Hash, Login, Metadata, Chunks, Shape
 from ml.abc.driver import AbsDriver
 from ml.data.drivers.core import Memory
 from ml.abc.group import AbsGroup
@@ -52,6 +52,7 @@ class Data(AbsData):
         self.timestamp = None
         self.compressor_params = None
         self.chunksize = chunks
+        self.auto_chunks = False
         if self.driver.login is None:
             self.driver.login = Login(url=self.url)
         else:
@@ -133,6 +134,9 @@ class Data(AbsData):
         if self.driver.mode in ["w", "a", "r+"]:
             if len(self.driver.compressor_params) > 0:
                 self.compressor_params = self.driver.compressor_params
+
+        if self.auto_chunks is True:
+            self.chunksize = Chunks.build_from_shape(self.shape, self.dtypes)
         return self
 
     def __exit__(self, exc_type, value, traceback):
@@ -290,17 +294,27 @@ class Data(AbsData):
             data = DaGroup.from_da(data)
             self.chunksize = data.chunksize
         elif isinstance(data, Iterator):
-            self.chunksize = Chunks.build_from(chunks, data.groups)
+            if chunks is None:
+                self.chunksize = Chunks.build_from_shape(data.shape, data.dtypes)
+            else:
+                self.chunksize = Chunks.build_from(chunks, data.groups)
             data = data.batchs(chunks=self.chunksize)
             self.chunksize = data.chunksize
         elif isinstance(data, dict):
-            self.chunksize = Chunks.build_from(chunks, tuple(data.keys()))
+            if chunks is None:
+                shape, dtypes = Shape.get_shape_dtypes_from_dict(data)
+                self.chunksize = Chunks.build_from_shape(shape, dtypes)
+            else:
+                self.chunksize = Chunks.build_from(chunks, tuple(data.keys()))
             data = DaGroup(data, chunks=self.chunksize)
         elif isinstance(data, DaGroup) or type(data) == DaGroup:
             self.chunksize = data.chunksize
         elif not isinstance(data, BaseIterator):
             data = Iterator(data)
-            self.chunksize = data.shape.to_chunks(chunks)
+            if chunks is None:
+                self.chunksize = Chunks.build_from_shape(data.shape, data.dtypes)
+            else:
+                self.chunksize = data.shape.to_chunks(chunks)
             data = data.batchs(chunks=self.chunksize)
             self.chunksize = data.chunksize
         self.dtypes = data.dtypes

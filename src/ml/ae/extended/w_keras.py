@@ -53,8 +53,8 @@ class PTsne(UnsupervisedModel):
         model.compile(optimizer='sgd', loss=KLdivergence)
         x_stc = self.ds[[self.data_groups["data_train_group"], self.data_groups["target_train_group"]]]
         z_stc = self.ds[[self.data_groups["data_validation_group"], self.data_groups["target_validation_group"]]]
-        x_it = Iterator(x_stc).batchs(batch_size=batch_size).cycle().to_iter()
-        z_it = Iterator(z_stc).batchs(batch_size=batch_size).cycle().to_iter()
+        x_it = Iterator(x_stc).batchs(chunks=(batch_size, )).cycle().to_iter()
+        z_it = Iterator(z_stc).batchs(chunks=(batch_size, )).cycle().to_iter()
         x_iter = clean_iter(x_it)
         z_iter = clean_iter(z_it)
         steps = round(len(x_stc)/batch_size/num_steps, 0)

@@ -107,7 +107,11 @@ class Shape(object):
             return tuple(nshape + remaining)
 
     def to_chunks(self, chunks) -> 'Chunks':
-        return Chunks.build_from(chunks, tuple(self.groups()))
+        if isinstance(chunks, int):
+            shape = self.change_length(chunks)
+            return Chunks(shape._shape)
+        else:
+            return Chunks.build_from(chunks, tuple(self.groups()))
 
     @property
     def max_length(self) -> int:
@@ -123,6 +127,14 @@ class Shape(object):
             shapes[group] = tuple([length] + list(shape[1:]))
         return Shape(shapes)
 
+    @staticmethod
+    def get_shape_dtypes_from_dict(data_dict):
+        shape = OrderedDict()
+        dtypes = OrderedDict()
+        for group, data in data_dict.items():
+            shape[group] = data.shape
+            dtypes[group] = data.dtype
+        return Shape(shape), np.dtype(list(dtypes.items()))
 
 class Chunks(dict):
     def from_groups(self, chunks: tuple, groups: tuple) -> 'Chunks':
@@ -141,9 +153,7 @@ class Chunks(dict):
             return chunks
 
     @staticmethod
-    def build_from_shape(shape: Shape, dtypes: np.dtype, memory_allowed=1) -> 'Chunks':
-        #for group, shape in shape.items():
-        #    print(group, shape)
+    def build_from_shape(shape: Shape, dtypes: np.dtype, memory_allowed=.9) -> 'Chunks':
         chunks_dict = calc_chunks(shape, dtypes, memory_allowed=memory_allowed)
         return Chunks(chunks_dict)
 
