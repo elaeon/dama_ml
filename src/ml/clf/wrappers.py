@@ -1,5 +1,4 @@
 import numpy as np
-import tensorflow as tf
 from sklearn.externals import joblib
 from ml.models import MLModel, SupervicedModel
 from ml.data.it import Iterator
@@ -22,7 +21,7 @@ class ClassifModel(SupervicedModel):
             measures = measure.make_metrics(measures=measures)
         test_data = self.ds[self.data_groups["data_test_group"]]
         for measure_fn in measures:
-            test_target = Iterator(self.ds[self.data_groups["target_test_group"]]).batchs(batch_size=batch_size)
+            test_target = Iterator(self.ds[self.data_groups["target_test_group"]]).batchs(chunks=(batch_size, ))
             predictions = self.predict(test_data, output=measure_fn.output, batch_size=batch_size)
             for pred, target in zip(predictions, test_target):
                 measures.update_fn(pred, target, measure_fn)

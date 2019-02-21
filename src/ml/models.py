@@ -7,6 +7,7 @@ from ml.measures import ListMeasure
 from ml.utils.logger import log_config
 from pydoc import locate
 from ml.utils.config import get_settings
+from ml.data.groups.core import DaGroup
 import json
 
 settings = get_settings("paths")
@@ -30,21 +31,21 @@ class MLModel:
     def fit(self, *args, **kwargs):
         return self.fit_fn(*args, **kwargs)
 
-    def predict(self, data, output_format_fn=None, output=None, batch_size: int = 258) -> BatchIterator:
+    def predict(self, data: DaGroup, output_format_fn=None, output=None, batch_size: int = 258) -> BatchIterator:
         data = self.input_transform(data)
-        if hasattr(data, '__iter__'):
+        #if hasattr(data, '__iter__'):
             #if data:
             #    for chunk in data:
             #        yield self.predictors(self.transform_data(chunk))
             #else:
-            def _it():
-                for row in data:  # fixme add batch_size
-                    batch = row.to_ndarray().reshape(1, -1)
-                    predict = self.predictors(batch)
-                    yield output_format_fn(predict, output=output)[0]
-            return Iterator(_it(), length=len(data)).batchs(chunks=(batch_size, ))
-        else:
-            return Iterator(output_format_fn(self.predictors(data), output=output)).batchs(chunks=(batch_size, ))
+        def _it():
+            for row in data:  # fixme add batch_size
+                batch = row.to_ndarray().reshape(1, -1)
+                predict = self.predictors(batch)
+                yield output_format_fn(predict, output=output)[0]
+        return Iterator(_it(), length=len(data)).batchs(chunks=None)
+        #else:
+        #    return Iterator(output_format_fn(self.predictors(data), output=output)).batchs(chunks=(batch_size, ))
 
     def load(self, path):
         return self.load_fn(path)

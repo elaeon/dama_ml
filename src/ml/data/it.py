@@ -353,15 +353,22 @@ class Iterator(BaseIterator):
         return np.dtype(dtype_tmp)
 
     def batchs(self, chunks) -> 'BatchIterator':
-        if not isinstance(chunks, Chunks):
+        if chunks is None:
+            chunks = Chunks.build_from_shape(self.shape, self.dtypes)
+        elif isinstance(chunks, int) or isinstance(chunks, tuple):
             chunks = Chunks.build_from(chunks, self.groups)
-        if chunks.length > 0:
-            if isinstance(self.data, AbsData) or isinstance(self.data, AbsGroup):
-                return BatchGroup(self, chunks=chunks)
-            else:
-                return BatchItGroup(self, chunks=chunks)
+        elif isinstance(chunks, Chunks):
+            pass
         else:
-            return self
+            raise NotImplementedError
+
+        #if chunks.length > 0:
+        if isinstance(self.data, AbsData) or isinstance(self.data, AbsGroup):
+            return BatchGroup(self, chunks=chunks)
+        else:
+            return BatchItGroup(self, chunks=chunks)
+        #else:
+        #    return self
 
     def __getitem__(self, key) -> 'Iterator':
         if isinstance(key, slice):
@@ -397,15 +404,16 @@ class BatchIterator(BaseIterator):
 
     def __init__(self, it: Iterator, chunks: Chunks = None, static: bool = False, batch_group=StcArrayGroup):
         super(BatchIterator, self).__init__(it, dtypes=it.dtypes, length=it.length, type_elem=self.type_elem)
-        self.batch_size = chunks.length
         if batch_group is StcArrayGroup:
             self.shape = StcArrayGroup.fit_shape(it.shape)
         else:
             self.shape = it.shape
+
         if len(self.groups) == 1:
             self.chunksize = chunks
-        else:
-            self.chunksize = self.shape.to_chunks(self.batch_size)
+        else:  # batch_group is StcArrayGroup
+            self.chunksize = self.shape.to_chunks(chunks.length)
+        self.batch_size = chunks.length
         self.static = static
         self._it = self.run()
 

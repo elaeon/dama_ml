@@ -3,6 +3,7 @@ from ml.utils.logger import log_config
 from ml.models import SupervicedModel, MLModel
 from ml import measures as metrics
 from ml.data.it import Iterator
+from ml.measures import ListMeasure
 
 
 log = log_config(__name__)
@@ -13,7 +14,7 @@ class RegModel(SupervicedModel):
         self.labels_dim = 1
         super(RegModel, self).__init__(**params)
 
-    def scores(self, measures="msle", batch_size: int=2000):
+    def scores(self, measures="msle", batch_size: int = 2000) -> ListMeasure:
         if measures is None or isinstance(measures, str):
             measure = metrics.MeasureBatch(name=self.model_name, batch_size=batch_size)
             measures = measure.make_metrics(measures=measures, discrete=False)

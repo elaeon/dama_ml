@@ -136,6 +136,7 @@ class Shape(object):
             dtypes[group] = data.dtype
         return Shape(shape), np.dtype(list(dtypes.items()))
 
+
 class Chunks(dict):
     def from_groups(self, chunks: tuple, groups: tuple) -> 'Chunks':
         for group in groups:

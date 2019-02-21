@@ -50,15 +50,15 @@ class TestSKL(unittest.TestCase):
 
     def test_load_meta(self):
         with Data(name="test", dataset_path=TMP_PATH) as dataset, \
-                Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5()) as ds:
+                Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as ds:
             dataset.from_data({"x": self.X, "y": self.Y})
-            classif = RandomForest()
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(dataset)
             ds.from_data(stc)
+            classif = RandomForest()
             classif.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
-                  data_test_group="test_x", target_test_group='test_y',
-                data_validation_group="validation_x", target_validation_group="validation_y")
+                          data_test_group="test_x", target_test_group='test_y', data_validation_group="validation_x",
+                          target_validation_group="validation_y")
             classif.save(name="test_model", path=TMP_PATH, model_version="1")
             dataset.destroy()
 

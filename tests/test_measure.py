@@ -102,8 +102,8 @@ class TestMeasure(unittest.TestCase):
         measure_b.add(precision)
         measure_b.add(f1)
         measure_b.add(logloss)
-        it_p = Iterator(self.pred_l).batchs(batch_size=batch_size)
-        it_t = Iterator(self.target).batchs(batch_size=batch_size)
+        it_p = Iterator(self.pred_l).batchs(chunks=(batch_size,))
+        it_t = Iterator(self.target).batchs(chunks=(batch_size,))
         for pred, target in zip(it_p, it_t):
             measure_b.update(pred, target)
         m0 = [round(score, 2) for score in measure.scores()]
@@ -115,8 +115,8 @@ class TestMeasure(unittest.TestCase):
         measure = MeasureBatch(name="test", batch_size=batch_size)
         measure.add(accuracy, output='discrete')
         measure.add(precision, output='discrete')
-        it_p = Iterator(self.pred_l).batchs(batch_size=batch_size)
-        it_t = Iterator(self.target).batchs(batch_size=batch_size)
+        it_p = Iterator(self.pred_l).batchs(chunks=(batch_size, ))
+        it_t = Iterator(self.target).batchs(chunks=(batch_size, ))
         for pred, target in zip(it_p, it_t):
             measure.update(pred, target)
         self.assertEqual(list(measure.scores()), [0.8387096774193549, 0.8306451612903226])
