@@ -58,4 +58,4 @@ class TestChunks(unittest.TestCase):
         shape = Shape({"x": (10, ), "y": (20, 1), "z": (20, 10, 2)})
         chunks = Chunks.build_from_shape(shape, dtypes, memory_allowed=.0001)
         for s, c in zip(shape.values(), chunks.values()):
-            self.assertEqual(s > c, True)
+            self.assertEqual(s >= c, True)
