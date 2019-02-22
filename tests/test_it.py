@@ -4,11 +4,12 @@ import pandas as pd
 import datetime
 import collections
 
-from ml.data.it import Iterator, BatchIterator, Slice
-from ml.data.ds import Data
-from ml.data.groups.core import DaGroup
-from ml.fmtypes import DEFAUL_GROUP_NAME
-from ml.utils.core import Chunks
+from dama.data.it import Iterator, BatchIterator, Slice
+from dama.data.ds import Data
+from dama.data.groups.core import DaGroup
+from dama.fmtypes import DEFAUL_GROUP_NAME
+from dama.utils.core import Chunks
+from dama.utils.seq import grouper_chunk
 
 
 def stream():
@@ -530,26 +531,21 @@ class TestSeq(unittest.TestCase):
         self.X = np.random.rand(10, 10)
 
     def test_grouper_chunk_3(self):
-        from ml.utils.seq import grouper_chunk
         seq = grouper_chunk(3, self.X)
         self.assertEqual(chunk_sizes(seq), [3, 3, 3, 1])
 
     def test_grouper_chunk_2(self):
-        from ml.utils.seq import grouper_chunk
         seq = grouper_chunk(2, self.X)
         self.assertEqual(chunk_sizes(seq), [2, 2, 2, 2, 2])
 
     def test_grouper_chunk_10(self):
-        from ml.utils.seq import grouper_chunk
         seq = grouper_chunk(10, self.X)
         self.assertEqual(chunk_sizes(seq), [10])
 
     def test_grouper_chunk_1(self):
-        from ml.utils.seq import grouper_chunk
         seq = grouper_chunk(1, self.X)
         self.assertEqual(chunk_sizes(seq), [1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
     def test_grouper_chunk_7(self):
-        from ml.utils.seq import grouper_chunk
         seq = grouper_chunk(7, self.X)
         self.assertEqual(chunk_sizes(seq), [7, 3])

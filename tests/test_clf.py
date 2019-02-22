@@ -1,31 +1,31 @@
 import unittest
 import numpy as np
 import os
-from ml.data.ds import Data
-from ml.clf.extended.w_sklearn import RandomForest, SVC, ExtraTrees, LogisticRegression, SGDClassifier
-from ml.clf.extended.w_sklearn import AdaBoost, GradientBoost, KNN
-from ml.clf.extended.w_keras import FCNet
-from ml.utils.model_selection import CV
-from ml.measures import gini_normalized
-from ml.data.drivers.core import HDF5
-from ml.measures import Measure, MeasureBatch
-from ml.models import Metadata
-from ml.utils.files import check_or_create_path_dir
+from dama.data.ds import Data
+from dama.clf.extended.w_sklearn import RandomForest, SVC, ExtraTrees, LogisticRegression, SGDClassifier
+from dama.clf.extended.w_sklearn import AdaBoost, GradientBoost, KNN
+from dama.clf.extended.w_keras import FCNet
+from dama.utils.model_selection import CV
+from dama.measures import gini_normalized
+from dama.data.drivers.core import HDF5
+from dama.measures import Measure, MeasureBatch
+from dama.models import Metadata
+from dama.utils.files import check_or_create_path_dir
 
 
 TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'softstream_data_test')
 
 
 try:
-    from ml.clf.extended.w_xgboost import Xgboost
+    from dama.clf.extended.w_xgboost import Xgboost
 except ImportError:
-    from ml.clf.extended.w_sklearn import RandomForest as Xgboost
+    from dama.clf.extended.w_sklearn import RandomForest as Xgboost
 
 
 try:
-    from ml.clf.extended.w_lgb import LightGBM
+    from dama.clf.extended.w_lgb import LightGBM
 except ImportError:
-    from ml.clf.extended.w_sklearn import RandomForest as LightGBM
+    from dama.clf.extended.w_sklearn import RandomForest as LightGBM
 
 
 def mulp(row):
@@ -64,7 +64,7 @@ class TestSKL(unittest.TestCase):
 
         with RandomForest.load(model_name="test_model", path=TMP_PATH, model_version="1") as classif:
             self.assertEqual(classif.model_version, "1")
-            self.assertEqual(classif.ds.driver.module_cls_name(), "ml.data.drivers.core.HDF5")
+            self.assertEqual(classif.ds.driver.module_cls_name(), "dama.data.drivers.core.HDF5")
             self.assertEqual(len(classif.metadata_train()), 8)
             classif.destroy()
 
@@ -129,8 +129,8 @@ class TestSKL(unittest.TestCase):
     def test_predict(self):
         x = np.random.rand(100)
         y = x > .5
-        with Data(name="test", dataset_path=TMP_PATH, driver=HDF5()) as dataset, \
-                Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5()) as ds:
+        with Data(name="test", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as dataset, \
+                Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as ds:
             dataset.from_data({"x": x.reshape(-1, 1), "y": y})
             classif = RandomForest()
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
@@ -152,8 +152,8 @@ class TestSKL(unittest.TestCase):
             ds.destroy()
 
     def test_simple_predict(self):
-        with Data(name="test", dataset_path=TMP_PATH, driver=HDF5()) as dataset, \
-            Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5()) as ds:
+        with Data(name="test", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as dataset, \
+            Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as ds:
             dataset.from_data({"x": self.X, "y": self.Y})
             metrics = MeasureBatch()
             metrics.add(gini_normalized, greater_is_better=True, output='uncertain')
@@ -185,7 +185,7 @@ class TestXgboost(unittest.TestCase):
         x = np.random.rand(100, 10)
         y = (x[:, 0] > .5).astype(int)
         with Data(name="test", dataset_path=TMP_PATH) as self.dataset,\
-            Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5()) as ds:
+            Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as ds:
             self.dataset.from_data({"x": x, "y": y})
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(self.dataset)
@@ -219,7 +219,7 @@ class TestLightGBM(unittest.TestCase):
         x = np.random.rand(100, 10)
         y = (x[:, 0] > .5).astype(int)
         with Data(name="test", dataset_path=TMP_PATH) as self.dataset, \
-                Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5()) as ds:
+                Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as ds:
             self.dataset.from_data({"x": x, "y": y})
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(self.dataset)
@@ -263,8 +263,8 @@ class TestModelVersion(unittest.TestCase):
     def test_load_add_version(self):
         x = np.random.rand(100)
         y = x > .5
-        with Data(name="test", dataset_path=TMP_PATH, driver=HDF5()) as dataset, \
-                Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5()) as ds:
+        with Data(name="test", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as dataset, \
+                Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as ds:
             dataset.from_data({"x": x.reshape(-1, 1), "y": y})
 
             classif = RandomForest()
@@ -298,8 +298,8 @@ class TestKeras(unittest.TestCase):
         np.random.seed(0)
         x = np.random.rand(100)
         y = x > .5
-        with Data(name="test", dataset_path=TMP_PATH, driver=HDF5()) as dataset, \
-                Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5()) as ds:
+        with Data(name="test", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as dataset, \
+                Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as ds:
             dataset.from_data({"x": x.reshape(-1, 1), "y": y})
 
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
@@ -327,8 +327,8 @@ class TestWrappers(unittest.TestCase):
         np.random.seed(0)
         x = np.random.rand(100)
         y = x > .5
-        with Data(name="test", dataset_path=TMP_PATH, driver=HDF5()) as dataset, \
-                Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5()) as ds:
+        with Data(name="test", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as dataset, \
+                Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5(mode="a")) as ds:
             dataset.from_data({"x": x.reshape(-1, 1), "y": y})
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(dataset)

@@ -3,24 +3,24 @@ import numpy as np
 import pandas as pd
 from io import StringIO
 import os
-from ml.data.ds import Data
-from ml.data.it import Iterator
-from ml.data.drivers.core import Zarr
-from ml.utils.model_selection import CV
-from ml.utils.files import rm
+from dama.data.ds import Data
+from dama.data.it import Iterator
+from dama.data.drivers.core import Zarr
+from dama.utils.model_selection import CV
+from dama.utils.files import rm
 from numcodecs import GZip
-from ml.utils.core import Login
-from ml.fmtypes import DEFAUL_GROUP_NAME
-from ml.utils.files import check_or_create_path_dir
-from ml.utils.core import Chunks
+from dama.utils.core import Login
+from dama.fmtypes import DEFAUL_GROUP_NAME
+from dama.utils.files import check_or_create_path_dir
+from dama.utils.core import Chunks
 
 try:
-    from ml.data.drivers.postgres import Postgres
+    from dama.data.drivers.postgres import Postgres
     driver = Postgres(login=Login(username="alejandro", resource="ml"))
     driver.enter()
     driver.exit()
 except:
-    from ml.data.drivers.core import Memory as Postgres
+    from dama.data.drivers.core import Memory as Postgres
 
 
 TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'softstream_data_test')
@@ -363,7 +363,7 @@ class TestDataset(unittest.TestCase):
             data.destroy()
 
     def test_delete_metadata_info(self):
-        from ml.utils.core import Metadata, Login
+        from dama.utils.core import Metadata, Login
 
         with Data(name="test", dataset_path=TMP_PATH, driver=Zarr(mode="w")) as data:
             data.from_data(np.random.rand(100, 11), chunks=(20, 5))

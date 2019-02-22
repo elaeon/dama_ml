@@ -1,26 +1,26 @@
 import unittest
 import numpy as np
 import os
-from ml.data.ds import Data
-from ml.utils.files import check_or_create_path_dir
+from dama.data.ds import Data
+from dama.utils.files import check_or_create_path_dir
 
 
 TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'softstream_data_test')
 
 
 try:
-    from ml.reg.extended.w_xgboost import Xgboost
+    from dama.reg.extended.w_xgboost import Xgboost
 except ImportError:
-    from ml.reg.extended.w_sklearn import RandomForestRegressor as Xgboost
+    from dama.reg.extended.w_sklearn import RandomForestRegressor as Xgboost
 
 try:
-    from ml.reg.extended.w_lgb import LightGBM
+    from dama.reg.extended.w_lgb import LightGBM
 except ImportError:
-    from ml.reg.extended.w_sklearn import RandomForestRegressor  as LightGBM
+    from dama.reg.extended.w_sklearn import RandomForestRegressor  as LightGBM
 
-from ml.reg.extended.w_sklearn import RandomForestRegressor, GradientBoostingRegressor
-from ml.utils.model_selection import CV
-from ml.data.drivers.core import HDF5, Zarr
+from dama.reg.extended.w_sklearn import RandomForestRegressor, GradientBoostingRegressor
+from dama.utils.model_selection import CV
+from dama.data.drivers.core import HDF5, Zarr
 
 
 def mulp(row):
@@ -53,7 +53,7 @@ class TestRegSKL(unittest.TestCase):
 
         with RandomForestRegressor.load(model_name="test_model", path=TMP_PATH, model_version="1") as reg:
             self.assertEqual(reg.model_version, "1")
-            self.assertEqual(reg.ds.driver.module_cls_name(), "ml.data.drivers.core.HDF5")
+            self.assertEqual(reg.ds.driver.module_cls_name(), "dama.data.drivers.core.HDF5")
             self.assertEqual(len(reg.metadata_train()), 8)
             reg.destroy()
 
@@ -100,7 +100,7 @@ class TestRegSKL(unittest.TestCase):
         x = np.random.rand(100)
         y = np.random.rand(100)
         with Data(name="test", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as dataset, \
-                Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5()) as ds:
+                Data(name="test_cv", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as ds:
             dataset.from_data({"x": x.reshape(-1, 1), "y": y})
             reg = RandomForestRegressor()
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)

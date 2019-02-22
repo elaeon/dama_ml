@@ -1,14 +1,14 @@
 import unittest
 import numpy as np
 
-from ml.utils.numeric_functions import is_binary
-from ml.utils.numeric_functions import is_integer
-from ml.utils.numeric_functions import is_integer_if
-from ml.utils.numeric_functions import index_if_type_row, index_if_type_col
-from ml.utils.numeric_functions import features2rows
-from ml.utils.numeric_functions import data_type, unique_size
-from ml.utils.numeric_functions import max_type
-from ml.utils.numeric_functions import nested_shape
+from dama.utils.numeric_functions import is_binary
+from dama.utils.numeric_functions import is_integer
+from dama.utils.numeric_functions import is_integer_if
+from dama.utils.numeric_functions import index_if_type_row, index_if_type_col
+from dama.utils.numeric_functions import features2rows
+from dama.utils.numeric_functions import unique_size
+from dama.utils.numeric_functions import max_type
+from dama.utils.numeric_functions import nested_shape
 
 
 class TestNumericFn(unittest.TestCase):
@@ -60,21 +60,6 @@ class TestNumericFn(unittest.TestCase):
         self.assertCountEqual(f2r[3], ['1', 'b']) 
         self.assertCountEqual(f2r[4], ['1', 'd']) 
         self.assertCountEqual(f2r[5], ['1', 'f'])
-
-    def test_data_type(self):
-        array = np.asarray([
-            [0, 1, 2, 0, 4, 5],
-            [1, 0, 0, 1, 1, 0],
-            [1, 1, 1, 1, 1, 0],
-            [1, 1, 5, 7, 8, 10],
-            [0, 0, .3, .1, 0, 1],
-            [0, -1, np.nan, 0, 1, 1]
-        ])
-
-        d_type = []
-        for column in array.T:
-            d_type.append(data_type(unique_size(column)).name)
-        self.assertEqual(d_type, ['boolean', 'nan boolean', 'int', 'int', 'int', 'int'])
 
     def test_max_type(self):
         items = [True, True, 1]

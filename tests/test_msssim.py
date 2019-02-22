@@ -3,8 +3,8 @@ import numpy as np
 import tensorflow as tf
 import os
 
-from ml.utils.tf_functions import ssim, msssim
-from ml.processing import rgb2gray, merge_offset
+from dama.utils.tf_functions import ssim, msssim
+from dama.processing import rgb2gray, merge_offset
 
 
 class TestMsssiM(unittest.TestCase):

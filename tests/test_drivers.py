@@ -1,9 +1,9 @@
 import unittest
 import numpy as np
-from ml.data.drivers.core import Memory, Zarr, HDF5
-from ml.utils.core import Shape, Login, Chunks
-from ml.data.drivers.postgres import Postgres
-from ml.data.drivers.sqlite import Sqlite
+from dama.data.drivers.core import Memory, Zarr, HDF5
+from dama.utils.core import Shape, Login, Chunks
+from dama.data.drivers.postgres import Postgres
+from dama.data.drivers.sqlite import Sqlite
 
 
 

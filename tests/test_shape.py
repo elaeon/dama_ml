@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
-from ml.utils.core import Shape
-from ml.utils.core import Chunks
+from dama.utils.core import Shape
+from dama.utils.core import Chunks
 
 
 class TestShape(unittest.TestCase):

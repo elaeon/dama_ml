@@ -1,15 +1,15 @@
 import unittest
 import numpy as np
 import os
-from ml.data.ds import Data
-from ml.data.drivers.core import HDF5
-from ml.utils.model_selection import CV
-from ml.ae.extended.w_keras import PTsne
-from ml.models import Metadata
-from ml.utils.tf_functions import TSNe
-from ml.data.it import BatchIterator
-from ml.utils.files import check_or_create_path_dir
-from ml.utils.core import Chunks
+from dama.data.ds import Data
+from dama.data.drivers.core import HDF5
+from dama.utils.model_selection import CV
+from dama.ae.extended.w_keras import PTsne
+from dama.models import Metadata
+from dama.utils.tf_functions import TSNe
+from dama.data.it import BatchIterator
+from dama.utils.files import check_or_create_path_dir
+from dama.utils.core import Chunks
 
 
 TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'softstream_data_test')

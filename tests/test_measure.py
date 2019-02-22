@@ -1,10 +1,10 @@
 import unittest
 import numpy as np
 
-from ml.measures import ListMeasure, Measure, MeasureBatch
-from ml.measures import accuracy, precision, f1, logloss
-from ml.measures import gini_normalized
-from ml.data.it import Iterator
+from dama.measures import ListMeasure, Measure, MeasureBatch
+from dama.measures import accuracy, precision, f1, logloss
+from dama.measures import gini_normalized
+from dama.data.it import Iterator
 
 
 class TestListMeasure(unittest.TestCase):
