@@ -1,34 +1,33 @@
 .. image:: https://travis-ci.org/elaeon/ML.svg?branch=master
     :target: https://travis-ci.org/elaeon/ML
 
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/0ab998e72f4f4e31b3dc7b3c9921374a)](https://www.codacy.com/app/elaeon/dama_ml?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=elaeon/dama_ml&amp;utm_campaign=Badge_Grade)
+.. image:: https://api.codacy.com/project/badge/Grade/0ab998e72f4f4e31b3dc7b3c9921374a
+    :target: https://www.codacy.com/app/elaeon/dama_ml?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=elaeon/dama_ml&amp;utm_campaign=Badge_Grade
 
-Welcome to mlPyp's documentation!
+Welcome to dama_ml documentation!
 =====================================
 
 A framework for machine learning's pipelines.
 
 Highlights:
- * Build datasets with train, test, valid data and transformations applied.
- * Build datasets with metadata for reproducible experiments.
- * Easy way to add distincts machine learning algorithms from Keras, scikit-learn, etc.
- * Models with scores and predictors.
- * Convert csv files to datasets.
- * Uses transformations for manipulate data (images).
+ * Build datasets with metadata for reproductible experiments.
+ * Easy way to add distincts deep learning and machine learning frameworks (i.e Keras, scikit-learn, etc)
+ * Manage yours models and scores.
+ * Convert n type of files to datasets.
 
 .. image:: docs/pipeline.png
     :align: center
 
 For more detail read the docs_. 
 
-.. _docs: https://elaeon.github.io/ML/
+.. _docs: https://elaeon.github.io/dama_ml/
 
 Installation
 =====================
 
 .. code-block:: bash
 
-    git clone https://github.com/elaeon/ML.git
+    git clone https://github.com/elaeon/dama_ml.git
 
 
 You can install the python dependences with pip, but we strongly
