@@ -17,13 +17,13 @@ from dama.utils.core import Chunks
 try:
     from dama.data.drivers.postgres import Postgres
     driver = Postgres(login=Login(username="alejandro", resource="ml"))
-    driver.enter()
-    driver.exit()
+    driver.open()
+    driver.close()
 except:
     from dama.data.drivers.core import Memory as Postgres
 
 
-TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'softstream_data_test')
+TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'dama_data_test')
 np.random.seed(0)
 
 
@@ -370,14 +370,14 @@ class TestDataset(unittest.TestCase):
             hash = data.hash
             metadata_url = data.metadata_url()
         login = Login(url=metadata_url, table="metadata")
-        metadata = Metadata(login=login)
-        self.assertEqual(metadata.exists(hash), True)
+        with Metadata(login=login) as metadata:
+            self.assertEqual(metadata.exists(hash), True)
 
         with Data(name="test", dataset_path=TMP_PATH, driver=Zarr(mode="r")) as data:
             data.destroy()
         login = Login(url=metadata_url, table="metadata")
-        metadata = Metadata(login=login)
-        self.assertEqual(metadata.exists(hash), False)
+        with Metadata(login=login) as metadata:
+            self.assertEqual(metadata.exists(hash), False)
 
     def test_concat_axis_0(self):  # length
         with Data(name="test", dataset_path=TMP_PATH) as dataset,\

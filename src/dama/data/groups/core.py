@@ -82,11 +82,15 @@ class DaGroup(AbsGroup):
             return DaGroup(dict_conn, writer_conn=self.writer_conn)
         elif isinstance(item, np.ndarray) and item.dtype == np.dtype(int):
             return self.sample(item)
+        elif isinstance(item, da.Array):
+            # print(dict(item.dask))
+            index = [i for i, is_valid in enumerate(item.compute()) if is_valid]  # fixme generalize masked data
+            return self.sample(index)
 
     def __setitem__(self, item, value):
         self.writer_conn.set(item, value)
 
-    def __add__(self, other: 'DaGroup') -> 'DaGroup':
+    def __add__(self, other: 'DaGroup') -> 'DaGroup':  # fixme redefine the sum between two dagroups
         if other == 0:
             return self
         groups = DaGroupDict()
@@ -96,6 +100,12 @@ class DaGroup(AbsGroup):
 
     def __radd__(self, other):
         return self.__add__(other)
+
+    def __eq__(self, other):
+        if len(self.groups) == 1:
+            return self.conn[self.groups[0]] == other
+        else:
+            raise NotImplementedError
 
     @staticmethod
     def concat(da_groups, axis=0) -> 'DaGroup':
@@ -110,7 +120,7 @@ class DaGroup(AbsGroup):
                     intersection_groups = intersection_groups.intersection(set(group))
                 da_group_dict = DaGroupDict()
                 for group in intersection_groups:
-                    da_arrays = [da_group[group].array() for da_group in da_groups]
+                    da_arrays = [da_group[group].darray for da_group in da_groups]
                     da_array_c = da.concatenate(da_arrays, axis=axis)
                     da_group_dict[group] = da_array_c
                 return DaGroup(da_group_dict)
@@ -129,7 +139,8 @@ class DaGroup(AbsGroup):
             chunks[group] = self.conn[group].chunksize
         return chunks
 
-    def array(self):
+    @property
+    def darray(self):
         if len(self.groups) == 1:
             return self.conn[self.groups[0]]
         else:

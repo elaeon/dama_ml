@@ -1,6 +1,5 @@
 import hashlib
 import numpy as np
-import pandas as pd
 import sqlite3
 
 from collections import OrderedDict
@@ -179,39 +178,43 @@ class Metadata(dict):
         super(Metadata, self).__init__(*args, **kwargs)
         self.login = login
 
-    def build_schema(self, dtypes: np.dtype, unique_key: str = None):
+    def __enter__(self):
         from dama.data.drivers.sqlite import Sqlite
-        with Sqlite(login=self.login) as metadata_db:
-            metadata_db.set_schema(dtypes, unique_key=unique_key)
+        self.metadata_db = Sqlite(login=self.login)
+        self.metadata_db.open()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.metadata_db.close()
+
+    def build_schema(self, dtypes: np.dtype, unique_key: str = None):
+        self.metadata_db.set_schema(dtypes, unique_key=unique_key)
 
     def insert_data(self):
-        from dama.data.drivers.sqlite import Sqlite
-        with Sqlite(login=self.login) as metadata_db:
-            try:
-                data = [self[group] for group in metadata_db.groups]
-                metadata_db.insert(data)
-            except sqlite3.IntegrityError as e:
-                log.error(e)
-                log.warning("This dataset already exists.")
+        try:
+            data = [self[group] for group in self.metadata_db.groups]
+            self.metadata_db.insert(data)
+        except sqlite3.IntegrityError as e:
+            log.error(e)
+            log.warning("This dataset already exists.")
 
-    def query(self, query: str):
-        from dama.data.drivers.sqlite import Sqlite
-        with Sqlite(login=self.login) as metadata_db:
-            cur = metadata_db.conn.cursor()
-            data = cur.execute(query).fetchall()
-            cur.close()
-            metadata_db.conn.commit()
-            return data
+    def query(self, query: str, values: tuple):
+        cur = self.metadata_db.conn.cursor()
+        data = cur.execute(query, values).fetchall()
+        cur.close()
+        self.metadata_db.conn.commit()
+        return data
 
-    def data(self, headers, page, order_by=None) -> pd.DataFrame:
-        from dama.data.drivers.sqlite import Sqlite
-        with Sqlite(login=self.login) as metadata_db:
-            chunks = Chunks.build_from(10, metadata_db.groups)
-            return metadata_db.data(chunks=chunks)[headers][page].to_df().sort_values(order_by, ascending=False)
+    def data(self):
+        chunks = Chunks.build_from(10, self.metadata_db.groups)
+        return self.metadata_db.data(chunks)
 
     def remove_data(self, hash_hex: str):
-        self.query("DELETE FROM metadata WHERE hash = '{}'".format(hash_hex))
+        self.query("DELETE FROM metadata WHERE hash = ?", (hash_hex, ))
+
+    def invalid(self, hash_hex: str):
+        self.query("UPDATE metadata SET is_valid=False WHERE hash = ?", (hash_hex,))
 
     def exists(self, hash_hex: str) -> bool:
-        result = self.query("SELECT id FROM metadata WHERE hash = '{}'".format(hash_hex))
+        result = self.query("SELECT id FROM metadata WHERE hash = ?", (hash_hex, ))
         return len(result) > 0

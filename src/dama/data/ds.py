@@ -188,8 +188,8 @@ class Data(AbsData):
         hash_hex = self.hash
         self.driver.destroy()
         login = Login(url=self.metadata_url(), table="metadata")
-        metadata = Metadata(login)
-        metadata.remove_data(hash_hex)
+        with Metadata(login) as metadata:
+            metadata.invalid(hash_hex)
 
     def dir_levels(self) -> list:
         if self.group_name is None:
@@ -267,16 +267,18 @@ class Data(AbsData):
         if self.driver.persistent is True:
             build_path([settings["metadata_path"]])
             login = Login(url=self.metadata_url(), table="metadata")
-            metadata = Metadata(login, self.metadata())
-            dtypes = np.dtype([("hash", object), ("name", object), ("author", object),
-                              ("description", object), ("size", int), ("driver", object),
-                              ("dir_levels", object), ("timestamp", np.dtype("datetime64[ns]"))])
-            timestamp = metadata["timestamp"]
-            metadata["timestamp"] = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M UTC')
-            dir_levels = metadata["dir_levels"]
-            metadata["dir_levels"] = os.path.join(*dir_levels)
-            metadata.build_schema(dtypes, unique_key="hash")
-            metadata.insert_data()
+            with Metadata(login, self.metadata()) as metadata:
+                dtypes = np.dtype([("hash", object), ("name", object), ("author", object),
+                                  ("description", object), ("size", int), ("driver", object),
+                                  ("dir_levels", object), ("timestamp", np.dtype("datetime64[ns]")),
+                                   ("is_valid", bool)])
+                timestamp = metadata["timestamp"]
+                metadata["timestamp"] = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M UTC')
+                metadata["is_valid"] = True
+                dir_levels = metadata["dir_levels"]
+                metadata["dir_levels"] = os.path.join(*dir_levels)
+                metadata.build_schema(dtypes, unique_key="hash")
+                metadata.insert_data()
 
     def calc_hash(self, with_hash: str = 'sha1') -> str:
         hash_obj = Hash(hash_fn=with_hash)
@@ -361,28 +363,31 @@ class Data(AbsData):
 
     def stadistics(self):
         from collections import defaultdict
-        from dama.utils.numeric_functions import unique_size, data_type
+        from dama.utils.numeric_functions import unique_size
         from dama.utils.numeric_functions import missing, zeros
         from dama.fmtypes import fmtypes_map
         import dask.array as da
         import dask
 
         headers = ["missing", "mean", "std dev", "zeros", "min", "25%", "50%", "75%", "max", "type", "unique"]
-        for group in ["x"]:#self.groups:
-        #    for x in Iterator(self.data[group]).batchs(batch_size=20, batch_type='array'):
-        #        print(x)
-            shape = self.data[group].shape.to_tuple()
-            if len(shape) > 1:
-                chunks = (100, shape[1])
-            else:
-                chunks = (100,)
-            array = da.from_array(self.data[group], chunks=chunks)
-            mean = array.mean()
-            std = array.std()
-            min = array.min()
-            max = array.max()
+        self.chunksize = Chunks.build_from_shape(self.shape, self.dtypes)
+        for group in self.groups:
+            mean = self.data.darray.mean()
+            std = self.data.darray.std()
+            min = self.data.darray.min()
+            max = self.data.darray.max()
+            #shape = self.data[group].shape.to_tuple()
+            #if len(shape) > 1:
+            #    chunks = (100, shape[1])
+            #else:
+            #    chunks = (100,)
+            #array = da.from_array(self.data[group], chunks=chunks)
+            #mean = array.mean()
+            #std = array.std()
+            #min = array.min()
+            #max = array.max()
             #percentile = da.percentile(array, 4)
-            unique = da.unique(array)
+            #unique = da.unique(array)
             print(dask.compute([mean, std, min, max]))
             break
         #for x in Iterator(self.data).batchs(batch_size=20, batch_type='array'):
