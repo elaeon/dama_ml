@@ -39,9 +39,9 @@ class TestListMeasure(unittest.TestCase):
         list_measure = ListMeasure(headers=["Name", "M1", "M2", "M3"],
                                    measures=[["Row1", None, 0, ""], ["Row2", None, None, ""]])
         self.assertEqual(list_measure.empty_columns(), {1, 3})
-        list_measure.drop_empty_columns()
-        self.assertEqual(list_measure.headers, ["Name", "M2"])
-        self.assertEqual(list_measure.measures, [["Row1", 0], ["Row2", None]])
+        headers, measures, _ = list_measure.drop_empty_columns()
+        self.assertEqual(headers, ["Name", "M2"])
+        self.assertEqual((measures == [["Row1", 0], ["Row2", None]]).all(), True)
 
     def test_add_list_empty(self):
         pred = np.asarray([0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1,

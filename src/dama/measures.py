@@ -1,5 +1,5 @@
 import numpy as np
-from dama.utils.order import order_table
+from tabulate import tabulate
 from dama.utils.logger import log_config
 
 
@@ -261,10 +261,9 @@ class ListMeasure(object):
         order = [v["reverse"] for k, v in data_dict.items()]
         return ListMeasure(headers=headers, measures=measures, order=order)
 
-    def to_tabulate(self, order_column: str = None, limit=None):
-        self.drop_empty_columns()
-        return order_table(self.headers, self.measures, order_column,
-                           natural_order=self.order, limit=limit)
+    def to_tabulate(self):
+        headers, measures, order_column = self.drop_empty_columns()
+        return tabulate(measures, headers)
 
     def __str__(self):
         return self.to_tabulate()
@@ -287,14 +286,20 @@ class ListMeasure(object):
         drop empty columns
         """
         empty_columns = self.empty_columns()
+        not_empty_columns = [i for i in range(len(self.headers)) if i not in empty_columns]
+        if not isinstance(self.measures, np.ndarray):
+            measures = np.array(self.measures)
+        else:
+            measures = self.measures.copy()
+        headers = list(self.headers)
+        order = list(self.order)
         for counter, c in enumerate(empty_columns):
-            del self.headers[c-counter]
-            del self.order[c-counter]
-            for row in self.measures:
-                del row[c-counter]
+            del headers[c-counter]
+            del order[c-counter]
+        measures = measures[:, not_empty_columns]
+        return headers, measures, order
 
     def print_matrix(self, labels):
-        from tabulate import tabulate
         for _, measure in enumerate(self.measures):
             print("******")
             print(measure[0])

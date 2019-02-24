@@ -66,7 +66,7 @@ class AbsDriver(ABC):
         return NotImplemented
 
     @abstractmethod
-    def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key: str = None):
+    def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key: list = None):
         return NotImplemented
 
     @abstractmethod

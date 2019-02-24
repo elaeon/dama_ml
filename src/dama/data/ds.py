@@ -4,15 +4,16 @@ import json
 import numpy as np
 import pandas as pd
 import dask.array as da
+import dask
 
 from tqdm import tqdm
+from tabulate import tabulate
 from dama.abc.data import AbsData
 from dama.data.it import Iterator, BaseIterator, BatchIterator
 from dama.utils.files import build_path
 from dama.utils.core import Hash, Login, Metadata, Chunks, Shape
 from dama.abc.driver import AbsDriver
 from dama.data.drivers.core import Memory
-from dama.abc.group import AbsGroup
 from dama.utils.logger import log_config
 from dama.utils.config import get_settings
 from dama.utils.decorators import cache, clean_cache
@@ -27,7 +28,7 @@ log = log_config(__name__)
 
 class Data(AbsData):
     def __init__(self, name: str = None, dataset_path: str = None, driver: AbsDriver = None,
-                 group_name: str = None, chunks: Chunks = None, auto_chunks=False):
+                 group_name: str = None, chunks: Chunks = None, auto_chunks=False, metadata_path: str = None):
 
         if driver is None:
             self.driver = Memory()
@@ -41,6 +42,11 @@ class Data(AbsData):
             self.dataset_path = settings["data_path"]
         else:
             self.dataset_path = dataset_path
+
+        if metadata_path is not None:
+            self.metadata_path = metadata_path
+        else:
+            self.metadata_path = settings["metadata_path"]
 
         self.name = name
         self.header_map = ["author", "description"]
@@ -113,7 +119,7 @@ class Data(AbsData):
 
     @property
     @cache
-    def data(self) -> AbsGroup:
+    def data(self) -> DaGroup:
         return self.driver.data(chunks=self.chunksize)
 
     @data.setter
@@ -187,7 +193,7 @@ class Data(AbsData):
     def destroy(self):
         hash_hex = self.hash
         self.driver.destroy()
-        login = Login(url=self.metadata_url(), table="metadata")
+        login = Login(url=self.metadata_url, table="metadata")
         with Metadata(login) as metadata:
             metadata.invalid(hash_hex)
 
@@ -205,6 +211,10 @@ class Data(AbsData):
         filename = "{}.{}".format(self.name, self.driver.ext)
         dir_levels = self.dir_levels() + [filename]
         return os.path.join(*dir_levels)
+
+    @property
+    def metadata_url(self) -> str:
+        return os.path.join(self.metadata_path, "metadata.sqlite3")
 
     def __len__(self):
         return len(self.data)
@@ -255,29 +265,29 @@ class Data(AbsData):
         meta_dict["description"] = self.description if self.description is None else self.description[:100]
         return meta_dict
 
-    @staticmethod
-    def metadata_url() -> str:
-        return os.path.join(settings["metadata_path"], "metadata.sqlite3")
-
     def metadata_to_json(self, f):
         metadata = self.metadata()
         json.dump(metadata, f)
 
     def write_metadata(self):
         if self.driver.persistent is True:
-            build_path([settings["metadata_path"]])
-            login = Login(url=self.metadata_url(), table="metadata")
+            build_path([self.metadata_path])
+            login = Login(url=self.metadata_url, table="metadata")
             with Metadata(login, self.metadata()) as metadata:
                 dtypes = np.dtype([("hash", object), ("name", object), ("author", object),
-                                  ("description", object), ("size", int), ("driver", object),
-                                  ("dir_levels", object), ("timestamp", np.dtype("datetime64[ns]")),
-                                   ("is_valid", bool)])
+                                   ("description", object), ("size", int), ("driver", object),
+                                   ("path", object), ("driver_name", object), ("group_name", object),
+                                   ("timestamp", np.dtype("datetime64[ns]")),
+                                   ("is_valid", bool), ("num_groups", int)])
                 timestamp = metadata["timestamp"]
                 metadata["timestamp"] = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M UTC')
                 metadata["is_valid"] = True
+                metadata["num_groups"] = len(self.groups)
                 dir_levels = metadata["dir_levels"]
-                metadata["dir_levels"] = os.path.join(*dir_levels)
-                metadata.build_schema(dtypes, unique_key="hash")
+                metadata["path"] = dir_levels[0]
+                metadata["driver_name"] = dir_levels[1]
+                metadata["group_name"] = "s/n" if self.group_name is None else self.group_name
+                metadata.build_schema(dtypes, unique_key=["hash", ["path", "name", "driver_name", "group_name"]])
                 metadata.insert_data()
 
     def calc_hash(self, with_hash: str = 'sha1') -> str:
@@ -362,68 +372,53 @@ class Data(AbsData):
         self.from_data(da_group)
 
     def stadistics(self):
-        from collections import defaultdict
-        from dama.utils.numeric_functions import unique_size
-        from dama.utils.numeric_functions import missing, zeros
-        from dama.fmtypes import fmtypes_map
-        import dask.array as da
-        import dask
-
-        headers = ["missing", "mean", "std dev", "zeros", "min", "25%", "50%", "75%", "max", "type", "unique"]
+        headers = ["group", "mean", "std dev", "min", "25%", "50%", "75%", "max", "nonzero", "unique", "dtype", "shape"]
         self.chunksize = Chunks.build_from_shape(self.shape, self.dtypes)
-        for group in self.groups:
-            mean = self.data.darray.mean()
-            std = self.data.darray.std()
-            min = self.data.darray.min()
-            max = self.data.darray.max()
-            #shape = self.data[group].shape.to_tuple()
-            #if len(shape) > 1:
-            #    chunks = (100, shape[1])
-            #else:
-            #    chunks = (100,)
-            #array = da.from_array(self.data[group], chunks=chunks)
-            #mean = array.mean()
-            #std = array.std()
-            #min = array.min()
-            #max = array.max()
-            #percentile = da.percentile(array, 4)
-            #unique = da.unique(array)
-            print(dask.compute([mean, std, min, max]))
-            break
-        #for x in Iterator(self.data).batchs(batch_size=20, batch_type='array'):
-        #     print(x)
-        #table = []
-        #li = self.labels_info()
-        #feature_column = defaultdict(dict)
-        #for label in li:
-        #    mask = (self.labels[:] == label)
-        #    data = self.data[:][mask]
-        #    for i, column in enumerate(data.T):
-        #        percentile = np.nanpercentile(column, [0, 25, 50, 75, 100])
-        #        values = [
-        #            "{0:.{1}f}%".format(missing(column), 2),
-        #            np.nanmean(column),
-        #            np.nanstd(column),
-        #            "{0:.{1}f}%".format(zeros(column), 2),
-        #            ]
-        #        values.extend(percentile)
-        #        feature_column[i][label] = values
+        table = []
+        for group, (dtype, _) in self.dtypes.fields.items():
+            values = {}
+            values["dtype"] = dtype
+            values["group"] = group
+            values["shape"] = self.shape[group]
+            darray = self.data[group].darray
+            if dtype == np.dtype(float) or dtype == np.dtype(int):
+                da_mean = da.around(darray.mean(), decimals=5)
+                da_std = da.around(darray.std(), decimals=5)
+                da_min = da.around(darray.min(), decimals=5)
+                da_max = da.around(darray.max(), decimals=5)
+                result = dask.compute([da_mean, da_std, da_min, da_max])[0]
+                values["mean"] = result[0]
+                values["std dev"] = result[1]
+                values["min"] = result[2]
+                values["max"] = result[3]
+                if len(self.shape[group]) == 1:
+                    da_percentile = da.percentile(darray, [25, 50, 75])
+                    result = da_percentile.compute()
+                    values["25%"] = result[0]
+                    values["50%"] = result[1]
+                    values["75%"] = result[2]
+                else:
+                    values["25%"] = "-"
+                    values["50%"] = "-"
+                    values["75%"] = "-"
+                values["nonzero"] = da.count_nonzero(darray).compute()
+                values["unique"] = "-"
+            else:
+                values["mean"] = "-"
+                values["std dev"] = "-"
+                values["min"] = "-"
+                values["max"] = "-"
+                values["25%"] = "-"
+                values["50%"] = "-"
+                values["75%"] = "-"
+                values["nonzero"] = "-"
+                da_unique = da.unique(darray)
+                values["unique"] = dask.compute(da_unique)[0].shape[0]
 
-        #data = self.data
-        #fmtypes = self.fmtypes
-        #for feature, rows in feature_column.items():
-        #    column = data[:, feature]
-        #    usize = unique_size(column)
-        #    if fmtypes is None or len(fmtypes) != self.num_features():
-        #        data_t = data_type(usize, column.size).name
-        #    else:
-        #        data_t = fmtypes_map[fmtypes[feature]]
+            row = []
+            for column in headers:
+                row.append(values[column])
+            table.append(row)
 
-        #    for label, row in rows.items():
-        #        table.append([feature, label] + row + [data_t, str(usize)])
-        #        feature = "-"
-        #        data_t = "-"
-        #        usize = "-"
-
-        #return tabulate(table, headers)
+        return tabulate(table, headers)
 

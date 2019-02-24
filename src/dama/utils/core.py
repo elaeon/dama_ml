@@ -25,7 +25,7 @@ class Hash:
                 self.hash.update(data)
 
     def __str__(self):
-        return "${hash_fn}${digest}".format(hash_fn=self.hash_fn, digest=self.hash.hexdigest())
+        return "{hash_fn}.{digest}".format(hash_fn=self.hash_fn, digest=self.hash.hexdigest())
 
 
 class Shape(object):
@@ -187,7 +187,7 @@ class Metadata(dict):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.metadata_db.close()
 
-    def build_schema(self, dtypes: np.dtype, unique_key: str = None):
+    def build_schema(self, dtypes: np.dtype, unique_key: list = None):
         self.metadata_db.set_schema(dtypes, unique_key=unique_key)
 
     def insert_data(self):
@@ -218,3 +218,7 @@ class Metadata(dict):
     def exists(self, hash_hex: str) -> bool:
         result = self.query("SELECT id FROM metadata WHERE hash = ?", (hash_hex, ))
         return len(result) > 0
+
+    def is_valid(self, hash_hex: str) -> bool:
+        result = self.query("SELECT is_valid FROM metadata WHERE hash = ?", (hash_hex,))
+        return result[0][0]

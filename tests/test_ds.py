@@ -13,6 +13,7 @@ from dama.utils.core import Login
 from dama.fmtypes import DEFAUL_GROUP_NAME
 from dama.utils.files import check_or_create_path_dir
 from dama.utils.core import Chunks
+from dama.utils.core import Metadata, Login
 
 try:
     from dama.data.drivers.postgres import Postgres
@@ -32,9 +33,13 @@ class TestDataset(unittest.TestCase):
         num_features = 10
         self.X = np.append(np.zeros((5, num_features)), np.ones((5, num_features)), axis=0).astype(float)
         self.Y = (np.sum(self.X, axis=1) / 10).astype(int)
+        self.hash = None
 
     def tearDown(self):
-        pass
+        login = Login(url=os.path.join(TMP_PATH, "metadata.sqlite3"), table="metadata")
+        with Metadata(login=login) as metadata_db:
+            if self.hash is not None:
+                metadata_db.remove_data(self.hash)
 
     def test_simple_write(self):
         with Data(name="test", dataset_path=TMP_PATH) as dataset:
@@ -200,8 +205,8 @@ class TestDataset(unittest.TestCase):
     def test_hash(self):
         with Data(name="test0", dataset_path=TMP_PATH) as data:
             data.from_data(np.ones(100), chunks=(20, ))
-            self.assertEqual(data.hash, "$sha1$fe0e420a6aff8c6f81ef944644cc78a2521a0495")
-            self.assertEqual(data.calc_hash(with_hash='md5'), "$md5$2376a2375977070dc32209a8a7bd2a99")
+            self.assertEqual(data.hash, "sha1.fe0e420a6aff8c6f81ef944644cc78a2521a0495")
+            self.assertEqual(data.calc_hash(with_hash='md5'), "md5.2376a2375977070dc32209a8a7bd2a99")
             data.destroy()
 
     def test_empty_hash(self):
@@ -363,21 +368,20 @@ class TestDataset(unittest.TestCase):
             data.destroy()
 
     def test_delete_metadata_info(self):
-        from dama.utils.core import Metadata, Login
-
-        with Data(name="test", dataset_path=TMP_PATH, driver=Zarr(mode="w")) as data:
+        with Data(name="test", dataset_path=TMP_PATH, driver=Zarr(mode="w"), metadata_path=TMP_PATH) as data:
             data.from_data(np.random.rand(100, 11), chunks=(20, 5))
-            hash = data.hash
-            metadata_url = data.metadata_url()
+            self.hash = data.hash
+            metadata_url = data.metadata_url
+
         login = Login(url=metadata_url, table="metadata")
         with Metadata(login=login) as metadata:
-            self.assertEqual(metadata.exists(hash), True)
+            self.assertEqual(metadata.exists(self.hash), True)
 
-        with Data(name="test", dataset_path=TMP_PATH, driver=Zarr(mode="r")) as data:
+        with Data(name="test", dataset_path=TMP_PATH, driver=Zarr(mode="r"), metadata_path=TMP_PATH) as data:
             data.destroy()
         login = Login(url=metadata_url, table="metadata")
         with Metadata(login=login) as metadata:
-            self.assertEqual(metadata.exists(hash), False)
+            self.assertEqual(metadata.is_valid(self.hash), False)
 
     def test_concat_axis_0(self):  # length
         with Data(name="test", dataset_path=TMP_PATH) as dataset,\

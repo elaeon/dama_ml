@@ -56,15 +56,20 @@ class Sqlite(AbsDriver):
     def groups(self) -> tuple:
         return self.absgroup.groups
 
-    def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key=None):
+    def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key: list = None):
         if not self.exists():
             columns_types = ["id INTEGER PRIMARY KEY"]
+            one_col_unique_key = [column for column in unique_key if isinstance(column, str)]
+            more_col_unique_key = [columns for columns in unique_key if isinstance(columns, list)]
             for group, (dtype, _) in dtypes.fields.items():
                 fmtype = fmtypes_map[dtype]
-                if group == unique_key:
+                if group in one_col_unique_key:
                     columns_types.append("{col} {type} UNIQUE".format(col=group, type=fmtype.db_type))
                 else:
                     columns_types.append("{col} {type}".format(col=group, type=fmtype.db_type))
+            if len(more_col_unique_key) > 0:
+                for key in more_col_unique_key:
+                    columns_types.append("unique ({})".format(",".join(key)))
             cols = "("+", ".join(columns_types)+")"
             cur = self.conn.cursor()
             cur.execute("""

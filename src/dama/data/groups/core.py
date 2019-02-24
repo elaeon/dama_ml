@@ -7,6 +7,7 @@ import pandas as pd
 from collections import OrderedDict
 from dama.utils.decorators import cache
 import dask.array as da
+from numbers import Number
 
 
 class DaGroupDict(OrderedDict):
@@ -91,7 +92,7 @@ class DaGroup(AbsGroup):
         self.writer_conn.set(item, value)
 
     def __add__(self, other: 'DaGroup') -> 'DaGroup':  # fixme redefine the sum between two dagroups
-        if other == 0:
+        if isinstance(other, Number) and other == 0:
             return self
         groups = DaGroupDict()
         groups.update(self.conn)
