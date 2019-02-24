@@ -91,7 +91,7 @@ class DaGroup(AbsGroup):
     def __setitem__(self, item, value):
         self.writer_conn.set(item, value)
 
-    def __add__(self, other: 'DaGroup') -> 'DaGroup':  # fixme redefine the sum between two dagroups
+    def __add__(self, other: 'DaGroup') -> 'DaGroup':
         if isinstance(other, Number) and other == 0:
             return self
         groups = DaGroupDict()
@@ -145,7 +145,7 @@ class DaGroup(AbsGroup):
         if len(self.groups) == 1:
             return self.conn[self.groups[0]]
         else:
-            raise NotImplementedError
+            raise NotImplementedError("I couldn't return a dask array with two groups.")
 
     def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
         self.writer_conn.attrs["dtype"] = dtype
