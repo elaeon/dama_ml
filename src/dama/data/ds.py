@@ -19,6 +19,7 @@ from dama.utils.decorators import cache, clean_cache
 from dama.utils.files import get_dir_file_size
 from dama.utils.order import order_table
 from dama.data.groups.core import DaGroup
+from pydoc import locate
 
 
 settings = get_settings("paths")
@@ -42,7 +43,7 @@ class Data(AbsData):
                 self.metadata_path = metadata_path
             else:
                 self.metadata_path = settings["metadata_path"]
-            self.metadata_driver = Sqlite(login=Login(table="metadata"), path=self.metadata_path)
+            self.metadata_driver = Sqlite(login=Login(table="data"), path=self.metadata_path)
         else:
             self.metadata_path = None
             self.metadata_driver = None
@@ -58,7 +59,11 @@ class Data(AbsData):
         self.compressor_params = None
         self.chunksize = chunks
         self.auto_chunks = auto_chunks
-        self.driver.build_url(self.name, group_level=self.group_name)
+        if self.driver.path is None:
+            path = settings["data_path"]
+        else:
+            path = self.driver.path
+        self.driver.build_url(self.name, group_level=self.group_name, path=path)
 
     @property
     def author(self):
@@ -398,3 +403,21 @@ class Data(AbsData):
             table.append(row)
 
         return tabulate(table, headers)
+
+    @staticmethod
+    def load(hash: str, metadata_driver: AbsDriver, metadata_path: str=None) -> 'Data':
+        with Metadata(metadata_driver) as metadata:
+            data = metadata.query(
+                "SELECT name, driver_module, path, group_name, hash FROM {} WHERE hash = ?".format(
+                    metadata_driver.login.table),
+                (hash,))
+            if len(data) == 0:
+                log.warn("Resource does not exists")
+            else:
+                row = data[0]
+                data_driver = locate(row[1])
+                path = row[2]
+                group_name = None if row[3] == "s/n" else row[3]
+                name = row[0]
+                return Data(name=name, group_name=group_name, driver=data_driver(path=path, mode="r"),
+                            metadata_path=metadata_path)

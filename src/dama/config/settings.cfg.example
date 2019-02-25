@@ -5,6 +5,10 @@ code_path = {home}/softstream/code/
 class_path = {home}
 metadata_path = {home}/softstream/metadata/
 
+[vars]
+data_tag = data
+model_tag = model
+
 [log]
 ;Info level
 loglevel = 10

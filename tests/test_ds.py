@@ -14,6 +14,7 @@ from dama.fmtypes import DEFAUL_GROUP_NAME
 from dama.utils.files import check_or_create_path_dir
 from dama.utils.core import Chunks
 from dama.utils.core import Metadata, Login
+from dama.utils.config import get_settings
 
 try:
     from dama.data.drivers.postgres import Postgres
@@ -24,6 +25,7 @@ except:
     from dama.data.drivers.core import Memory as Postgres
 
 
+settings = get_settings("vars")
 TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'dama_data_test')
 np.random.seed(0)
 
@@ -36,7 +38,7 @@ class TestDataset(unittest.TestCase):
         self.hash = None
 
     def tearDown(self):
-        login = Login(table="metadata")
+        login = Login(table=settings["data_tag"])
         if self.hash is not None:
             with Metadata(Sqlite(path=TMP_PATH, login=login)) as metadata_db:
                 metadata_db.remove_data(self.hash)
@@ -379,7 +381,7 @@ class TestDataset(unittest.TestCase):
             self.hash = data.hash
             metadata_url = data.metadata_url
 
-        driver = Sqlite(path=TMP_PATH, login=Login(table="metadata"))
+        driver = Sqlite(path=TMP_PATH, login=Login(table=settings["data_tag"]))
         with Metadata(driver) as metadata:
             self.assertEqual(metadata.exists(self.hash), True)
 
@@ -426,7 +428,7 @@ class TestDataZarr(unittest.TestCase):
         self.hash = None
 
     def tearDown(self):
-        login = Login(table="metadata")
+        login = Login(table=settings["data_tag"])
         with Metadata(Sqlite(path=TMP_PATH, login=login)) as metadata_db:
             if self.hash is not None:
                 metadata_db.remove_data(self.hash)
@@ -509,7 +511,7 @@ class TestPsqlDriver(unittest.TestCase):
         self.hash = None
 
     def tearDown(self):
-        login = Login(table="metadata")
+        login = Login(table=settings["data_tag"])
         with Metadata(Sqlite(path=TMP_PATH, login=login)) as metadata_db:
             if self.hash is not None:
                 metadata_db.remove_data(self.hash)

@@ -40,17 +40,20 @@ class AbsDriver(ABC):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def build_url(self, filename, group_level=None, with_class_name=True):
+    def build_url(self, filename, group_level=None, with_class_name=True, path=None):
         filename = "{}.{}".format(filename, self.ext)
-        if self.path is None:
-            self.path = settings["data_path"]
+        if path is None:
+            path = self.path
+        else:
+            self.path = path
+
         if with_class_name is True:
             if group_level is None:
-                dir_levels = [self.path, self.cls_name(), filename]
+                dir_levels = [path, self.cls_name(), filename]
             else:
-                dir_levels = [self.path, self.cls_name(), group_level, filename]
+                dir_levels = [path, self.cls_name(), group_level, filename]
         else:
-            dir_levels = [self.path, filename]
+            dir_levels = [path, filename]
         self.url = os.path.join(*dir_levels)
         build_path(dir_levels[:-1])
 

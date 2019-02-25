@@ -1,40 +1,30 @@
-import os
 from dama.utils.config import get_settings
 from dama.utils.numeric_functions import humanize_bytesize
-from pydoc import locate
+
 
 settings = get_settings("paths")
+settings.update(get_settings("vars"))
 
   
 def run(args):
     from dama.measures import ListMeasure
     from dama.data.ds import Data
+    from dama.data.drivers.sqlite import Sqlite
+    from dama.utils.core import Login, Metadata
 
+    login = Login(table=settings["data_tag"])
+    driver = Sqlite(login=login, path=settings["metadata_path"], mode="r")
     if args.info:
-        from dama.utils.core import Login, Metadata
         from dama.data.drivers.core import DataDoesNotFound
-        login = Login(url=os.path.join(settings["metadata_path"], "metadata.sqlite3"), table="metadata")
-        with Metadata(login=login) as metadata:
-            data = metadata.query("SELECT name, driver, path, group_name, hash FROM {} WHERE hash = ?".format(login.table),
-                                  (args.hash[0], ))
-            if len(data) == 0:
-                print("Resource does not exists")
-            else:
-                row = data[0]
-                driver = locate(row[1])
-                path = row[2]
-                group_name = None if row[3] == "s/n" else row[3]
-                name = row[0]
-                with Data(dataset_path=path, name=name, group_name=group_name, driver=driver(mode="r")) as dataset:
-                    try:
-                        dataset.info()
-                    except DataDoesNotFound:
-                        print("Resource does not exists.")
+        with Data.load(args.hash[0], metadata_driver=driver) as dataset:
+            try:
+                dataset.info()
+            except DataDoesNotFound:
+                print("Resource does not exists.")
     elif args.rm:
         from dama.utils.core import Login, Metadata
         from dama.data.it import Iterator
-        login = Login(url=os.path.join(settings["metadata_path"], "metadata.sqlite3"), table="metadata")
-        with Metadata(login=login) as metadata:
+        with Metadata(driver) as metadata:
             if "all" in args.hash:
                 data = metadata.data()[["name", "hash", "is_valid"]]
                 data = data[data["is_valid"] == True]
@@ -55,29 +45,15 @@ def run(args):
     #    for _, model_path_meta in get_models_from_dataset(dataset, settings["checkpoints_path"]):
     #        print("Dataset used in model: {}".format(DataDrive.read_meta("model_module", model_path_meta)))
     elif args.sts:
-        from dama.utils.core import Login, Metadata
-        login = Login(url=os.path.join(settings["metadata_path"], "metadata.sqlite3"), table="metadata")
-        with Metadata(login=login) as metadata:
-            data = metadata.query("SELECT name, driver, path, group_name, hash FROM {} WHERE hash = ?".format(login.table),
-                                  (args.hash[0],))
-            if len(data) == 0:
-                print("Resource does not exists")
-            else:
-                row = data[0]
-                driver = locate(row[1])
-                path = row[2]
-                group_name = None if row[3] == "s/n" else row[3]
-                name = row[0]
-                with Data(dataset_path=path, name=name, group_name=group_name, driver=driver(mode="r")) as dataset:
-                    print(dataset.stadistics())
+        with Data.load(args.hash[0], metadata_driver=driver) as dataset:
+            print(dataset.stadistics())
     else:
         from dama.utils.core import Login, Metadata
         from dama.utils.miscellaneous import str2slice
         import sqlite3
-        login = Login(url=os.path.join(settings["metadata_path"], "metadata.sqlite3"), table="metadata")
         headers = ["hash", "name", "driver", "group name", "size", "num groups", "datetime UTC"]
         page = str2slice(args.items)
-        with Metadata(login) as metadata:
+        with Metadata(driver) as metadata:
             try:
                 total = metadata.query("SELECT COUNT(*) FROM %s WHERE is_valid=True" % login.table, ())
             except sqlite3.OperationalError as e:
@@ -87,7 +63,7 @@ def run(args):
                 data = data[data["is_valid"] == True][page]
                 df = data.to_df()
                 df.rename(columns={"timestamp": "datetime UTC", "group_name": "group name",
-                                   "num_groups": "num groups"}, inplace=True)
+                                   "num_groups": "num groups", "driver_name": "driver"}, inplace=True)
                 df["size"] = df["size"].apply(humanize_bytesize)
                 print("Total {} / {}".format(len(df), total[0][0]))
                 list_measure = ListMeasure(headers=headers, measures=df[headers].values)

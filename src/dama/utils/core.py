@@ -174,12 +174,12 @@ class Login(object):
 
 
 class Metadata(dict):
-    name = "metadata"
 
     def __init__(self, driver, *args, **kwargs):
         super(Metadata, self).__init__(*args, **kwargs)
         self.driver = driver
-        self.driver.build_url(self.name, with_class_name=False)
+        self.name = self.driver.login.table
+        self.driver.build_url("metadata", with_class_name=False)
 
     def __enter__(self):
         self.driver.open()
@@ -197,7 +197,6 @@ class Metadata(dict):
             self.driver.insert(data)
         except sqlite3.IntegrityError as e:
             log.error(e)
-            log.warning("This dataset already exists.")
 
     def query(self, query: str, values: tuple) -> tuple:
         try:
@@ -206,6 +205,7 @@ class Metadata(dict):
             cur.close()
         except sqlite3.OperationalError as e:
             log.error(e)
+            log.error(self.driver.url)
         else:
             self.driver.conn.commit()
             return data
@@ -215,15 +215,15 @@ class Metadata(dict):
         return self.driver.data(chunks)
 
     def remove_data(self, hash_hex: str):
-        self.query("DELETE FROM metadata WHERE hash = ?", (hash_hex, ))
+        self.query("DELETE FROM {} WHERE hash = ?".format(self.name), (hash_hex, ))
 
     def invalid(self, hash_hex: str):
-        self.query("UPDATE metadata SET is_valid=False WHERE hash = ?", (hash_hex,))
+        self.query("UPDATE {} SET is_valid=False WHERE hash = ?".format(self.name), (hash_hex,))
 
     def exists(self, hash_hex: str) -> bool:
-        result = self.query("SELECT id FROM metadata WHERE hash = ?", (hash_hex, ))
+        result = self.query("SELECT id FROM {} WHERE hash = ?".format(self.name), (hash_hex, ))
         return len(result) > 0
 
     def is_valid(self, hash_hex: str) -> bool:
-        result = self.query("SELECT is_valid FROM metadata WHERE hash = ?", (hash_hex,))
+        result = self.query("SELECT is_valid FROM {} WHERE hash = ?".format(self.name), (hash_hex,))
         return result[0][0]
