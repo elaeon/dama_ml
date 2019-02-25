@@ -1,10 +1,15 @@
 from abc import ABC, abstractmethod
 from numcodecs.abc import Codec
 import numpy as np
+import os
+from dama.utils.config import get_settings
 from dama.utils.logger import log_config
 from dama.utils.core import Login, Chunks
 from dama.data.groups.core import DaGroup
+from dama.utils.files import build_path
 
+
+settings = get_settings("paths")
 log = log_config(__name__)
 
 
@@ -12,7 +17,7 @@ class AbsDriver(ABC):
     persistent = None
     ext = None
 
-    def __init__(self, compressor: Codec = None, login: Login = None, mode: str = 'a'):
+    def __init__(self, compressor: Codec = None, login: Login = None, mode: str = 'a', path: str = None):
         self.compressor = compressor
         self.conn = None
         if compressor is not None:
@@ -23,6 +28,8 @@ class AbsDriver(ABC):
 
         self.mode = mode
         self.attrs = None
+        self.path = path
+        self.url = None
         self.login = login
         log.debug("Driver: {}, mode: {}, compressor: {}".format(self.cls_name(),
                                                                 self.mode, self.compressor))
@@ -32,6 +39,20 @@ class AbsDriver(ABC):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+    def build_url(self, filename, group_level=None, with_class_name=True):
+        filename = "{}.{}".format(filename, self.ext)
+        if self.path is None:
+            self.path = settings["data_path"]
+        if with_class_name is True:
+            if group_level is None:
+                dir_levels = [self.path, self.cls_name(), filename]
+            else:
+                dir_levels = [self.path, self.cls_name(), group_level, filename]
+        else:
+            dir_levels = [self.path, filename]
+        self.url = os.path.join(*dir_levels)
+        build_path(dir_levels[:-1])
 
     def data(self, chunks: Chunks) -> DaGroup:
         return DaGroup(self.absgroup, chunks=chunks)

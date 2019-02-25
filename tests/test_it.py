@@ -401,7 +401,7 @@ class TestIteratorToData(unittest.TestCase):
         array = np.zeros((num_items, 4)) + [1, 2, 3, 0]
         array[:, 3] = np.random.rand(1, num_items) > .5
         it = Iterator(array).sample(num_samples, col=3, weight_fn=fn)
-        with Data(name="test", dataset_path="/tmp") as data:
+        with Data(name="test") as data:
             data.from_data(it, chunks=(258, 4))
             c = collections.Counter(data.to_ndarray()[:, 3])
             self.assertEqual(c[1]/float(num_samples) > .79, True)
@@ -471,7 +471,7 @@ class TestIteratorFromData(unittest.TestCase):
 class TestIteratorLoop(unittest.TestCase):
     def test_cycle_it(self):
         array = np.arange(10)
-        with Data(name="test", dataset_path="/tmp") as data:
+        with Data(name="test") as data:
             data.from_data(array, chunks=(3, ))
             it = Iterator(data).cycle()[:20]
             elems = []
@@ -485,7 +485,7 @@ class TestIteratorLoop(unittest.TestCase):
         z_array = np.random.rand(10)
         da_group = DaGroup({"x": x_array, "y": y_array, "z": z_array},
                            chunks=Chunks({"x": (5, ), "y": (5, ), "z": (5, )}))
-        with Data(name="test", dataset_path="/tmp/") as data:
+        with Data(name="test") as data:
             data.from_data(da_group)
             it = Iterator(data).batchs(chunks=(1, )).cycle().to_iter()
             for i, x_y_z in enumerate(it):
@@ -496,7 +496,7 @@ class TestIteratorLoop(unittest.TestCase):
 
     def test_cycle_it_batch_cut(self):
         x = range(10)
-        with Data(name="test", dataset_path="/tmp/") as data:
+        with Data(name="test") as data:
             data.from_data(x, chunks=(3, ))
             it = Iterator(data).batchs(chunks=(3, )).cycle()[:22]
             elems = []

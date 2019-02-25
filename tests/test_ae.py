@@ -12,7 +12,7 @@ from dama.utils.files import check_or_create_path_dir
 from dama.utils.core import Chunks
 
 
-TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'softstream_data_test')
+TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'dama_data_test')
 
 
 class TestUnsupervicedModel(unittest.TestCase):
@@ -22,8 +22,8 @@ class TestUnsupervicedModel(unittest.TestCase):
         self.x = np.sin(6 * x).reshape(-1, 1)
 
     def train(self, ae, model_params=None):
-        with Data(name="tsne", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as dataset, \
-                Data(name="test", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as ds:
+        with Data(name="tsne", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as dataset, \
+                Data(name="test", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
             batch_size = 12
             tsne = TSNe(batch_size=batch_size, perplexity=ae.perplexity, dim=2)
             x_p = BatchIterator.from_batchs(tsne.calculate_P(self.x), length=len(self.x), from_batch_size=tsne.batch_size,
@@ -43,12 +43,12 @@ class TestUnsupervicedModel(unittest.TestCase):
         ae = self.train(PTsne(), model_params=None)
         metadata = Metadata.get_metadata(ae.path_metadata, ae.path_metadata_version)
         self.assertEqual(len(metadata["train"]["model_json"]) > 0, True)
-        with Data(name="test0", dataset_path=TMP_PATH, driver=HDF5(mode="w")) as dataset:
+        with Data(name="test0", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as dataset:
             dataset.from_data(self.x)
 
         with PTsne.load(model_version="1", model_name="tsne", path=TMP_PATH) as ae,\
-            Data(name="test0", dataset_path=TMP_PATH, driver=HDF5(mode="r"),
-                 chunks=Chunks({"g0": (10, 1)})) as dataset:
+            Data(name="test0", driver=HDF5(mode="r", path=TMP_PATH),
+                 chunks=Chunks({"g0": (10, 1)}), metadata_path=TMP_PATH) as dataset:
             self.assertEqual(ae.predict(dataset).shape, (120, 2))
             ae.destroy()
             dataset.destroy()

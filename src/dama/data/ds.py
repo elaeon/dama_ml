@@ -1,5 +1,4 @@
 import datetime
-import os
 import json
 import numpy as np
 import pandas as pd
@@ -10,10 +9,10 @@ from tqdm import tqdm
 from tabulate import tabulate
 from dama.abc.data import AbsData
 from dama.data.it import Iterator, BaseIterator, BatchIterator
-from dama.utils.files import build_path
 from dama.utils.core import Hash, Login, Metadata, Chunks, Shape
 from dama.abc.driver import AbsDriver
 from dama.data.drivers.core import Memory
+from dama.data.drivers.sqlite import Sqlite
 from dama.utils.logger import log_config
 from dama.utils.config import get_settings
 from dama.utils.decorators import cache, clean_cache
@@ -27,8 +26,8 @@ log = log_config(__name__)
 
 
 class Data(AbsData):
-    def __init__(self, name: str = None, dataset_path: str = None, driver: AbsDriver = None,
-                 group_name: str = None, chunks: Chunks = None, auto_chunks=False, metadata_path: str = None):
+    def __init__(self, name: str = None, driver: AbsDriver = None, group_name: str = None,
+                 chunks: Chunks = None, auto_chunks=False, metadata_path: str = None):
 
         if driver is None:
             self.driver = Memory()
@@ -38,15 +37,15 @@ class Data(AbsData):
         if name is None and not isinstance(self.driver, Memory):
             raise Exception("I can't build a dataset without a name, plese add a name to this dataset.")
 
-        if dataset_path is None:
-            self.dataset_path = settings["data_path"]
+        if self.driver.persistent is True:
+            if metadata_path is not None:
+                self.metadata_path = metadata_path
+            else:
+                self.metadata_path = settings["metadata_path"]
+            self.metadata_driver = Sqlite(login=Login(table="metadata"), path=self.metadata_path)
         else:
-            self.dataset_path = dataset_path
-
-        if metadata_path is not None:
-            self.metadata_path = metadata_path
-        else:
-            self.metadata_path = settings["metadata_path"]
+            self.metadata_path = None
+            self.metadata_driver = None
 
         self.name = name
         self.header_map = ["author", "description"]
@@ -59,10 +58,7 @@ class Data(AbsData):
         self.compressor_params = None
         self.chunksize = chunks
         self.auto_chunks = auto_chunks
-        if self.driver.login is None:
-            self.driver.login = Login(url=self.url)
-        else:
-            self.driver.login.url = self.url
+        self.driver.build_url(self.name, group_level=self.group_name)
 
     @property
     def author(self):
@@ -131,7 +127,6 @@ class Data(AbsData):
         self.data = None
 
     def open(self):
-        build_path(self.dir_levels())
         self.driver.open()
 
         if self.driver.data_tag is None:
@@ -156,11 +151,6 @@ class Data(AbsData):
 
     def __next__(self):
         return next(self.data)
-
-    @property
-    def basic_params(self):
-        return {"name": self.name, "dataset_path": self.dataset_path,
-                "driver": self.driver.module_cls_name(), "group_name": self.group_name}
 
     def _set_attr(self, name, value):
         if value is not None:
@@ -193,28 +183,17 @@ class Data(AbsData):
     def destroy(self):
         hash_hex = self.hash
         self.driver.destroy()
-        login = Login(url=self.metadata_url, table="metadata")
-        with Metadata(login) as metadata:
-            metadata.invalid(hash_hex)
-
-    def dir_levels(self) -> list:
-        if self.group_name is None:
-            return [self.dataset_path, self.driver.cls_name()]
-        else:
-            return [self.dataset_path, self.driver.cls_name(), self.group_name]
+        if self.driver.persistent is True:
+            with Metadata(self.metadata_driver) as metadata:
+                metadata.invalid(hash_hex)
 
     @property
     def url(self) -> str:
-        """
-        return the path where is saved the dataset
-        """
-        filename = "{}.{}".format(self.name, self.driver.ext)
-        dir_levels = self.dir_levels() + [filename]
-        return os.path.join(*dir_levels)
+        return self.driver.url
 
     @property
     def metadata_url(self) -> str:
-        return os.path.join(self.metadata_path, "metadata.sqlite3")
+        return self.metadata_driver.url
 
     def __len__(self):
         return len(self.data)
@@ -227,9 +206,9 @@ class Data(AbsData):
     def groups(self) -> tuple:
         return self.driver.absgroup.groups
 
-    @groups.setter
-    def groups(self, value) -> None:
-        raise NotImplementedError
+    # @groups.setter
+    # def groups(self, value) -> None:
+    #    raise NotImplementedError
 
     @property
     def dtypes(self) -> np.dtype:
@@ -256,12 +235,16 @@ class Data(AbsData):
     def metadata(self) -> dict:
         meta_dict = dict()
         meta_dict["hash"] = self.hash
-        meta_dict["dir_levels"] = self.dir_levels()
-        meta_dict["driver"] = self.driver.module_cls_name()
+        meta_dict["path"] = self.driver.path,
+        meta_dict["metadata_path"] = self.metadata_path,
+        meta_dict["group_name"] = self.group_name
+        meta_dict["driver_module"] = self.driver.module_cls_name()
+        meta_dict["driver_name"] = self.driver.cls_name()
         meta_dict["name"] = self.name
         meta_dict["size"] = get_dir_file_size(self.url)
         meta_dict["timestamp"] = self.timestamp
         meta_dict["author"] = self.author
+        meta_dict["num_groups"] = len(self.groups)
         meta_dict["description"] = self.description if self.description is None else self.description[:100]
         return meta_dict
 
@@ -271,23 +254,17 @@ class Data(AbsData):
 
     def write_metadata(self):
         if self.driver.persistent is True:
-            build_path([self.metadata_path])
-            login = Login(url=self.metadata_url, table="metadata")
-            with Metadata(login, self.metadata()) as metadata:
+            with Metadata(self.metadata_driver, self.metadata()) as metadata:
                 dtypes = np.dtype([("hash", object), ("name", object), ("author", object),
-                                   ("description", object), ("size", int), ("driver", object),
+                                   ("description", object), ("size", int), ("driver_module", object),
                                    ("path", object), ("driver_name", object), ("group_name", object),
                                    ("timestamp", np.dtype("datetime64[ns]")),
                                    ("is_valid", bool), ("num_groups", int)])
                 timestamp = metadata["timestamp"]
                 metadata["timestamp"] = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M UTC')
                 metadata["is_valid"] = True
-                metadata["num_groups"] = len(self.groups)
-                dir_levels = metadata["dir_levels"]
-                metadata["path"] = dir_levels[0]
-                metadata["driver_name"] = dir_levels[1]
                 metadata["group_name"] = "s/n" if self.group_name is None else self.group_name
-                metadata.build_schema(dtypes, unique_key=["hash", ["path", "name", "driver_name", "group_name"]])
+                metadata.set_schema(dtypes, unique_key=["hash", ["path", "name", "driver_name", "group_name"]])
                 metadata.insert_data()
 
     def calc_hash(self, with_hash: str = 'sha1') -> str:
@@ -376,7 +353,7 @@ class Data(AbsData):
         self.chunksize = Chunks.build_from_shape(self.shape, self.dtypes)
         table = []
         for group, (dtype, _) in self.dtypes.fields.items():
-            values = {}
+            values = dict()
             values["dtype"] = dtype
             values["group"] = group
             values["shape"] = self.shape[group]
@@ -421,4 +398,3 @@ class Data(AbsData):
             table.append(row)
 
         return tabulate(table, headers)
-

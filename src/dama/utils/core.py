@@ -174,40 +174,45 @@ class Login(object):
 
 
 class Metadata(dict):
-    def __init__(self, login: Login, *args, **kwargs):
+    name = "metadata"
+
+    def __init__(self, driver, *args, **kwargs):
         super(Metadata, self).__init__(*args, **kwargs)
-        self.login = login
+        self.driver = driver
+        self.driver.build_url(self.name, with_class_name=False)
 
     def __enter__(self):
-        from dama.data.drivers.sqlite import Sqlite
-        self.metadata_db = Sqlite(login=self.login)
-        self.metadata_db.open()
+        self.driver.open()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.metadata_db.close()
+        self.driver.close()
 
-    def build_schema(self, dtypes: np.dtype, unique_key: list = None):
-        self.metadata_db.set_schema(dtypes, unique_key=unique_key)
+    def set_schema(self, dtypes: np.dtype, unique_key: list = None):
+        self.driver.set_schema(dtypes, unique_key=unique_key)
 
     def insert_data(self):
         try:
-            data = [self[group] for group in self.metadata_db.groups]
-            self.metadata_db.insert(data)
+            data = [self[group] for group in self.driver.groups]
+            self.driver.insert(data)
         except sqlite3.IntegrityError as e:
             log.error(e)
             log.warning("This dataset already exists.")
 
-    def query(self, query: str, values: tuple):
-        cur = self.metadata_db.conn.cursor()
-        data = cur.execute(query, values).fetchall()
-        cur.close()
-        self.metadata_db.conn.commit()
-        return data
+    def query(self, query: str, values: tuple) -> tuple:
+        try:
+            cur = self.driver.conn.cursor()
+            data = cur.execute(query, values).fetchall()
+            cur.close()
+        except sqlite3.OperationalError as e:
+            log.error(e)
+        else:
+            self.driver.conn.commit()
+            return data
 
     def data(self):
-        chunks = Chunks.build_from(10, self.metadata_db.groups)
-        return self.metadata_db.data(chunks)
+        chunks = Chunks.build_from(10, self.driver.groups)
+        return self.driver.data(chunks)
 
     def remove_data(self, hash_hex: str):
         self.query("DELETE FROM metadata WHERE hash = ?", (hash_hex, ))

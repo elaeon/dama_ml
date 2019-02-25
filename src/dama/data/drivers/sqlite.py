@@ -2,7 +2,6 @@ from dama.abc.driver import AbsDriver
 from dama.data.groups.sqlite import Table
 from dama.fmtypes import fmtypes_map
 from dama.utils.logger import log_config
-from dama.utils.core import Chunks
 import numpy as np
 import sqlite3
 
@@ -11,7 +10,7 @@ log = log_config(__name__)
 
 class Sqlite(AbsDriver):
     persistent = True
-    ext = 'sql'
+    ext = 'sqlite3'
     data_tag = None
     metadata_tag = None
 
@@ -19,7 +18,7 @@ class Sqlite(AbsDriver):
         return self.exists()
 
     def open(self):
-        self.conn = sqlite3.connect(self.login.url, check_same_thread=False)
+        self.conn = sqlite3.connect(self.url, check_same_thread=False)
         self.data_tag = self.login.table
         self.attrs = {}
         if self.mode == "w":

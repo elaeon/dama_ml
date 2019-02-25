@@ -36,7 +36,7 @@ class HDF5(AbsDriver):
 
     def open(self):
         if self.conn is None:
-            self.conn = h5py.File(self.login.url, mode=self.mode)
+            self.conn = h5py.File(self.url, mode=self.mode)
             self.attrs = self.conn.attrs
 
     def close(self):
@@ -54,10 +54,10 @@ class HDF5(AbsDriver):
                                          **self.compressor_params)
 
     def destroy(self):
-        rm(self.login.url)
+        rm(self.url)
 
     def exists(self):
-        return os.path.exists(self.login.url)
+        return os.path.exists(self.url)
 
     def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key: str = None):
         if self.metadata_tag in self.conn:
@@ -100,7 +100,7 @@ class Zarr(AbsDriver):
 
     def open(self):
         if self.conn is None:
-            self.conn = zarr.open(self.login.url, mode=self.mode)
+            self.conn = zarr.open(self.url, mode=self.mode)
             self.attrs = self.conn.attrs
         return self
 
@@ -118,10 +118,10 @@ class Zarr(AbsDriver):
                                          compressor=self.compressor)
 
     def destroy(self):
-        rm(self.login.url)
+        rm(self.url)
 
     def exists(self):
-        return os.path.exists(self.login.url)
+        return os.path.exists(self.url)
 
     def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key=None):
         if self.metadata_tag in self.conn:
