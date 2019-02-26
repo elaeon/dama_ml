@@ -3,8 +3,6 @@ import numpy as np
 import os
 from dama.data.ds import Data
 from dama.utils.files import check_or_create_path_dir
-from dama.utils.core import Login, Metadata
-from dama.data.drivers.sqlite import Sqlite
 
 
 TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'dama_data_test')
@@ -37,10 +35,7 @@ class TestRegSKL(unittest.TestCase):
         self.hash = None
 
     def tearDown(self):
-        login = Login(table="model")
-        if self.hash is not None:
-            with Metadata(Sqlite(path=TMP_PATH, login=login)) as metadata_db:
-                metadata_db.remove_data(self.hash)
+        pass
 
     def test_load_meta(self):
         with Data(name="reg0") as dataset, Data(name="test_cv_skl", driver=HDF5(mode="w", path=TMP_PATH),
@@ -160,10 +155,7 @@ class TestXgboost(unittest.TestCase):
             reg.save(name="test", path=TMP_PATH, model_version="1")
 
     def tearDown(self):
-        login = Login(table="model")
-        if self.hash is not None:
-            with Metadata(Sqlite(path=TMP_PATH, login=login)) as metadata_db:
-                metadata_db.remove_data(self.hash)
+        pass
 
     def test_predict(self):
         with Xgboost.load(model_name="test", path=TMP_PATH, model_version="1",
@@ -186,7 +178,6 @@ class TestLightGBM(unittest.TestCase):
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(self.dataset)
             ds.from_data(stc)
-            self.hash = ds.hash
             if LightGBM == RandomForestRegressor:
                 self.params = {}
             else:
@@ -203,10 +194,7 @@ class TestLightGBM(unittest.TestCase):
             reg.save(name="test", path=TMP_PATH, model_version=self.model_version)
 
     def tearDown(self):
-        login = Login(table="model")
-        if self.hash is not None:
-            with Metadata(Sqlite(path=TMP_PATH, login=login)) as metadata_db:
-                metadata_db.remove_data(self.hash)
+        pass
 
     def test_predict(self):
         with LightGBM.load(model_name="test", path=TMP_PATH, model_version=self.model_version,
@@ -242,7 +230,7 @@ class TestWrappers(unittest.TestCase):
         return reg
 
     def test_gbr(self):
-        reg =  GradientBoostingRegressor(metadata_path=TMP_PATH)
+        reg = GradientBoostingRegressor(metadata_path=TMP_PATH)
         reg = self.train(reg, model_params=dict(learning_rate=0.2, random_state=3))
         reg.ds.driver.mode = "a"
         with reg.ds:

@@ -69,7 +69,7 @@ class MetadataX(object):
         self.group_name = None
         self.model_version = None
         self.base_path = None
-        self.path_metadata = None
+        # self.path_metadata = None
         self.path_model_version = None
         self.path_metadata_version = None
         self.metaext = "json"
@@ -92,15 +92,13 @@ class MetadataX(object):
             log.error("{} {}".format(e, path))
 
     @staticmethod
-    def get_metadata(path_metadata, path_metadata_version: str = None):
-        if path_metadata is not None:
-            #metadata = {"model": MetadataX.load_json(path_metadata)}
-            metadata = {}
-            if path_metadata_version is not None:
-                metadata["train"] = MetadataX.load_json(path_metadata_version)
-            else:
-                metadata["train"] = {}
-            return metadata
+    def get_metadata(path_metadata_version: str = None):
+        metadata = {}
+        if path_metadata_version is not None:
+            metadata["train"] = MetadataX.load_json(path_metadata_version)
+        else:
+            metadata["train"] = {}
+        return metadata
 
     @staticmethod
     def make_model_file(name, path, classname, metaext):
@@ -119,12 +117,12 @@ class MetadataX(object):
         return "{}.{}".format(filename, ext)
 
     def print_meta(self):
-        print(MetadataX.get_metadata(self.path_metadata, self.path_metadata_version))
+        print(MetadataX.get_metadata(self.path_metadata_version))
 
     def destroy(self):
         """remove the dataset associated to the model and his checkpoints"""
-        if self.path_metadata is not None:
-            rm(self.path_metadata)
+        #if self.path_metadata is not None:
+        #    rm(self.path_metadata)
         if self.path_metadata_version is not None:
             rm(self.path_model_version)
             rm(self.path_metadata_version)
@@ -163,11 +161,6 @@ class BaseModel(MetadataX, ABC):
     def scores(self, measures=None, batch_size=2000):
         return NotImplemented
 
-    #@classmethod
-    #@abstractmethod
-    #def load(cls, model_name: str, model_version: str, group_name: str = None, path: str = None):
-    #    return NotImplemented
-
     @abstractmethod
     def output_format(self, prediction, output=None):
         return NotImplemented
@@ -205,21 +198,22 @@ class BaseModel(MetadataX, ABC):
 
     def __enter__(self):
         self.ds = self.get_dataset()
-        self.ds.__enter__()
+        self.ds.open()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.ds.__exit__(exc_type, exc_val, exc_tb)
+        self.ds.close()
 
     def get_dataset(self) -> Data:
         log.debug("LOADING DS FOR MODEL: {} {} {} {}".format(self.cls_name(), self.model_name,
                                                              self.model_version, self.base_path))
+        group_name = "s/n" if self.group_name is None else self.group_name
         with Metadata(Sqlite(login=Login(table=settings["model_tag"]), path=self.metadata_path)) as metadata:
-            data_hash = metadata.query(
-                "SELECT hash FROM {} WHERE name=? AND version=? AND model_module=? AND group_name=? AND base_path=?".format(
-                settings["model_tag"]),
-                (self.model_name, self.model_version, self.module_cls_name(), self.group_name, self.base_path))
-
+            query = "SELECT hash FROM {} WHERE name=? AND version=? AND model_module=? AND group_name=? AND base_path=?".format(
+                settings["model_tag"])
+            data_hash = metadata.query(query,
+                                       (self.model_name, self.model_version, self.module_cls_name(),
+                                        group_name, self.base_path))
         if len(data_hash) > 0:
             driver = Sqlite(login=Login(table=settings["data_tag"]), path=self.metadata_path)
             with Data.load(data_hash[0][0], metadata_driver=driver) as dataset:
@@ -243,18 +237,18 @@ class BaseModel(MetadataX, ABC):
                                ("score", float), ("metadata_path_train", object), ("base_path", object)])
             metadata["is_valid"] = True
             metadata["group_name"] = "s/n" if self.group_name is None else self.group_name
-            metadata.set_schema(dtypes, unique_key=[["base_path", "name", "group_name", "version", "model_module",
-                                                     "score_name"]])
+            keys = ["base_path", "name", "group_name", "version", "model_module", "score_name"]
+            metadata.set_schema(dtypes, unique_key=[keys])
             if len(metadata_train["score"]) == 0:
                 metadata["score_name"] = "s/n"
                 metadata["score"] = 0
-                metadata.insert_data()
+                metadata.insert_update_data(keys=keys)
             else:
                 for score_name in metadata_train["score"].keys():
                     if score_name != "":
                         metadata["score_name"] = score_name
                         metadata["score"] = metadata_train["score"][score_name]["values"][0]
-                        metadata.insert_data()
+                        metadata.insert_update_data(keys=keys)
 
     def save(self, name, path: str = None, model_version="1"):
         self.model_version = model_version
@@ -263,7 +257,7 @@ class BaseModel(MetadataX, ABC):
             self.base_path = settings["models_path"]
         else:
             self.base_path = path
-        self.path_metadata = MetadataX.make_model_file(name, self.base_path, self.cls_name(), self.metaext)
+        #self.path_metadata = MetadataX.make_model_file(name, self.base_path, self.cls_name(), self.metaext)
         self.path_metadata_version = self.make_model_version_file(name, path, self.cls_name(), self.metaext,
                                                                   self.model_version)
         self.path_model_version = MetadataX.make_model_version_file(name, path, self.cls_name(), self.ext,
@@ -280,8 +274,8 @@ class BaseModel(MetadataX, ABC):
         if self.path_model_version is not None:
             self.model.load(self.path_model_version)
 
-    def load_metadata(self, path_metadata, path_metadata_version):
-        metadata = MetadataX.get_metadata(path_metadata, path_metadata_version)
+    def load_metadata(self, path_metadata_version):
+        metadata = MetadataX.get_metadata(path_metadata_version)
         self.model_version = metadata["train"]["model_version"]
         self.model_params = metadata["train"]["hyperparams"]
         self.num_steps = metadata["train"]["num_steps"]
@@ -296,7 +290,7 @@ class BaseModel(MetadataX, ABC):
         return NotImplemented
 
     def scores2table(self):
-        meta = MetadataX.get_metadata(self.path_metadata, self.path_metadata_version)
+        meta = MetadataX.get_metadata(self.path_metadata_version)
         try:
             scores = meta["train"]["score"]
         except KeyError:
@@ -314,13 +308,13 @@ class BaseModel(MetadataX, ABC):
             group_name = "s/n"
         model.group_name = group_name
         model.base_path = path
-        path_metadata = MetadataX.make_model_file(model_name, path, model.cls_name(), model.metaext)
+        #path_metadata = MetadataX.make_model_file(model_name, path, model.cls_name(), model.metaext)
         path_metadata_version = MetadataX.make_model_version_file(model_name, path, model.cls_name(),
                                                                   model.metaext, model_version=model_version)
         model.path_metadata_version = path_metadata_version
         model.path_model_version = MetadataX.make_model_version_file(model_name, path, model.cls_name(),
                                                                      model.ext, model_version=model_version)
-        model.load_metadata(path_metadata, path_metadata_version)
+        model.load_metadata(path_metadata_version)
         model.load_model()
         return model
 
@@ -348,15 +342,6 @@ class SupervicedModel(BaseModel):
 
 
 class UnsupervisedModel(BaseModel):
-    #@classmethod
-    #def load(cls, model_name: str, model_version: str, group_name: str = None, path: str = None):
-    #    model = cls()
-    #    path_metadata = MetadataX.make_model_file(model_name, path, model.cls_name(), model.metaext)
-    #    path_metadata_version = MetadataX.make_model_version_file(model_name, path, model.cls_name(),
-    #                                                             model.metaext, model_version=model_version)
-    #    model.load_metadata(path_metadata, path_metadata_version)
-    #    model.load_model()
-    #    return model
 
     def train(self, ds: Data, batch_size: int = 0, num_steps: int = 0, n_splits=None, obj_fn=None,
               model_params: dict = None, data_train_group="train_x", target_train_group='train_y',

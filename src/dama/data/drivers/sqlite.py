@@ -45,6 +45,8 @@ class Sqlite(AbsDriver):
             cur.execute("DROP TABLE {name}".format(name=self.data_tag))
         except sqlite3.ProgrammingError as e:
             log.debug(e)
+        except sqlite3.OperationalError as e:
+            log.error(e)
         self.conn.commit()
 
     @property
@@ -58,8 +60,12 @@ class Sqlite(AbsDriver):
     def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key: list = None):
         if not self.exists():
             columns_types = ["id INTEGER PRIMARY KEY"]
-            one_col_unique_key = [column for column in unique_key if isinstance(column, str)]
-            more_col_unique_key = [columns for columns in unique_key if isinstance(columns, list)]
+            if unique_key is not None:
+                one_col_unique_key = [column for column in unique_key if isinstance(column, str)]
+                more_col_unique_key = [columns for columns in unique_key if isinstance(columns, list)]
+            else:
+                one_col_unique_key = []
+                more_col_unique_key = []
             for group, (dtype, _) in dtypes.fields.items():
                 fmtype = fmtypes_map[dtype]
                 if group in one_col_unique_key:

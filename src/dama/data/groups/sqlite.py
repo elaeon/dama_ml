@@ -104,15 +104,14 @@ class Table(AbsGroup):
         self.conn.commit()
         cur.close()
 
-    def update(self, value, item):
+    def update(self, values, item):
         if isinstance(item, int):
-            columns_values = [[self.groups[0], value]]
-            columns_values = ["{col}={val}".format(col=col, val=val) for col, val in columns_values]
-            query = "UPDATE {name} SET {columns_val} WHERE ID = ?".format(
-                name=self.name, columns_val=",".join(columns_values), id=item+1
-            )
+            columns = ["{col}=?".format(col=group) for group in self.groups]
+            query = "UPDATE {name} SET {columns_val} WHERE ID = ?".format(name=self.name,
+                                                                          columns_val=",".join(columns))
             cur = self.conn.cursor()
-            cur.execute(query, item+1)
+            values_list = list(values) + [item+1]
+            cur.execute(query, values_list)
             self.conn.commit()
             cur.close()
         else:
@@ -186,7 +185,7 @@ class Table(AbsGroup):
 
     def last_id(self):
         cur = self.conn.cursor()
-        cur.execute("SELECT max(id) FROM %s".format(self.name))
+        cur.execute("SELECT max(id) FROM {}".format(self.name))
         id_ = cur.fetchone()[0]
         cur.close()
         return id_

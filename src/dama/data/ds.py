@@ -240,8 +240,8 @@ class Data(AbsData):
     def metadata(self) -> dict:
         meta_dict = dict()
         meta_dict["hash"] = self.hash
-        meta_dict["path"] = self.driver.path,
-        meta_dict["metadata_path"] = self.metadata_path,
+        meta_dict["path"] = self.driver.path
+        meta_dict["metadata_path"] = self.metadata_path
         meta_dict["group_name"] = self.group_name
         meta_dict["driver_module"] = self.driver.module_cls_name()
         meta_dict["driver_name"] = self.driver.cls_name()
@@ -250,7 +250,7 @@ class Data(AbsData):
         meta_dict["timestamp"] = self.timestamp
         meta_dict["author"] = self.author
         meta_dict["num_groups"] = len(self.groups)
-        meta_dict["description"] = self.description if self.description is None else self.description[:100]
+        meta_dict["description"] = self.description if self.description is None else ""
         return meta_dict
 
     def metadata_to_json(self, f):
@@ -263,14 +263,14 @@ class Data(AbsData):
                 dtypes = np.dtype([("hash", object), ("name", object), ("author", object),
                                    ("description", object), ("size", int), ("driver_module", object),
                                    ("path", object), ("driver_name", object), ("group_name", object),
-                                   ("timestamp", np.dtype("datetime64[ns]")),
-                                   ("is_valid", bool), ("num_groups", int)])
+                                   ("timestamp", np.dtype("datetime64[ns]")), ("num_groups", int),
+                                   ("is_valid", bool)])
                 timestamp = metadata["timestamp"]
                 metadata["timestamp"] = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M UTC')
-                metadata["is_valid"] = True
                 metadata["group_name"] = "s/n" if self.group_name is None else self.group_name
+                metadata["is_valid"] = True
                 metadata.set_schema(dtypes, unique_key=["hash", ["path", "name", "driver_name", "group_name"]])
-                metadata.insert_data()
+                metadata.insert_update_data(keys=["path", "name", "driver_name", "group_name"])
 
     def calc_hash(self, with_hash: str = 'sha1') -> str:
         hash_obj = Hash(hash_fn=with_hash)

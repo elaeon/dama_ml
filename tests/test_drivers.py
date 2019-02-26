@@ -1,10 +1,14 @@
 import unittest
 import numpy as np
+import os
 from dama.data.drivers.core import Memory, Zarr, HDF5
 from dama.utils.core import Shape, Login, Chunks
 from dama.data.drivers.postgres import Postgres
 from dama.data.drivers.sqlite import Sqlite
+from dama.utils.files import check_or_create_path_dir
 
+
+TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'dama_data_test')
 
 
 class TestDriverAbsBaseGroup(unittest.TestCase):
@@ -25,10 +29,10 @@ class TestDriverAbsBaseGroup(unittest.TestCase):
         self.shape = Shape({"c0": self.array_c0.shape, "c1": self.array_c1.shape, "c2": self.array_c2.shape})
         self.dtype = np.dtype([("c0", self.array_c0.dtype), ("c1", self.array_c1.dtype), ("c2", self.array_c2.dtype)])
 
-        self.url = "/tmp/test_{}".format(10)#np.random.randint(0, 10))
-        self.login = Login(username="alejandro", resource="ml", url=self.url)
+        self.login = Login(username="alejandro", resource="ml", table="test")
         # self.driver = Zarr(login=self.login)
-        self.driver = Memory()
+        self.driver = Memory(path=TMP_PATH)
+        self.driver.build_url("test_{}".format(10))
         # self.driver = HDF5(login=self.login)
 
         with self.driver:
@@ -105,14 +109,13 @@ class TestDriverAbsGroup(unittest.TestCase):
         self.shape = Shape({"c0": self.array_c0.shape, "c1": self.array_c1.shape, "c2": self.array_c2.shape})
         self.dtype = np.dtype([("c0", self.array_c0.dtype), ("c1", self.array_c1.dtype), ("c2", self.array_c2.dtype)])
 
-        self.url = "/tmp/test_{}".format(10)#np.random.randint(0, 10))
-        self.login = Login(username="alejandro", resource="ml", url=self.url)
+        self.login = Login(username="alejandro", resource="ml", table="test")
         #self.driver = Postgres(login=self.login)
-        self.driver = Sqlite(login=self.login)
+        self.driver = Sqlite(login=self.login, path=TMP_PATH, mode="a")
+        self.driver.build_url("test_{}".format(10))
         #self.driver = Zarr(login=self.login)
         #self.driver = Memory()
         #self.driver = HDF5(login=self.login)
-        self.driver.data_tag = "test"
 
         with self.driver:
             self.driver.set_schema(self.dtype)

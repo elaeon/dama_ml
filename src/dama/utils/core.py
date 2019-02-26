@@ -198,6 +198,22 @@ class Metadata(dict):
         except sqlite3.IntegrityError as e:
             log.error(str(e) + " in " + self.driver.url)
 
+    def insert_update_data(self, keys=None):
+        try:
+            data = [self[group] for group in self.driver.groups]
+            self.driver.insert(data)
+        except sqlite3.IntegrityError as e:
+            log.warning(e)
+            columns = ["{col}=?".format(col=group) for group in keys]
+            query = "SELECT id FROM {name} WHERE {columns_val}".format(name=self.name,
+                                                                       columns_val=" AND ".join(columns))
+            values = tuple([self[key] for key in keys])
+            data = self.query(query, values)
+            if len(data) > 0:
+                index = data[0][0]-1
+                values = [self[group] for group in self.driver.groups]
+                self.driver.absgroup[index] = values  # .update(values, index)
+
     def query(self, query: str, values: tuple) -> tuple:
         try:
             cur = self.driver.conn.cursor()

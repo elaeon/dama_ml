@@ -10,8 +10,6 @@ from dama.utils.tf_functions import TSNe
 from dama.data.it import BatchIterator
 from dama.utils.files import check_or_create_path_dir
 from dama.utils.core import Chunks
-from dama.utils.core import Metadata, Login
-from dama.data.drivers.sqlite import Sqlite
 
 
 TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'dama_data_test')
@@ -25,10 +23,7 @@ class TestUnsupervicedModel(unittest.TestCase):
         self.hash = None
 
     def tearDown(self):
-        login = Login(table="model")
-        if self.hash is not None:
-            with Metadata(Sqlite(path=TMP_PATH, login=login)) as metadata_db:
-                metadata_db.remove_data(self.hash)
+        pass
 
     def train(self, ae, model_params=None):
         with Data(name="tsne", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as dataset, \
@@ -50,7 +45,7 @@ class TestUnsupervicedModel(unittest.TestCase):
 
     def test_parametric_tsne(self):
         ae = self.train(PTsne(metadata_path=TMP_PATH), model_params=None)
-        metadata = MetadataX.get_metadata(ae.path_metadata, ae.path_metadata_version)
+        metadata = MetadataX.get_metadata(ae.path_metadata_version)
         self.assertEqual(len(metadata["train"]["model_json"]) > 0, True)
         with Data(name="test0", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as dataset:
             dataset.from_data(self.x)

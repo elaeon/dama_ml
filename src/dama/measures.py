@@ -92,7 +92,7 @@ class Measure(MeasureBase):
 class MeasureBatch(MeasureBase):
     __slots__ = ['score', 'name', 'measures', 'batch_size']
 
-    def __init__(self, name: str = None, batch_size: int = 0):
+    def __init__(self, name: str = None, batch_size: int = 1):
         super(MeasureBatch, self).__init__(name=name)
         self.score = {}
         self.batch_size = batch_size
