@@ -8,12 +8,13 @@ from dama.clf.extended.w_keras import FCNet
 from dama.utils.model_selection import CV
 from dama.measures import gini_normalized
 from dama.data.drivers.core import HDF5
-from dama.measures import Measure, MeasureBatch
-from dama.models import Metadata
+from dama.measures import MeasureBatch
 from dama.utils.files import check_or_create_path_dir
+from dama.utils.core import Login, Metadata
+from dama.data.drivers.sqlite import Sqlite
 
 
-TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'softstream_data_test')
+TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'dama_data_test')
 
 
 try:

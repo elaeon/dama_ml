@@ -196,7 +196,7 @@ class Metadata(dict):
             data = [self[group] for group in self.driver.groups]
             self.driver.insert(data)
         except sqlite3.IntegrityError as e:
-            log.error(e)
+            log.error(str(e) + " in " + self.driver.url)
 
     def query(self, query: str, values: tuple) -> tuple:
         try:
@@ -204,8 +204,7 @@ class Metadata(dict):
             data = cur.execute(query, values).fetchall()
             cur.close()
         except sqlite3.OperationalError as e:
-            log.error(e)
-            log.error(self.driver.url)
+            log.error(str(e) + " in " + self.driver.url)
         else:
             self.driver.conn.commit()
             return data

@@ -86,7 +86,7 @@ class MetadataX(object):
                 data = json.load(f)
             return data
         except IOError as e:
-            log.info(e)
+            log.error(e)
             return {}
         except Exception as e:
             log.error("{} {}".format(e, path))
@@ -94,7 +94,8 @@ class MetadataX(object):
     @staticmethod
     def get_metadata(path_metadata, path_metadata_version: str = None):
         if path_metadata is not None:
-            metadata = {"model": MetadataX.load_json(path_metadata)}
+            #metadata = {"model": MetadataX.load_json(path_metadata)}
+            metadata = {}
             if path_metadata_version is not None:
                 metadata["train"] = MetadataX.load_json(path_metadata_version)
             else:
@@ -235,11 +236,6 @@ class BaseModel(MetadataX, ABC):
         metadata["version"] = self.model_version
         metadata["model_path"] = self.path_model_version
         metadata["metadata_path_train"] = self.path_metadata_version
-        if len(metadata_train["score"]) == 0:
-            metadata["score_name"] = "s/n"
-            metadata["score"] = 0
-        else:
-            metadata["score_name"] = metadata_train["score"]
 
         with Metadata(metadata_driver, metadata) as metadata:
             dtypes = np.dtype([("hash", object), ("name", object), ("model_path", object), ("group_name", object),
@@ -249,7 +245,16 @@ class BaseModel(MetadataX, ABC):
             metadata["group_name"] = "s/n" if self.group_name is None else self.group_name
             metadata.set_schema(dtypes, unique_key=[["base_path", "name", "group_name", "version", "model_module",
                                                      "score_name"]])
-            metadata.insert_data()
+            if len(metadata_train["score"]) == 0:
+                metadata["score_name"] = "s/n"
+                metadata["score"] = 0
+                metadata.insert_data()
+            else:
+                for score_name in metadata_train["score"].keys():
+                    if score_name != "":
+                        metadata["score_name"] = score_name
+                        metadata["score"] = metadata_train["score"][score_name]["values"][0]
+                        metadata.insert_data()
 
     def save(self, name, path: str = None, model_version="1"):
         self.model_version = model_version
@@ -321,9 +326,8 @@ class BaseModel(MetadataX, ABC):
 
 
 class SupervicedModel(BaseModel):
-    def __init__(self, metrics=None):
-        super(SupervicedModel, self).__init__(metrics=metrics)
-
+    def __init__(self, metrics=None, metadata_path=None):
+        super(SupervicedModel, self).__init__(metrics=metrics, metadata_path=metadata_path)
 
     def train(self, ds: Data, batch_size: int = 0, num_steps: int = 0, n_splits=None, obj_fn=None,
               model_params: dict = None, data_train_group="train_x", target_train_group='train_y',

@@ -412,7 +412,9 @@ class Data(AbsData):
                     metadata_driver.login.table),
                 (hash,))
             if len(data) == 0:
-                log.warn("Resource does not exists")
+                log.warning("Resource {} does not exists in table '{}' in url {}".format(hash,
+                                                                                   metadata_driver.login.table,
+                                                                                   metadata_driver.url))
             else:
                 row = data[0]
                 data_driver = locate(row[1])
