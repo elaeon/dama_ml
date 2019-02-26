@@ -5,7 +5,7 @@ import pkg_resources
 
 
 FILENAME = "settings.cfg"
-BASE_DIR = ".softstream"
+BASE_DIR = ".dama_ml"
 
 
 def get_config() -> configparser.ConfigParser:
@@ -41,7 +41,7 @@ def build_settings_file(rewrite: bool = False) -> bool:
 
 
 def set_up_cfg(filepath):
-    setting_expl = pkg_resources.resource_filename('ml', 'config/settings.cfg.example')
+    setting_expl = pkg_resources.resource_filename('dama', 'config/settings.cfg.example')
     base = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
     home = os.path.expanduser("~")
     with open(setting_expl, 'r') as f:
