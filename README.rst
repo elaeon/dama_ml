@@ -4,23 +4,21 @@
 .. image:: https://api.codacy.com/project/badge/Grade/0ab998e72f4f4e31b3dc7b3c9921374a
     :target: https://www.codacy.com/app/elaeon/dama_ml?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=elaeon/dama_ml&amp;utm_campaign=Badge_Grade
 
-Welcome to dama_ml documentation!
+
+Warning
+=============
+    This work is in alpha steps and are methods that have limited functionality, altought, the API is stable.
+
+
+Overview
 =====================================
 
-A framework for machine learning's pipelines.
-
-Highlights:
- * Build datasets with metadata for reproductible experiments.
- * Easy way to add distincts deep learning and machine learning frameworks (i.e Keras, scikit-learn, etc)
- * Manage yours models and scores.
- * Convert n type of files to datasets.
-
-.. image:: docs/pipeline.png
-    :align: center
+Dama ML is a framework for data management that is used to do data science and machine learning's pipelines, also dama-ml try to unify diverse data sources (csv, sql db, hdf5, zarr, etc) and machine learning frameworks (sklearn, Keras, LigthGBM, etc) with a simplify interface.
 
 For more detail read the docs_. 
 
 .. _docs: https://elaeon.github.io/dama_ml/
+
 
 Installation
 =====================
@@ -28,94 +26,103 @@ Installation
 .. code-block:: bash
 
     git clone https://github.com/elaeon/dama_ml.git
+    pip install dama_ml/
+    or
+    pip install dama_ml
 
 
-You can install the python dependences with pip, but we strongly
-recommend install the dependences with conda and conda forge.
+You can install the python dependences with pip, but we strongly recommend install the dependences with conda and conda forge.
 
 .. code-block:: bash
 
     conda config --add channels conda-forge
-    conda create -n new_environment --file ML/requirements.txt
+    conda create -n new_environment --file dama_ml/requirements.txt
     source activate new_environment
-    pip install ML/
+    pip install dama_ml/
+   
 
 Quick start
 ==================
 
-First, build a dataset
+First, configure the data paths where all data will be saved. This can be done with help of dama_ml cli tools.
 
 .. code-block:: python
 
-    from ml.ds import DataSetBuilder
-    import numpy as np
+    $ dama-cli config --edit
+  
+This will display a nano editor where you can edit data_path, models_path, code_path, class_path, metadata_path.
+data_path is where all datasets wiil be saved.
+models_path is where all files from your models will be saved.
+code_path is the repository os code.
+metadata_path is where the metadata database will be saved.
 
-    DIM = 21
-    SIZE = 100000
-    X = np.random.rand(SIZE, DIM)
-    Y = np.asarray([1 if sum(row) > 0 else 0 
-        for row in np.sin(6*X) + 0.1*np.random.randn(SIZE, 1)])
-    dataset_name = "test_dataset"
-    dataset = DataSetBuilder(
-        dataset_name,
-        validator="cross")
-    dataset.build_dataset(X, Y)
+* Build a dataset
+
+.. code-block:: python
+
+    from dama.data.ds import Data
+    from dama.drivers.core import Zarr, HDF5
+    import numpy as np
+    
+    array_0 = np.random.rand(100, 1)
+    array_1 = np.random.rand(100,)
+    array_2 = np.random.rand(100, 3)
+    array_3 = np.random.rand(100, 6)
+    array_4 = (np.random.rand(100)*100).astype(int)
+    array_5 = np.random.rand(100).astype(str)
+    with Data(name=name, driver=Zarr(mode="w")) as data:
+        data.from_data({"x": array_0, "y": array_1, "z": array_2, "a": array_3, "b": array_4, "c": array_5})
     
 
-Then, pass it to a classification model for training, in this case we used SVGC (was a Gaussian process with stochastic variational inference), once the training was finished you can predict some data.
+Then pass it to a regression model, in this case we used RandomForestRegressor
 
 .. code-block:: python
 
-    from ml.clf.extended.w_gpy import SVGPC
+    from dama.reg.extended.w_sklearn import RandomForestRegressor
+    from dama.utils.model_selection import CV
 
-    classif = SVGPC(
-        dataset=dataset,
-        model_name="my_test_model",
-        model_version="1")
-    classif.train(batch_size=128, num_steps=10)
-    classif.scores().print_scores(order_column="f1")
+    data.driver.mode = "r"  # we changed mode "w" to "r" to not overwrite the data previously saved
+    with data, Data(name="test_from_hash", driver=HDF5(mode="w")) as ds:
+        cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)  # cross validation class
+        stc = cv.apply(data)
+        ds.from_data(stc, from_ds_hash=data.hash)
+        reg = RandomForestRegressor()
+        model_params = dict(n_estimators=25, min_samples_split=2)
+        reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
+                  data_test_group="test_x", target_test_group='test_y', model_params=model_params,
+                  data_validation_group="validation_x", target_validation_group="validation_y")
+        reg.save(name="test_model", model_version="1")
 
-Using SVGPC for make predictions is like this:
+Using RandomForestRegressor to do predictions is like this:
 
 .. code-block:: python
 
-    classif = SVGPC(
-        model_name="my_test_model",
-        model_version="1")
-    predictions = np.asarray(list(classif.predict(X, chunk_size=258)))
+    with RandomForestRegressor.load(model_name="test_model", model_version="1") as reg:
+        for pred in reg.predict(data):
+            prediction = pred.batch.to_ndarray()
 
 
 CLI
 ==============
-mlPyp has a CLI where you can admin your datasets and models.
+dama-ml has a CLI where you can manage your datasets and models.
 For example
 
 .. code-block:: bash
 
-    ml datasets
+    dama-cli datasets
 
-Return a table of datasets previosly builded.
-
-.. code-block:: python
-
-    dataset    size       date
-    ---------  ---------  --------------------------
-    numbers    240.03 MB  2016-12-10 23:50:14.167061
-    test2      16.79 MB   2016-12-17 23:28:46.739531
-
-Or
-
-.. code-block:: bash
-
-    ml models
-
-Returns
+Return a table of datasets previosly saved.
 
 .. code-block:: python
 
-    classif    model name      version  dataset    group
-    ---------  ------------  ---------  ---------  -------
-    Boosting   numerai               1  numerai
-    SVGPC      test2                 1  test2      basic
+    Using metadata /home/alejandro/softstream/metadata/metadata.sqlite3
+    Total 2 / 2
+
+    hash                    name            driver    group name    size       num groups  datetime UTC
+    ---------------------  --------------  --------  ------------  --------  ------------  -------------------
+    sha1.3124d5f16eb0e...  test_from_hash  HDF5      s/n           9.12 KB              6  2019-02-27 19:39:00
+    sha1.e832f56e33491...  reg0            Zarr      s/n           23.68 KB             6  2019-02-27 19:39:00
+
+
 
 You can use "--help" for view more options. 
