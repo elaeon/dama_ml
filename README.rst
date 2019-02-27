@@ -7,7 +7,7 @@
 
 Warning
 =============
-    Although, the API is stable this work is in alpha steps and there are methods that have limited functionality.
+    Although, the API is stable this work is in alpha steps and there are methods that have limited functionality or aren't implemented.
 
 
 Overview
