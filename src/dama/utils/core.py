@@ -198,7 +198,7 @@ class Metadata(dict):
         except sqlite3.IntegrityError as e:
             log.error(str(e) + " in " + self.driver.url)
 
-    def insert_update_data(self, keys=None):
+    def insert_update_data(self, keys=None, base_key=None):
         try:
             data = [self[group] for group in self.driver.groups]
             self.driver.insert(data)

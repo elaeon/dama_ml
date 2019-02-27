@@ -22,7 +22,6 @@ def run(args):
             except DataDoesNotFound:
                 print("Resource does not exists.")
     elif args.rm:
-        from dama.utils.core import Login, Metadata
         from dama.data.it import Iterator
         with Metadata(driver) as metadata:
             if "all" in args.hash:
@@ -48,7 +47,6 @@ def run(args):
         with Data.load(args.hash[0], metadata_driver=driver) as dataset:
             print(dataset.stadistics())
     else:
-        from dama.utils.core import Login, Metadata
         from dama.utils.miscellaneous import str2slice
         import sqlite3
         headers = ["hash", "name", "driver", "group name", "size", "num groups", "datetime UTC"]

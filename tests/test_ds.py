@@ -35,13 +35,9 @@ class TestDataset(unittest.TestCase):
         num_features = 10
         self.X = np.append(np.zeros((5, num_features)), np.ones((5, num_features)), axis=0).astype(float)
         self.Y = (np.sum(self.X, axis=1) / 10).astype(int)
-        self.hash = None
 
     def tearDown(self):
-        login = Login(table=settings["data_tag"])
-        if self.hash is not None:
-            with Metadata(Sqlite(path=TMP_PATH, login=login)) as metadata_db:
-                metadata_db.remove_data(self.hash)
+        pass
 
     def test_simple_write(self):
         with Data(name="test") as dataset:
@@ -166,7 +162,6 @@ class TestDataset(unittest.TestCase):
 
         with Data(name="test", driver=Zarr(path=TMP_PATH), group_name='basic', metadata_path=TMP_PATH) as data:
             data.from_data([1,2,3,4,5], chunks=(2, ))
-            self.hash = data.hash
             self.assertEqual(data.url, os.path.join(TMP_PATH, "{}/basic/test.zarr".format(Zarr.cls_name())))
             data.destroy()
 
@@ -208,7 +203,6 @@ class TestDataset(unittest.TestCase):
     def test_hash(self):
         with Data(name="test0") as data:
             data.from_data(np.ones(100), chunks=(20, ))
-            self.hash = data.hash
             self.assertEqual(data.hash, "sha1.fe0e420a6aff8c6f81ef944644cc78a2521a0495")
             self.assertEqual(data.calc_hash(with_hash='md5'), "md5.2376a2375977070dc32209a8a7bd2a99")
             data.destroy()
@@ -297,7 +291,6 @@ class TestDataset(unittest.TestCase):
             dtypes = np.dtype([("x", np.dtype(float)), ("y", np.dtype(float))])
             x_p = Iterator(_it(x), dtypes=dtypes)
             dataset.from_data(x_p[:100], chunks=Chunks({"x": (10, 1), "y": (10, )}))
-            self.hash = dataset.hash
             dataset.destroy()
 
     def test_ds_it(self):
@@ -321,9 +314,8 @@ class TestDataset(unittest.TestCase):
 
     def test_context_index(self):
         x = np.asarray([1, 2, 3, 4, 5])
-        with Data(name="test", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as data:
+        with Data(name="test_ci", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as data:
             data.from_data({"x": x}, chunks=(5, ))
-            self.hash = data.hash
             self.assertEqual(data[0].to_ndarray(), [1])
 
     def test_metadata(self):
@@ -345,7 +337,6 @@ class TestDataset(unittest.TestCase):
         z = np.random.rand(1000)
         with Data(name="test_X", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as data:
             data.from_data({"x": x, "y": y, "z": z}, chunks=Chunks({"x": (100, 2), "y": (100, 1), "z": (100, )}))
-            self.hash = data.hash
             data.description = "hello world {}".format("X")
             self.assertEqual((data["x"].to_ndarray()[100] == x[100]).all(), True)
             self.assertEqual(data["y"].to_ndarray()[100], y[100])
@@ -369,7 +360,6 @@ class TestDataset(unittest.TestCase):
     def test_metadata_to_json(self):
         with Data(name="test", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as data:
             data.from_data(np.random.rand(100, 10), chunks=(10, 10))
-            self.hash = data.hash
             with StringIO() as f:
                 data.metadata_to_json(f)
                 self.assertEqual(len(f.getvalue()) > 10, True)
@@ -378,17 +368,16 @@ class TestDataset(unittest.TestCase):
     def test_delete_metadata_info(self):
         with Data(name="test", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as data:
             data.from_data(np.random.rand(100, 11), chunks=(20, 5))
-            self.hash = data.hash
-            metadata_url = data.metadata_url
+            hash = data.hash
 
         driver = Sqlite(path=TMP_PATH, login=Login(table=settings["data_tag"]))
         with Metadata(driver) as metadata:
-            self.assertEqual(metadata.exists(self.hash), True)
+            self.assertEqual(metadata.exists(hash), True)
 
         with Data(name="test", driver=Zarr(mode="r", path=TMP_PATH), metadata_path=TMP_PATH) as data:
             data.destroy()
         with Metadata(driver) as metadata:
-            self.assertEqual(metadata.is_valid(self.hash), False)
+            self.assertEqual(metadata.is_valid(hash), False)
 
     def test_concat_axis_0(self):  # length
         with Data(name="test") as dataset, Data(name="test2") as dataset2,\
@@ -398,7 +387,6 @@ class TestDataset(unittest.TestCase):
             array = np.random.rand(10, 2)
             dataset2.from_data(array, chunks=(5, 2))
             data_c.concat((dataset, dataset2), axis=0)
-            self.hash = data_c.hash
             self.assertEqual((data_c.to_ndarray()[:10] == dataset.to_ndarray()).all(), True)
             self.assertEqual((data_c.to_ndarray()[10:] == dataset2.to_ndarray()).all(), True)
             dataset.destroy()
@@ -415,7 +403,6 @@ class TestDataset(unittest.TestCase):
             array1_c1 = np.random.rand(10)
             dataset2.from_data(pd.DataFrame({"a": array1_c0, "b": array1_c1}) , chunks=(5, 2))
             data_c.concat((dataset, dataset2), axis=0)
-            self.hash = data_c.hash
             self.assertEqual((data_c.to_ndarray()[:10] == dataset.to_ndarray()).all(), True)
             self.assertEqual((data_c.to_ndarray()[10:] == dataset2.to_ndarray()).all(), True)
             dataset.destroy()
@@ -425,41 +412,35 @@ class TestDataset(unittest.TestCase):
 
 class TestDataZarr(unittest.TestCase):
     def setUp(self):
-        self.hash = None
+        pass
 
     def tearDown(self):
-        login = Login(table=settings["data_tag"])
-        with Metadata(Sqlite(path=TMP_PATH, login=login)) as metadata_db:
-            if self.hash is not None:
-                metadata_db.remove_data(self.hash)
+        pass
 
     def test_ds(self):
-        with Data(name="test", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as data:
+        with Data(name="test_ds", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as data:
             array = [1, 2, 3, 4, 5]
             data.from_data(array, chunks=(5, ))
-            self.hash = data.hash
             self.assertCountEqual(data.to_ndarray(), array)
             data.destroy()
 
     def test_load(self):
-        with Data(name="test", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as data:
+        with Data(name="test_load", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as data:
             array = [1, 2, 3, 4, 5]
             data.from_data(array, chunks=(5, ))
-            self.hash = data.hash
 
-        with Data(name="test", driver=Zarr(mode="r", path=TMP_PATH),
+        with Data(name="test_load", driver=Zarr(mode="r", path=TMP_PATH),
                   chunks=Chunks({"g0": (5, )}), metadata_path=TMP_PATH) as data:
             self.assertCountEqual(data.to_ndarray(), array)
             data.destroy()
 
     def test_load_compression(self):
-        with Data(name="test", driver=Zarr(GZip(level=6), mode="w", path=TMP_PATH),
+        with Data(name="test_comp", driver=Zarr(GZip(level=6), mode="w", path=TMP_PATH),
                   metadata_path=TMP_PATH) as data:
             array = [1, 2, 3, 4, 5]
             data.from_data(array, chunks=(5, ))
-            self.hash = data.hash
 
-        with Data(name="test", driver=Zarr(mode="r", path=TMP_PATH),
+        with Data(name="test_comp", driver=Zarr(mode="r", path=TMP_PATH),
                   chunks=Chunks({"g0": (5, )}), metadata_path=TMP_PATH) as data:
             self.assertEqual(data.compressor_params["compression"], "gzip")
             self.assertEqual(data.compressor_params["compression_opts"], 6)
@@ -469,29 +450,27 @@ class TestDataZarr(unittest.TestCase):
     def test_author_description(self):
         author = "Anonymous"
         description = "Description text 00"
-        with Data(name="test", driver=Zarr(GZip(level=6), mode="w", path=TMP_PATH),
+        with Data(name="test_author", driver=Zarr(GZip(level=6), mode="w", path=TMP_PATH),
                   metadata_path=TMP_PATH) as data:
             array = [1, 2, 3, 4, 5]
             data.from_data(array, chunks=(5, ))
-            self.hash = data.hash
             data.author = author
             data.description = description
 
-        with Data(name="test", driver=Zarr(GZip(level=6), mode="r", path=TMP_PATH),
+        with Data(name="test_author", driver=Zarr(GZip(level=6), mode="r", path=TMP_PATH),
                   chunks=Chunks({"g0": (5, )}), metadata_path=TMP_PATH) as data:
             self.assertEqual(data.author, author)
             self.assertEqual(data.description, description)
             data.destroy()
 
     def test_no_data(self):
-        with Data(name="test", driver=Zarr(GZip(level=5), mode='w', path=TMP_PATH),
+        with Data(name="test_no_data", driver=Zarr(GZip(level=5), mode='w', path=TMP_PATH),
                   metadata_path=TMP_PATH) as data:
             data.author = "AGMR"
             data.description = "description text"
             data.from_data([], chunks=(5, ))
-            self.hash = data.hash
 
-        with Data(name="test", driver=Zarr(mode='r', path=TMP_PATH),
+        with Data(name="test_no_data", driver=Zarr(mode='r', path=TMP_PATH),
                   chunks=Chunks({"g0": (5, )}), metadata_path=TMP_PATH) as data:
             self.assertEqual(data.author, "AGMR")
             self.assertEqual(data.description, "description text")
@@ -508,13 +487,9 @@ class TestDataZarr(unittest.TestCase):
 class TestPsqlDriver(unittest.TestCase):
     def setUp(self):
         self.login = Login(username="alejandro", resource="ml")
-        self.hash = None
 
     def tearDown(self):
-        login = Login(table=settings["data_tag"])
-        with Metadata(Sqlite(path=TMP_PATH, login=login)) as metadata_db:
-            if self.hash is not None:
-                metadata_db.remove_data(self.hash)
+        pass
 
     def test_driver(self):
         x = np.random.rand(10)*100
@@ -522,7 +497,6 @@ class TestPsqlDriver(unittest.TestCase):
         with Data(name="test", driver=Postgres(login=self.login, mode="w"), metadata_path=TMP_PATH) as data:
             data.destroy()
             data.from_data({"x": x, "y": y}, chunks=Chunks({"x": (10,), "y": (10, )}))
-            self.hash = data.hash
             data.clean_data_cache()
             self.assertEqual((data["x"].to_ndarray(dtype=np.dtype("int8")) == x.astype("int8")).all(), True)
             self.assertEqual((data["y"].to_ndarray(dtype=np.dtype("int8")) == y.astype("int8")).all(), True)
@@ -534,7 +508,6 @@ class TestPsqlDriver(unittest.TestCase):
         with Data(name="test0", driver=Postgres(login=login), metadata_path=TMP_PATH) as data:
             data.destroy()
             data.from_data(df, chunks=(5, ))
-            self.hash = data.hash
             it = Iterator(data)
             self.assertEqual(it.shape.to_tuple(), (5, 2))
             for i, e in enumerate(it):
@@ -547,7 +520,6 @@ class TestPsqlDriver(unittest.TestCase):
         with Data(name="test0", driver=Postgres(login=login), metadata_path=TMP_PATH) as data:
             data.destroy()
             data.from_data(array, chunks=(5, ))
-            self.hash = data.hash
             it = Iterator(data)
             self.assertEqual(it.shape.to_tuple(), (5,))
             for i, e in enumerate(it):

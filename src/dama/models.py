@@ -64,15 +64,7 @@ class MLModel:
 
 
 class MetadataX(object):
-    def __init__(self):
-        self.model_name = None
-        self.group_name = None
-        self.model_version = None
-        self.base_path = None
-        # self.path_metadata = None
-        self.path_model_version = None
-        self.path_metadata_version = None
-        self.metaext = "json"
+    metaext = "json"
 
     @staticmethod
     def save_json(file_path, data):
@@ -101,13 +93,6 @@ class MetadataX(object):
         return metadata
 
     @staticmethod
-    def make_model_file(name, path, classname, metaext):
-        check_point = check_or_create_path_dir(path, classname)
-        destination = check_or_create_path_dir(check_point, name)
-        filename = os.path.join(destination, "meta")
-        return "{}.{}".format(filename, metaext)
-
-    @staticmethod
     def make_model_version_file(name, path, classname, ext, model_version):
         model_name_v = "version.{}".format(model_version)
         check_point = check_or_create_path_dir(path, classname)
@@ -116,30 +101,15 @@ class MetadataX(object):
         filename = os.path.join(model, "meta")
         return "{}.{}".format(filename, ext)
 
-    def print_meta(self):
-        print(MetadataX.get_metadata(self.path_metadata_version))
-
-    def destroy(self):
-        """remove the dataset associated to the model and his checkpoints"""
-        #if self.path_metadata is not None:
-        #    rm(self.path_metadata)
-        if self.path_metadata_version is not None:
-            rm(self.path_model_version)
-            rm(self.path_metadata_version)
-        if hasattr(self, 'ds'):
-            self.ds.destroy()
-
-    @classmethod
-    def cls_name(cls):
-        return cls.__name__
-
-    @classmethod
-    def module_cls_name(cls):
-        return "{}.{}".format(cls.__module__, cls.__name__)
-
 
 class BaseModel(MetadataX, ABC):
     def __init__(self, metrics=None, metadata_path=None):
+        self.model_name = None
+        self.group_name = None
+        self.model_version = None
+        self.base_path = None
+        self.path_model_version = None
+        self.path_metadata_version = None
         self.model = None
         self.ext = "ckpt.pkl"
         self.metrics = metrics
@@ -257,9 +227,8 @@ class BaseModel(MetadataX, ABC):
             self.base_path = settings["models_path"]
         else:
             self.base_path = path
-        #self.path_metadata = MetadataX.make_model_file(name, self.base_path, self.cls_name(), self.metaext)
-        self.path_metadata_version = self.make_model_version_file(name, path, self.cls_name(), self.metaext,
-                                                                  self.model_version)
+        self.path_metadata_version = MetadataX.make_model_version_file(name, path, self.cls_name(),
+                                                                       self.metaext, self.model_version)
         self.path_model_version = MetadataX.make_model_version_file(name, path, self.cls_name(), self.ext,
                                                                    model_version=model_version)
         log.debug("SAVING model's data")
@@ -308,7 +277,6 @@ class BaseModel(MetadataX, ABC):
             group_name = "s/n"
         model.group_name = group_name
         model.base_path = path
-        #path_metadata = MetadataX.make_model_file(model_name, path, model.cls_name(), model.metaext)
         path_metadata_version = MetadataX.make_model_version_file(model_name, path, model.cls_name(),
                                                                   model.metaext, model_version=model_version)
         model.path_metadata_version = path_metadata_version
@@ -317,6 +285,21 @@ class BaseModel(MetadataX, ABC):
         model.load_metadata(path_metadata_version)
         model.load_model()
         return model
+
+    def destroy(self):
+        if self.path_metadata_version is not None:
+            rm(self.path_model_version)
+            rm(self.path_metadata_version)
+        if hasattr(self, 'ds'):
+            self.ds.destroy()
+
+    @classmethod
+    def cls_name(cls):
+        return cls.__name__
+
+    @classmethod
+    def module_cls_name(cls):
+        return "{}.{}".format(cls.__module__, cls.__name__)
 
 
 class SupervicedModel(BaseModel):

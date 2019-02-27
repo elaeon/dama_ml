@@ -211,10 +211,6 @@ class Data(AbsData):
     def groups(self) -> tuple:
         return self.driver.absgroup.groups
 
-    # @groups.setter
-    # def groups(self, value) -> None:
-    #    raise NotImplementedError
-
     @property
     def dtypes(self) -> np.dtype:
         return self.driver.dtypes
@@ -226,10 +222,11 @@ class Data(AbsData):
 
     def info(self):
         print('       ')
-        print('Dataset NAME: {}'.format(self.name))
+        print('Name: {}'.format(self.name))
         print('Author: {}'.format(self.author))
-        print('Hash: {}'.format(self.hash))
         print('Description: {}'.format(self.description))
+        print('URL path: {}'.format(self.driver.url))
+        print('Hash: {}'.format(self.hash))
         print('       ')
         headers = ["Group", "Shape"]
         table = []
