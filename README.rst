@@ -13,7 +13,7 @@ Warning
 Overview
 =====================================
 
-Dama ML is a framework for data management that is used to do data science and machine learning's pipelines, also dama-ml try to unify diverse data sources (csv, sql db, hdf5, zarr, etc) and machine learning frameworks (sklearn, Keras, LigthGBM, etc) with a simplify interface.
+Dama ML is a framework for data management and used to do data science and machine learning's pipelines, also dama-ml try to unify diverse data sources like csv, sql db, hdf5, zarr, etc, and also unify machine learning frameworks (sklearn, Keras, LigthGBM, etc) with a simplify interface.
 
 For more detail read the docs_. 
 
