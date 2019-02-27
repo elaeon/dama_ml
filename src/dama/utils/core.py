@@ -216,7 +216,6 @@ class Metadata(dict):
 
     def query(self, query: str, values: tuple) -> tuple:
         try:
-            log.info(query + "--" + str(values))
             cur = self.driver.conn.cursor()
             data = cur.execute(query, values).fetchall()
             cur.close()
