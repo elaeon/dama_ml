@@ -7,7 +7,7 @@
 
 Warning
 =============
-    This work is in alpha steps and there are methods that have limited functionality, altought, the API is stable.
+    Although, the API is stable this work is in alpha steps and there are methods that have limited functionality.
 
 
 Overview
@@ -51,12 +51,13 @@ First, configure the data paths where all data will be saved. This can be done w
     $ dama-cli config --edit
   
 This will display a nano editor where you can edit data_path, models_path, code_path, class_path, metadata_path.
-data_path is where all datasets wiil be saved.
-models_path is where all files from your models will be saved.
-code_path is the repository os code.
-metadata_path is where the metadata database will be saved.
 
-* Build a dataset
+* data_path is where all datasets wiil be saved.
+* models_path is where all files from your models will be saved.
+* code_path is the repository os code.
+* metadata_path is where the metadata database will be saved.
+
+Building a dataset
 
 .. code-block:: python
 
@@ -74,7 +75,7 @@ metadata_path is where the metadata database will be saved.
         data.from_data({"x": array_0, "y": array_1, "z": array_2, "a": array_3, "b": array_4, "c": array_5})
     
 
-Then pass it to a regression model, in this case we used RandomForestRegressor
+Now we use a regression model, in this case we used RandomForestRegressor
 
 .. code-block:: python
 
@@ -104,7 +105,7 @@ Using RandomForestRegressor to do predictions is like this:
 
 CLI
 ==============
-dama-ml has a CLI where you can manage your datasets and models.
+dama-ml has a CLI where you can view your datasets and models.
 For example
 
 .. code-block:: bash
@@ -115,7 +116,7 @@ Return a table of datasets previosly saved.
 
 .. code-block:: python
 
-    Using metadata /home/alejandro/softstream/metadata/metadata.sqlite3
+    Using metadata ..../metadata/metadata.sqlite3
     Total 2 / 2
 
     hash                    name            driver    group name    size       num groups  datetime UTC
