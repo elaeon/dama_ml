@@ -198,7 +198,7 @@ class Metadata(dict):
         except sqlite3.IntegrityError as e:
             log.error(str(e) + " in " + self.driver.url)
 
-    def insert_update_data(self, keys=None, base_key=None):
+    def insert_update_data(self, keys=None):
         try:
             data = [self[group] for group in self.driver.groups]
             self.driver.insert(data)
@@ -216,6 +216,7 @@ class Metadata(dict):
 
     def query(self, query: str, values: tuple) -> tuple:
         try:
+            log.info(query + "--" + str(values))
             cur = self.driver.conn.cursor()
             data = cur.execute(query, values).fetchall()
             cur.close()
@@ -233,7 +234,7 @@ class Metadata(dict):
         self.query("DELETE FROM {} WHERE hash = ?".format(self.name), (hash_hex, ))
 
     def invalid(self, hash_hex: str):
-        self.query("UPDATE {} SET is_valid=False WHERE hash = ?".format(self.name), (hash_hex,))
+        self.query("UPDATE {} SET is_valid=? WHERE hash = ?".format(self.name), (False, hash_hex,))
 
     def exists(self, hash_hex: str) -> bool:
         result = self.query("SELECT id FROM {} WHERE hash = ?".format(self.name), (hash_hex, ))
