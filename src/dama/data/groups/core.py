@@ -84,8 +84,7 @@ class DaGroup(AbsGroup):
         elif isinstance(item, np.ndarray) and item.dtype == np.dtype(int):
             return self.sample(item)
         elif isinstance(item, da.Array):
-            # print(dict(item.dask))
-            index = [i for i, is_valid in enumerate(item.compute()) if is_valid]  # fixme generalize masked data
+            index = [i for i, is_true in enumerate(item.compute()) if is_true]  # fixme generalize masked data
             return self.sample(index)
 
     def __setitem__(self, item, value):

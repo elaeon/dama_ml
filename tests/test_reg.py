@@ -32,7 +32,6 @@ class TestRegSKL(unittest.TestCase):
         np.random.seed(0)
         self.X = np.random.rand(100, 10)
         self.Y = np.random.rand(100)
-        self.hash = None
 
     def tearDown(self):
         pass
@@ -50,7 +49,6 @@ class TestRegSKL(unittest.TestCase):
                           data_test_group="test_x", target_test_group='test_y', model_params=model_params,
                           data_validation_group="validation_x", target_validation_group="validation_y")
             reg.save(name="test_model", path=TMP_PATH, model_version="1")
-            self.hash = ds.hash
             dataset.destroy()
 
         with RandomForestRegressor.load(model_name="test_model", path=TMP_PATH, model_version="1",
@@ -68,7 +66,6 @@ class TestRegSKL(unittest.TestCase):
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(dataset)
             ds.from_data(stc)
-            self.hash = ds.hash
             model_params = dict(n_estimators=25, min_samples_split=2)
             reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                   data_test_group="test_x", target_test_group='test_y', model_params=model_params,
@@ -89,7 +86,6 @@ class TestRegSKL(unittest.TestCase):
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(dataset)
             ds.from_data(stc)
-            self.hash = ds.hash
             model_params = dict(n_estimators=25, min_samples_split=2)
             reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                       data_test_group="test_x", target_test_group='test_y', model_params=model_params,
@@ -112,7 +108,6 @@ class TestRegSKL(unittest.TestCase):
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(dataset)
             ds.from_data(stc)
-            self.hash = ds.hash
             model_params = dict(n_estimators=25, min_samples_split=2)
             reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
                           data_test_group="test_x", target_test_group='test_y', model_params=model_params,
@@ -131,6 +126,21 @@ class TestRegSKL(unittest.TestCase):
         with reg.ds:
             reg.destroy()
 
+    def test_from_hash(self):
+        with Data(name="reg0") as dataset, Data(name="test_from_hash", driver=HDF5(mode="w", path=TMP_PATH),
+                                                metadata_path=TMP_PATH) as ds:
+            dataset.from_data({"x": self.X, "y": self.Y})
+            cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
+            stc = cv.apply(dataset)
+            ds.from_data(stc, from_ds_hash=dataset.hash)
+            reg = RandomForestRegressor(metadata_path=TMP_PATH)
+            model_params = dict(n_estimators=25, min_samples_split=2)
+            reg.train(ds, num_steps=1, data_train_group="train_x", target_train_group='train_y',
+                      data_test_group="test_x", target_test_group='test_y', model_params=model_params,
+                      data_validation_group="validation_x", target_validation_group="validation_y")
+            reg.save(name="test_model", path=TMP_PATH, model_version="1")
+            dataset.destroy()
+
 
 class TestXgboost(unittest.TestCase):
     def setUp(self):
@@ -143,7 +153,6 @@ class TestXgboost(unittest.TestCase):
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(self.dataset)
             ds.from_data(stc)
-            self.hash = ds.hash
             if Xgboost == RandomForestRegressor:
                 params = {}
             else:

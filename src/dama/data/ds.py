@@ -58,6 +58,7 @@ class Data(AbsData):
         self.timestamp = None
         self.compressor_params = None
         self.chunksize = chunks
+        self.from_ds_hash = None
         self.auto_chunks = auto_chunks
         if self.driver.path is None:
             path = settings["data_path"]
@@ -130,6 +131,15 @@ class Data(AbsData):
 
     def clean_data_cache(self):
         self.data = None
+
+    @property
+    def from_ds_hash(self):
+        return self._get_attr('from_ds_hash')
+
+    @from_ds_hash.setter
+    def from_ds_hash(self, value):
+        if value is not None:
+            self._set_attr('from_ds_hash', value)
 
     def open(self):
         self.driver.open()
@@ -248,6 +258,7 @@ class Data(AbsData):
         meta_dict["author"] = self.author
         meta_dict["num_groups"] = len(self.groups)
         meta_dict["description"] = self.description if self.description is None else ""
+        meta_dict["from_ds_hash"] = self.from_ds_hash
         return meta_dict
 
     def metadata_to_json(self, f):
@@ -261,7 +272,7 @@ class Data(AbsData):
                                    ("description", object), ("size", int), ("driver_module", object),
                                    ("path", object), ("driver_name", object), ("group_name", object),
                                    ("timestamp", np.dtype("datetime64[ns]")), ("num_groups", int),
-                                   ("is_valid", bool)])
+                                   ("is_valid", bool), ("from_ds_hash", object)])
                 timestamp = metadata["timestamp"]
                 metadata["timestamp"] = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M UTC')
                 metadata["group_name"] = "s/n" if self.group_name is None else self.group_name
@@ -279,7 +290,7 @@ class Data(AbsData):
             hash_obj.update(it.only_data())
         return str(hash_obj)
 
-    def from_data(self, data, chunks=None, with_hash: str = "sha1"):
+    def from_data(self, data, chunks=None, with_hash: str = "sha1", from_ds_hash=None):
         if isinstance(data, da.Array):
             data = DaGroup.from_da(data)
             self.chunksize = data.chunksize
@@ -319,6 +330,8 @@ class Data(AbsData):
             c_hash = self.calc_hash(with_hash=with_hash)
         else:
             c_hash = None
+
+        self.from_ds_hash = from_ds_hash
         self.hash = c_hash
         self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
         self.write_metadata()

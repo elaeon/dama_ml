@@ -63,6 +63,7 @@ def run(args):
                 df.rename(columns={"timestamp": "datetime UTC", "group_name": "group name",
                                    "num_groups": "num groups", "driver_name": "driver"}, inplace=True)
                 df["size"] = df["size"].apply(humanize_bytesize)
+                print("Using metadata {}".format(metadata.driver.url))
                 print("Total {} / {}".format(len(df), total[0][0]))
                 list_measure = ListMeasure(headers=headers, measures=df[headers].values)
                 print(list_measure.to_tabulate())

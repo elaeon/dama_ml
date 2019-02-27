@@ -27,7 +27,7 @@ def run(args):
         from dama.utils.core import Login, Metadata
         from dama.utils.miscellaneous import str2slice
         import sqlite3
-        headers = ["name", "group_name", "model", "version", "score name", "score"]
+        headers = ["from_ds", "name", "group_name", "model", "version", "score name", "score"]
         page = str2slice(args.items)
         with Metadata(driver) as metadata:
             try:
@@ -36,7 +36,10 @@ def run(args):
                 print(e)
             else:
                 data = metadata.data()
-                data = data[data["is_valid"] == True][page]
+                if args.score_name is None:
+                    data = data[data["is_valid"] == True][page]
+                else:
+                    data = data[(data["is_valid"] == True) & (data["score_name"] == args.score_name)][page]
                 df = data.to_df()
                 df.rename(columns={"model_module": "model", "score_name": "score name"}, inplace=True)
                 print("Total {} / {}".format(len(df), total[0][0]))

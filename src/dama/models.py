@@ -153,6 +153,7 @@ class BaseModel(MetadataX, ABC):
             "name": self.model_name,
             "base_path": self.base_path,
             "hash": self.ds.hash,
+            "from_ds": self.ds.from_ds_hash
         }
 
     def metadata_train(self):
@@ -204,7 +205,8 @@ class BaseModel(MetadataX, ABC):
         with Metadata(metadata_driver, metadata) as metadata:
             dtypes = np.dtype([("hash", object), ("name", object), ("model_path", object), ("group_name", object),
                                ("is_valid", bool), ("version", int), ("model_module", object), ("score_name", object),
-                               ("score", float), ("metadata_path_train", object), ("base_path", object)])
+                               ("score", float), ("metadata_path_train", object), ("base_path", object),
+                               ("from_ds", object)])
             metadata["is_valid"] = True
             metadata["group_name"] = "s/n" if self.group_name is None else self.group_name
             keys = ["base_path", "name", "group_name", "version", "model_module", "score_name"]
@@ -227,9 +229,9 @@ class BaseModel(MetadataX, ABC):
             self.base_path = settings["models_path"]
         else:
             self.base_path = path
-        self.path_metadata_version = MetadataX.make_model_version_file(name, path, self.cls_name(),
+        self.path_metadata_version = MetadataX.make_model_version_file(name, self.base_path, self.cls_name(),
                                                                        self.metaext, self.model_version)
-        self.path_model_version = MetadataX.make_model_version_file(name, path, self.cls_name(), self.ext,
+        self.path_model_version = MetadataX.make_model_version_file(name, self.base_path, self.cls_name(), self.ext,
                                                                    model_version=model_version)
         log.debug("SAVING model's data")
         self.model.save(self.path_model_version)
