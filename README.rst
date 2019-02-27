@@ -1,5 +1,5 @@
-.. image:: https://travis-ci.org/elaeon/ML.svg?branch=master
-    :target: https://travis-ci.org/elaeon/ML
+.. image:: https://travis-ci.org/elaeon/dama_ml.svg?branch=master
+    :target: https://travis-ci.org/elaeon/dama_ml
 
 .. image:: https://api.codacy.com/project/badge/Grade/0ab998e72f4f4e31b3dc7b3c9921374a
     :target: https://www.codacy.com/app/elaeon/dama_ml?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=elaeon/dama_ml&amp;utm_campaign=Badge_Grade
