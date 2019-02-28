@@ -57,7 +57,7 @@ class AbsBaseGroup(ABC):
         return Shape(shape)
 
     def set(self, item, value):
-        from dama.data.groups.core import DaGroup
+        from dama.groups.core import DaGroup
         from dama.fmtypes import Slice
         if self.inblock is True:
             self[item] = value

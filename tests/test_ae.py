@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import os
 from dama.data.ds import Data
-from dama.data.drivers.core import HDF5
+from dama.drivers.core import HDF5
 from dama.utils.model_selection import CV
 from dama.ae.extended.w_keras import PTsne
 from dama.models import MetadataX

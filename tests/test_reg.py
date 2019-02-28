@@ -20,7 +20,7 @@ except ImportError:
 
 from dama.reg.extended.w_sklearn import RandomForestRegressor, GradientBoostingRegressor
 from dama.utils.model_selection import CV
-from dama.data.drivers.core import HDF5, Zarr
+from dama.drivers.core import HDF5
 
 
 def mulp(row):
@@ -54,7 +54,7 @@ class TestRegSKL(unittest.TestCase):
         with RandomForestRegressor.load(model_name="test_model", path=TMP_PATH, model_version="1",
                                         metadata_path=TMP_PATH) as reg:
             self.assertEqual(reg.model_version, "1")
-            self.assertEqual(reg.ds.driver.module_cls_name(), "dama.data.drivers.core.HDF5")
+            self.assertEqual(reg.ds.driver.module_cls_name(), "dama.drivers.core.HDF5")
             self.assertEqual(len(reg.metadata_train()), 7)
             reg.destroy()
 

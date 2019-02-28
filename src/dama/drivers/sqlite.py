@@ -1,16 +1,16 @@
 from dama.abc.driver import AbsDriver
-from dama.data.groups.postgres import Table
+from dama.groups.sqlite import Table
 from dama.fmtypes import fmtypes_map
 from dama.utils.logger import log_config
 import numpy as np
-import psycopg2
+import sqlite3
 
 log = log_config(__name__)
 
 
-class Postgres(AbsDriver):
+class Sqlite(AbsDriver):
     persistent = True
-    ext = 'sql'
+    ext = 'sqlite3'
     data_tag = None
     metadata_tag = None
 
@@ -18,9 +18,8 @@ class Postgres(AbsDriver):
         return self.exists()
 
     def open(self):
-        self.conn = psycopg2.connect(
-            "dbname={db_name} user={username}".format(db_name=self.login.resource, username=self.login.username))
-        self.conn.autocommit = False
+        self.conn = sqlite3.connect(self.url, check_same_thread=False)
+        self.data_tag = self.login.table
         self.attrs = {}
         if self.mode == "w":
             self.destroy()
@@ -36,28 +35,46 @@ class Postgres(AbsDriver):
 
     def exists(self) -> bool:
         cur = self.conn.cursor()
-        cur.execute("select exists(select relname from pg_class where relname='{name}')".format(name=self.data_tag))
-        return True if cur.fetchone()[0] else False
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (self.data_tag, ))
+        result = cur.fetchone()
+        return result is not None
 
     def destroy(self):
         cur = self.conn.cursor()
         try:
             cur.execute("DROP TABLE {name}".format(name=self.data_tag))
-        except psycopg2.ProgrammingError as e:
+        except sqlite3.ProgrammingError as e:
             log.debug(e)
+        except sqlite3.OperationalError as e:
+            log.error(e)
         self.conn.commit()
 
     @property
     def dtypes(self) -> np.dtype:
-        return Table(self.conn, name=self.data_tag).dtypes
+        return self.absgroup.dtypes
 
-    def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key=None):
-        idx = None
+    @property
+    def groups(self) -> tuple:
+        return self.absgroup.groups
+
+    def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key: list = None):
         if not self.exists():
-            columns_types = ["id serial PRIMARY KEY"]
+            columns_types = ["id INTEGER PRIMARY KEY"]
+            if unique_key is not None:
+                one_col_unique_key = [column for column in unique_key if isinstance(column, str)]
+                more_col_unique_key = [columns for columns in unique_key if isinstance(columns, list)]
+            else:
+                one_col_unique_key = []
+                more_col_unique_key = []
             for group, (dtype, _) in dtypes.fields.items():
                 fmtype = fmtypes_map[dtype]
-                columns_types.append("{col} {type}".format(col=group, type=fmtype.db_type))
+                if group in one_col_unique_key:
+                    columns_types.append("{col} {type} UNIQUE".format(col=group, type=fmtype.db_type))
+                else:
+                    columns_types.append("{col} {type}".format(col=group, type=fmtype.db_type))
+            if len(more_col_unique_key) > 0:
+                for key in more_col_unique_key:
+                    columns_types.append("unique ({})".format(",".join(key)))
             cols = "("+", ".join(columns_types)+")"
             cur = self.conn.cursor()
             cur.execute("""
@@ -76,12 +93,13 @@ class Postgres(AbsDriver):
                         name=self.data_tag, i_name=index_name, i_columns=index_columns)
                     cur.execute(index_q)
             self.conn.commit()
+            cur.close()
 
     def set_data_shape(self, shape):
         pass
 
-    def insert(self, table_name: str, data):
-        table = Table(self.conn, table_name)
+    def insert(self, data):
+        table = Table(self.conn, self.data_tag)
         table.insert(data)
 
     def spaces(self) -> list:

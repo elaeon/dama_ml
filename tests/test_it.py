@@ -6,7 +6,7 @@ import collections
 
 from dama.data.it import Iterator, BatchIterator, Slice
 from dama.data.ds import Data
-from dama.data.groups.core import DaGroup
+from dama.groups.core import DaGroup
 from dama.fmtypes import DEFAUL_GROUP_NAME
 from dama.utils.core import Chunks
 from dama.utils.seq import grouper_chunk

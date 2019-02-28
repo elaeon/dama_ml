@@ -1,6 +1,6 @@
 from dama.utils.config import get_settings
 from dama.utils.numeric_functions import humanize_bytesize
-
+from dama.exceptions import DataDoesNotFound
 
 settings = get_settings("paths")
 settings.update(get_settings("vars"))
@@ -9,13 +9,12 @@ settings.update(get_settings("vars"))
 def run(args):
     from dama.measures import ListMeasure
     from dama.data.ds import Data
-    from dama.data.drivers.sqlite import Sqlite
+    from dama.drivers.sqlite import Sqlite
     from dama.utils.core import Login, Metadata
 
     login = Login(table=settings["data_tag"])
     driver = Sqlite(login=login, path=settings["metadata_path"], mode="r")
     if args.info:
-        from dama.data.drivers.core import DataDoesNotFound
         with Data.load(args.hash[0], metadata_driver=driver) as dataset:
             try:
                 dataset.info()

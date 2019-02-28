@@ -6,7 +6,6 @@ from dama.utils.numeric_functions import is_integer
 from dama.utils.numeric_functions import is_integer_if
 from dama.utils.numeric_functions import index_if_type_row, index_if_type_col
 from dama.utils.numeric_functions import features2rows
-from dama.utils.numeric_functions import unique_size
 from dama.utils.numeric_functions import max_type
 from dama.utils.numeric_functions import nested_shape
 

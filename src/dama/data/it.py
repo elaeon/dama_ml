@@ -14,7 +14,7 @@ from dama.utils.logger import log_config
 from dama.abc.data import AbsData
 from dama.abc.group import AbsGroup
 from dama.utils.numeric_functions import nested_shape
-from dama.data.groups.core import DaGroup, StcArrayGroup, TupleGroup
+from dama.groups.core import DaGroup, StcArrayGroup, TupleGroup
 from dama.fmtypes import Slice, DEFAUL_GROUP_NAME
 
 log = log_config(__name__)

@@ -1,10 +1,10 @@
 import unittest
 import numpy as np
 import os
-from dama.data.drivers.core import Memory, Zarr, HDF5
+from dama.drivers.core import Memory, HDF5
 from dama.utils.core import Shape, Login, Chunks
-from dama.data.drivers.postgres import Postgres
-from dama.data.drivers.sqlite import Sqlite
+from dama.drivers.postgres import Postgres
+from dama.drivers.sqlite import Sqlite
 from dama.utils.files import check_or_create_path_dir
 
 

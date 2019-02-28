@@ -7,8 +7,8 @@ from dama.utils.files import check_or_create_path_dir
 from dama.measures import ListMeasure
 from dama.utils.logger import log_config
 from dama.utils.config import get_settings
-from dama.data.groups.core import DaGroup
-from dama.data.drivers.sqlite import Sqlite
+from dama.groups.core import DaGroup
+from dama.drivers.sqlite import Sqlite
 from dama.utils.core import Login, Metadata
 from dama.utils.files import rm
 import json

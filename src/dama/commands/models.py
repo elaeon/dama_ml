@@ -7,8 +7,8 @@ settings.update(get_settings("vars"))
   
 def run(args):
     from dama.measures import ListMeasure
-    from dama.data.drivers.sqlite import Sqlite
-    from dama.utils.core import Login, Metadata
+    from dama.drivers.sqlite import Sqlite
+    from dama.utils.core import Login
     login = Login(table=settings["model_tag"])
     driver = Sqlite(login=login, path=settings["metadata_path"], mode="r")
 

@@ -5,8 +5,8 @@ from io import StringIO
 import os
 from dama.data.ds import Data
 from dama.data.it import Iterator
-from dama.data.drivers.core import Zarr
-from dama.data.drivers.sqlite import Sqlite
+from dama.drivers.core import Zarr
+from dama.drivers.sqlite import Sqlite
 from dama.utils.model_selection import CV
 from dama.utils.files import rm
 from numcodecs import GZip
@@ -17,12 +17,12 @@ from dama.utils.core import Metadata, Login
 from dama.utils.config import get_settings
 
 try:
-    from dama.data.drivers.postgres import Postgres
+    from dama.drivers.postgres import Postgres
     driver = Postgres(login=Login(username="alejandro", resource="ml"))
     driver.open()
     driver.close()
 except:
-    from dama.data.drivers.core import Memory as Postgres
+    from dama.drivers import Memory as Postgres
 
 
 settings = get_settings("vars")

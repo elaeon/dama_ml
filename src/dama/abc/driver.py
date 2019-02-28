@@ -5,7 +5,7 @@ import os
 from dama.utils.config import get_settings
 from dama.utils.logger import log_config
 from dama.utils.core import Login, Chunks
-from dama.data.groups.core import DaGroup
+from dama.groups.core import DaGroup
 from dama.utils.files import build_path
 
 

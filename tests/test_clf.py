@@ -7,7 +7,7 @@ from dama.clf.extended.w_sklearn import AdaBoost, GradientBoost, KNN
 from dama.clf.extended.w_keras import FCNet
 from dama.utils.model_selection import CV
 from dama.measures import gini_normalized
-from dama.data.drivers.core import HDF5
+from dama.drivers.core import HDF5
 from dama.measures import MeasureBatch
 from dama.utils.files import check_or_create_path_dir
 from dama.models import MetadataX
@@ -65,7 +65,7 @@ class TestSKL(unittest.TestCase):
         with RandomForest.load(model_name="test_model", path=TMP_PATH, model_version="1",
                                metadata_path=TMP_PATH) as classif:
             self.assertEqual(classif.model_version, "1")
-            self.assertEqual(classif.ds.driver.module_cls_name(), "dama.data.drivers.core.HDF5")
+            self.assertEqual(classif.ds.driver.module_cls_name(), "dama.drivers.core.HDF5")
             self.assertEqual(len(classif.metadata_train()), 7)
             classif.destroy()
 

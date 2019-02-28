@@ -1,9 +1,9 @@
 [paths]
-data_path = {home}/softstream/dataset/
-models_path = {home}/softstream/models/
-code_path = {home}/softstream/code/
+data_path = {home}/dama_ml/dataset/
+models_path = {home}/dama_ml/models/
+code_path = {home}/dama_ml/code/
 class_path = {home}
-metadata_path = {home}/softstream/metadata/
+metadata_path = {home}/dama_ml/metadata/
 
 [vars]
 data_tag = data

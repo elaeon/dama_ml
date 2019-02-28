@@ -7,15 +7,12 @@ from numcodecs import MsgPack
 from dama.abc.driver import AbsDriver
 from dama.utils.files import rm
 from dama.utils.logger import log_config
-from dama.data.groups.hdf5 import HDF5Group
-from dama.data.groups.zarr import ZarrGroup
+from dama.groups.hdf5 import HDF5Group
+from dama.groups.zarr import ZarrGroup
+from dama.exceptions import DataDoesNotFound
 
 
 log = log_config(__name__)
-
-
-class DataDoesNotFound(Exception):
-    pass
 
 
 class HDF5(AbsDriver):
