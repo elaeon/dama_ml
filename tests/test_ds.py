@@ -22,7 +22,7 @@ try:
     driver.open()
     driver.close()
 except:
-    from dama.drivers import Memory as Postgres
+    from dama.drivers.core import Memory as Postgres
 
 
 settings = get_settings("vars")
