@@ -1,3 +1,4 @@
+
 .. image:: https://travis-ci.org/elaeon/dama_ml.svg?branch=master
     :target: https://travis-ci.org/elaeon/dama_ml
 
@@ -5,19 +6,19 @@
     :target: https://www.codacy.com/app/elaeon/dama_ml?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=elaeon/dama_ml&amp;utm_campaign=Badge_Grade
 
 
-Warning
-=============
-    Although, the API is stable this work is in alpha steps and there are methods that have limited functionality or aren't implemented.
-
-
 Overview
 =====================================
 
-Dama ML is a framework for data management and used to do data science and machine learning's pipelines, also dama-ml try to unify diverse data sources like csv, sql db, hdf5, zarr, etc, and also unify machine learning frameworks (sklearn, Keras, LigthGBM, etc) with a simplify interface.
+Dama ML is a framework for data management and is used to do data science and machine learning's pipelines, also dama-ml try to unify diverse data sources like csv, sql db, hdf5, zarr, etc, and also unify machine learning frameworks (sklearn, Keras, LigthGBM, etc) with a simplify interface.
 
-For more detail read the docs_. 
+For more detail read the docs_.
 
 .. _docs: https://elaeon.github.io/dama_ml/
+
+
+Warning
+---------------
+    Although, the API is stable this work is in alpha steps and there are methods that have limited functionality or aren't implemented.
 
 
 Installation
@@ -27,8 +28,12 @@ Installation
 
     git clone https://github.com/elaeon/dama_ml.git
     pip install dama_ml/
-    or
-    pip install dama_ml
+
+or
+
+.. code-block:: bash
+
+    pip install DaMa-ML
 
 
 You can install the python dependences with pip, but we strongly recommend install the dependences with conda and conda forge.
@@ -37,25 +42,25 @@ You can install the python dependences with pip, but we strongly recommend insta
 
     conda config --add channels conda-forge
     conda create -n new_environment --file dama_ml/requirements.txt
-    source activate new_environment
-    pip install dama_ml/
-   
+    conda activate new_environment
+    pip install DaMa-ML
+
 
 Quick start
 ==================
 
-First, configure the data paths where all data will be saved. This can be done with help of dama_ml cli tools.
+Configure the data paths where all data will be saved. This can be done with help of dama_ml cli tools.
 
 .. code-block:: python
 
     $ dama-cli config --edit
-  
-This will display a nano editor where you can edit data_path, models_path, code_path, class_path, metadata_path.
 
-* data_path is where all datasets wiil be saved.
-* models_path is where all files from your models will be saved.
-* code_path is the repository os code.
-* metadata_path is where the metadata database will be saved.
+This will display a nano editor where you can edit data_path, models_path, code_path, class_path and metadata_path.
+
+* data_path is where all datasets are saved.
+* models_path is where all files from your models are saved.
+* code_path is the repository of code. (In development)
+* metadata_path is where the metadata database is saved.
 
 Building a dataset
 
@@ -64,7 +69,7 @@ Building a dataset
     from dama.data.ds import Data
     from dama.drivers.core import Zarr, HDF5
     import numpy as np
-    
+
     array_0 = np.random.rand(100, 1)
     array_1 = np.random.rand(100,)
     array_2 = np.random.rand(100, 3)
@@ -73,9 +78,9 @@ Building a dataset
     array_5 = np.random.rand(100).astype(str)
     with Data(name=name, driver=Zarr(mode="w")) as data:
         data.from_data({"x": array_0, "y": array_1, "z": array_2, "a": array_3, "b": array_4, "c": array_5})
-    
 
-Now we use a regression model, in this case we used RandomForestRegressor
+
+We can use a regression model, in this case we use RandomForestRegressor
 
 .. code-block:: python
 
@@ -112,7 +117,7 @@ For example
 
     dama-cli datasets
 
-Return a table of datasets previosly saved.
+Return a table of datasets previously saved.
 
 .. code-block:: python
 
@@ -125,5 +130,18 @@ Return a table of datasets previosly saved.
     sha1.e832f56e33491...  reg0            Zarr      s/n           23.68 KB             6  2019-02-27 19:39:00
 
 
+.. code-block:: bash
 
-You can use "--help" for view more options. 
+    dama-cli models
+
+.. code-block:: bash
+
+    Total 3 / 3
+    from_ds                       name      group_name    model                                                version     score name        score
+    -------------------------  ----------  ------------  -------------------------------------------------  ---------  ---------------  ----------
+    sha1.d8ff5a342d2d7229...  test_model  s/n           dama.reg.extended.w_sklearn.RandomForestRegressor          1  mse               0.162365
+    sha1.d8ff5a342d2d7229...  test_model  s/n           dama.reg.extended.w_sklearn.RandomForestRegressor          1  msle              0.0741331
+    sha1.d8ff5a342d2d7229...  test_model  s/n           dama.reg.extended.w_sklearn.RandomForestRegressor          1  gini_normalized  -0.307407
+
+
+You can use "--help" for view more options.

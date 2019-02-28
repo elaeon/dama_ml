@@ -20,11 +20,12 @@ tests_require = [
 
 setup(
     name='DaMa ML',
-    use_scm_version=True,
+    #use_scm_version=True,
+    version="1.0a",
     setup_requires=['setuptools_scm'],
-    description='A framework for data management and machine learning',
+    description="A framework for data management and is used to do data science and machine learning's pipelines",
     long_description=long_description,
-    author="Alejandro G. Martínez Romero",
+    author="Alejandro Martínez",
     author_email="mara80@gmail.com",
     url='https://github.com/elaeon/dama_ml',
 
@@ -47,7 +48,7 @@ setup(
     license='Apache',
     classifiers=[
         'Development Status :: 3 - Alpha',
-        'License :: OSI Approved :: Apache 2 License',
+        'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3.6',
     ],
     zip_safe=False,

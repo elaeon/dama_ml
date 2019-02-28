@@ -23,7 +23,7 @@ model_parser.add_argument("--info", type=str, help="list of datasets or dateset 
 model_parser.add_argument("--rm", nargs="+", type=str, help="delete elements")
 model_parser.add_argument("--score-name", type=str, help="select the metric")
 model_parser.add_argument("--items", type=str, help="slice syntax to get elems from 0 to n (0:n)")
-#model_parser.add_argument("--meta", action="store_true", help="print the model's metadata")
+model_parser.add_argument("--exclude-cols", type=str, nargs="*", help="Not show this columns from the displayed table")
 model_parser.set_defaults(func=models.run)
 
 # plot_parser = subparsers.add_parser('plot')

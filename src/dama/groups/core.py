@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from collections import OrderedDict
 from dama.utils.decorators import cache
+from dama.exceptions import NotChunksFound
 import dask.array as da
 from numbers import Number
 
@@ -47,7 +48,7 @@ class DaGroup(AbsGroup):
     @staticmethod
     def convert(groups_dict, chunks: Chunks) -> dict:
         if chunks is None:
-            raise Exception
+            raise NotChunksFound
         groups = DaGroupDict()
         for group, data in groups_dict.items():
             lock = False
@@ -89,6 +90,12 @@ class DaGroup(AbsGroup):
 
     def __setitem__(self, item, value):
         self.writer_conn.set(item, value)
+
+    def set(self, item, value):
+        if isinstance(self.conn, DaGroupDict):
+            self.conn[item] = value
+        else:
+            raise NotImplementedError
 
     def __add__(self, other: 'DaGroup') -> 'DaGroup':
         if isinstance(other, Number) and other == 0:

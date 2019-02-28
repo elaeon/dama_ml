@@ -344,3 +344,8 @@ class ListMeasure(object):
             measures=this_measures+other_measures,
             order=order)
         return list_measure
+
+    @staticmethod
+    def exclude_columns(headers, exclude_list) -> list:
+        headers_set = set(headers).difference(exclude_list)
+        return [header for header in headers if header in headers_set]

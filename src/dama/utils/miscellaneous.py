@@ -40,3 +40,24 @@ def str2slice(str_slice: str) -> slice:
     else:
         page = slice(None, None)
     return page
+
+
+def libsvm_row(labels, data):
+    for label, row in zip(labels, data):
+        row = [str(i)+':'+str(x) for i, x in enumerate(row, 1) if x > 0]
+        if len(row) > 0:
+            row.insert(0, str(label))
+            yield row
+
+
+def to_libsvm(data, target, save_to=None):
+        """
+        tranforms a dataset to libsvm format
+        """
+        le = LabelEncoder()
+        target_t = le.fit_transform(data.data[target].to_ndarray())
+        groups = [group for group in data.groups if group != target]
+        with open(save_to, 'w') as f:
+            for row in libsvm_row(target_t, data.data[groups].to_ndarray()):
+                f.write(" ".join(row))
+                f.write("\n")

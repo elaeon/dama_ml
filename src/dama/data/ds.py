@@ -161,6 +161,9 @@ class Data(AbsData):
     def __getitem__(self, key):
         return self.data[key]
 
+    def __setitem__(self, key, value):
+        self.data[key].set(key, value)
+
     def __iter__(self):
         return self
 
@@ -212,6 +215,9 @@ class Data(AbsData):
 
     def __len__(self):
         return len(self.data)
+
+    def __repr__(self):
+        return repr(self.data)
 
     @property
     def shape(self):
@@ -341,20 +347,6 @@ class Data(AbsData):
 
     def to_ndarray(self, dtype=None) -> np.ndarray:
         return self.data.to_ndarray(dtype=dtype)
-
-    def to_libsvm(self, target, save_to=None):
-        """
-        tranforms the dataset into libsvm format
-        """
-        from dama.utils.seq import libsvm_row
-        from sklearn.preprocessing import LabelEncoder
-        le = LabelEncoder()
-        target_t = le.fit_transform(self.data[target].to_ndarray())
-        groups = [group for group in self.groups if group != target]
-        with open(save_to, 'w') as f:
-            for row in libsvm_row(target_t, self.data[groups].to_ndarray()):
-                f.write(" ".join(row))
-                f.write("\n")
 
     def concat(self, datasets: tuple, axis=0):
         da_groups = []

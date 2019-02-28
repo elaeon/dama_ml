@@ -29,6 +29,8 @@ def run(args):
         import sqlite3
         headers = ["from_ds", "name", "group_name", "model", "version", "score name", "score"]
         page = str2slice(args.items)
+        if args.exclude_cols is not None:
+            headers = ListMeasure.exclude_columns(headers, args.exclude_cols)
         with Metadata(driver) as metadata:
             try:
                 total = metadata.query("SELECT COUNT(*) FROM %s WHERE is_valid=True" % login.table, ())
@@ -42,6 +44,7 @@ def run(args):
                     data = data[(data["is_valid"] == True) & (data["score_name"] == args.score_name)][page]
                 df = data.to_df()
                 df.rename(columns={"model_module": "model", "score_name": "score name"}, inplace=True)
+                print("Using metadata {}".format(metadata.driver.url))
                 print("Total {} / {}".format(len(df), total[0][0]))
                 list_measure = ListMeasure(headers=headers, measures=df[headers].values)
                 print(list_measure.to_tabulate())

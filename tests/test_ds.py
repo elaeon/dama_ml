@@ -15,6 +15,8 @@ from dama.utils.files import check_or_create_path_dir
 from dama.utils.core import Chunks
 from dama.utils.core import Metadata, Login
 from dama.utils.config import get_settings
+from dama.utils.miscellaneous import to_libsvm
+
 
 try:
     from dama.drivers.postgres import Postgres
@@ -150,7 +152,7 @@ class TestDataset(unittest.TestCase):
         df = pd.DataFrame({"X0": self.X[:, 0], "X1": self.X[:, 1], "Y": self.Y})
         with Data(name="test_ds_1") as dataset:
             dataset.from_data(df, chunks=(5, ))
-            dataset.to_libsvm("Y", save_to="/tmp/test.txt")
+            to_libsvm(dataset, "Y", save_to="/tmp/test.txt")
             check("/tmp/test.txt")
             dataset.destroy()
         rm("/tmp/test.txt")
