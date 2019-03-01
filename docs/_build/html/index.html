@@ -1,34 +1,25 @@
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
-
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    
-    <title>Welcome to mlPyp’s documentation! &#8212; mlPyp 0.2.0 documentation</title>
-    
+    <title>Overview &#8212; DaMa ML 1.0a documentation</title>
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    './',
-        VERSION:     '0.2.0',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
-      };
-    </script>
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="top" title="mlPyp 0.2.0 documentation" href="#" />
     <link rel="next" title="Datasets" href="datasets.html" /> 
-  </head>
-  <body role="document">
+  </head><body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
@@ -41,7 +32,7 @@
         <li class="right" >
           <a href="datasets.html" title="Datasets"
              accesskey="N">next</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">mlPyp 0.2.0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="#">DaMa ML 1.0a documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -50,137 +41,129 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="welcome-to-mlpyp-s-documentation">
-<h1>Welcome to mlPyp&#8217;s documentation!<a class="headerlink" href="#welcome-to-mlpyp-s-documentation" title="Permalink to this headline">¶</a></h1>
-<p>A framework for machine learning&#8217;s pipelines.</p>
-<dl class="docutils">
-<dt>Highlights:</dt>
-<dd><ul class="first last simple">
-<li>Build datasets with train, test, valid data and transformations applied.</li>
-<li>Build datasets with metadata for reproducible experiments.</li>
-<li>Easy way to add distincts machine learning algorithms from Keras, scikit-learn, etc.</li>
-<li>Models with scores and predictors.</li>
-<li>Convert csv files to datasets.</li>
-<li>Uses transformations for manipulate data (images).</li>
-</ul>
-</dd>
-</dl>
-<img alt="_images/pipeline.png" class="align-center" src="_images/pipeline.png" />
+  <a class="reference external image-reference" href="https://travis-ci.org/elaeon/dama_ml"><img alt="https://travis-ci.org/elaeon/dama_ml.svg?branch=master" src="https://travis-ci.org/elaeon/dama_ml.svg?branch=master" /></a>
+<a class="reference external image-reference" href="https://www.codacy.com/app/elaeon/dama_ml?utm_source=github.com&amp;amp;utm_medium=referral&amp;amp;utm_content=elaeon/dama_ml&amp;amp;utm_campaign=Badge_Grade"><img alt="https://api.codacy.com/project/badge/Grade/0ab998e72f4f4e31b3dc7b3c9921374a" src="https://api.codacy.com/project/badge/Grade/0ab998e72f4f4e31b3dc7b3c9921374a" /></a>
+<div class="section" id="overview">
+<h1>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h1>
+<p>Dama ML is a framework for data management and is used to do data science and machine learning’s pipelines, also dama-ml try to unify diverse data sources like csv, sql db, hdf5, zarr, etc, and also unify machine learning frameworks (sklearn, Keras, LigthGBM, etc) with a simplify interface.</p>
+<p>For more detail read the <a class="reference external" href="https://elaeon.github.io/dama_ml/">docs</a>.</p>
+<div class="section" id="warning">
+<h2>Warning<a class="headerlink" href="#warning" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div>Although, the API is stable this work is in alpha steps and there are methods that have limited functionality or aren’t implemented.</div></blockquote>
 </div>
-<div class="section" id="instalation">
-<h1>Instalation<a class="headerlink" href="#instalation" title="Permalink to this headline">¶</a></h1>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>git clone https://github.com/elaeon/ML.git
+</div>
+<div class="section" id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/elaeon/dama_ml.git
+pip install dama_ml/
 </pre></div>
 </div>
-<p>You can install the python dependences with pip, but we strongly
-recommend install the dependences with conda and conda forge.</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>conda config --add channels conda-forge
-conda create -n new_environment --file ML/requirements.txt
-<span class="nb">source</span> activate new_environment
-pip install ML/
+<p>or</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install DaMa-ML
+</pre></div>
+</div>
+<p>You can install the python dependences with pip, but we strongly recommend install the dependences with conda and conda forge.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda config --add channels conda-forge
+conda create -n new_environment --file dama_ml/requirements.txt
+conda activate new_environment
+pip install DaMa-ML
 </pre></div>
 </div>
 </div>
 <div class="section" id="quick-start">
 <h1>Quick start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h1>
-<p>First, build a dataset</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ml.ds</span> <span class="kn">import</span> <span class="n">DataSetBuilder</span>
+<p>Configure the data paths where all data will be saved. This can be done with help of dama_ml cli tools.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>$ dama-cli config --edit
+</pre></div>
+</div>
+<p>This will display a nano editor where you can edit data_path, models_path, code_path, class_path and metadata_path.</p>
+<ul class="simple">
+<li>data_path is where all datasets are saved.</li>
+<li>models_path is where all files from your models are saved.</li>
+<li>code_path is the repository of code. (In development)</li>
+<li>metadata_path is where the metadata database is saved.</li>
+</ul>
+<p>Building a dataset</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">dama.data.ds</span> <span class="kn">import</span> <span class="n">Data</span>
+<span class="kn">from</span> <span class="nn">dama.drivers.core</span> <span class="kn">import</span> <span class="n">Zarr</span><span class="p">,</span> <span class="n">HDF5</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
 
-<span class="n">DIM</span> <span class="o">=</span> <span class="mi">21</span>
-<span class="n">SIZE</span> <span class="o">=</span> <span class="mi">100000</span>
-<span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">SIZE</span><span class="p">,</span> <span class="n">DIM</span><span class="p">)</span>
-<span class="n">Y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">1</span> <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
-    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">6</span><span class="o">*</span><span class="n">X</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.1</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">SIZE</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
-<span class="n">dataset_name</span> <span class="o">=</span> <span class="s2">&quot;test_dataset&quot;</span>
-<span class="n">dataset</span> <span class="o">=</span> <span class="n">DataSetBuilder</span><span class="p">(</span>
-    <span class="n">dataset_name</span><span class="p">,</span>
-    <span class="n">validator</span><span class="o">=</span><span class="s2">&quot;cross&quot;</span><span class="p">)</span>
-<span class="n">dataset</span><span class="o">.</span><span class="n">build_dataset</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">)</span>
+<span class="n">array_0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">array_1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">100</span><span class="p">,)</span>
+<span class="n">array_2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">array_3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+<span class="n">array_4</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+<span class="n">array_5</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">Data</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">driver</span><span class="o">=</span><span class="n">Zarr</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">))</span> <span class="k">as</span> <span class="n">data</span><span class="p">:</span>
+    <span class="n">data</span><span class="o">.</span><span class="n">from_data</span><span class="p">({</span><span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="n">array_0</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="n">array_1</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="n">array_2</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="n">array_3</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">:</span> <span class="n">array_4</span><span class="p">,</span> <span class="s2">&quot;c&quot;</span><span class="p">:</span> <span class="n">array_5</span><span class="p">})</span>
 </pre></div>
 </div>
-<p>Then, pass it to a classification model for training, in this case we used SVGC (was a Gaussian process with stochastic variational inference), once the training was finished you can predict some data.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ml.clf.extended.w_gpy</span> <span class="kn">import</span> <span class="n">SVGPC</span>
+<p>We can use a regression model, in this case we use RandomForestRegressor</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">dama.reg.extended.w_sklearn</span> <span class="kn">import</span> <span class="n">RandomForestRegressor</span>
+<span class="kn">from</span> <span class="nn">dama.utils.model_selection</span> <span class="kn">import</span> <span class="n">CV</span>
 
-<span class="n">classif</span> <span class="o">=</span> <span class="n">SVGPC</span><span class="p">(</span>
-    <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
-    <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;my_test_model&quot;</span><span class="p">,</span>
-    <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">)</span>
-<span class="n">classif</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">num_steps</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
-<span class="n">classif</span><span class="o">.</span><span class="n">scores</span><span class="p">()</span><span class="o">.</span><span class="n">print_scores</span><span class="p">(</span><span class="n">order_column</span><span class="o">=</span><span class="s2">&quot;f1&quot;</span><span class="p">)</span>
+<span class="n">data</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;r&quot;</span>  <span class="c1"># we changed mode &quot;w&quot; to &quot;r&quot; to not overwrite the data previously saved</span>
+<span class="k">with</span> <span class="n">data</span><span class="p">,</span> <span class="n">Data</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;test_from_hash&quot;</span><span class="p">,</span> <span class="n">driver</span><span class="o">=</span><span class="n">HDF5</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">))</span> <span class="k">as</span> <span class="n">ds</span><span class="p">:</span>
+    <span class="n">cv</span> <span class="o">=</span> <span class="n">CV</span><span class="p">(</span><span class="n">group_data</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">group_target</span><span class="o">=</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="n">train_size</span><span class="o">=.</span><span class="mi">7</span><span class="p">,</span> <span class="n">valid_size</span><span class="o">=.</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># cross validation class</span>
+    <span class="n">stc</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">ds</span><span class="o">.</span><span class="n">from_data</span><span class="p">(</span><span class="n">stc</span><span class="p">,</span> <span class="n">from_ds_hash</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">hash</span><span class="p">)</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">RandomForestRegressor</span><span class="p">()</span>
+    <span class="n">model_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">n_estimators</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">min_samples_split</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">reg</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">num_steps</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">data_train_group</span><span class="o">=</span><span class="s2">&quot;train_x&quot;</span><span class="p">,</span> <span class="n">target_train_group</span><span class="o">=</span><span class="s1">&#39;train_y&#39;</span><span class="p">,</span>
+              <span class="n">data_test_group</span><span class="o">=</span><span class="s2">&quot;test_x&quot;</span><span class="p">,</span> <span class="n">target_test_group</span><span class="o">=</span><span class="s1">&#39;test_y&#39;</span><span class="p">,</span> <span class="n">model_params</span><span class="o">=</span><span class="n">model_params</span><span class="p">,</span>
+              <span class="n">data_validation_group</span><span class="o">=</span><span class="s2">&quot;validation_x&quot;</span><span class="p">,</span> <span class="n">target_validation_group</span><span class="o">=</span><span class="s2">&quot;validation_y&quot;</span><span class="p">)</span>
+    <span class="n">reg</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;test_model&quot;</span><span class="p">,</span> <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Using SVGPC for make predictions is like this:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">classif</span> <span class="o">=</span> <span class="n">SVGPC</span><span class="p">(</span>
-    <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;my_test_model&quot;</span><span class="p">,</span>
-    <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">)</span>
-<span class="n">predictions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">classif</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">258</span><span class="p">)))</span>
+<p>Using RandomForestRegressor to do predictions is like this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">RandomForestRegressor</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;test_model&quot;</span><span class="p">,</span> <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">reg</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">pred</span> <span class="ow">in</span> <span class="n">reg</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+        <span class="n">prediction</span> <span class="o">=</span> <span class="n">pred</span><span class="o">.</span><span class="n">batch</span><span class="o">.</span><span class="n">to_ndarray</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>You can use more extra models (see <a class="reference internal" href="extra_models.html"><span class="doc">Extra models</span></a>). Extend the base model and make you own predictors! For more information about this, see the section <a class="reference internal" href="models.html"><span class="doc">Models</span></a>.</p>
 </div>
 <div class="section" id="cli">
 <h1>CLI<a class="headerlink" href="#cli" title="Permalink to this headline">¶</a></h1>
-<p>mlPyp has a CLI where you can admin your datasets and models.
+<p>dama-ml has a CLI where you can view your datasets and models.
 For example</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>ml datasets
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dama-cli datasets
 </pre></div>
 </div>
-<p>Return a table of datasets previosly builded.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">Total</span> <span class="n">size</span><span class="p">:</span> <span class="mf">6.75</span> <span class="n">MB</span>
-<span class="n">dataset</span>            <span class="n">size</span>     <span class="n">date</span>
-<span class="o">-----------------</span>  <span class="o">-------</span>  <span class="o">--------------------</span>
-<span class="n">numbers_tickets</span>    <span class="mf">2.27</span> <span class="n">MB</span>  <span class="mi">2017</span><span class="o">-</span><span class="mo">01</span><span class="o">-</span><span class="mi">26</span><span class="n">T22</span><span class="p">:</span><span class="mi">25</span> <span class="n">UTC</span>
-<span class="n">numbers_tickets_d</span>  <span class="mf">4.48</span> <span class="n">MB</span>  <span class="mi">2017</span><span class="o">-</span><span class="mo">01</span><span class="o">-</span><span class="mi">25</span><span class="n">T17</span><span class="p">:</span><span class="mo">01</span> <span class="n">UTC</span>
+<p>Return a table of datasets previously saved.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Using</span> <span class="n">metadata</span> <span class="o">..../</span><span class="n">metadata</span><span class="o">/</span><span class="n">metadata</span><span class="o">.</span><span class="n">sqlite3</span>
+<span class="n">Total</span> <span class="mi">2</span> <span class="o">/</span> <span class="mi">2</span>
+
+<span class="nb">hash</span>                    <span class="n">name</span>            <span class="n">driver</span>    <span class="n">group</span> <span class="n">name</span>    <span class="n">size</span>       <span class="n">num</span> <span class="n">groups</span>  <span class="n">datetime</span> <span class="n">UTC</span>
+<span class="o">---------------------</span>  <span class="o">--------------</span>  <span class="o">--------</span>  <span class="o">------------</span>  <span class="o">--------</span>  <span class="o">------------</span>  <span class="o">-------------------</span>
+<span class="n">sha1</span><span class="o">.</span><span class="mi">3124</span><span class="n">d5f16eb0e</span><span class="o">...</span>  <span class="n">test_from_hash</span>  <span class="n">HDF5</span>      <span class="n">s</span><span class="o">/</span><span class="n">n</span>           <span class="mf">9.12</span> <span class="n">KB</span>              <span class="mi">6</span>  <span class="mi">2019</span><span class="o">-</span><span class="mo">02</span><span class="o">-</span><span class="mi">27</span> <span class="mi">19</span><span class="p">:</span><span class="mi">39</span><span class="p">:</span><span class="mo">00</span>
+<span class="n">sha1</span><span class="o">.</span><span class="n">e832f56e33491</span><span class="o">...</span>  <span class="n">reg0</span>            <span class="n">Zarr</span>      <span class="n">s</span><span class="o">/</span><span class="n">n</span>           <span class="mf">23.68</span> <span class="n">KB</span>             <span class="mi">6</span>  <span class="mi">2019</span><span class="o">-</span><span class="mo">02</span><span class="o">-</span><span class="mi">27</span> <span class="mi">19</span><span class="p">:</span><span class="mi">39</span><span class="p">:</span><span class="mo">00</span>
 </pre></div>
 </div>
-<p>Or</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>ml models
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dama-cli models
 </pre></div>
 </div>
-<p>Returns</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">classif</span>    <span class="n">model</span> <span class="n">name</span>      <span class="n">version</span>  <span class="n">dataset</span>    <span class="n">group</span>
-<span class="o">---------</span>  <span class="o">------------</span>  <span class="o">---------</span>  <span class="o">---------</span>  <span class="o">-------</span>
-<span class="n">Boosting</span>   <span class="n">numerai</span>               <span class="mi">1</span>  <span class="n">numerai</span>
-<span class="n">SVGPC</span>      <span class="n">test2</span>                 <span class="mi">1</span>  <span class="n">test2</span>      <span class="n">basic</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>Total <span class="m">3</span> / <span class="m">3</span>
+from_ds                       name      group_name    model                                                version     score name        score
+-------------------------  ----------  ------------  -------------------------------------------------  ---------  ---------------  ----------
+sha1.d8ff5a342d2d7229...  test_model  s/n           dama.reg.extended.w_sklearn.RandomForestRegressor          <span class="m">1</span>  mse               <span class="m">0</span>.162365
+sha1.d8ff5a342d2d7229...  test_model  s/n           dama.reg.extended.w_sklearn.RandomForestRegressor          <span class="m">1</span>  msle              <span class="m">0</span>.0741331
+sha1.d8ff5a342d2d7229...  test_model  s/n           dama.reg.extended.w_sklearn.RandomForestRegressor          <span class="m">1</span>  gini_normalized  -0.307407
 </pre></div>
 </div>
-<p>You can use &#8220;&#8211;help&#8221; for view more options.</p>
+<p>You can use “–help” for view more options.</p>
 </div>
 <div class="section" id="index">
 <h1>Index<a class="headerlink" href="#index" title="Permalink to this headline">¶</a></h1>
 <div class="toctree-wrapper compound" id="mastertoc">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="datasets.html">Datasets</a></li>
-<li class="toctree-l1"><a class="reference internal" href="preprocessing.html">Processing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
-<li class="toctree-l1"><a class="reference internal" href="extra_models.html">Extra models</a></li>
-<li class="toctree-l1"><a class="reference internal" href="wrappers.html">Wrappers</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ensemble.html">Ensemble models</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="ensemble.html#boosting">Boosting</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ensemble.html#stacking">Stacking</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ensemble.html#bagging">Bagging</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="examples.html#basic-predictor">Basic predictor</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples.html#supermarker-s-numbers-tickets-transcriptor">Supermarker&#8217;s numbers tickets transcriptor</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples.html#numerai-competition">Numerai competition</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="changes.html#id1">0.2.0</a></li>
-<li class="toctree-l2"><a class="reference internal" href="changes.html#id2">0.1.1</a></li>
-<li class="toctree-l2"><a class="reference internal" href="changes.html#id3">0.1.0</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="modindex.html">Module index</a></li>
 </ul>
 </div>
 </div>
 <div class="section" id="support">
 <h1>Support<a class="headerlink" href="#support" title="Permalink to this headline">¶</a></h1>
-<p>If you encounter bugs then <a class="reference external" href="https://github.com/elaeon/ML/issues">let me know</a> .</p>
+<p>If you encounter bugs then <a class="reference external" href="https://github.com/elaeon/dama_ml/issues">let me know</a> .</p>
 </div>
 <div class="section" id="indices-and-tables">
 <h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
@@ -197,10 +180,13 @@ For example</p>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-  <h3><a href="#">Table Of Contents</a></h3>
+  <h3><a href="#">Table of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">Welcome to mlPyp&#8217;s documentation!</a></li>
-<li><a class="reference internal" href="#instalation">Instalation</a></li>
+<li><a class="reference internal" href="#">Overview</a><ul>
+<li><a class="reference internal" href="#warning">Warning</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#installation">Installation</a></li>
 <li><a class="reference internal" href="#quick-start">Quick start</a></li>
 <li><a class="reference internal" href="#cli">CLI</a></li>
 <li><a class="reference internal" href="#index">Index</a></li>
@@ -214,18 +200,20 @@ For example</p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
-      <li><a href="_sources/index.txt"
+      <li><a href="_sources/index.rst.txt"
             rel="nofollow">Show Source</a></li>
     </ul>
    </div>
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
+    <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <div><input type="text" name="q" /></div>
-      <div><input type="submit" value="Go" /></div>
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
+    </div>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -244,12 +232,12 @@ For example</p>
         <li class="right" >
           <a href="datasets.html" title="Datasets"
              >next</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">mlPyp 0.2.0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="#">DaMa ML 1.0a documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &#169; Copyright 2016, Alejandro G. Martinez Romero.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+        &#169; Copyright 2016, Alejandro Martinez.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
     </div>
   </body>
 </html>

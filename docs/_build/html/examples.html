@@ -1,35 +1,26 @@
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
-
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    
-    <title>Examples &#8212; mlPyp 0.2.0 documentation</title>
-    
+    <title>Examples &#8212; DaMa ML 1.0a documentation</title>
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    './',
-        VERSION:     '0.2.0',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
-      };
-    </script>
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="top" title="mlPyp 0.2.0 documentation" href="index.html" />
     <link rel="next" title="Changelog" href="changes.html" />
     <link rel="prev" title="Ensemble models" href="ensemble.html" /> 
-  </head>
-  <body role="document">
+  </head><body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
@@ -37,15 +28,12 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
           <a href="changes.html" title="Changelog"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="ensemble.html" title="Ensemble models"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.2.0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">DaMa ML 1.0a documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -59,40 +47,40 @@
 <p>Here are examples divided in categories.</p>
 <div class="section" id="basic-predictor">
 <h2>Basic predictor<a class="headerlink" href="#basic-predictor" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">basic_predict</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">build</span><span class="o">-</span><span class="n">dataset</span> <span class="n">cross</span> <span class="o">--</span><span class="n">dataset</span><span class="o">-</span><span class="n">name</span> <span class="n">basic_test</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">basic_predict</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">build</span><span class="o">-</span><span class="n">dataset</span> <span class="n">cross</span> <span class="o">--</span><span class="n">dataset</span><span class="o">-</span><span class="n">name</span> <span class="n">basic_test</span>
 <span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">basic_predict</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">train</span> <span class="o">--</span><span class="n">dataset</span><span class="o">-</span><span class="n">name</span> <span class="n">basic_test</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">name</span> <span class="n">svgpc_test</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">version</span> <span class="mi">1</span>
 <span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">basic_predict</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">predict</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">name</span> <span class="n">svgpc_test</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">version</span> <span class="mi">1</span> <span class="o">--</span><span class="n">chunk</span><span class="o">-</span><span class="n">size</span> <span class="mi">100</span>
 </pre></div>
 </div>
 </div>
 <div class="section" id="supermarker-s-numbers-tickets-transcriptor">
-<h2>Supermarker&#8217;s numbers tickets transcriptor<a class="headerlink" href="#supermarker-s-numbers-tickets-transcriptor" title="Permalink to this headline">¶</a></h2>
-<p>The first step is build the number detector from supermarket&#8217;s tickets (for this is necessary
+<h2>Supermarker’s numbers tickets transcriptor<a class="headerlink" href="#supermarker-s-numbers-tickets-transcriptor" title="Permalink to this headline">¶</a></h2>
+<p>The first step is build the number detector from supermarket’s tickets (for this is necessary
 have installed dlib)</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">hog</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">train</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">hog</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">train</span>
 <span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">hog</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">test</span>
 <span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">hog</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">draw</span>
 </pre></div>
 </div>
 <p>Then, build the directory with the images for the train dataset</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">tickets2numbers</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">build</span><span class="o">-</span><span class="n">images</span> <span class="n">xml</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">tickets2numbers</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">build</span><span class="o">-</span><span class="n">images</span> <span class="n">xml</span>
 </pre></div>
 </div>
 <p>The next step is build the dataset and train the model</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">numbers_clf</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">build</span><span class="o">-</span><span class="n">dataset</span> <span class="n">cross</span> <span class="o">--</span><span class="n">dataset</span><span class="o">-</span><span class="n">name</span> <span class="n">numbers_tickets</span> <span class="o">--</span><span class="n">from</span><span class="o">-</span><span class="n">xml</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">numbers_clf</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">build</span><span class="o">-</span><span class="n">dataset</span> <span class="n">cross</span> <span class="o">--</span><span class="n">dataset</span><span class="o">-</span><span class="n">name</span> <span class="n">numbers_tickets</span> <span class="o">--</span><span class="n">from</span><span class="o">-</span><span class="n">xml</span>
 <span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">numbers_clf</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">train</span> <span class="o">--</span><span class="n">dataset</span><span class="o">-</span><span class="n">name</span> <span class="n">numbers_tickets</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">name</span> <span class="n">numbers_tickets</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">version</span> <span class="mi">1</span>
 <span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">numbers_clf</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">test</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">name</span> <span class="n">numbers_tickets</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">version</span> <span class="mi">1</span>
 </pre></div>
 </div>
 <p>Finally, run the transcriptor</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">transcriptor</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">name</span> <span class="n">numbers_tickets</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">version</span> <span class="mi">1</span> <span class="o">--</span><span class="n">transcriptor</span><span class="o">-</span><span class="n">ticket</span><span class="o">-</span><span class="n">test</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">transcriptor</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">name</span> <span class="n">numbers_tickets</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">version</span> <span class="mi">1</span> <span class="o">--</span><span class="n">transcriptor</span><span class="o">-</span><span class="n">ticket</span><span class="o">-</span><span class="n">test</span>
 </pre></div>
 </div>
 </div>
 <div class="section" id="numerai-competition">
 <h2>Numerai competition<a class="headerlink" href="#numerai-competition" title="Permalink to this headline">¶</a></h2>
-<p>You need to download and save the numerai&#8217;s data in the correspondient folder (previously difined in the settings.cfg file) and run the commands.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">numerai</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">build</span><span class="o">-</span><span class="n">dataset</span> <span class="o">--</span><span class="n">dataset</span><span class="o">-</span><span class="n">name</span> <span class="n">numerai</span>
+<p>You need to download and save the numerai’s data in the correspondient folder (previously difined in the settings.cfg file) and run the commands.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">numerai</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">build</span><span class="o">-</span><span class="n">dataset</span> <span class="o">--</span><span class="n">dataset</span><span class="o">-</span><span class="n">name</span> <span class="n">numerai</span>
 <span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">numerai</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">train</span> <span class="o">--</span><span class="n">dataset</span><span class="o">-</span><span class="n">name</span> <span class="n">numerai</span> <span class="o">--</span><span class="n">ensemble</span> <span class="n">stacking</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">name</span> <span class="n">numerai</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">version</span> <span class="mi">1</span>
 <span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="n">numerai</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">predict</span> <span class="o">--</span><span class="n">ensemble</span> <span class="n">stacking</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">name</span> <span class="n">numerai</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">version</span> <span class="mi">1</span>
 </pre></div>
@@ -106,11 +94,11 @@ have installed dlib)</p>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-  <h3><a href="index.html">Table Of Contents</a></h3>
+  <h3><a href="index.html">Table of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Examples</a><ul>
 <li><a class="reference internal" href="#basic-predictor">Basic predictor</a></li>
-<li><a class="reference internal" href="#supermarker-s-numbers-tickets-transcriptor">Supermarker&#8217;s numbers tickets transcriptor</a></li>
+<li><a class="reference internal" href="#supermarker-s-numbers-tickets-transcriptor">Supermarker’s numbers tickets transcriptor</a></li>
 <li><a class="reference internal" href="#numerai-competition">Numerai competition</a></li>
 </ul>
 </li>
@@ -125,18 +113,20 @@ have installed dlib)</p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
-      <li><a href="_sources/examples.txt"
+      <li><a href="_sources/examples.rst.txt"
             rel="nofollow">Show Source</a></li>
     </ul>
    </div>
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
+    <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <div><input type="text" name="q" /></div>
-      <div><input type="submit" value="Go" /></div>
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
+    </div>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -150,20 +140,17 @@ have installed dlib)</p>
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
           <a href="changes.html" title="Changelog"
              >next</a> |</li>
         <li class="right" >
           <a href="ensemble.html" title="Ensemble models"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">mlPyp 0.2.0 documentation</a> &#187;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">DaMa ML 1.0a documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, Alejandro G. Martinez Romero.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
     </div>
   </body>
 </html>
