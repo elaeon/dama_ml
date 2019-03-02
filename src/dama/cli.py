@@ -4,7 +4,7 @@ from dama.commands import dataset, models, plot, config, reader, repo
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--version', action='version', version=get_distribution("soft-stream").version)
+parser.add_argument('--version', action='version', version=get_distribution("dama_ml").version)
 subparsers = parser.add_subparsers()
 
 dataset_parser = subparsers.add_parser('datasets')

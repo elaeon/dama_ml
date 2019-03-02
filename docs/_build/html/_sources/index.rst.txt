@@ -119,7 +119,7 @@ For example
 
 Return a table of datasets previously saved.
 
-.. code-block:: python
+.. code-block:: bash
 
     Using metadata ..../metadata/metadata.sqlite3
     Total 2 / 2
@@ -156,11 +156,12 @@ Index
    :name: mastertoc
 
    datasets
+   iterators
 
 
 Support
 =======
-If you encounter bugs then `let me know`_ .
+If you find bugs then `let me know`_ .
 
 .. _let me know: https://github.com/elaeon/dama_ml/issues
 

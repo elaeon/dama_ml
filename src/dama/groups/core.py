@@ -121,16 +121,20 @@ class DaGroup(AbsGroup):
             raise Exception
         else:
             if axis == 0:
-                groups = [da_group.groups for da_group in da_groups]
-                intersection_groups = set(groups[0])
-                for group in groups[1:]:
-                    intersection_groups = intersection_groups.intersection(set(group))
+                all_groups = [da_group.groups for da_group in da_groups]
                 da_group_dict = DaGroupDict()
-                for group in intersection_groups:
-                    da_arrays = [da_group[group].darray for da_group in da_groups]
-                    da_array_c = da.concatenate(da_arrays, axis=axis)
-                    da_group_dict[group] = da_array_c
-                return DaGroup(da_group_dict)
+                intersection_groups = set(all_groups[0])
+                for group in all_groups[1:]:
+                    intersection_groups = intersection_groups.intersection(set(group))
+
+                if len(intersection_groups) > 0:
+                    for group in intersection_groups:
+                        da_arrays = [da_group[group].darray for da_group in da_groups]
+                        da_array_c = da.concatenate(da_arrays, axis=axis)
+                        da_group_dict[group] = da_array_c
+                    return DaGroup(da_group_dict)
+                else:
+                    return sum(da_groups)
             else:
                 raise NotImplementedError
 

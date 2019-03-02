@@ -152,7 +152,10 @@ class Data(AbsData):
                 self.compressor_params = self.driver.compressor_params
 
         if self.auto_chunks is True:
-            self.chunksize = Chunks.build_from_shape(self.shape, self.dtypes)
+            try:
+                self.chunksize = Chunks.build_from_shape(self.shape, self.dtypes)
+            except KeyError as e:
+                log.error(e)
 
     def close(self):
         self.driver.close()
@@ -225,7 +228,7 @@ class Data(AbsData):
 
     @property
     def groups(self) -> tuple:
-        return self.driver.absgroup.groups
+        return self.driver.groups
 
     @property
     def dtypes(self) -> np.dtype:

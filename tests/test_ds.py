@@ -411,6 +411,17 @@ class TestDataset(unittest.TestCase):
             dataset2.destroy()
             data_c.destroy()
 
+    def test_concat_axis_0_distinct_groups(self):  # length
+        with Data(name="test") as dataset, Data(name="test2") as dataset2,\
+            Data(name="concat", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as data_c:
+            dataset.from_data({"x": np.random.rand(10), "y": np.random.rand(10)}, chunks=(5,))
+            dataset2.from_data({"a": np.random.rand(10), "b": np.random.rand(10)}, chunks=(5,))
+            data_c.concat((dataset, dataset2), axis=0)
+            self.assertEqual(data_c.groups, tuple(list(dataset.groups) + list(dataset2.groups)))
+            dataset.destroy()
+            dataset2.destroy()
+            data_c.destroy()
+
 
 class TestDataZarr(unittest.TestCase):
     def setUp(self):

@@ -241,9 +241,9 @@ class TestWrappers(unittest.TestCase):
     def test_gbr(self):
         reg = GradientBoostingRegressor(metadata_path=TMP_PATH)
         reg = self.train(reg, model_params=dict(learning_rate=0.2, random_state=3))
-        reg.ds.driver.mode = "a"
+        reg.ds.driver.mode = "r"
         with reg.ds:
-            self.assertEqual(reg.ds.hash, "sha1.0d60c62130c4a95634a79abc8e27cebd5fe5bb70")
+            self.assertEqual(reg.ds.hash, "sha1.fb894bc728ca9a70bad40b856bc8e37bf67f74b6")
             reg.destroy()
 
 

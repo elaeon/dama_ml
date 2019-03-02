@@ -89,6 +89,10 @@ class AbsDriver(ABC):
     def dtypes(self):
         return NotImplemented
 
+    @property
+    def groups(self):
+        return self.dtypes.names
+
     @abstractmethod
     def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key: list = None):
         return NotImplemented

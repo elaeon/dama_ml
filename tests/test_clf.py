@@ -341,7 +341,7 @@ class TestWrappers(unittest.TestCase):
                       data_validation_group="validation_x", target_validation_group="validation_y")
             clf.save("test", path=TMP_PATH, model_version="1")
             dataset.destroy()
-        self.hash = "sha1.0d60c62130c4a95634a79abc8e27cebd5fe5bb70"
+        self.hash = "sha1.fb894bc728ca9a70bad40b856bc8e37bf67f74b6"
         return clf
 
     def test_svc(self):
