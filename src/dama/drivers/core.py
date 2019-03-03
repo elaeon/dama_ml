@@ -27,7 +27,7 @@ class HDF5(AbsDriver):
     @property
     def absgroup(self):
         try:
-            return HDF5Group(self.conn[self.data_tag])
+            return HDF5Group(self.conn[self.data_tag], dtypes=self.dtypes)
         except KeyError:
             raise DataDoesNotFound
 
@@ -93,7 +93,7 @@ class Zarr(AbsDriver):
 
     @property
     def absgroup(self):
-        return ZarrGroup(self.conn[self.data_tag])
+        return ZarrGroup(self.conn[self.data_tag], dtypes=self.dtypes)
 
     def open(self):
         if self.conn is None:

@@ -6,9 +6,9 @@ from dama.abc.group import AbsBaseGroup
 class HDF5Group(AbsBaseGroup):
     inblock = False
 
-    @property
-    def dtypes(self) -> np.dtype:
-        return np.dtype([(group, self.conn[group].dtype) for group in self.conn.keys()])
+    #@property
+    #def dtypes(self) -> np.dtype:
+    #    return np.dtype([(group, self.conn[group].dtype) for group in self.conn.keys()])
 
     def get_group(self, group) -> AbsBaseGroup:
         if isinstance(self.conn, NativeH5Group):

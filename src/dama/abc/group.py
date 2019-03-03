@@ -10,14 +10,15 @@ import pandas as pd
 class AbsBaseGroup(ABC):
     inblock = None
 
-    def __init__(self, conn):
+    def __init__(self, conn, dtypes):
         self.conn = conn
         self.attrs = Attrs()
+        self.dtypes = dtypes
 
-    @property
-    @abstractmethod
-    def dtypes(self):
-        return NotImplemented
+    #@property
+    #@abstractmethod
+    #def dtypes(self):
+    #    return NotImplemented
 
     @abstractmethod
     def get_group(self, group):
@@ -93,8 +94,8 @@ class Attrs(dict, metaclass=Singleton):
 class AbsGroup(AbsBaseGroup):
     __slots__ = ['conn', 'writer_conn', 'counter', 'attrs']
 
-    def __init__(self, conn, writer_conn=None):
-        super(AbsGroup, self).__init__(conn)
+    def __init__(self, conn, dtypes, writer_conn=None):
+        super(AbsGroup, self).__init__(conn, dtypes)
         self.writer_conn = writer_conn
         self.counter = 0
 
@@ -135,10 +136,10 @@ class AbsGroup(AbsBaseGroup):
     def get_conn(self, group):
         return self[group]
 
-    @property
-    @abstractmethod
-    def dtypes(self) -> np.dtype:
-        return NotImplemented
+    #@property
+    #@abstractmethod
+    #def dtypes(self) -> np.dtype:
+    #    return NotImplemented
 
     @property
     @abstractmethod

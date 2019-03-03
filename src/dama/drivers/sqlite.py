@@ -31,7 +31,7 @@ class Sqlite(AbsDriver):
 
     @property
     def absgroup(self):
-        return Table(self.conn, name=self.data_tag)
+        return Table(self.conn, self.dtypes, name=self.data_tag)
 
     def exists(self) -> bool:
         cur = self.conn.cursor()
@@ -51,7 +51,28 @@ class Sqlite(AbsDriver):
 
     @property
     def dtypes(self) -> np.dtype:
-        return self.absgroup.dtypes
+        from collections import OrderedDict
+        cur = self.conn.cursor()
+        cur.execute("PRAGMA table_info('{}')".format(self.data_tag))
+        dtypes = OrderedDict()
+        types = {"text": np.dtype("object"), "integer": np.dtype("int"),
+                 "float": np.dtype("float"), "boolean": np.dtype("bool"),
+                 "timestamp": np.dtype('datetime64[ns]')}
+
+        #if self.query_parts["columns"] is not None:
+        #    for column in cur.fetchall():
+        #        if column[1] in self.query_parts["columns"]:
+        #            dtypes[column[1]] = types.get(column[2].lower(), np.dtype("object"))
+        #else:
+        for column in cur.fetchall():
+            dtypes[column[1]] = types.get(column[2].lower(), np.dtype("object"))
+
+        if "id" in dtypes:
+            del dtypes["id"]
+
+        cur.close()
+        if len(dtypes) > 0:
+            return np.dtype(list(dtypes.items()))
 
     @property
     def groups(self) -> tuple:

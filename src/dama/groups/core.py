@@ -27,26 +27,33 @@ class DaGroupDict(OrderedDict):
     def get_oldname(self, name) -> str:
         return self.map_rename.get(name, name)
 
+    @property
+    def dtypes(self):
+        return np.dtype([(group, self[group].dtype) for group in self.keys()])
+
 
 class DaGroup(AbsGroup):
     def __init__(self, conn, chunks: Chunks = None, writer_conn=None):
         if isinstance(conn, DaGroupDict):
             reader_conn = conn
+            dtypes = reader_conn.dtypes
         elif isinstance(conn, dict):
             reader_conn = DaGroup.convert(conn, chunks=chunks)
+            dtypes = reader_conn.dtypes
         elif isinstance(conn, AbsBaseGroup):  # or AbsGroup:
             groups = OrderedDict()
             for group in conn.groups:
                 groups[group] = conn.get_conn(group)
             reader_conn = DaGroup.convert(groups, chunks=chunks)
+            dtypes = conn.dtypes
             if writer_conn is None:
                 writer_conn = conn
         else:
             raise NotImplementedError("Type {} does not supported".format(type(conn)))
-        super(DaGroup, self).__init__(reader_conn, writer_conn=writer_conn)
+        super(DaGroup, self).__init__(reader_conn, dtypes=dtypes, writer_conn=writer_conn)
 
     @staticmethod
-    def convert(groups_dict, chunks: Chunks) -> dict:
+    def convert(groups_dict, chunks: Chunks) -> DaGroupDict:
         if chunks is None:
             raise NotChunksFound
         groups = DaGroupDict()
@@ -57,10 +64,6 @@ class DaGroup(AbsGroup):
 
     def sample(self, index):
         return self.set_values(self.groups, index)
-
-    @property
-    def dtypes(self) -> np.dtype:
-        return np.dtype([(group, self.conn[group].dtype) for group in self.conn.keys()])
 
     def set_values(self, groups, item) -> 'DaGroup':
         dict_conn = DaGroupDict(map_rename=self.conn.map_rename)
@@ -155,7 +158,7 @@ class DaGroup(AbsGroup):
         if len(self.groups) == 1:
             return self.conn[self.groups[0]]
         else:
-            raise NotImplementedError("I couldn't return a dask array with two groups.")
+            raise NotImplementedError("I can't return a dask array with two groups.")
 
     def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
         self.writer_conn.attrs["dtype"] = dtype
@@ -226,9 +229,9 @@ class DaGroup(AbsGroup):
 class StcArrayGroup(AbsBaseGroup):
     inblock = False
 
-    @property
-    def dtypes(self) -> np.dtype:
-        return self.conn.dtype
+    #@property
+    #def dtypes(self) -> np.dtype:
+    #    return self.conn.dtype
 
     def get_group(self, group) -> AbsBaseGroup:
         return StcArrayGroup(self.conn[group])
@@ -303,10 +306,10 @@ class TupleGroup(AbsGroup):
             shape[group] = self.conn[index].shape
         return Shape(shape)
 
-    @property
-    def dtypes(self) -> np.dtype:
-        return self.dtypes_cache
+    #@property
+    #def dtypes(self) -> np.dtype:
+    #    return self.dtypes_cache
 
-    @dtypes.setter
-    def dtypes(self, v):
-        self.dtypes_cache = v
+    #@dtypes.setter
+    #def dtypes(self, v):
+    #    self.dtypes_cache = v

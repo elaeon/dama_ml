@@ -9,37 +9,44 @@ from dama.data.it import Iterator, BatchIterator
 class Table(AbsGroup):
     inblock = True
 
-    def __init__(self, conn, name=None, query_parts=None):
-        super(Table, self).__init__(conn)
+    def __init__(self, conn, dtypes, name=None, query_parts=None):
+        super(Table, self).__init__(conn, dtypes=dtypes)
         self.name = name
         if query_parts is None:
             self.query_parts = {"columns": None, "slice": None}
         else:
             self.query_parts = query_parts
 
+    def dtypes_from_groups(self, groups) -> np.dtype:
+        return np.dtype([(group, dtype) for group, (dtype, _) in self.dtypes.fields.items() if group in groups])
+
     def __getitem__(self, item):
         query_parts = self.query_parts.copy()
         if isinstance(item, str):
             query_parts["columns"] = [item]
-            return Table(self.conn, name=self.name, query_parts=query_parts)
+            dtypes = self.dtypes_from_groups([item])
+            return Table(self.conn, dtypes, name=self.name, query_parts=query_parts)
         elif isinstance(item, list) or isinstance(item, tuple):
             it = Iterator(item)
             if it.type_elem == int:
                 query_parts["slice"] = [slice(index, index + 1) for index in item]
+                dtypes = self.dtypes
             elif it.type_elem == slice:
                 query_parts["slice"] = item
+                dtypes = self.dtypes
             elif it.type_elem == str:
                 query_parts["columns"] = item
+                dtypes = self.dtypes_from_groups(item)
             dtype = self.attrs.get("dtype", None)
-            return Table(self.conn, name=self.name, query_parts=query_parts).to_ndarray(dtype=dtype)
+            return Table(self.conn, dtypes, name=self.name, query_parts=query_parts).to_ndarray(dtype=dtype)
         elif isinstance(item, int):
             query_parts["slice"] = slice(item, item + 1)
             dtype = self.attrs.get("dtype", None)
-            return Table(self.conn, name=self.name, query_parts=query_parts).to_ndarray(dtype=dtype)
+            return Table(self.conn, self.dtypes, name=self.name, query_parts=query_parts).to_ndarray(dtype=dtype)
         elif isinstance(item, slice):
             query_parts["slice"] = item
             dtype = self.attrs.get("dtype", None)
-            return Table(self.conn, name=self.name, query_parts=query_parts).to_ndarray(dtype=dtype)
+            return Table(self.conn, self.dtypes, name=self.name, query_parts=query_parts).to_ndarray(dtype=dtype)
 
     def __setitem__(self, item, value):
         if hasattr(value, 'batch'):
@@ -157,31 +164,6 @@ class Table(AbsGroup):
         shape = OrderedDict([(group, (length,)) for group in self.groups])
         cur.close()
         return Shape(shape)
-
-    @property
-    @cache
-    def dtypes(self) -> np.dtype:
-        cur = self.conn.cursor()
-        cur.execute("PRAGMA table_info('{}')".format(self.name))
-        dtypes = OrderedDict()
-        types = {"text": np.dtype("object"), "integer": np.dtype("int"),
-                 "float": np.dtype("float"), "boolean": np.dtype("bool"),
-                 "timestamp": np.dtype('datetime64[ns]')}
-
-        if self.query_parts["columns"] is not None:
-            for column in cur.fetchall():
-                if column[1] in self.query_parts["columns"]:
-                    dtypes[column[1]] = types.get(column[2].lower(), np.dtype("object"))
-        else:
-            for column in cur.fetchall():
-                dtypes[column[1]] = types.get(column[2].lower(), np.dtype("object"))
-
-        if "id" in dtypes:
-            del dtypes["id"]
-
-        cur.close()
-        if len(dtypes) > 0:
-            return np.dtype(list(dtypes.items()))
 
     def last_id(self):
         cur = self.conn.cursor()
