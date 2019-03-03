@@ -17,9 +17,6 @@ class Table(AbsGroup):
         else:
             self.query_parts = query_parts
 
-    def dtypes_from_groups(self, groups) -> np.dtype:
-        return np.dtype([(group, dtype) for group, (dtype, _) in self.dtypes.fields.items() if group in groups])
-
     def __getitem__(self, item):
         query_parts = self.query_parts.copy()
         if isinstance(item, str):

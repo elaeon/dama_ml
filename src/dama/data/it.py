@@ -576,5 +576,5 @@ class BatchItGroup(BatchIterator):
 
     def batch_from_it(self, shape):
         for start_i, end_i, stc_array, in str_array(shape, self.chunksize, self.data, self.data.dtypes):
-            da_group = DaGroup(StcArrayGroup(stc_array), chunks=self.chunksize)
+            da_group = DaGroup(StcArrayGroup(stc_array, self.dtypes), chunks=self.chunksize)
             yield Slice(batch=da_group, slice=slice(start_i, end_i))

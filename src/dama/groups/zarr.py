@@ -12,9 +12,9 @@ class ZarrGroup(AbsBaseGroup):
 
     def get_group(self, group) -> AbsBaseGroup:
         if isinstance(self.conn, NativeZGroup):
-            return ZarrGroup(self.conn[group])
+            return ZarrGroup(self.conn[group], self.dtypes)
         else:
-            return ZarrGroup(self.conn)
+            return ZarrGroup(self.conn, self.dtypes)
 
     def get_conn(self, group):
         if isinstance(self.conn, NativeZGroup):

@@ -20,6 +20,11 @@ class AbsBaseGroup(ABC):
     #def dtypes(self):
     #    return NotImplemented
 
+    def dtypes_from_groups(self, groups) -> np.dtype:
+        if not isinstance(groups, list) or not isinstance(groups, tuple):
+            groups = [groups]
+        return np.dtype([(group, dtype) for group, (dtype, _) in self.dtypes.fields.items() if group in groups])
+
     @abstractmethod
     def get_group(self, group):
         return NotImplemented

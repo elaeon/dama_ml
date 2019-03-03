@@ -229,12 +229,9 @@ class DaGroup(AbsGroup):
 class StcArrayGroup(AbsBaseGroup):
     inblock = False
 
-    #@property
-    #def dtypes(self) -> np.dtype:
-    #    return self.conn.dtype
-
     def get_group(self, group) -> AbsBaseGroup:
-        return StcArrayGroup(self.conn[group])
+        dtypes = self.dtypes_from_groups(group)
+        return StcArrayGroup(self.conn[group], dtypes)
 
     def get_conn(self, group):
         return self.conn[group]
@@ -260,14 +257,12 @@ class TupleGroup(AbsGroup):
     inblock = False
 
     def __init__(self, conn, dtypes=None):
-        self.dtypes = dtypes
-        super(TupleGroup, self).__init__(conn)
+        super(TupleGroup, self).__init__(conn, dtypes)
 
     def __getitem__(self, item):
         if isinstance(item, str):
-            for index, (group, (dtype, _)) in enumerate(self.dtypes.fields.items()):
-                if group == item:
-                    return TupleGroup(self.conn[index], dtypes=np.dtype([(group, dtype)]))
+            dtypes = self.dtypes_from_groups([item])
+            return TupleGroup(self.conn[item], dtypes=dtypes)
         elif isinstance(item, list) or isinstance(item, tuple):
             if isinstance(self.conn, np.ndarray):
                 return self.conn[item]
