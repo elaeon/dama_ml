@@ -15,13 +15,8 @@ class AbsBaseGroup(ABC):
         self.attrs = Attrs()
         self.dtypes = dtypes
 
-    #@property
-    #@abstractmethod
-    #def dtypes(self):
-    #    return NotImplemented
-
     def dtypes_from_groups(self, groups) -> np.dtype:
-        if not isinstance(groups, list) or not isinstance(groups, tuple):
+        if not isinstance(groups, list) and not isinstance(groups, tuple):
             groups = [groups]
         return np.dtype([(group, dtype) for group, (dtype, _) in self.dtypes.fields.items() if group in groups])
 
@@ -140,11 +135,6 @@ class AbsGroup(AbsBaseGroup):
 
     def get_conn(self, group):
         return self[group]
-
-    #@property
-    #@abstractmethod
-    #def dtypes(self) -> np.dtype:
-    #    return NotImplemented
 
     @property
     @abstractmethod

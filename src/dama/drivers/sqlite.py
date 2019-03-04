@@ -2,6 +2,7 @@ from dama.abc.driver import AbsDriver
 from dama.groups.sqlite import Table
 from dama.fmtypes import fmtypes_map
 from dama.utils.logger import log_config
+from dama.utils.decorators import cache
 import numpy as np
 import sqlite3
 
@@ -50,6 +51,7 @@ class Sqlite(AbsDriver):
         self.conn.commit()
 
     @property
+    @cache
     def dtypes(self) -> np.dtype:
         from collections import OrderedDict
         cur = self.conn.cursor()
@@ -59,11 +61,6 @@ class Sqlite(AbsDriver):
                  "float": np.dtype("float"), "boolean": np.dtype("bool"),
                  "timestamp": np.dtype('datetime64[ns]')}
 
-        #if self.query_parts["columns"] is not None:
-        #    for column in cur.fetchall():
-        #        if column[1] in self.query_parts["columns"]:
-        #            dtypes[column[1]] = types.get(column[2].lower(), np.dtype("object"))
-        #else:
         for column in cur.fetchall():
             dtypes[column[1]] = types.get(column[2].lower(), np.dtype("object"))
 
@@ -120,7 +117,7 @@ class Sqlite(AbsDriver):
         pass
 
     def insert(self, data):
-        table = Table(self.conn, self.data_tag)
+        table = Table(self.conn, self.dtypes, name=self.data_tag)
         table.insert(data)
 
     def spaces(self) -> list:

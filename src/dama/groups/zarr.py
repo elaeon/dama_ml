@@ -1,4 +1,3 @@
-import numpy as np
 from dama.abc.group import AbsBaseGroup
 from zarr.hierarchy import Group as NativeZGroup
 
@@ -6,13 +5,10 @@ from zarr.hierarchy import Group as NativeZGroup
 class ZarrGroup(AbsBaseGroup):
     inblock = False
 
-    #@property
-    #def dtypes(self) -> np.dtype:
-    #    return np.dtype([(group, self.conn[group].dtype) for group in self.conn.keys()])
-
     def get_group(self, group) -> AbsBaseGroup:
         if isinstance(self.conn, NativeZGroup):
-            return ZarrGroup(self.conn[group], self.dtypes)
+            dtypes = self.dtypes_from_groups(group)
+            return ZarrGroup(self.conn[group], dtypes)
         else:
             return ZarrGroup(self.conn, self.dtypes)
 

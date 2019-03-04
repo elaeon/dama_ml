@@ -21,7 +21,7 @@ class Table(AbsGroup):
         query_parts = self.query_parts.copy()
         if isinstance(item, str):
             query_parts["columns"] = [item]
-            dtypes = self.dtypes_from_groups([item])
+            dtypes = self.dtypes_from_groups(item)
             return Table(self.conn, dtypes, name=self.name, query_parts=query_parts)
         elif isinstance(item, list) or isinstance(item, tuple):
             it = Iterator(item)

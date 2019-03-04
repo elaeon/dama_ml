@@ -2,6 +2,7 @@ from dama.abc.driver import AbsDriver
 from dama.groups.postgres import Table
 from dama.fmtypes import fmtypes_map
 from dama.utils.logger import log_config
+from dama.utils.decorators import cache
 import numpy as np
 import psycopg2
 
@@ -32,7 +33,7 @@ class Postgres(AbsDriver):
 
     @property
     def absgroup(self):
-        return Table(self.conn, name=self.data_tag)
+        return Table(self.conn, self.dtypes, name=self.data_tag)
 
     def exists(self) -> bool:
         cur = self.conn.cursor()
@@ -48,8 +49,26 @@ class Postgres(AbsDriver):
         self.conn.commit()
 
     @property
+    @cache
     def dtypes(self) -> np.dtype:
-        return Table(self.conn, name=self.data_tag).dtypes
+        from collections import OrderedDict
+        cur = self.conn.cursor()
+        query = "SELECT * FROM information_schema.columns WHERE table_name=%(table_name)s ORDER BY ordinal_position"
+        cur.execute(query, {"table_name": self.data_tag})
+        dtypes = OrderedDict()
+        types = {"text": np.dtype("object"), "integer": np.dtype("int"),
+                 "double precision": np.dtype("float"), "boolean": np.dtype("bool"),
+                 "timestamp without time zone": np.dtype('datetime64[ns]')}
+
+        for column in cur.fetchall():
+            dtypes[column[3]] = types.get(column[7], np.dtype("object"))
+
+        cur.close()
+        if "id" in dtypes:
+            del dtypes["id"]
+
+        if len(dtypes) > 0:
+            return np.dtype(list(dtypes.items()))
 
     def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key=None):
         idx = None
@@ -81,7 +100,7 @@ class Postgres(AbsDriver):
         pass
 
     def insert(self, table_name: str, data):
-        table = Table(self.conn, table_name)
+        table = Table(self.conn, self.dtypes, name=table_name)
         table.insert(data)
 
     def spaces(self) -> list:

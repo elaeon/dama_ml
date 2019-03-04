@@ -131,7 +131,8 @@ class DaGroup(AbsGroup):
                     intersection_groups = intersection_groups.intersection(set(group))
 
                 if len(intersection_groups) > 0:
-                    for group in intersection_groups:
+                    groups = [group for group in all_groups[0] if group in intersection_groups]  # to maintain groups order
+                    for group in groups:
                         da_arrays = [da_group[group].darray for da_group in da_groups]
                         da_array_c = da.concatenate(da_arrays, axis=axis)
                         da_group_dict[group] = da_array_c
@@ -261,8 +262,16 @@ class TupleGroup(AbsGroup):
 
     def __getitem__(self, item):
         if isinstance(item, str):
-            dtypes = self.dtypes_from_groups([item])
-            return TupleGroup(self.conn[item], dtypes=dtypes)
+            if isinstance(self.conn, tuple):
+                dtypes = self.dtypes_from_groups(item)
+                index = 0
+                for i, group in enumerate(self.groups):
+                    if item == group:
+                        index = i
+                        break
+                return TupleGroup(self.conn[index], dtypes=dtypes)
+            else:
+                raise NotImplementedError
         elif isinstance(item, list) or isinstance(item, tuple):
             if isinstance(self.conn, np.ndarray):
                 return self.conn[item]
@@ -300,11 +309,3 @@ class TupleGroup(AbsGroup):
         for index, group in enumerate(self.groups):
             shape[group] = self.conn[index].shape
         return Shape(shape)
-
-    #@property
-    #def dtypes(self) -> np.dtype:
-    #    return self.dtypes_cache
-
-    #@dtypes.setter
-    #def dtypes(self, v):
-    #    self.dtypes_cache = v
