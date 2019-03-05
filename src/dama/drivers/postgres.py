@@ -19,8 +19,8 @@ class Postgres(AbsDriver):
         return self.exists()
 
     def open(self):
-        self.conn = psycopg2.connect(
-            "dbname={db_name} user={username}".format(db_name=self.login.resource, username=self.login.username))
+        self.conn = psycopg2.connect(database=self.login.resource, user=self.login.username,
+                                     host=self.login.host, port=self.login.port)
         self.conn.autocommit = False
         self.attrs = {}
         if self.mode == "w":

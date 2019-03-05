@@ -16,14 +16,15 @@ from dama.utils.core import Chunks
 from dama.utils.core import Metadata, Login
 from dama.utils.config import get_settings
 from dama.utils.miscellaneous import to_libsvm
+import psycopg2
 
 
 try:
     from dama.drivers.postgres import Postgres
-    driver = Postgres(login=Login(username="alejandro", resource="ml"))
+    driver = Postgres(login=Login(username="alejandro", resource="ml", host="/var/run/postgresql/", port=5432))
     driver.open()
     driver.close()
-except:
+except (ImportError, psycopg2.OperationalError):
     from dama.drivers.core import Memory as Postgres
 
 
@@ -499,7 +500,7 @@ class TestDataZarr(unittest.TestCase):
 
 class TestPsqlDriver(unittest.TestCase):
     def setUp(self):
-        self.login = Login(username="alejandro", resource="ml")
+        self.login = Login(username="alejandro", resource="ml", host="/var/run/postgresql/", port=5432)
 
     def tearDown(self):
         pass
@@ -516,9 +517,8 @@ class TestPsqlDriver(unittest.TestCase):
             data.destroy()
 
     def test_iter(self):
-        login = Login(username="alejandro", resource="ml")
         df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
-        with Data(name="test0", driver=Postgres(login=login), metadata_path=TMP_PATH) as data:
+        with Data(name="test0", driver=Postgres(login=self.login), metadata_path=TMP_PATH) as data:
             data.destroy()
             data.from_data(df, chunks=(5, ))
             it = Iterator(data)
@@ -528,9 +528,8 @@ class TestPsqlDriver(unittest.TestCase):
             data.destroy()
 
     def test_iter_uni(self):
-        login = Login(username="alejandro", resource="ml")
         array = [1., 2., 3., 4., 5.]
-        with Data(name="test0", driver=Postgres(login=login), metadata_path=TMP_PATH) as data:
+        with Data(name="test0", driver=Postgres(login=self.login), metadata_path=TMP_PATH) as data:
             data.destroy()
             data.from_data(array, chunks=(5, ))
             it = Iterator(data)

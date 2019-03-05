@@ -163,14 +163,17 @@ class Chunks(dict):
 
 
 class Login(object):
-    __slots__ = ['username', 'passwd', 'resource', 'url', 'table']
+    __slots__ = ['username', 'passwd', 'resource', 'url', 'table', 'host', 'port']
 
-    def __init__(self, username: str = None, resource: str = None, passwd: str = None, url=None, table: str = None):
+    def __init__(self, username: str = None, resource: str = None, passwd: str = None, url=None,
+                 table: str = None, host: str = None, port: int = None):
         self.username = username
         self.passwd = passwd
         self.resource = resource
         self.url = url
         self.table = table
+        self.host = host
+        self.port = port
 
 
 class Metadata(dict):

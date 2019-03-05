@@ -32,7 +32,7 @@ class RandomForest(SKLP):
         cal_model.fit(self.ds[self.data_groups["data_validation_group"]].to_ndarray(),
                       self.ds[self.data_groups["target_validation_group"]].to_ndarray())
         return self.ml_model(cal_model)
-    
+
 
 class ExtraTrees(SKLP):
     def prepare_model(self, obj_fn=None, num_steps=None, model_params=None, batch_size: int = None):

@@ -244,7 +244,7 @@ def wsrj(stream, k):
                 hq.heapreplace(reservoir, (k_i, item))                
                 break
             w_c += weight
-        
+
         if all(False for _ in stream):
             break
 

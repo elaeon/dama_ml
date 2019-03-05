@@ -7,7 +7,8 @@ import numpy as np
 
 
 class FCNet(Keras):
-    def int2vector(self, target):
+    @staticmethod
+    def int2vector(target):
         num_classes = 2
         return (np.arange(num_classes) == target[:, None]).astype(np.float)
 
@@ -24,12 +25,12 @@ class FCNet(Keras):
         model.add(Dense(2, activation='softmax'))
         model.compile(optimizer='sgd', loss='categorical_crossentropy')
         model.fit(self.ds[self.data_groups["data_train_group"]].to_ndarray(),
-                  self.int2vector(self.ds[self.data_groups["target_train_group"]].to_ndarray()),
+                  FCNet.int2vector(self.ds[self.data_groups["target_train_group"]].to_ndarray()),
                   epochs=num_steps,
                   batch_size=batch_size,
                   shuffle="batch",
                   validation_data=(self.ds[self.data_groups["data_validation_group"]].to_ndarray(),
-                                   self.int2vector(self.ds[self.data_groups["target_validation_group"]].to_ndarray())))
+                                   FCNet.int2vector(self.ds[self.data_groups["target_validation_group"]].to_ndarray())))
         return self.ml_model(model)
 
 

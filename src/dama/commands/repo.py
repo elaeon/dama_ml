@@ -103,4 +103,3 @@ def repo_checkout_file(repo, filename, commit, branch_name):
     except TypeError as e:
         print(e)
         print("Try to return to the head of this branch")
-        pass

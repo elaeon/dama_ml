@@ -193,7 +193,7 @@ class BaseIterator(object):
         else:
             return next(self.data)
 
-    def to_iter(self):
+    def to_iter(self, raw: bool = False):
         groups = self.groups
         for batch in self:
             row = []
@@ -501,7 +501,7 @@ class BatchIterator(BaseIterator):
             batch_shape = self.batch_shape()
             return self.batch_from_it(batch_shape)
 
-    def batch_from_it(self, batch_shape):
+    def batch_from_it(self, shape=None):
         return NotImplemented
 
     def _cycle_it(self):
@@ -574,7 +574,7 @@ class BatchGroup(BatchIterator):
 class BatchItGroup(BatchIterator):
     type_elem = Slice
 
-    def batch_from_it(self, shape):
+    def batch_from_it(self, shape=None):
         for start_i, end_i, stc_array, in str_array(shape, self.chunksize, self.data, self.data.dtypes):
             da_group = DaGroup(StcArrayGroup(stc_array, self.dtypes), chunks=self.chunksize)
             yield Slice(batch=da_group, slice=slice(start_i, end_i))

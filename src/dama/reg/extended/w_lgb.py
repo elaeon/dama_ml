@@ -22,7 +22,7 @@ class LightGBM(LGB):
     def feature_importance(self):
         import pandas as pd
         gain = self.bst.feature_importance('gain')
-        df = pd.DataFrame({'feature':self.bst.feature_name(), 
+        df = pd.DataFrame({'feature':self.bst.feature_name(),
             'split':self.bst.feature_importance('split'), 
             'gain':100 * gain /gain.sum()}).sort_values('gain', ascending=False)
         return df

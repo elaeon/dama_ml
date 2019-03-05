@@ -4,7 +4,7 @@ from dama.utils.config import get_settings
 settings = get_settings("paths")
 settings.update(get_settings("vars"))
 
-  
+
 def run(args):
     from dama.measures import ListMeasure
     from dama.drivers.sqlite import Sqlite

@@ -14,9 +14,7 @@ docs_require = [
     'sphinx>=1.4.0',
 ]
 
-tests_require = [
-    
-]
+tests_require = []
 
 setup(
     name='DaMa ML',

@@ -17,7 +17,7 @@ class AbsData(ABC):
 
     @abstractmethod
     def __iter__(self):
-        return NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     def __getitem__(self, key):
@@ -67,6 +67,6 @@ class AbsData(ABC):
         return NotImplemented
 
     @abstractmethod
-    def to_ndarray(self):
+    def to_ndarray(self, dtype=None):
         return NotImplemented
 

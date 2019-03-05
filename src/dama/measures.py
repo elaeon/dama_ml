@@ -43,7 +43,7 @@ class MeasureBase(object):
         return list_measure
 
     @staticmethod
-    def make_metrics(measure_cls, measures: str = None, discrete: bool = True):
+    def base_metrics(measure_cls, measures: str = None, discrete: bool = True):
         if measures is None and discrete is True:
             measure_cls.add(accuracy, greater_is_better=True, output='discrete')
             measure_cls.add(precision, greater_is_better=True, output='discrete')
@@ -86,7 +86,7 @@ class Measure(MeasureBase):
             yield self.score[measure.__name__]
 
     def make_metrics(self, measures=None, discrete: bool = True) -> 'Measure':
-        return MeasureBase.make_metrics(self, measures=measures, discrete=discrete)
+        return MeasureBase.base_metrics(self, measures=measures, discrete=discrete)
 
 
 class MeasureBatch(MeasureBase):
@@ -118,7 +118,7 @@ class MeasureBatch(MeasureBase):
             yield value / size
 
     def make_metrics(self, measures=None, discrete: bool = True) -> 'MeasureBatch':
-        return MeasureBase.make_metrics(self, measures=measures, discrete=discrete)
+        return MeasureBase.base_metrics(self, measures=measures, discrete=discrete)
 
 
 def accuracy(labels, predictions):
@@ -155,7 +155,7 @@ def f1(labels, predictions):
 
 def auc(labels, predictions):
     """
-    area under the curve of the reciver operating characteristic, measure for 
+    area under the curve of the reciver operating characteristic, measure for
     true positives rate and false positive rate
     """
     from sklearn.metrics import roc_auc_score

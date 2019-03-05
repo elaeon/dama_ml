@@ -214,14 +214,14 @@ class TestLightGBM(unittest.TestCase):
             reg.destroy()
 
     def test_feature_importance(self):
-        reg = LightGBM.load(model_name="test", path=TMP_PATH, model_version=self.model_version,
-                            metadata_path=TMP_PATH)
-        with self.dataset:
+        with LightGBM.load(model_name="test", path=TMP_PATH, model_version=self.model_version,
+                            metadata_path=TMP_PATH) as reg:
             self.assertEqual(reg.feature_importance()["gain"].shape, (10,))
 
 
 class TestWrappers(unittest.TestCase):
-    def train(self, reg, model_params=None):
+    @staticmethod
+    def train(reg, model_params=None):
         np.random.seed(0)
         x = np.random.rand(100)
         y = x > .5
@@ -240,7 +240,7 @@ class TestWrappers(unittest.TestCase):
 
     def test_gbr(self):
         reg = GradientBoostingRegressor(metadata_path=TMP_PATH)
-        reg = self.train(reg, model_params=dict(learning_rate=0.2, random_state=3))
+        reg = TestWrappers.train(reg, model_params=dict(learning_rate=0.2, random_state=3))
         reg.ds.driver.mode = "r"
         with reg.ds:
             self.assertEqual(reg.ds.hash, "sha1.fb894bc728ca9a70bad40b856bc8e37bf67f74b6")
