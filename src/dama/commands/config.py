@@ -23,6 +23,6 @@ def repo_init(path, repo_name):
         if len(answer) == 0 or answer.startswith("n"):
             print("No changes made")
             return
-    repo = Repo.init(check_point, bare=False)
+    Repo.init(check_point, bare=False)
     print("OK")
 

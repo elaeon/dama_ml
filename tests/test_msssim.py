@@ -53,11 +53,11 @@ class TestMsssiM(unittest.TestCase):
                                     feed_dict={image1: img, image2: img})
             tf_msssim_noise = sess.run(msssim_index,
                                      feed_dict={image1: img, image2: img_noise})
-            ###TF CALC END
-            #print('tf_ssim_none', tf_ssim_none)
-            #print('tf_ssim_noise', tf_ssim_noise)
-            #print('tf_msssim_none', tf_msssim_none)
-            #print('tf_msssim_noise', tf_msssim_noise)
+            # TF CALC END
+            print('tf_ssim_none', tf_ssim_none)
+            print('tf_ssim_noise', tf_ssim_noise)
+            print('tf_msssim_none', tf_msssim_none)
+            print('tf_msssim_noise', tf_msssim_noise)
             if tf_msssim_none == 1:
                 self.assertEqual(tf_msssim_none, 1)
 
@@ -87,14 +87,14 @@ class TestMsssiM(unittest.TestCase):
 
         image4d_1 = image_to_4d(image1)
         image4d_2 = image_to_4d(image2)
-        #ssim_index = ssim(image4d_1, image4d_2)
+        # ssim_index = ssim(image4d_1, image4d_2)
         msssim_index = tf.reduce_mean(msssim(image4d_1, image4d_2, level=5, size=6))
 
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             tf_msssim_1 = sess.run(msssim_index,
                                     feed_dict={image1: img1, image2: img1})
-            #tf_msssim_2 = sess.run(msssim_index,
+            # tf_msssim_2 = sess.run(msssim_index,
             #                         feed_dict={image1: img1, image2: img2})
 
             if tf_msssim_1 == 1:

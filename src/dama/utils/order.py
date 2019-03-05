@@ -8,7 +8,7 @@ def order_2d(list_2d, index=(0, 1), block_size=60):
     {block0: elems, block1: elems, ...}
     """
     blocks = build_blocks(list_2d, block_size, index)
-    for row, items in blocks.items():
+    for _, items in blocks.items():
         if len(items) > 1:
             items.sort(key=itemgetter(index[1]))
     return blocks
@@ -18,7 +18,7 @@ def build_blocks(list_2d, block_size, index):
     """ build a dict of rows where each row is created if elem in 0 is greater 
         than block_size. Each row contains coords of numbers in the plane.
         list_ = [(10, 50), (13, 100), (14, 40), (15, 90), (21, 30), (40, 10), (60, 20)]
-    """    
+    """
     g = itemgetter(index)
     data = sorted(list_2d, key=itemgetter(index[0]))
     initial = data.pop(0)

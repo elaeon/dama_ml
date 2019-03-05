@@ -297,7 +297,8 @@ class TestModelVersion(unittest.TestCase):
 
 
 class TestKeras(unittest.TestCase):
-    def train(self, clf, model_params=None):
+    @staticmethod
+    def train(clf, model_params=None):
         np.random.seed(0)
         x = np.random.rand(100)
         y = x > .5
@@ -317,7 +318,7 @@ class TestKeras(unittest.TestCase):
 
     def test_predict(self):
         clf = FCNet(metadata_path=TMP_PATH)
-        clf = self.train(clf, model_params=None)
+        clf = TestKeras.train(clf, model_params=None)
         self.assertEqual(len(clf.scores2table().measures[0]), 7)
         metadata = MetadataX.get_metadata(clf.path_metadata_version)
         self.assertEqual(len(metadata["train"]["model_json"]) > 0, True)

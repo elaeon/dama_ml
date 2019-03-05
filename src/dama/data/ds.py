@@ -223,7 +223,7 @@ class Data(AbsData):
         return repr(self.data)
 
     @property
-    def shape(self):
+    def shape(self) -> Shape:
         return self.driver.absgroup.shape
 
     @property
@@ -410,14 +410,14 @@ class Data(AbsData):
         return tabulate(table, headers)
 
     @staticmethod
-    def load(hash: str, metadata_driver: AbsDriver, metadata_path: str=None) -> 'Data':
+    def load(hash_hex: str, metadata_driver: AbsDriver, metadata_path: str=None) -> 'Data':
         with Metadata(metadata_driver) as metadata:
             data = metadata.query(
                 "SELECT name, driver_module, path, group_name, hash FROM {} WHERE hash = ?".format(
                     metadata_driver.login.table),
-                (hash,))
+                (hash_hex,))
             if len(data) == 0:
-                log.warning("Resource {} does not exists in table '{}' in url {}".format(hash,
+                log.warning("Resource {} does not exists in table '{}' in url {}".format(hash_hex,
                                                                                    metadata_driver.login.table,
                                                                                    metadata_driver.url))
             else:

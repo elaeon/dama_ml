@@ -63,7 +63,7 @@ def blur(data: np.ndarray, level: float = .2) -> np.ndarray:
 def cut(data, rectangle=None):
     """
     :type data: array
-    :param data: data to cut    
+    :param data: data to cut
 
     :type rectangle: tuple
     :param rectangle: (top, bottom, left, right)
@@ -80,8 +80,8 @@ def as_ubyte(data):
 
 def merge_offset(data: np.ndarray, image_size: int = 90, bg_color: int = 1) -> np.ndarray:
     """
-    transform a rectangular image of (with, height) or (widh, height, channel) to 
-    a squared image of size (image_size, image_size) 
+    transform a rectangular image of (with, height) or (widh, height, channel) to
+    a squared image of size (image_size, image_size)
     """
     if len(data.shape) == 3:
         return merge_offset2d(data, image_size=image_size, bg_color=bg_color)
@@ -132,7 +132,7 @@ def merge_offset3d(data: np.ndarray, image_size: int = 90, bg_color: int = 1) ->
             bg2 = bg
         else:
             bg2 = bg - 1
-        
+
         bg2[v_range1, h_range1, w_range1] = bg[v_range1, h_range1, w_range1] - 1
         bg2[v_range1, h_range1, w_range1] = bg2[v_range1, h_range1, w_range1] + image[v_range2, h_range2, w_range2]
         ndata[i] = bg2

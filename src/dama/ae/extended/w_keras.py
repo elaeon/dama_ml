@@ -1,9 +1,6 @@
 from dama.ae.wrappers import UnsupervisedModel
-from keras import regularizers
-from keras.layers import Input, Dense, Activation
-from keras.models import Model
+from keras.layers import Dense, Activation
 from keras import backend as K
-from keras.layers import Lambda
 from keras.losses import binary_crossentropy
 from dama.utils.tf_functions import KLdivergence
 from dama.models import MLModel
@@ -25,12 +22,13 @@ class PTsne(UnsupervisedModel):
         self.epsilon_std = epsilon_std
         super(PTsne, self).__init__(**kwargs)
 
-    def custom_objects(self):
+    @staticmethod
+    def custom_objects():
         return {'KLdivergence': KLdivergence}
 
     def load_fn(self, path):
         from keras.models import load_model
-        model = load_model(path, custom_objects=self.custom_objects())
+        model = load_model(path, custom_objects=PTsne.custom_objects())
         self.model = self.ml_model(model)
 
     def ml_model(self, model) -> MLModel:
@@ -64,7 +62,6 @@ class PTsne(UnsupervisedModel):
         model.fit_generator(x_iter, steps_per_epoch=steps, epochs=num_steps, validation_data=z_iter,
                             validation_steps=vsteps, max_queue_size=1)
         return self.ml_model(model)
-
 
 
 def sampling(args):
@@ -210,7 +207,7 @@ def vae_loss(num_features=None, z_log_var=None, z_mean=None):
 #            epochs=num_epochs,
 #            validation_data=z,
 #            nb_val_samples=num_steps)
-        
+
 #    def _metadata(self, keys={}):
 #        meta = super(SAE, self)._metadata(keys=keys)
 #        if "model" in meta:

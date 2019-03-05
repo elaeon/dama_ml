@@ -151,7 +151,7 @@ class TSNe:
             
             # Set the final row of P
             P[i, indices] = thisP
-        
+
         return P
 
     #join_probabilities

@@ -15,7 +15,7 @@ class RandomForestRegressor(SKLP):
         df = pd.DataFrame({'importance': self.model.model.feature_importances_, 'gain': None}).sort_values(
             by=['importance'], ascending=False)
         return df
-    
+
 
 class GradientBoostingRegressor(SKLP):
     def prepare_model(self, obj_fn=None, num_steps: int = 0, model_params=None, batch_size: int = None):

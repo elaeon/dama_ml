@@ -198,7 +198,7 @@ class DaGroup(AbsGroup):
 
             shape = self.shape.to_tuple()
             data = np.empty(shape[0], dtype=dtypes)
-            for i, group in enumerate(self.groups):
+            for group in self.groups:
                 data[group] = self.conn[group].compute(dtype=self.dtype)
             return data
 
@@ -297,7 +297,6 @@ class TupleGroup(AbsGroup):
     def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
         if self.dtype is None:
             return np.asarray([])
-        pass
 
     def to_df(self):
         pass

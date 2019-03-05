@@ -1,4 +1,4 @@
-from dama.clf.wrappers import XGB, SKLP
+from dama.clf.wrappers import XGB
 
 # from sklearn.calibration import CalibratedClassifierCV
 import xgboost as xgb
@@ -18,17 +18,3 @@ class Xgboost(XGB):
         xgb_model = xgb.train(model_params, d_train, nrounds, watchlist, early_stopping_rounds=nrounds/2,
                               feval=obj_fn, maximize=True, verbose_eval=100)
         return self.ml_model(xgb, bst=xgb_model)
-
-
-# class XgboostSKL(SKLP):
-#    def prepare_model(self, obj_fn=None, num_steps=None, **params):
-#        model = CalibratedClassifierCV(xgb.XGBClassifier(seed=3, n_estimators=25), method="sigmoid")
-#        with self.train_ds, self.validation_ds:
-#            model_clf = model.fit(self.train_ds.data, self.train_ds.labels)
-#            reg_model = CalibratedClassifierCV(model_clf, method="sigmoid", cv="prefit")
-#            reg_model.fit(self.validation_ds.data, self.validation_ds.labels)
-#        return self.ml_model(reg_model)
-
-#    def prepare_model_k(self, obj_fn=None, **params):
-#        model = CalibratedClassifierCV(xgb.XGBClassifier(seed=3, n_estimators=25), method="sigmoid")
-#        return self.ml_model(model)
