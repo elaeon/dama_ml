@@ -52,7 +52,8 @@ def run(args):
         page = str2slice(args.items)
         with Metadata(driver) as metadata:
             try:
-                total = metadata.query("SELECT COUNT(*) FROM %s WHERE is_valid=True" % login.table, ())
+                query = "SELECT COUNT(*) FROM {} WHERE is_valid=?".format(login.table)
+                total = metadata.query(query, (True, ))
             except sqlite3.OperationalError as e:
                 print(e)
             else:

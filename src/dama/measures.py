@@ -262,7 +262,7 @@ class ListMeasure(object):
         return ListMeasure(headers=headers, measures=measures, order=order)
 
     def to_tabulate(self):
-        headers, measures, order_column = self.drop_empty_columns()
+        headers, measures, _ = self.drop_empty_columns()
         return tabulate(measures, headers)
 
     def __str__(self):

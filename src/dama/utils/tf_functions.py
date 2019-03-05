@@ -54,7 +54,7 @@ def msssim(img1, img2, level=5, size=11):
     weight = tf.constant([0.0448, 0.2856, 0.3001, 0.2363, 0.1333], dtype=tf.float32)
     mssim = []
     mcs = []
-    for l in range(level):
+    for _ in range(level):
         ssim_map, cs_map = ssim(img1, img2, cs_map=True, size=size)
         mssim.append(tf.reduce_mean(ssim_map))
         mcs.append(tf.reduce_mean(cs_map))
@@ -81,7 +81,7 @@ def Hbeta(D, beta):
 
 def KLdivergence(P, Y, low_dim=2):
     dtype = P.dtype
-    with tf.Session() as sess:
+    with tf.Session():
         alpha = low_dim - 1.
         sum_Y = tf.reduce_sum(tf.square(Y), 1)
         eps = tf.Variable(10e-15, dtype=dtype, name="eps").initialized_value()

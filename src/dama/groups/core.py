@@ -174,7 +174,7 @@ class DaGroup(AbsGroup):
                 dtype = self.dtype
             data = np.empty(shape, dtype=dtype)
             total_cols = 0
-            for i, group in enumerate(self.groups):
+            for group in self.groups:
                 try:
                     num_cols = self.shape[group][1]
                     slice_grp = (slice(None, None), slice(total_cols, total_cols + num_cols))

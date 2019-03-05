@@ -110,7 +110,7 @@ class Table(AbsGroup):
         if isinstance(item, int):
             columns_values = [[self.groups[0], value]]
             columns_values = ["{col}={val}".format(col=col, val=val) for col, val in columns_values]
-            query = "UPDATE {name} SET {columns_val} WHERE ID = %(id}s".format(
+            query = "UPDATE {name} SET {columns_val} WHERE ID = %(id)s".format(
                 name=self.name, columns_val=",".join(columns_values)
             )
             cur = self.conn.cursor()
@@ -218,7 +218,7 @@ class Table(AbsGroup):
                 id_list=",".join(map(str, id_list)))
             one_row = True
         else:
-            slice_item, limit_txt = self.build_limit_info()
+            _, limit_txt = self.build_limit_info()
             query = "SELECT {columns} FROM {table_name} ORDER BY {order_by} {limit}".format(
                 columns=self.format_columns(), table_name=self.name, order_by="id",
                 limit=limit_txt)

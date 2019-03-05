@@ -164,7 +164,7 @@ class TestIteratorBatch(unittest.TestCase):
     def test_iteration_batch(self):
         array = np.arange(0, 10)
         it = Iterator(array).batchs(chunks=(3, ))
-        for i, slice_obj in enumerate(it):
+        for slice_obj in it:
             self.assertEqual(type(slice_obj), Slice)
             self.assertEqual((slice_obj.batch[it.groups[0]].to_ndarray() == array[slice_obj.slice]).all(), True)
 
@@ -500,7 +500,7 @@ class TestIteratorLoop(unittest.TestCase):
             data.from_data(x, chunks=(3, ))
             it = Iterator(data).batchs(chunks=(3, )).cycle()[:22]
             elems = []
-            for i, e in enumerate(it):
+            for e in it:
                 elems.append(e.batch.to_ndarray())
 
         self.assertCountEqual(elems[0], [0, 1, 2])
@@ -511,7 +511,7 @@ class TestIteratorLoop(unittest.TestCase):
 
     def test_from_batchs_to_iterator(self):
         def _it():
-            for x in range(100):
+            for _ in range(100):
                 e = np.random.rand(3, 3)
                 yield (e, e)
 

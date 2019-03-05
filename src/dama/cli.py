@@ -1,6 +1,6 @@
 import argparse
 from pkg_resources import get_distribution
-from dama.commands import dataset, models, plot, config, reader, repo
+from dama.commands import dataset, models, config, repo
 
 
 parser = argparse.ArgumentParser()

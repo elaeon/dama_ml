@@ -19,7 +19,7 @@ def build_blocks(list_2d, block_size, index):
         than block_size. Each row contains coords of numbers in the plane.
         list_ = [(10, 50), (13, 100), (14, 40), (15, 90), (21, 30), (40, 10), (60, 20)]
     """
-    g = itemgetter(index)
+    # g = itemgetter(index)
     data = sorted(list_2d, key=itemgetter(index[0]))
     initial = data.pop(0)
     blocks = {0: [initial]}

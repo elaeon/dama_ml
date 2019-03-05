@@ -92,7 +92,7 @@ def merge_offset(data: np.ndarray, image_size: int = 90, bg_color: int = 1) -> n
 def merge_offset2d(data: np.ndarray, image_size: int = 90, bg_color: int = 1) -> np.ndarray:
     bg = np.ones((image_size, image_size))
     ndata = np.empty((data.shape[0], image_size, image_size), dtype=data.dtype)
-    for i, image in enumerate(data):
+    for image in data:
         offset = (int(round(abs(bg.shape[0] - image.shape[0]) / 2)),
                   int(round(abs(bg.shape[1] - image.shape[1]) / 2)))
         pos_v, pos_h = offset
@@ -150,7 +150,7 @@ def pixelate(data: np.ndarray, pixel_width: int = None, pixel_height: int = None
     # import time
     # start_time = time.time()
     if len(data.shape) > 2:
-        width, height, channels = data.shape
+        width, height, _ = data.shape
     else:
         width, height = data.shape
 

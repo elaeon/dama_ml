@@ -35,8 +35,7 @@ class RegModel(SupervicedModel):
 
 class SKLP(RegModel):
 
-    def ml_model(self, model):        
-        from sklearn.externals import joblib
+    def ml_model(self, model):
         return MLModel(fit_fn=model.fit,
                         model=model,
                         predictors=model.predict,

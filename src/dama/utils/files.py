@@ -37,7 +37,7 @@ def rm(path):
 
 def get_models_path(checkpoints_path):
     classes = {}
-    for parent, childs, files in os.walk(checkpoints_path):
+    for parent, childs, _ in os.walk(checkpoints_path):
         parent = parent.split("/").pop()
         if parent and len(childs) > 0:
             classes[parent] = childs

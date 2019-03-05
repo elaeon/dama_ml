@@ -9,6 +9,7 @@ def run(args):
     from dama.measures import ListMeasure
     from dama.drivers.sqlite import Sqlite
     from dama.utils.core import Login
+    from dama.utils.core import Metadata
     login = Login(table=settings["model_tag"])
     driver = Sqlite(login=login, path=settings["metadata_path"], mode="r")
 
@@ -24,7 +25,6 @@ def run(args):
     # rm(model_path)
     #    print("Done.")
     else:
-        from dama.utils.core import Login, Metadata
         from dama.utils.miscellaneous import str2slice
         import sqlite3
         headers = ["from_ds", "name", "group_name", "model", "version", "score name", "score"]

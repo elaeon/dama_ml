@@ -125,7 +125,7 @@ class Table(AbsGroup):
         if self.dtype is None:
             return np.asarray([])
 
-        query, one_row = self.build_query()
+        query, _ = self.build_query()
         cur = self.conn.cursor()
         cur.execute(query)
         array = np.empty(self.shape, dtype=self.dtype)

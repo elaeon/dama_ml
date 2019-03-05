@@ -412,10 +412,9 @@ class Data(AbsData):
     @staticmethod
     def load(hash_hex: str, metadata_driver: AbsDriver, metadata_path: str=None) -> 'Data':
         with Metadata(metadata_driver) as metadata:
-            data = metadata.query(
-                "SELECT name, driver_module, path, group_name, hash FROM {} WHERE hash = ?".format(
-                    metadata_driver.login.table),
-                (hash_hex,))
+            query = "SELECT name, driver_module, path, group_name, hash FROM {} WHERE hash = ?".format(
+                metadata_driver.login.table)
+            data = metadata.query(query, (hash_hex,))
             if len(data) == 0:
                 log.warning("Resource {} does not exists in table '{}' in url {}".format(hash_hex,
                                                                                    metadata_driver.login.table,

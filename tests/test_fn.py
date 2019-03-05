@@ -92,7 +92,7 @@ class TestNumericFn(unittest.TestCase):
         try:
             nested_shape(x, dtypes)
         except Exception:
-            pass  # OK Detected error
+            print("OK Detected error")
         else:
             self.assertEqual(1, 0)
 

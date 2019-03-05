@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import os
 from dama.data.ds import Data
-from dama.clf.extended.w_sklearn import RandomForest, SVC, ExtraTrees, LogisticRegression, SGDClassifier
+from dama.clf.extended.w_sklearn import SVC, ExtraTrees, LogisticRegression, SGDClassifier
 from dama.clf.extended.w_sklearn import AdaBoost, GradientBoost, KNN
 from dama.clf.extended.w_keras import FCNet
 from dama.utils.model_selection import CV
@@ -11,6 +11,7 @@ from dama.drivers.core import HDF5
 from dama.measures import MeasureBatch
 from dama.utils.files import check_or_create_path_dir
 from dama.models import MetadataX
+from dama.clf.extended.w_sklearn import RandomForest
 
 
 TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'dama_data_test')
@@ -19,13 +20,13 @@ TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 
 try:
     from dama.clf.extended.w_xgboost import Xgboost
 except ImportError:
-    from dama.clf.extended.w_sklearn import RandomForest as Xgboost
+    Xgboost = RandomForest
 
 
 try:
     from dama.clf.extended.w_lgb import LightGBM
 except ImportError:
-    from dama.clf.extended.w_sklearn import RandomForest as LightGBM
+    LightGBM = RandomForest
 
 
 def mulp(row):

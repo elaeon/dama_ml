@@ -32,7 +32,6 @@ class SKL(ClassifModel):
     # (np.arange(self.num_classes) == target).astype(np.float32)
 
     def ml_model(self, model) -> MLModel:
-        from sklearn.externals import joblib
         return MLModel(fit_fn=model.fit,
                        predictors=model.predict,
                        load_fn=self.load_fn,
@@ -52,7 +51,6 @@ class SKL(ClassifModel):
 class SKLP(ClassifModel):
 
     def ml_model(self, model) -> MLModel:
-        from sklearn.externals import joblib
         return MLModel(fit_fn=model.fit,
                        predictors=model.predict_proba,
                        load_fn=self.load_fn,
