@@ -190,8 +190,8 @@ def msle(labels, predicitions):
 
 
 def gini(actual, pred):
-    if len(actual) == len(pred):
-        raise AssertionError()
+    if len(actual) != len(pred):
+        raise AssertionError("The arrays must have the same length")
     actual = np.asarray(actual, dtype=np.float)
     n = actual.shape[0]
     a_s = actual[np.argsort(pred)]
