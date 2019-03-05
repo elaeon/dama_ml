@@ -171,7 +171,7 @@ def vae_loss(num_features=None, z_log_var=None, z_mean=None):
 #                activity_regularizer=regularizers.l1(10e-5), name='intermedian_layer')(input_)
 
 #        return input_, encoder
- 
+
 #    def decoder(self, encoded):
 #        decoder = Dense(self.num_features, activation='sigmoid')(encoded)
 #        return decoder

@@ -1,7 +1,6 @@
 # https://stackoverflow.com/questions/13044562/python-mechanism-to-identify-compressed-file-type-and-uncompress
 import csv
 import zipfile
-import os
 # import bz2
 # import gzip
 import numpy as np

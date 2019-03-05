@@ -54,17 +54,17 @@ class TestNumericFn(unittest.TestCase):
         data = np.asarray([['a', 'b'], ['c', 'd'], ['e', 'f']])
         f2r = features2rows(data)
         self.assertCountEqual(f2r[0], ['0', 'a'])
-        self.assertCountEqual(f2r[1], ['0', 'c']) 
-        self.assertCountEqual(f2r[2], ['0', 'e']) 
-        self.assertCountEqual(f2r[3], ['1', 'b']) 
-        self.assertCountEqual(f2r[4], ['1', 'd']) 
+        self.assertCountEqual(f2r[1], ['0', 'c'])
+        self.assertCountEqual(f2r[2], ['0', 'e'])
+        self.assertCountEqual(f2r[3], ['1', 'b'])
+        self.assertCountEqual(f2r[4], ['1', 'd'])
         self.assertCountEqual(f2r[5], ['1', 'f'])
 
     def test_max_type(self):
         items = [True, True, 1]
         type_e = max_type(items)
         self.assertEqual(int, type_e)
-        
+
         items = [1, False, 1/3.]
         type_e = max_type(items)
         self.assertEqual(float, type_e)

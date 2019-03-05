@@ -371,16 +371,16 @@ class TestDataset(unittest.TestCase):
     def test_delete_metadata_info(self):
         with Data(name="test", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as data:
             data.from_data(np.random.rand(100, 11), chunks=(20, 5))
-            hash = data.hash
+            hash_hex = data.hash
 
         driver = Sqlite(path=TMP_PATH, login=Login(table=settings["data_tag"]))
         with Metadata(driver) as metadata:
-            self.assertEqual(metadata.exists(hash), True)
+            self.assertEqual(metadata.exists(hash_hex), True)
 
         with Data(name="test", driver=Zarr(mode="r", path=TMP_PATH), metadata_path=TMP_PATH) as data:
             data.destroy()
         with Metadata(driver) as metadata:
-            self.assertEqual(metadata.is_valid(hash), False)
+            self.assertEqual(metadata.is_valid(hash_hex), False)
 
     def test_concat_axis_0(self):  # length
         with Data(name="test") as dataset, Data(name="test2") as dataset2,\

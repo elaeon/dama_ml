@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import dask.array as da
 import dask
-
 from tqdm import tqdm
 from tabulate import tabulate
 from dama.abc.data import AbsData

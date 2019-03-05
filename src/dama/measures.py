@@ -190,7 +190,8 @@ def msle(labels, predicitions):
 
 
 def gini(actual, pred):
-    assert (len(actual) == len(pred))
+    if len(actual) == len(pred):
+        raise AssertionError()
     actual = np.asarray(actual, dtype=np.float)
     n = actual.shape[0]
     a_s = actual[np.argsort(pred)]
@@ -253,7 +254,7 @@ class ListMeasure(object):
             for measure in self.measures:
                 measures[header]["values"].append(measure[i])
         return measures
-             
+
     @classmethod
     def dict_to_measures(cls, data_dict):
         headers = data_dict.keys()
@@ -279,7 +280,7 @@ class ListMeasure(object):
                     empty_cols.setdefault(i, 0)
                     empty_cols[i] += 1
 
-        return set([col for col, counter in empty_cols.items() if counter == len(self.measures)])        
+        return set([col for col, counter in empty_cols.items() if counter == len(self.measures)])
 
     def drop_empty_columns(self):
         """
@@ -340,7 +341,7 @@ class ListMeasure(object):
                 order = self.order
 
         list_measure = ListMeasure(
-            headers=headers, 
+            headers=headers,
             measures=this_measures+other_measures,
             order=order)
         return list_measure

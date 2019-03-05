@@ -106,7 +106,7 @@ def merge_offset2d(data: np.ndarray, image_size: int = 90, bg_color: int = 1) ->
             bg2 = bg
         else:
             bg2 = bg - 1
-        
+
         bg2[v_range1, h_range1] = bg[v_range1, h_range1] - 1
         bg2[v_range1, h_range1] = bg2[v_range1, h_range1] + image[v_range2, h_range2]
     return ndata

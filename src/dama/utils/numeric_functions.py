@@ -129,7 +129,7 @@ def features2rows(data):
     for ci, column in enumerate(data.T):
         for value in column:
             ndata[index] = np.asarray([ci, value])
-            index += 1 
+            index += 1
     return ndata
 
 
@@ -241,7 +241,7 @@ def wsrj(stream, k):
             if 0 < x_w - w_c <= weight:
                 r2 = np.random.uniform(t_w, 1)
                 k_i = r2**(1./weight)
-                hq.heapreplace(reservoir, (k_i, item))                
+                hq.heapreplace(reservoir, (k_i, item))
                 break
             w_c += weight
 

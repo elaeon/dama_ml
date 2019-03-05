@@ -19,7 +19,7 @@ class TestListMeasure(unittest.TestCase):
 
     def test_list_measure(self):
         m1 = self.list_measure1.get_measure("M0")
-        self.assertEqual(m1, None)        
+        self.assertEqual(m1, None)
         m1 = self.list_measure1.get_measure("M1")
         self.assertEqual(m1['values'], [1])
         self.assertEqual(m1['reverse'], False)

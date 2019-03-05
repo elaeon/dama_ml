@@ -153,7 +153,7 @@ class TestIteratorIter(unittest.TestCase):
 
     def test_shape_list_one_group(self):
         def _it():
-            for x in range(100):
+            for _ in range(100):
                 yield ([1], [2], [3])
         it = Iterator(_it(), dtypes=np.dtype([("x", np.dtype("float"))]))
         self.assertEqual(it.shape["x"], (np.inf, 3, 1))
@@ -475,7 +475,7 @@ class TestIteratorLoop(unittest.TestCase):
             data.from_data(array, chunks=(3, ))
             it = Iterator(data).cycle()[:20]
             elems = []
-            for i, e in enumerate(it):
+            for e in it:
                 elems.append(e.to_ndarray())
         self.assertEqual(elems, list(range(10))*2)
 

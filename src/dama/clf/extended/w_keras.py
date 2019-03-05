@@ -18,7 +18,7 @@ class FCNet(Keras):
         input_shape = self.ds[self.data_groups["data_train_group"]].shape.to_tuple()
         model.add(Dense(layers[0], input_shape=input_shape[1:]))
         for layer_size in layers[1:]:
-            model.add(Dense(layer_size, activation='tanh', 
+            model.add(Dense(layer_size, activation='tanh',
                 activity_regularizer=regularizers.l2(l=10e-5)))
             model.add(Dropout(0.5))
 

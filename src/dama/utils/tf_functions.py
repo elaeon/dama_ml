@@ -148,7 +148,7 @@ class TSNe:
                 H, thisP = Hbeta(Di, beta[i])
                 Hdiff = H - logU
                 tries += 1
-            
+
             # Set the final row of P
             P[i, indices] = thisP
 
