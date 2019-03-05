@@ -110,11 +110,11 @@ class Table(AbsGroup):
         if isinstance(item, int):
             columns_values = [[self.groups[0], value]]
             columns_values = ["{col}={val}".format(col=col, val=val) for col, val in columns_values]
-            query = "UPDATE {name} SET {columns_val} WHERE ID = {id}".format(
-                name=self.name, columns_val=",".join(columns_values), id=item+1
+            query = "UPDATE {name} SET {columns_val} WHERE ID = %(id}s".format(
+                name=self.name, columns_val=",".join(columns_values)
             )
             cur = self.conn.cursor()
-            cur.execute(query)
+            cur.execute(query, {"id": item + 1})
             self.conn.commit()
         else:
             raise NotImplementedError

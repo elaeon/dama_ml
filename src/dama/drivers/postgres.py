@@ -5,6 +5,8 @@ from dama.utils.logger import log_config
 from dama.utils.decorators import cache
 import numpy as np
 import psycopg2
+from collections import OrderedDict
+
 
 log = log_config(__name__)
 
@@ -22,6 +24,7 @@ class Postgres(AbsDriver):
         self.conn = psycopg2.connect(database=self.login.resource, user=self.login.username,
                                      host=self.login.host, port=self.login.port)
         self.conn.autocommit = False
+        self.data_tag = self.login.table
         self.attrs = {}
         if self.mode == "w":
             self.destroy()
@@ -37,13 +40,15 @@ class Postgres(AbsDriver):
 
     def exists(self) -> bool:
         cur = self.conn.cursor()
-        cur.execute("select exists(select relname from pg_class where relname='{name}')".format(name=self.data_tag))
+        cur.execute("SELECT EXISTS(SELECT relname FROM pg_class WHERE relname=%(table_name)s)",
+                    {"table_name": self.data_tag})
         return True if cur.fetchone()[0] else False
 
     def destroy(self):
         cur = self.conn.cursor()
         try:
-            cur.execute("DROP TABLE {name}".format(name=self.data_tag))
+            query = "DROP TABLE {name}".format(name=self.data_tag)
+            cur.execute(query)
         except psycopg2.ProgrammingError as e:
             log.debug(e)
         self.conn.commit()
@@ -51,7 +56,6 @@ class Postgres(AbsDriver):
     @property
     @cache
     def dtypes(self) -> np.dtype:
-        from collections import OrderedDict
         cur = self.conn.cursor()
         query = "SELECT * FROM information_schema.columns WHERE table_name=%(table_name)s ORDER BY ordinal_position"
         cur.execute(query, {"table_name": self.data_tag})

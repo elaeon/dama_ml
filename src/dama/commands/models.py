@@ -33,7 +33,7 @@ def run(args):
             headers = ListMeasure.exclude_columns(headers, args.exclude_cols)
         with Metadata(driver) as metadata:
             try:
-                total = metadata.query("SELECT COUNT(*) FROM %s WHERE is_valid=True" % login.table, ())
+                total = metadata.query("SELECT COUNT(*) FROM %s WHERE is_valid=?" % login.table, (True, ))
             except sqlite3.OperationalError as e:
                 print(e)
             else:

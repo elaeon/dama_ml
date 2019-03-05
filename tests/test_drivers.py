@@ -109,10 +109,10 @@ class TestDriverAbsGroup(unittest.TestCase):
         self.shape = Shape({"c0": self.array_c0.shape, "c1": self.array_c1.shape, "c2": self.array_c2.shape})
         self.dtype = np.dtype([("c0", self.array_c0.dtype), ("c1", self.array_c1.dtype), ("c2", self.array_c2.dtype)])
 
-        self.login = Login(username="alejandro", resource="ml", table="test")
-        #self.driver = Postgres(login=self.login)
+        self.login = Login(username="alejandro", resource="ml", table="test", host="/var/run/postgresql/", port=5432)
+        #self.driver = Postgres(login=self.login, path=TMP_PATH)
         self.driver = Sqlite(login=self.login, path=TMP_PATH, mode="a")
-        self.driver.build_url("test_{}".format(10))
+        self.driver.build_url("test_db")
         #self.driver = Zarr(login=self.login)
         #self.driver = Memory()
         #self.driver = HDF5(login=self.login)
