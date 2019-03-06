@@ -45,11 +45,12 @@ config_parser_group.add_argument("--edit", action="store_true", help="edit the v
 config_parser_group.set_defaults(func=config.run)
 
 repo_parser = subparsers.add_parser('repo')
-repo_parser.add_argument("name", type=str, help="repository name")
+repo_parser.add_argument("name", type=str, help="repository filename")
 
 repo_parser_group = repo_parser.add_argument_group()
+repo_parser_group.add_argument("--new", action="store_true", help="add a new filename to repository")
 repo_parser_group.add_argument("--commit-msg", help="commit message")
-repo_parser_group.add_argument("--run", type=str, help="exec the file")
+repo_parser_group.add_argument("--run", action="store_true", help="exec the file")
 repo_parser_group.add_argument("--commit", help="commit id")
 repo_parser_group.add_argument("--branch", help="branch")
 repo_parser_group.add_argument("--checkout", type=str, help="checkout the file")

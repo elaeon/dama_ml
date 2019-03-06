@@ -246,10 +246,11 @@ class Data(AbsData):
         print('URL path: {}'.format(self.driver.url))
         print('Hash: {}'.format(self.hash))
         print('       ')
-        headers = ["Group", "Shape"]
+        headers = ["group", "shape", "dtype"]
         table = []
-        for group, shape in self.shape.items():
-            table.append([group, shape])
+        shape = self.shape
+        for group, (dtype, _) in self.dtypes.fields.items():
+            table.append([group, shape[group], dtype])
         print(order_table(headers, table, "Group"))
 
     def metadata(self) -> dict:
@@ -358,27 +359,26 @@ class Data(AbsData):
         self.from_data(da_group)
 
     def stadistics(self):
-        headers = ["group", "mean", "std dev", "min", "25%", "50%", "75%", "max", "nonzero", "unique", "dtype", "shape"]
+        headers = ["group", "mean", "std dev", "min", "25%", "50%", "75%", "max", "nonzero", "unique", "dtype"]
         self.chunksize = Chunks.build_from_shape(self.shape, self.dtypes)
         table = []
         for group, (dtype, _) in self.dtypes.fields.items():
             values = dict()
             values["dtype"] = dtype
             values["group"] = group
-            values["shape"] = self.shape[group]
             darray = self.data[group].darray
             if dtype == np.dtype(float) or dtype == np.dtype(int):
-                da_mean = da.around(darray.mean(), decimals=5)
-                da_std = da.around(darray.std(), decimals=5)
-                da_min = da.around(darray.min(), decimals=5)
-                da_max = da.around(darray.max(), decimals=5)
+                da_mean = da.around(darray.mean(), decimals=3)
+                da_std = da.around(darray.std(), decimals=3)
+                da_min = da.around(darray.min(), decimals=3)
+                da_max = da.around(darray.max(), decimals=3)
                 result = dask.compute([da_mean, da_std, da_min, da_max])[0]
                 values["mean"] = result[0]
                 values["std dev"] = result[1]
                 values["min"] = result[2]
                 values["max"] = result[3]
                 if len(self.shape[group]) == 1:
-                    da_percentile = da.percentile(darray, [25, 50, 75])
+                    da_percentile = da.around(da.percentile(darray, [25, 50, 75]), decimals=3)
                     result = da_percentile.compute()
                     values["25%"] = result[0]
                     values["50%"] = result[1]
@@ -399,7 +399,10 @@ class Data(AbsData):
                 values["75%"] = "-"
                 values["nonzero"] = "-"
                 da_unique = da.unique(darray)
-                values["unique"] = dask.compute(da_unique)[0].shape[0]
+                try:
+                    values["unique"] = dask.compute(da_unique)[0].shape[0]
+                except TypeError:
+                    values["unique"] = "-"
 
             row = []
             for column in headers:

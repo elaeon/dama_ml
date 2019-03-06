@@ -38,10 +38,6 @@ def run(args):
             else:
                 metadata.invalid(args.hash[0])
         print("Done.")
-    # elif args.used_in:
-    #    dataset = Data.original_ds(args.used_in)
-    #    for _, model_path_meta in get_models_from_dataset(dataset, settings["checkpoints_path"]):
-    #        print("Dataset used in model: {}".format(DataDrive.read_meta("model_module", model_path_meta)))
     elif args.sts:
         with Data.load(args.hash[0], metadata_driver=driver) as dataset:
             print(dataset.stadistics())
