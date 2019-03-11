@@ -19,7 +19,7 @@ tests_require = []
 setup(
     name='DaMa ML',
     #use_scm_version=True,
-    version="1.0a1",
+    version="1.0a2",
     setup_requires=['setuptools_scm'],
     description="A framework for data management and is used to do data science and machine learning's pipelines",
     long_description=long_description,

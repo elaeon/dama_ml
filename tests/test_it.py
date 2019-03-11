@@ -333,8 +333,8 @@ class TestIteratorToData(unittest.TestCase):
 
     def test_stream(self):
         it = Iterator(stream())
-        with Data(name="test") as data:
-            data.from_data(it[:10], chunks=(3, ))
+        with Data(name="test", chunks=(3, )) as data:
+            data.from_data(it[:10])
             self.assertCountEqual(data.to_ndarray(), np.arange(0, 10))
 
     def test_stream_batchs(self):
@@ -348,8 +348,8 @@ class TestIteratorToData(unittest.TestCase):
         x1 = (x0 + 1).astype("float")
         x2 = x0 + 2
         df = pd.DataFrame({"x0": x0, "x1": x1, "x2": x2})
-        with Data(name="test") as data:
-            data.from_data(df, chunks=Chunks({"x0": (10, ), "x1": (10, ), "x2": (10, )}))
+        with Data(name="test", chunks=Chunks({"x0": (10, ), "x1": (10, ), "x2": (10, )})) as data:
+            data.from_data(df)
             self.assertEqual((data["x0"][:5].to_ndarray() == x0[:5]).all(), True)
             self.assertEqual((data["x1"][:5].to_ndarray() == x1[:5]).all(), True)
             self.assertEqual((data["x2"][:5].to_ndarray() == x2[:5]).all(), True)
@@ -361,8 +361,8 @@ class TestIteratorToData(unittest.TestCase):
         x1 = np.zeros(20) + 2
         x2 = np.zeros(20) + 3
         df = pd.DataFrame({"x0": x0, "x1": x1, "x2": x2})
-        with Data(name="test") as data:
-            data.from_data(df, chunks=(3, ))
+        with Data(name="test", chunks=(3, )) as data:
+            data.from_data(df)
             self.assertEqual((data["x0"].to_ndarray() == x0).all(), True)
             self.assertEqual((data["x1"].to_ndarray() == x1).all(), True)
             self.assertEqual((data["x2"].to_ndarray() == x2).all(), True)
@@ -372,8 +372,8 @@ class TestIteratorToData(unittest.TestCase):
         x1 = (np.zeros(20) + 2).astype("int")
         x2 = np.zeros(20) + 3
         df = pd.DataFrame({"x0": x0, "x1": x1, "x2": x2})
-        with Data(name="test") as data:
-            data.from_data(df, chunks=(3, ))
+        with Data(name="test", chunks=(3, )) as data:
+            data.from_data(df)
             self.assertEqual(data.shape, (20, 3))
             self.assertEqual(data["x0"].dtypes["x0"], float)
             self.assertEqual(data["x1"].dtypes["x1"], int)
@@ -383,8 +383,8 @@ class TestIteratorToData(unittest.TestCase):
         batch_size = 2
         array = np.asarray([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype='int')
         it = Iterator(array).batchs(batch_size)
-        with Data(name="test") as data:
-            data.from_data(it, chunks=(batch_size, ))
+        with Data(name="test", chunks=(batch_size, )) as data:
+            data.from_data(it)
             array = data.to_ndarray(dtype='float')
             self.assertEqual(array.dtype, np.dtype("float"))
             data.destroy()
@@ -401,15 +401,15 @@ class TestIteratorToData(unittest.TestCase):
         array = np.zeros((num_items, 4)) + [1, 2, 3, 0]
         array[:, 3] = np.random.rand(1, num_items) > .5
         it = Iterator(array).sample(num_samples, col=3, weight_fn=fn)
-        with Data(name="test") as data:
-            data.from_data(it, chunks=(258, 4))
+        with Data(name="test", chunks=(258, 4)) as data:
+            data.from_data(it)
             c = collections.Counter(data.to_ndarray()[:, 3])
             self.assertEqual(c[1]/float(num_samples) > .79, True)
 
     def test_empty(self):
         it = Iterator([])
-        with Data(name="test") as data:
-            data.from_data(it, chunks=(1, ))
+        with Data(name="test", chunks=(1, )) as data:
+            data.from_data(it)
             self.assertCountEqual(data.to_ndarray(), np.asarray([]))
             self.assertEqual(data.shape, (0,))
             data.destroy()
@@ -424,16 +424,16 @@ class TestIteratorToData(unittest.TestCase):
 
     def test_abstractds(self):
         array = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-        with Data(name="test") as data:
-            data.from_data(array, chunks=(3, ))
+        with Data(name="test", chunks=(3, )) as data:
+            data.from_data(array)
             it = Iterator(data)
             for it_array, array_elem in zip(it, array):
                 self.assertEqual(it_array.to_ndarray(), array_elem)
             data.destroy()
 
     def test_batch_ads(self):
-        with Data(name="test") as data:
-            data.from_data(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), chunks=(3, ))
+        with Data(name="test", chunks=(3, )) as data:
+            data.from_data(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
             array_l = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10]]
             it = Iterator(data).batchs(chunks=(3, 1))
             for batch, array in zip(it.only_data(), array_l):
@@ -445,24 +445,24 @@ class TestIteratorFromData(unittest.TestCase):
 
     def test_da_group(self):
         x = np.random.rand(10)
-        with Data(name="test") as data:
-            data.from_data(x, chunks=(5, ))
+        with Data(name="test", chunks=(5, )) as data:
+            data.from_data(x)
             it = Iterator(data)
             self.assertEqual(it.shape, (10,))
             self.assertEqual([(g, d) for g, (d, _) in it.dtypes.fields.items()], [(DEFAUL_GROUP_NAME, np.dtype(float))])
 
     def test_da_group_it(self):
         x = np.random.rand(10)
-        with Data(name="test") as data:
-            data.from_data(x, chunks=(5, ))
+        with Data(name="test", chunks=(5, )) as data:
+            data.from_data(x)
             it = Iterator(data)
             for i, e in enumerate(it):
                 self.assertEqual(e.to_ndarray(), x[i])
 
     def test_da_group_it_batch(self):
         x = np.random.rand(10)
-        with Data(name="test") as data:
-            data.from_data(x, chunks=(5, ))
+        with Data(name="test", chunks=(5, )) as data:
+            data.from_data(x)
             it = Iterator(data).batchs(chunks=(5, ))
             for i, e in enumerate(it):
                 self.assertEqual((e.batch.to_ndarray() == x[e.slice]).all(), True)
@@ -471,8 +471,8 @@ class TestIteratorFromData(unittest.TestCase):
 class TestIteratorLoop(unittest.TestCase):
     def test_cycle_it(self):
         array = np.arange(10)
-        with Data(name="test") as data:
-            data.from_data(array, chunks=(3, ))
+        with Data(name="test", chunks=(3, )) as data:
+            data.from_data(array)
             it = Iterator(data).cycle()[:20]
             elems = []
             for e in it:
@@ -496,8 +496,8 @@ class TestIteratorLoop(unittest.TestCase):
 
     def test_cycle_it_batch_cut(self):
         x = range(10)
-        with Data(name="test") as data:
-            data.from_data(x, chunks=(3, ))
+        with Data(name="test", chunks=(3, )) as data:
+            data.from_data(x)
             it = Iterator(data).batchs(chunks=(3, )).cycle()[:22]
             elems = []
             for e in it:

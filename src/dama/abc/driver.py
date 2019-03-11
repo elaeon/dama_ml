@@ -91,7 +91,8 @@ class AbsDriver(ABC):
 
     @property
     def groups(self):
-        return self.dtypes.names
+        if self.dtypes is not None:
+            return self.dtypes.names
 
     @abstractmethod
     def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key: list = None):

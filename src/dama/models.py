@@ -188,7 +188,7 @@ class BaseModel(MetadataX, ABC):
         if len(data_hash) > 0:
             driver = Sqlite(login=Login(table=settings["data_tag"]), path=self.metadata_path)
             with Data.load(data_hash[0][0], metadata_driver=driver) as dataset:
-                dataset.auto_chunks = True
+                pass
             return dataset
 
     def preload_model(self):

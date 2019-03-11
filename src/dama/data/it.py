@@ -352,7 +352,7 @@ class Iterator(BaseIterator):
                 dtype_tmp = dtype
         return np.dtype(dtype_tmp)
 
-    def batchs(self, chunks) -> 'BatchIterator':
+    def batchs(self, chunks, start_i: int = 0) -> 'BatchIterator':
         if chunks is None:
             chunks = Chunks.build_from_shape(self.shape, self.dtypes)
         elif isinstance(chunks, int) or isinstance(chunks, tuple):
@@ -363,9 +363,9 @@ class Iterator(BaseIterator):
             raise NotImplementedError
 
         if isinstance(self.data, AbsData) or isinstance(self.data, AbsGroup):
-            return BatchGroup(self, chunks=chunks)
+            return BatchGroup(self, chunks=chunks, start_i=start_i)
         else:
-            return BatchItGroup(self, chunks=chunks)
+            return BatchItGroup(self, chunks=chunks, start_i=start_i)
 
     def __getitem__(self, key) -> 'Iterator':
         if isinstance(key, slice):
@@ -399,7 +399,8 @@ class Iterator(BaseIterator):
 class BatchIterator(BaseIterator):
     type_elem = None
 
-    def __init__(self, it: Iterator, chunks: Chunks = None, static: bool = False, batch_group=StcArrayGroup):
+    def __init__(self, it: Iterator, chunks: Chunks = None, static: bool = False, batch_group=StcArrayGroup,
+                 start_i: int = 0):
         super(BatchIterator, self).__init__(it, dtypes=it.dtypes, length=it.length, type_elem=self.type_elem)
         if batch_group is StcArrayGroup:
             self.shape = StcArrayGroup.fit_shape(it.shape)
@@ -411,6 +412,7 @@ class BatchIterator(BaseIterator):
         else:  # batch_group is StcArrayGroup
             self.chunksize = self.shape.to_chunks(chunks.length)
         self.batch_size = chunks.length
+        self.start_i = start_i
         self.static = static
         self._it = self.run()
 
@@ -577,4 +579,4 @@ class BatchItGroup(BatchIterator):
     def batch_from_it(self, shape=None):
         for start_i, end_i, stc_array, in str_array(shape, self.chunksize, self.data, self.data.dtypes):
             da_group = DaGroup(StcArrayGroup(stc_array, self.dtypes), chunks=self.chunksize)
-            yield Slice(batch=da_group, slice=slice(start_i, end_i))
+            yield Slice(batch=da_group, slice=slice(start_i+self.start_i, end_i+self.start_i))

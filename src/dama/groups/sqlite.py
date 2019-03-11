@@ -162,12 +162,12 @@ class Table(AbsGroup):
         cur.close()
         return Shape(shape)
 
-    def last_id(self):
+    def last_id(self) -> int:
         cur = self.conn.cursor()
         cur.execute("SELECT max(id) FROM {}".format(self.name))
         id_ = cur.fetchone()[0]
         cur.close()
-        return id_
+        return id_ if id_ is not None else 0
 
     def first_id(self):
         cur = self.conn.cursor()

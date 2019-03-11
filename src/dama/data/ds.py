@@ -27,7 +27,7 @@ log = log_config(__name__)
 
 class Data(AbsData):
     def __init__(self, name: str = None, driver: AbsDriver = None, group_name: str = None,
-                 chunks: Chunks = None, auto_chunks=False, metadata_path: str = None):
+                 chunks=None, auto_chunks=False, metadata_path: str = None):
 
         if driver is None:
             self.driver = Memory()
@@ -150,11 +150,21 @@ class Data(AbsData):
             if len(self.driver.compressor_params) > 0:
                 self.compressor_params = self.driver.compressor_params
 
-        if self.auto_chunks is True:
+        if self.auto_chunks is True and self.driver.mode in ["a", "r"]:
             try:
                 self.chunksize = Chunks.build_from_shape(self.shape, self.dtypes)
             except KeyError as e:
                 log.error(e)
+        else:
+            if isinstance(self.chunksize, tuple) and self.driver.mode in ["a", "r"]:
+                if self.groups is not None:
+                    self.chunksize = Chunks.build_from(self.chunksize, self.groups)
+            elif self.driver.mode == "w" or self.chunksize is None:
+                pass
+            elif isinstance(self.chunksize, Chunks) and self.driver.mode in ["a", "r"]:
+                pass
+            else:
+                raise Exception("chunks value {} not allowed".format(self.chunksize))
 
     def close(self):
         self.driver.close()
@@ -299,41 +309,43 @@ class Data(AbsData):
             hash_obj.update(it.only_data())
         return str(hash_obj)
 
-    def from_data(self, data, chunks=None, with_hash: str = "sha1", from_ds_hash=None):
+    def from_data(self, data, with_hash: str = "sha1", from_ds_hash=None, start_i: int = 0):
         if isinstance(data, da.Array):
             data = DaGroup.from_da(data)
             self.chunksize = data.chunksize
         elif isinstance(data, Iterator):
-            if chunks is None:
+            if self.chunksize is None:
                 self.chunksize = Chunks.build_from_shape(data.shape, data.dtypes)
             else:
-                self.chunksize = Chunks.build_from(chunks, data.groups)
-            data = data.batchs(chunks=self.chunksize)
+                self.chunksize = Chunks.build_from(self.chunksize, data.groups)
+            data = data.batchs(chunks=self.chunksize, start_i=start_i)
             self.chunksize = data.chunksize
         elif isinstance(data, dict):
-            if chunks is None:
+            if self.chunksize is None:
                 shape, dtypes = Shape.get_shape_dtypes_from_dict(data)
                 self.chunksize = Chunks.build_from_shape(shape, dtypes)
             else:
-                self.chunksize = Chunks.build_from(chunks, tuple(data.keys()))
+                self.chunksize = Chunks.build_from(self.chunksize, tuple(data.keys()))
             data = DaGroup(data, chunks=self.chunksize)
         elif isinstance(data, DaGroup) or type(data) == DaGroup:
             self.chunksize = data.chunksize
         elif not isinstance(data, BaseIterator):
             data = Iterator(data)
-            if chunks is None:
+            if self.chunksize is None:
                 self.chunksize = Chunks.build_from_shape(data.shape, data.dtypes)
             else:
-                self.chunksize = data.shape.to_chunks(chunks)
-            data = data.batchs(chunks=self.chunksize)
+                self.chunksize = data.shape.to_chunks(self.chunksize)
+            data = data.batchs(chunks=self.chunksize, start_i=start_i)
             self.chunksize = data.chunksize
         self.dtypes = data.dtypes
         self.driver.set_data_shape(data.shape)
         if isinstance(data, BatchIterator) or isinstance(data, Iterator):
             self.chunksize = data.chunksize
             self.batchs_writer(data)
-        else:
+        elif isinstance(data, DaGroup):
             data.store(self)
+        else:
+            raise NotImplementedError
 
         if with_hash is not None:
             c_hash = self.calc_hash(with_hash=with_hash)
@@ -412,7 +424,7 @@ class Data(AbsData):
         return tabulate(table, headers)
 
     @staticmethod
-    def load(hash_hex: str, metadata_driver: AbsDriver, metadata_path: str=None) -> 'Data':
+    def load(hash_hex: str, metadata_driver: AbsDriver, metadata_path: str=None, auto_chunks: bool = True) -> 'Data':
         with Metadata(metadata_driver) as metadata:
             query = "SELECT name, driver_module, path, group_name, hash FROM {} WHERE hash = ?".format(
                 metadata_driver.login.table)
@@ -428,4 +440,4 @@ class Data(AbsData):
                 group_name = None if row[3] == "s/n" else row[3]
                 name = row[0]
                 return Data(name=name, group_name=group_name, driver=data_driver(path=path, mode="r"),
-                            metadata_path=metadata_path)
+                            metadata_path=metadata_path, auto_chunks=auto_chunks)
