@@ -39,7 +39,7 @@ setup(
         ]
     },
     package_dir={'': 'src'},
-    packages=find_packages('src', exclude=['docs', 'tests*']),  
+    packages=find_packages('src', exclude=['docs', 'tests*']),
     package_data = {'dama': ['config/settings.cfg.example'],},
     #include_package_data=True,
 

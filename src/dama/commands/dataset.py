@@ -44,8 +44,10 @@ def run(args):
     else:
         from dama.utils.miscellaneous import str2slice
         import sqlite3
-        headers = ["hash", "name", "driver", "group name", "size", "num groups", "datetime UTC"]
+        headers = ["hash", "name", "driver", "group_name", "size", "num_groups", "datetime UTC"]
         page = str2slice(args.items)
+        if args.exclude_cols is not None:
+            headers = ListMeasure.exclude_columns(headers, args.exclude_cols)
         with Metadata(driver) as metadata:
             try:
                 query = "SELECT COUNT(*) FROM {} WHERE is_valid=?".format(login.table)
@@ -54,10 +56,17 @@ def run(args):
                 print(e)
             else:
                 data = metadata.data()
-                data = data[data["is_valid"] == True][page]
+                if args.group_name is None and args.driver is None:
+                    data = data[data["is_valid"] == True][page]
+                elif args.group_name is not None and args.driver is None:
+                    data = data[(data["is_valid"] == True) & (data["group_name"] == args.group_name)][page]
+                elif args.group_name is None and args.driver is not None:
+                    data = data[(data["is_valid"] == True) & (data["driver_name"] == args.driver)][page]
+                else:
+                    data = data[(data["is_valid"] == True) & (data["group_name"] == args.group_name) &\
+                                (data["driver_name"] == args.driver)][page]
                 df = data.to_df()
-                df.rename(columns={"timestamp": "datetime UTC", "group_name": "group name",
-                                   "num_groups": "num groups", "driver_name": "driver"}, inplace=True)
+                df.rename(columns={"timestamp": "datetime UTC", "driver_name": "driver"}, inplace=True)
                 df["size"] = df["size"].apply(humanize_bytesize)
                 print("Using metadata {}".format(metadata.driver.url))
                 print("Total {} / {}".format(len(df), total[0][0]))

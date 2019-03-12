@@ -27,7 +27,7 @@ def run(args):
     else:
         from dama.utils.miscellaneous import str2slice
         import sqlite3
-        headers = ["from_ds", "name", "group_name", "model", "version", "score name", "score"]
+        headers = ["from_ds", "name", "group_name", "model", "version", "score_name", "score"]
         page = str2slice(args.items)
         if args.exclude_cols is not None:
             headers = ListMeasure.exclude_columns(headers, args.exclude_cols)
@@ -38,12 +38,17 @@ def run(args):
                 print(e)
             else:
                 data = metadata.data()
-                if args.score_name is None:
+                if args.score_name is None and args.group_name is None:
                     data = data[data["is_valid"] == True][page]
-                else:
+                elif args.score_name is not None and args.group_name is None:
                     data = data[(data["is_valid"] == True) & (data["score_name"] == args.score_name)][page]
+                elif args.score_name is None and args.group_name is not None:
+                    data = data[(data["is_valid"] == True) & (data["group_name"] == args.group_name)][page]
+                else:
+                    data = data[(data["is_valid"] == True) & (data["score_name"] == args.score_name) &\
+                                (data["group_name"] == args.group_name)][page]
                 df = data.to_df()
-                df.rename(columns={"model_module": "model", "score_name": "score name"}, inplace=True)
+                df.rename(columns={"model_module": "model"}, inplace=True)
                 print("Using metadata {}".format(metadata.driver.url))
                 print("Total {} / {}".format(len(df), total[0][0]))
                 list_measure = ListMeasure(headers=headers, measures=df[headers].values)

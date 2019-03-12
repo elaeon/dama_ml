@@ -15,6 +15,7 @@ dataset_parser_group.add_argument("--info", action="store_true", help="show the 
 dataset_parser.add_argument("hash", type=str, help="data hash", nargs="*")
 dataset_parser.add_argument("--items", type=str, help="slice syntax to get elems from 0 to n (0:n)")
 dataset_parser.add_argument("--driver", type=str, help="driver name")
+dataset_parser.add_argument("--exclude-cols", type=str, nargs="*", help="Not show this columns from the displayed table")
 dataset_parser.add_argument("--group-name", type=str, help="list all datasets who has this group name")
 dataset_parser.set_defaults(func=dataset.run)
 
@@ -24,6 +25,7 @@ model_parser.add_argument("--rm", nargs="+", type=str, help="delete elements")
 model_parser.add_argument("--score-name", type=str, help="select the metric")
 model_parser.add_argument("--items", type=str, help="slice syntax to get elems from 0 to n (0:n)")
 model_parser.add_argument("--exclude-cols", type=str, nargs="*", help="Not show this columns from the displayed table")
+model_parser.add_argument("--group-name", type=str, help="list all models with this group name")
 model_parser.set_defaults(func=models.run)
 
 # plot_parser = subparsers.add_parser('plot')

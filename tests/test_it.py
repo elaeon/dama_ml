@@ -464,7 +464,7 @@ class TestIteratorFromData(unittest.TestCase):
         with Data(name="test", chunks=(5, )) as data:
             data.from_data(x)
             it = Iterator(data).batchs(chunks=(5, ))
-            for i, e in enumerate(it):
+            for e in it:
                 self.assertEqual((e.batch.to_ndarray() == x[e.slice]).all(), True)
 
 
