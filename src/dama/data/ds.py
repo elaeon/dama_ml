@@ -357,6 +357,48 @@ class Data(AbsData):
         self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
         self.write_metadata()
 
+    def from_blob(self, data_list: list, url_fn, npartitions: int= 1, with_hash=True):
+        import dask.bag as db
+        import uuid
+        from dask.highlevelgraph import HighLevelGraph
+        s = db.from_sequence(data_list, npartitions=npartitions)
+        s1 = s.map(url_fn)
+        name = 'to-data-' + uuid.uuid4().hex
+
+        #dsk = {(name, i): (_to_data, (s1.name, i), i) for i in range(s1.npartitions)}
+        #graph = HighLevelGraph.from_collections(name, dsk, dependencies=[s1])
+        #ns = db.Bag(graph, name, s1.npartitions)
+
+        #names = ns.compute()
+        #names.sort()
+        #ds = db.from_sequence(names, npartitions=1)
+        #ds_m = ds.map_partitions(self._write_ds)
+        #name = ds_m.compute()
+        if with_hash is not None:
+            c_hash = self.calc_hash(with_hash=with_hash)
+        else:
+            c_hash = None
+        self.hash = c_hash
+        self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
+        self.write_metadata()
+
+    def _write_ds(self, elems):
+        data_list = []
+        #for data_name in elems:
+        #    print(data_name, "OPEN")
+        #    data = Data(name=data_name, driver=Zarr(mode="r"), auto_chunks=True)
+        #    data.open()
+        #    data_list.append(data)
+
+        ds_name = "concat-{}".format("-".join(elems))
+        with Data(name=ds_name, driver=self.driver) as data_c:
+            data_c.concat(data_list, axis=0)
+
+        for data in data_list:
+            data.destroy()
+            data.close()
+        return ds_name
+
     def to_df(self) -> pd.DataFrame:
         return self.data.to_df()
 
