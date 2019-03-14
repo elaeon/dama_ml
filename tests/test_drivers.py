@@ -216,6 +216,7 @@ class TestDaGroup(unittest.TestCase):
             self.assertEqual(data["group0"].dtypes, [("group0", self.array_c0.dtype)])
 
             data["group0"][8] = -1
+            print(data["group0"][8].to_ndarray())
             self.assertEqual(data["group0"][8].to_ndarray(), -1)
 
     def test_multicolum_get(self):

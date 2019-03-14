@@ -77,7 +77,7 @@ class DaGroup(AbsGroup):
         elif isinstance(item, str):
             dict_conn = DaGroupDict(map_rename=self.conn.map_rename)
             dict_conn[item] = self.conn[item]
-            return DaGroup(dict_conn, writer_conn=self.writer_conn.get_group(self.conn.get_oldname(item)))
+            return DaGroup(dict_conn, writer_conn=self.writer_conn)#.get_group(self.conn.get_oldname(item)))
         elif isinstance(item, int):
             return self.set_values(self.groups, item)
         elif isinstance(item, list):
@@ -92,6 +92,7 @@ class DaGroup(AbsGroup):
             return self.sample(index)
 
     def __setitem__(self, item, value):
+        print(self.writer_conn, item, value)
         self.writer_conn.set(item, value)
 
     def set(self, item, value):
@@ -119,28 +120,28 @@ class DaGroup(AbsGroup):
 
     @staticmethod
     def concat(da_groups, axis=0) -> 'DaGroup':
-        writers = {group.writer_conn.module_cls_name() for group in da_groups}
-        if len(writers) > 1:
-            raise Exception
-        else:
-            if axis == 0:
-                all_groups = [da_group.groups for da_group in da_groups]
-                da_group_dict = DaGroupDict()
-                intersection_groups = set(all_groups[0])
-                for group in all_groups[1:]:
-                    intersection_groups = intersection_groups.intersection(set(group))
+        #writers = {group.writer_conn.module_cls_name() for group in da_groups}
+        #if len(writers) > 1:
+        #    raise Exception
+        #else:
+        if axis == 0:
+            all_groups = [da_group.groups for da_group in da_groups]
+            da_group_dict = DaGroupDict()
+            intersection_groups = set(all_groups[0])
+            for group in all_groups[1:]:
+                intersection_groups = intersection_groups.intersection(set(group))
 
-                if len(intersection_groups) > 0:
-                    groups = [group for group in all_groups[0] if group in intersection_groups]  # to maintain groups order
-                    for group in groups:
-                        da_arrays = [da_group[group].darray for da_group in da_groups]
-                        da_array_c = da.concatenate(da_arrays, axis=axis)
-                        da_group_dict[group] = da_array_c
-                    return DaGroup(da_group_dict)
-                else:
-                    return sum(da_groups)
+            if len(intersection_groups) > 0:
+                groups = [group for group in all_groups[0] if group in intersection_groups]  # to maintain groups order
+                for group in groups:
+                    da_arrays = [da_group[group].darray for da_group in da_groups]
+                    da_array_c = da.concatenate(da_arrays, axis=axis)
+                    da_group_dict[group] = da_array_c
+                return DaGroup(da_group_dict)
             else:
-                raise NotImplementedError
+                return sum(da_groups)
+        else:
+            raise NotImplementedError
 
     @property
     def shape(self) -> Shape:

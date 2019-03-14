@@ -3,6 +3,7 @@ import json
 import numpy as np
 import pandas as pd
 import dask.array as da
+import dask.bag as db
 import dask
 from tqdm import tqdm
 from tabulate import tabulate
@@ -17,7 +18,8 @@ from dama.utils.config import get_settings
 from dama.utils.decorators import cache, clean_cache
 from dama.utils.files import get_dir_file_size
 from dama.utils.order import order_table
-from dama.groups.core import DaGroup
+from dama.groups.core import DaGroup, DaGroupDict
+from dama.fmtypes import DEFAUL_GROUP_NAME
 from pydoc import locate
 
 
@@ -299,7 +301,7 @@ class Data(AbsData):
                 metadata.set_schema(dtypes, unique_key=["hash", ["path", "name", "driver_name", "group_name"]])
                 metadata.insert_update_data(keys=["path", "name", "driver_name", "group_name"])
 
-    def calc_hash(self, with_hash: str = 'sha1') -> str:
+    def calc_hash(self, with_hash: str) -> str:
         hash_obj = Hash(hash_fn=with_hash)
         header = [getattr(self, attr) for attr in self.header_map]
         header = [attr for attr in header if attr is not None]
@@ -357,47 +359,24 @@ class Data(AbsData):
         self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
         self.write_metadata()
 
-    def from_blob(self, data_list: list, url_fn, npartitions: int= 1, with_hash=True):
-        import dask.bag as db
-        import uuid
-        from dask.highlevelgraph import HighLevelGraph
-        s = db.from_sequence(data_list, npartitions=npartitions)
-        s1 = s.map(url_fn)
-        name = 'to-data-' + uuid.uuid4().hex
+    def from_loader(self, data_list: list, loader_fn, npartitions: int = 1, with_hash: str = "sha1"):
+        url_bag_partition = db.from_sequence(data_list, npartitions=npartitions)
+        s1 = url_bag_partition.map(loader_fn).fold(binop=self.add_to_list, combine=self.concat_partitions, initial=[])
+        da_group = s1.compute()
+        self.from_data(da_group, with_hash=with_hash)
 
-        #dsk = {(name, i): (_to_data, (s1.name, i), i) for i in range(s1.npartitions)}
-        #graph = HighLevelGraph.from_collections(name, dsk, dependencies=[s1])
-        #ns = db.Bag(graph, name, s1.npartitions)
-
-        #names = ns.compute()
-        #names.sort()
-        #ds = db.from_sequence(names, npartitions=1)
-        #ds_m = ds.map_partitions(self._write_ds)
-        #name = ds_m.compute()
-        if with_hash is not None:
-            c_hash = self.calc_hash(with_hash=with_hash)
+    def add_to_list(self, list_elem, data):
+        groups = Iterator(data).groups
+        if len(groups) == 1 and groups[0] == DEFAUL_GROUP_NAME:
+            conn = DaGroupDict([(DEFAUL_GROUP_NAME, data)])
         else:
-            c_hash = None
-        self.hash = c_hash
-        self.timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M UTC")
-        self.write_metadata()
+            raise NotImplementedError
+        return list_elem + [DaGroup(conn, chunks=self.chunksize)]
 
-    def _write_ds(self, elems):
-        data_list = []
-        #for data_name in elems:
-        #    print(data_name, "OPEN")
-        #    data = Data(name=data_name, driver=Zarr(mode="r"), auto_chunks=True)
-        #    data.open()
-        #    data_list.append(data)
-
-        ds_name = "concat-{}".format("-".join(elems))
-        with Data(name=ds_name, driver=self.driver) as data_c:
-            data_c.concat(data_list, axis=0)
-
-        for data in data_list:
-            data.destroy()
-            data.close()
-        return ds_name
+    def concat_partitions(self, elem1, elem2):
+        da_groups = elem1 + elem2
+        da_groups_c = DaGroup.concat(da_groups, axis=0)
+        return da_groups_c
 
     def to_df(self) -> pd.DataFrame:
         return self.data.to_df()
@@ -466,15 +445,16 @@ class Data(AbsData):
         return tabulate(table, headers)
 
     @staticmethod
-    def load(hash_hex: str, metadata_driver: AbsDriver, metadata_path: str=None, auto_chunks: bool = True) -> 'Data':
+    def load(hash_hex: str, metadata_driver: AbsDriver, metadata_path: str = None, auto_chunks: bool = True) -> 'Data':
         with Metadata(metadata_driver) as metadata:
             query = "SELECT name, driver_module, path, group_name, hash FROM {} WHERE hash = ?".format(
                 metadata_driver.login.table)
             data = metadata.query(query, (hash_hex,))
             if len(data) == 0:
-                log.warning("Resource {} does not exists in table '{}' in url {}".format(hash_hex,
-                                                                                   metadata_driver.login.table,
-                                                                                   metadata_driver.url))
+                log.warning(
+                    "Resource {} does not exists in table '{}' in url {}".format(hash_hex,
+                                                                                 metadata_driver.login.table,
+                                                                                 metadata_driver.url))
             else:
                 row = data[0]
                 data_driver = locate(row[1])
