@@ -390,7 +390,7 @@ class Iterator(BaseIterator):
         start = 0
         end = batch_size
         for elem in self:
-            batch = DaGroup(TupleGroup(elem, dtypes=self.dtypes), chunks=chunks)  # fixme use generalized group
+            batch = DaGroup(abs_source=TupleGroup(elem, dtypes=self.dtypes), chunks=chunks)  # fixme use generalized group
             yield Slice(batch=batch, slice=slice(start, end))
             start = end
             end += batch_size
@@ -578,5 +578,5 @@ class BatchItGroup(BatchIterator):
 
     def batch_from_it(self, shape=None):
         for start_i, end_i, stc_array, in str_array(shape, self.chunksize, self.data, self.data.dtypes):
-            da_group = DaGroup(StcArrayGroup(stc_array, self.dtypes), chunks=self.chunksize)
+            da_group = DaGroup(abs_source=StcArrayGroup(stc_array, self.dtypes), chunks=self.chunksize)
             yield Slice(batch=da_group, slice=slice(start_i+self.start_i, end_i+self.start_i))

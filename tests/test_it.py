@@ -483,8 +483,9 @@ class TestIteratorLoop(unittest.TestCase):
         x_array = np.random.rand(10)
         y_array = np.random.rand(10)
         z_array = np.random.rand(10)
-        da_group = DaGroup({"x": x_array, "y": y_array, "z": z_array},
-                           chunks=Chunks({"x": (5, ), "y": (5, ), "z": (5, )}))
+        dagroup_dict = DaGroup.convert({"x": x_array, "y": y_array, "z": z_array},
+                        chunks=Chunks({"x": (5, ), "y": (5, ), "z": (5, )}))
+        da_group = DaGroup(dagroup_dict=dagroup_dict)
         with Data(name="test") as data:
             data.from_data(da_group)
             it = Iterator(data).batchs(chunks=(1, )).cycle().to_iter()

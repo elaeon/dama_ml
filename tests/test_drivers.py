@@ -211,12 +211,12 @@ class TestDaGroup(unittest.TestCase):
     def test_rename(self):
         with self.driver:
             data = self.driver.data(self.chunks)
+            data.write_to_group = self.driver.absgroup
             data.rename_group("c0", "group0")
             self.assertEqual(data.dtypes.names[1:], self.dtype.names[1:])
             self.assertEqual(data["group0"].dtypes, [("group0", self.array_c0.dtype)])
 
             data["group0"][8] = -1
-            print(data["group0"][8].to_ndarray())
             self.assertEqual(data["group0"][8].to_ndarray(), -1)
 
     def test_multicolum_get(self):

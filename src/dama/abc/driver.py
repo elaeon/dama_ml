@@ -58,7 +58,7 @@ class AbsDriver(ABC):
         build_path(dir_levels[:-1])
 
     def data(self, chunks: Chunks) -> DaGroup:
-        return DaGroup(self.absgroup, chunks=chunks)
+        return DaGroup(chunks=chunks, abs_source=self.absgroup)
 
     @property
     def absgroup(self):

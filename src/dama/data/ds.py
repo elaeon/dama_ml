@@ -328,7 +328,7 @@ class Data(AbsData):
                 self.chunksize = Chunks.build_from_shape(shape, dtypes)
             else:
                 self.chunksize = Chunks.build_from(self.chunksize, tuple(data.keys()))
-            data = DaGroup(data, chunks=self.chunksize)
+            data = DaGroup(dagroup_dict=DaGroup.convert(data, chunks=self.chunksize))
         elif isinstance(data, DaGroup) or type(data) == DaGroup:
             self.chunksize = data.chunksize
         elif not isinstance(data, BaseIterator):

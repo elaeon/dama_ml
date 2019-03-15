@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dama.utils.numeric_functions import max_dtype
 from dama.utils.core import Shape
+from dama.fmtypes import Slice
 from numbers import Number
 import numpy as np
 import pandas as pd
@@ -59,7 +60,6 @@ class AbsBaseGroup(ABC):
 
     def set(self, item, value):
         from dama.groups.core import DaGroup
-        from dama.fmtypes import Slice
         if self.inblock is True:
             self[item] = value
         else:
@@ -92,11 +92,10 @@ class Attrs(dict, metaclass=Singleton):
 
 
 class AbsGroup(AbsBaseGroup):
-    __slots__ = ['conn', 'writer_conn', 'counter', 'attrs']
+    __slots__ = ['conn', 'counter', 'attrs']
 
-    def __init__(self, conn, dtypes, writer_conn=None):
+    def __init__(self, conn, dtypes):
         super(AbsGroup, self).__init__(conn, dtypes)
-        self.writer_conn = writer_conn
         self.counter = 0
 
     @abstractmethod
