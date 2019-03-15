@@ -320,7 +320,7 @@ class TestDataset(unittest.TestCase):
 
     def test_context_index(self):
         x = np.asarray([1, 2, 3, 4, 5])
-        with Data(name="test_ci", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH, chunks=(5, )) as data:
+        with Data(name="test_ci", metadata_path=TMP_PATH, chunks=(5, )) as data:
             data.from_data({"x": x})
             self.assertEqual(data[0].to_ndarray(), [1])
 

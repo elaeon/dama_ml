@@ -39,21 +39,21 @@ class DaGroup(AbsGroup):
         self.write_to_group = write_to_group
         if isinstance(dagroup_dict, DaGroupDict):
             reader_conn = dagroup_dict
-        elif isinstance(abs_source, AbsBaseGroup):  # or AbsGroup:
-            groups = OrderedDict()
-            for group in abs_source.groups:
-                groups[group] = abs_source.get_conn(group)
+        elif isinstance(abs_source, AbsBaseGroup):
+            groups = [(group, abs_source.get_conn(group)) for group in abs_source.groups]
             reader_conn = DaGroup.convert(groups, chunks=chunks)
         else:
             raise NotImplementedError("Type {} is not supported".format(type(abs_source)))
         super(DaGroup, self).__init__(reader_conn, dtypes=reader_conn.dtypes)
 
     @staticmethod
-    def convert(groups_dict, chunks: Chunks) -> DaGroupDict:
+    def convert(groups_items, chunks: Chunks) -> DaGroupDict:
         if chunks is None:
             raise NotChunksFound
         groups = DaGroupDict()
-        for group, data in groups_dict.items():
+        if isinstance(groups_items, dict):
+            groups_items = groups_items.items()
+        for group, data in groups_items:
             lock = False
             groups[group] = da.from_array(data, chunks=chunks[group], lock=lock)
         return groups

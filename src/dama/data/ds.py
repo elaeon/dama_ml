@@ -18,7 +18,7 @@ from dama.utils.config import get_settings
 from dama.utils.decorators import cache, clean_cache
 from dama.utils.files import get_dir_file_size
 from dama.utils.order import order_table
-from dama.groups.core import DaGroup, DaGroupDict
+from dama.groups.core import DaGroup
 from dama.fmtypes import DEFAUL_GROUP_NAME
 from pydoc import locate
 
@@ -360,23 +360,28 @@ class Data(AbsData):
         self.write_metadata()
 
     def from_loader(self, data_list: list, loader_fn, npartitions: int = 1, with_hash: str = "sha1"):
+        def concat_partitions(part1: list, part2: list):
+            if not isinstance(part1, list):
+                part1 = [part1]
+            if not isinstance(part2, list):
+                part2 = [part2]
+            return DaGroup.concat(part1 + part2, axis=0)
+
         url_bag_partition = db.from_sequence(data_list, npartitions=npartitions)
-        s1 = url_bag_partition.map(loader_fn).fold(binop=self.add_to_list, combine=self.concat_partitions, initial=[])
-        da_group = s1.compute()
+        fold_loader = url_bag_partition.map(loader_fn).fold(binop=self.add_to_list, combine=concat_partitions,
+                                                            initial=[])
+        da_group = fold_loader.compute()
         self.from_data(da_group, with_hash=with_hash)
 
-    def add_to_list(self, list_elem, data):
-        groups = Iterator(data).groups
-        if len(groups) == 1 and groups[0] == DEFAUL_GROUP_NAME:
-            conn = DaGroupDict([(DEFAUL_GROUP_NAME, data)])
+    def add_to_list(self, base_list, data):
+        it = Iterator(data)
+        groups = it.groups
+        if len(groups) == 1:
+            group_items = [(groups[0], data)]
         else:
-            raise NotImplementedError
-        return list_elem + [DaGroup(conn, chunks=self.chunksize)]
-
-    def concat_partitions(self, elem1, elem2):
-        da_groups = elem1 + elem2
-        da_groups_c = DaGroup.concat(da_groups, axis=0)
-        return da_groups_c
+            group_items = [(group, data[group]) for group in groups]
+        dagroup_dict = DaGroup.convert(group_items, Chunks.build_from_shape(it.shape, it.dtypes))
+        return base_list + [DaGroup(dagroup_dict=dagroup_dict)]
 
     def to_df(self) -> pd.DataFrame:
         return self.data.to_df()
