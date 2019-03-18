@@ -8,6 +8,9 @@ from collections import OrderedDict
 from dama.utils.decorators import cache
 from dama.exceptions import NotChunksFound
 import dask.array as da
+import dask.dataframe as dd
+import uuid
+from dask.highlevelgraph import HighLevelGraph
 from numbers import Number
 
 
@@ -37,6 +40,8 @@ class DaGroup(AbsGroup):
                  abs_source: AbsBaseGroup=None):
         self.abs_source = abs_source
         self.write_to_group = write_to_group
+        self.dask = None
+        self.name = "dagroup_" + uuid.uuid4().hex
         if isinstance(dagroup_dict, DaGroupDict):
             reader_conn = dagroup_dict
         elif isinstance(abs_source, AbsBaseGroup):
@@ -117,12 +122,18 @@ class DaGroup(AbsGroup):
         else:
             raise NotImplementedError
 
+    def __dask_graph__(self) -> HighLevelGraph:
+        raise NotImplementedError
+
+    def to_dd(self) -> dd.DataFrame:
+        dfs = []
+        for group in self.groups:
+            df = dd.from_dask_array(self.conn[group], columns=[group])
+            dfs.append(df)
+        return dd.concat(dfs, axis=1)
+
     @staticmethod
     def concat(da_groups, axis=0) -> 'DaGroup':
-        #writers = {group.write_to_group.module_cls_name() for group in da_groups}
-        #if len(writers) > 1:
-        #    raise Exception
-        #else:
         if axis == 0:
             all_groups = [da_group.groups for da_group in da_groups]
             da_group_dict = DaGroupDict()
@@ -222,10 +233,10 @@ class DaGroup(AbsGroup):
 
     @staticmethod
     def from_da(da_array: da.Array, group_name: str = DEFAUL_GROUP_NAME):
-        da_group_dict = DaGroupDict()
-        da_group_dict[group_name] = da.Array(da_array.dask, chunks=da_array.chunks,
+        dagroup_dict = DaGroupDict()
+        dagroup_dict[group_name] = da.Array(da_array.dask, chunks=da_array.chunks,
                                              dtype=da_array.dtype, name=da_array.name)
-        return DaGroup(da_group_dict)
+        return DaGroup(dagroup_dict=dagroup_dict)
 
 
 class StcArrayGroup(AbsBaseGroup):

@@ -314,35 +314,45 @@ class Data(AbsData):
     def from_data(self, data, with_hash: str = "sha1", from_ds_hash=None, start_i: int = 0):
         if isinstance(data, da.Array):
             data = DaGroup.from_da(data)
-            self.chunksize = data.chunksize
+            if self.chunksize is None:
+                self.chunksize = data.chunksize
+            elif isinstance(self.chunksize, tuple):
+                self.chunksize = Chunks.build_from(self.chunksize, data.groups)
         elif isinstance(data, Iterator):
             if self.chunksize is None:
                 self.chunksize = Chunks.build_from_shape(data.shape, data.dtypes)
-            else:
+            elif isinstance(self.chunksize, tuple):
                 self.chunksize = Chunks.build_from(self.chunksize, data.groups)
             data = data.batchs(chunks=self.chunksize, start_i=start_i)
             self.chunksize = data.chunksize
+        elif isinstance(data, BatchIterator):
+            if self.chunksize is None:
+                self.chunksize = data.chunksize
+            elif isinstance(self.chunksize, tuple):
+                self.chunksize = Chunks.build_from(self.chunksize, data.groups)
         elif isinstance(data, dict):
             if self.chunksize is None:
                 shape, dtypes = Shape.get_shape_dtypes_from_dict(data)
                 self.chunksize = Chunks.build_from_shape(shape, dtypes)
-            else:
+            elif isinstance(self.chunksize, tuple):
                 self.chunksize = Chunks.build_from(self.chunksize, tuple(data.keys()))
             data = DaGroup(dagroup_dict=DaGroup.convert(data, chunks=self.chunksize))
         elif isinstance(data, DaGroup) or type(data) == DaGroup:
-            self.chunksize = data.chunksize
+            if self.chunksize is None:
+                self.chunksize = data.chunksize
+            elif isinstance(self.chunksize, tuple):
+                self.chunksize = Chunks.build_from(self.chunksize, data.groups)
         elif not isinstance(data, BaseIterator):
             data = Iterator(data)
             if self.chunksize is None:
                 self.chunksize = Chunks.build_from_shape(data.shape, data.dtypes)
-            else:
-                self.chunksize = data.shape.to_chunks(self.chunksize)
+            elif isinstance(self.chunksize, tuple):
+                self.chunksize = Chunks.build_from(self.chunksize, data.groups)
             data = data.batchs(chunks=self.chunksize, start_i=start_i)
             self.chunksize = data.chunksize
         self.dtypes = data.dtypes
         self.driver.set_data_shape(data.shape)
         if isinstance(data, BatchIterator) or isinstance(data, Iterator):
-            self.chunksize = data.chunksize
             self.batchs_writer(data)
         elif isinstance(data, DaGroup):
             data.store(self)
