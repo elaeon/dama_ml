@@ -2,18 +2,19 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dama.utils.numeric_functions import max_dtype
 from dama.utils.core import Shape, Chunks
-from dama.fmtypes import Slice, DEFAUL_GROUP_NAME
+from dama.fmtypes import DEFAUL_GROUP_NAME
 from dama.exceptions import NotChunksFound
 from dama.utils.decorators import cache
-from dama.abc.data import AbsData
 from numbers import Number
 import numpy as np
 import pandas as pd
 import dask.array as da
 import dask.dataframe as dd
 
+
 class Manager:
     pass
+
 
 class DaGroupDict(OrderedDict, Manager):
     def __init__(self, *args, **kwargs):
@@ -64,6 +65,9 @@ class DaGroupDict(OrderedDict, Manager):
             raise StopIteration
         else:
             return elem
+
+    def __len__(self):
+        return self.shape[0]
 
     def getitem(self, group):
         return super(DaGroupDict, self).__getitem__(group)

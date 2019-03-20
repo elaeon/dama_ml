@@ -12,7 +12,7 @@ from dama.utils.core import Shape, Chunks
 from dama.utils.miscellaneous import isnamedtupleinstance
 from dama.utils.logger import log_config
 from dama.abc.data import AbsData
-from dama.abc.group import AbsGroup
+from dama.abc.group import AbsGroup, Manager
 from dama.utils.numeric_functions import nested_shape
 from dama.groups.core import DaGroup, StcArrayGroup, TupleGroup
 from dama.abc.group import DaGroupDict
@@ -243,7 +243,7 @@ class Iterator(BaseIterator):
             self.data = iter(fn_iter)
             length = fn_iter.shape[0] if length == np.inf else length
             self.rewind = False
-        elif isinstance(fn_iter, AbsData) or isinstance(fn_iter, AbsGroup) or type(fn_iter) == DaGroup:
+        elif isinstance(fn_iter, AbsData) or isinstance(fn_iter, AbsGroup) or isinstance(fn_iter, Manager):
             self.data = fn_iter
             self.dtypes = fn_iter.dtypes
             self.dtype = fn_iter.dtype
@@ -579,8 +579,8 @@ class BatchItGroup(BatchIterator):
     type_elem = Slice
 
     def batch_from_it(self, shape=None):
+        from dama.drivers.core import StcArray
         for start_i, end_i, stc_array, in str_array(shape, self.chunksize, self.data, self.data.dtypes):
-            print(stc_array)
-            manager = StcArrayDriver(stc_array)#DaGroupDict.convert(groups_items, chunks=self.chunksize)
-            #da_group = DaGroup(abs_source=StcArrayGroup(stc_array, self.dtypes), chunks=self.chunksize)
+            driver = StcArray(conn=stc_array)
+            manager = driver.manager(self.chunksize)
             yield Slice(batch=manager, slice=slice(start_i+self.start_i, end_i+self.start_i))

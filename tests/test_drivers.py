@@ -35,10 +35,10 @@ class TestDriver(unittest.TestCase):
     def setUp(self):
         self.login = Login(username="alejandro", resource="ml", table="test")
         #self.driver = Zarr(path=TMP_PATH, login=self.login)
-        #self.driver = Memory(path=TMP_PATH)
-        self.driver = Sqlite(path=TMP_PATH, login=self.login)
+        self.driver = Memory()
+        #self.driver = Sqlite(path=TMP_PATH, login=self.login)
         #self.driver = HDF5(path=TMP_PATH, login=self.login)
-        self.driver.build_url("test")
+        #self.driver.build_url("test")
 
         with self.driver:
             self.driver.set_schema(dtype)
@@ -53,6 +53,10 @@ class TestDriver(unittest.TestCase):
                 self.driver["c0"][0:10] = cast(array_c0)
                 self.driver["c1"][0:10] = cast(array_c1)
                 self.driver["c2"][0:10] = cast(array_c2)
+
+    def tearDown(self):
+        with self.driver:
+            self.driver.destroy()
 
     def test_spaces(self):
         with self.driver:

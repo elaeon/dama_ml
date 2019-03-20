@@ -117,8 +117,9 @@ class Zarr(AbsDriver):
 
     def manager(self, chunks: Chunks):
         self.chunksize = chunks
-        groups = [(group, self[group]) for group in self.groups]
-        return DaGroupDict.convert(groups, chunks=chunks)
+        if self.groups is not None:
+            groups = [(group, self[group]) for group in self.groups]
+            return DaGroupDict.convert(groups, chunks=chunks)
 
     def open(self):
         if self.conn is None:
@@ -194,3 +195,64 @@ class Memory(Zarr):
 
     def destroy(self):
         pass
+
+
+class StcArray(AbsDriver):
+    persistent = False
+    ext = None
+    insert_by_rows = False
+
+    def __getitem__(self, item):
+        return self.conn[item]
+
+    def __setitem__(self, key, value):
+        self.conn[key] = value
+
+    def __contains__(self, item):
+        return item in self.conn
+
+    def manager(self, chunks: Chunks):
+        self.chunksize = chunks
+        groups = [(group, self[group]) for group in self.groups]
+        return DaGroupDict.convert(groups, chunks=chunks)
+
+    def open(self):
+        pass
+
+    def close(self):
+        pass
+
+    def destroy(self):
+        pass
+
+    @property
+    def dtypes(self):
+        return self.conn.dtype
+
+    def exists(self):
+        return self.conn is not None
+
+    def set_data_shape(self, shape):
+        pass
+
+    def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key=None):
+        pass
+
+    def spaces(self):
+        pass
+
+    @staticmethod
+    def fit_shape(shape: Shape) -> Shape:
+        _shape = {}
+        if len(shape.groups()) == 1:
+            key = list(shape.groups())[0]
+            _shape[key] = shape[key]
+        else:
+            for group, shape_tuple in shape.items():
+                if len(shape_tuple) == 2:  # and shape_tuple[1] == 1:
+                    _shape[group] = tuple(shape_tuple[:1])
+                elif len(shape_tuple) == 1:
+                    _shape[group] = shape_tuple
+                else:
+                    raise Exception
+        return Shape(_shape)

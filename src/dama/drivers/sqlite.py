@@ -3,7 +3,7 @@ from dama.groups.sqlite import Table
 from dama.fmtypes import fmtypes_map
 from dama.utils.logger import log_config
 from dama.utils.decorators import cache
-from dama.utils.core import Chunks
+from dama.utils.core import Chunks, Shape
 from dama.abc.group import DaGroupDict
 import numpy as np
 import sqlite3
@@ -45,7 +45,6 @@ class Sqlite(AbsDriver):
         return DaGroupDict.convert(groups, chunks=chunks)
 
     @property
-    @cache
     def absgroup(self):
         return Table(self.conn, self.dtypes, name=self.data_tag)
 
@@ -131,12 +130,16 @@ class Sqlite(AbsDriver):
     def set_data_shape(self, shape):
         pass
 
-    def insert(self, data):
-        table = Table(self.conn, self.dtypes, name=self.data_tag)
-        table.insert(data)
+    #def insert(self, data):
+    #    table = Table(self.conn, self.dtypes, name=self.data_tag)
+    #    table.insert(data)
 
     def spaces(self) -> list:
         return ["data", "metadata"]
 
     def cast(self, value):
         return value
+
+    @property
+    def shape(self) -> Shape:
+        return self.absgroup.shape

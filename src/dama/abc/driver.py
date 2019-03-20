@@ -7,8 +7,6 @@ from dama.utils.logger import log_config
 from dama.utils.core import Login, Chunks
 from dama.utils.files import build_path
 from tqdm import tqdm
-from dama.abc.group import AbsGroup
-from dama.abc.data import AbsData
 
 
 settings = get_settings("paths")
@@ -19,9 +17,9 @@ class AbsDriver(ABC):
     persistent = None
     ext = None
 
-    def __init__(self, compressor: Codec = None, login: Login = None, mode: str = 'a', path: str = None):
+    def __init__(self, compressor: Codec = None, login: Login = None, mode: str = 'a', path: str = None, conn=None):
         self.compressor = compressor
-        self.conn = None
+        self.conn = conn
         if compressor is not None:
             self.compressor_params = {"compression": self.compressor.codec_id,
                                       "compression_opts": self.compressor.level}
@@ -61,6 +59,9 @@ class AbsDriver(ABC):
 
     def manager(self, chunks: Chunks):
         return NotImplemented
+
+    def absgroup(self):
+        pass
 
     @classmethod
     def module_cls_name(cls):
@@ -137,7 +138,7 @@ class AbsDriver(ABC):
         from dama.fmtypes import Slice
         from numbers import Number
 
-        if self.inblock is True:
+        if self.insert_by_rows is True:
             self[item] = value
         else:
             if isinstance(value, Manager):

@@ -4,10 +4,10 @@ import numpy as np
 from collections import OrderedDict
 from dama.utils.decorators import cache
 from dama.data.it import Iterator, BatchIterator
+from dama.utils.miscellaneous import filter_dtypes
 
 
 class Table(AbsGroup):
-    inblock = True
 
     def __init__(self, conn, dtypes, name=None, query_parts=None):
         super(Table, self).__init__(conn, dtypes=dtypes)
@@ -21,7 +21,7 @@ class Table(AbsGroup):
         query_parts = self.query_parts.copy()
         if isinstance(item, str):
             query_parts["columns"] = [item]
-            dtypes = self.dtypes_from_groups(item)
+            dtypes = filter_dtypes(item, self.dtypes)
             return Table(self.conn, dtypes, name=self.name, query_parts=query_parts)
         elif isinstance(item, list) or isinstance(item, tuple):
             it = Iterator(item)
@@ -33,7 +33,9 @@ class Table(AbsGroup):
                 dtypes = self.dtypes
             elif it.type_elem == str:
                 query_parts["columns"] = item
-                dtypes = self.dtypes_from_groups(item)
+                dtypes = filter_dtypes(item, self.dtypes)
+            else:
+                dtypes = self.dtypes
             dtype = self.attrs.get("dtype", None)
             return Table(self.conn, dtypes, name=self.name, query_parts=query_parts).to_ndarray(dtype=dtype)
         elif isinstance(item, int):
@@ -97,7 +99,6 @@ class Table(AbsGroup):
         cur = self.conn.cursor()
         num_groups = len(data.groups)
         for row in data:
-            print(row)
             shape = row.batch.shape.to_tuple()
             if len(shape) == 1 and num_groups > 1:
                 value = row.batch.to_df.values  # .to_ndarray().reshape(1, -1)

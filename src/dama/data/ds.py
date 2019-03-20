@@ -78,7 +78,7 @@ class Data(AbsData):
 
     @property
     def dtype(self):
-        return self.driver.absgroup.dtype
+        return self.data.dtype
 
     @property
     def description(self):
@@ -200,18 +200,6 @@ class Data(AbsData):
             log.debug("Error opening {} in file {}".format(name, self.url))
             return None
 
-    #def batchs_writer(self, data):
-    #    batch_size = getattr(data, 'batch_size', 0)
-    #    log.info("Writing with chunks {}".format(batch_size))
-    #    if batch_size > 0:
-    #        absgroup = self.driver.absgroup
-    #        for smx in tqdm(data, total=data.num_splits()):
-    #            absgroup.set(smx.slice, smx)
-    #    else:
-    #        for i, smx in tqdm(enumerate(data), total=data.num_splits()):
-    #            for j, group in enumerate(self.groups):
-    #                self.data[group][i] = smx[j]
-
     def destroy(self):
         hash_hex = self.hash
         self.driver.destroy()
@@ -235,15 +223,16 @@ class Data(AbsData):
 
     @property
     def shape(self) -> Shape:
-        return self.driver.absgroup.shape
+        return self.data.shape
 
     @property
     def groups(self) -> tuple:
-        return self.driver.groups
+        if self.data is not None:
+            return self.data.groups
 
     @property
     def dtypes(self) -> np.dtype:
-        return self.driver.dtypes
+        return self.data.dtypes
 
     @dtypes.setter
     def dtypes(self, value):

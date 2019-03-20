@@ -7,6 +7,7 @@ import collections
 from dama.data.it import Iterator, BatchIterator, Slice
 from dama.data.ds import Data
 from dama.groups.core import DaGroup
+from dama.abc.group import DaGroupDict
 from dama.fmtypes import DEFAUL_GROUP_NAME
 from dama.utils.core import Chunks
 from dama.utils.seq import grouper_chunk
@@ -483,11 +484,11 @@ class TestIteratorLoop(unittest.TestCase):
         x_array = np.random.rand(10)
         y_array = np.random.rand(10)
         z_array = np.random.rand(10)
-        dagroup_dict = DaGroup.convert({"x": x_array, "y": y_array, "z": z_array},
+        dagroup_dict = DaGroupDict.convert({"x": x_array, "y": y_array, "z": z_array},
                         chunks=Chunks({"x": (5, ), "y": (5, ), "z": (5, )}))
-        da_group = DaGroup(dagroup_dict=dagroup_dict)
+        #da_group = DaGroup(dagroup_dict=dagroup_dict)
         with Data(name="test") as data:
-            data.from_data(da_group)
+            data.from_data(dagroup_dict)
             it = Iterator(data).batchs(chunks=(1, )).cycle().to_iter()
             for i, x_y_z in enumerate(it):
                 self.assertEqual(x_y_z["x"][0].to_ndarray(), x_array[i])

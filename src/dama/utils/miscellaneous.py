@@ -61,3 +61,7 @@ def to_libsvm(data, target, save_to=None):
             for row in libsvm_row(target_t, data.data[groups].to_ndarray()):
                 f.write(" ".join(row))
                 f.write("\n")
+
+
+def filter_dtypes(group: str, dtypes: np.dtype) -> np.dtype:
+    return np.dtype([(group, dtypes.fields[group][0])])

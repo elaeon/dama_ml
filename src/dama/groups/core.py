@@ -1,40 +1,9 @@
-from dama.abc.group import AbsGroup, AbsGroupX
-from dama.abc.data import AbsData
-from dama.utils.core import Shape, Chunks
-from dama.fmtypes import DEFAUL_GROUP_NAME
+from dama.abc.group import AbsGroup
+from dama.utils.core import Shape
 import numpy as np
-import pandas as pd
 from collections import OrderedDict
 from dama.utils.decorators import cache
-from dama.exceptions import NotChunksFound
-import dask.array as da
-import dask.dataframe as dd
-from dask.base import is_dask_collection
-from dask.highlevelgraph import HighLevelGraph
-from numbers import Number
 
-
-#class DaGroupDict(OrderedDict):
-#    def __init__(self, *args, map_rename=None, **kwargs):
-#        super(DaGroupDict, self).__init__(*args, **kwargs)
-#        if map_rename is None:
-#            self.map_rename = {}
-#        else:
-#            self.map_rename = map_rename
-
-#    def rename(self, key, new_key) -> 'DaGroupDict':
-#        map_rename = self.map_rename.copy()
-#        map_rename[new_key] = key
-#        return DaGroupDict(((new_key if k == key else k, v) for k, v in self.items()), map_rename=map_rename)
-
-#    def get_oldname(self, name) -> str:
-#        return self.map_rename.get(name, name)
-
-#    @property
-#    def dtypes(self):
-#        return np.dtype([(group, self[group].dtype) for group in self.keys()])
-
-from dama.abc.group import DaGroupDict
 
 class DaGroup:
     def __init__(self, abs_source: AbsGroup=None, write_to_group=None, chunks=None):
