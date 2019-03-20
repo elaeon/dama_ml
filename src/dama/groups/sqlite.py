@@ -97,6 +97,7 @@ class Table(AbsGroup):
         cur = self.conn.cursor()
         num_groups = len(data.groups)
         for row in data:
+            print(row)
             shape = row.batch.shape.to_tuple()
             if len(shape) == 1 and num_groups > 1:
                 value = row.batch.to_df.values  # .to_ndarray().reshape(1, -1)

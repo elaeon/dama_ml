@@ -15,6 +15,7 @@ from dama.abc.data import AbsData
 from dama.abc.group import AbsGroup
 from dama.utils.numeric_functions import nested_shape
 from dama.groups.core import DaGroup, StcArrayGroup, TupleGroup
+from dama.abc.group import DaGroupDict
 from dama.fmtypes import Slice, DEFAUL_GROUP_NAME
 
 log = log_config(__name__)
@@ -327,14 +328,15 @@ class Iterator(BaseIterator):
                         return dtypes
                     else:
                         return self.default_dtypes(np.dtype(type(chunk)))
+            elif hasattr(chunk, 'dtypes'):
+                return chunk.dtypes
+            elif isnamedtupleinstance(chunk):
+                dtypes_l = []
+                for v, field in zip(chunk, chunk._fields):
+                    dtypes_l.append((field, np.dtype(type(v))))
+                return np.dtype(dtypes_l)
             else:
-                if isnamedtupleinstance(chunk):
-                    dtypes_l = []
-                    for v, field in zip(chunk, chunk._fields):
-                        dtypes_l.append((field, np.dtype(type(v))))
-                    return np.dtype(dtypes_l)
-                else:
-                    return self.default_dtypes(chunk.dtype)
+                return self.default_dtypes(chunk.dtype)
 
     @staticmethod
     def replace_str_type_to_obj(dtype: np.dtype) -> np.dtype:
@@ -362,7 +364,7 @@ class Iterator(BaseIterator):
         else:
             raise NotImplementedError
 
-        if isinstance(self.data, AbsData) or isinstance(self.data, AbsGroup):
+        if isinstance(self.data, AbsData) or isinstance(self.data, DaGroupDict):
             return BatchGroup(self, chunks=chunks, start_i=start_i)
         else:
             return BatchItGroup(self, chunks=chunks, start_i=start_i)
@@ -578,5 +580,7 @@ class BatchItGroup(BatchIterator):
 
     def batch_from_it(self, shape=None):
         for start_i, end_i, stc_array, in str_array(shape, self.chunksize, self.data, self.data.dtypes):
-            da_group = DaGroup(abs_source=StcArrayGroup(stc_array, self.dtypes), chunks=self.chunksize)
-            yield Slice(batch=da_group, slice=slice(start_i+self.start_i, end_i+self.start_i))
+            print(stc_array)
+            manager = StcArrayDriver(stc_array)#DaGroupDict.convert(groups_items, chunks=self.chunksize)
+            #da_group = DaGroup(abs_source=StcArrayGroup(stc_array, self.dtypes), chunks=self.chunksize)
+            yield Slice(batch=manager, slice=slice(start_i+self.start_i, end_i+self.start_i))

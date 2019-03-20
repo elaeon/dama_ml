@@ -40,10 +40,6 @@ class AbsData(ABC):
         return NotImplemented
 
     @abstractmethod
-    def batchs_writer(self, data):
-        return NotImplemented
-
-    @abstractmethod
     def destroy(self):
         return NotImplemented
 

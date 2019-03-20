@@ -3,6 +3,8 @@ from dama.groups.sqlite import Table
 from dama.fmtypes import fmtypes_map
 from dama.utils.logger import log_config
 from dama.utils.decorators import cache
+from dama.utils.core import Chunks
+from dama.abc.group import DaGroupDict
 import numpy as np
 import sqlite3
 
@@ -14,6 +16,13 @@ class Sqlite(AbsDriver):
     ext = 'sqlite3'
     data_tag = None
     metadata_tag = None
+    insert_by_rows = True
+
+    def __getitem__(self, item):
+        return self.absgroup[item]
+
+    #def __setitem__(self, key, value):
+    #    self.conn[self.data_tag][key] = value
 
     def __contains__(self, item):
         return self.exists()
@@ -30,7 +39,13 @@ class Sqlite(AbsDriver):
         self.conn.close()
         self.attrs = None
 
+    def manager(self, chunks: Chunks):
+        self.chunksize = chunks
+        groups = [(group, self[group]) for group in self.groups]
+        return DaGroupDict.convert(groups, chunks=chunks)
+
     @property
+    @cache
     def absgroup(self):
         return Table(self.conn, self.dtypes, name=self.data_tag)
 
@@ -122,3 +137,6 @@ class Sqlite(AbsDriver):
 
     def spaces(self) -> list:
         return ["data", "metadata"]
+
+    def cast(self, value):
+        return value

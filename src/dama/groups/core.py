@@ -1,4 +1,4 @@
-from dama.abc.group import AbsDictGroup, AbsGroup, AbsGroupX
+from dama.abc.group import AbsGroup, AbsGroupX
 from dama.abc.data import AbsData
 from dama.utils.core import Shape, Chunks
 from dama.fmtypes import DEFAUL_GROUP_NAME
@@ -36,8 +36,9 @@ from numbers import Number
 
 from dama.abc.group import DaGroupDict
 
-class DaGroup(AbsGroup):
-    pass
+class DaGroup:
+    def __init__(self, abs_source: AbsGroup=None, write_to_group=None, chunks=None):
+        pass
 #    def __init__(self, abs_source: AbsGroup=None, write_to_group=None):
 #        self.abs_source = abs_source
 #        self.write_to_group = write_to_group
@@ -245,10 +246,10 @@ class DaGroup(AbsGroup):
     #    return DaGroup(dagroup_dict=dagroup_dict)
 
 
-class StcArrayGroup(AbsDictGroup):
+class StcArrayGroup(AbsGroup):
     inblock = False
 
-    def get_group(self, group) -> AbsDictGroup:
+    def get_group(self, group) -> AbsGroup:
         dtypes = self.dtypes_from_groups(group)
         return StcArrayGroup(self.conn[group], dtypes)
 
@@ -272,7 +273,7 @@ class StcArrayGroup(AbsDictGroup):
         return Shape(_shape)
 
 
-class TupleGroup(AbsDictGroup):
+class TupleGroup(AbsGroup):
     inblock = False
 
     def __init__(self, conn, dtypes=None):

@@ -5,7 +5,6 @@ import pandas as pd
 import dask.array as da
 import dask.bag as db
 import dask
-from tqdm import tqdm
 from tabulate import tabulate
 from dama.abc.data import AbsData
 from dama.data.it import Iterator, BaseIterator, BatchIterator
@@ -20,6 +19,7 @@ from dama.utils.decorators import cache, clean_cache
 from dama.utils.files import get_dir_file_size
 from dama.utils.order import order_table
 from dama.groups.core import DaGroup
+from dama.abc.group import Manager
 from pydoc import locate
 
 
@@ -123,7 +123,7 @@ class Data(AbsData):
     @property
     @cache
     def data(self) -> AbsGroup:
-        return self.driver.absgroup(chunks=self.chunksize)
+        return self.driver.manager(chunks=self.chunksize)
 
     @data.setter
     @clean_cache
@@ -200,17 +200,17 @@ class Data(AbsData):
             log.debug("Error opening {} in file {}".format(name, self.url))
             return None
 
-    def batchs_writer(self, data):
-        batch_size = getattr(data, 'batch_size', 0)
-        log.info("Writing with chunks {}".format(batch_size))
-        if batch_size > 0:
-            absgroup = self.driver.absgroup
-            for smx in tqdm(data, total=data.num_splits()):
-                absgroup.set(smx.slice, smx)
-        else:
-            for i, smx in tqdm(enumerate(data), total=data.num_splits()):
-                for j, group in enumerate(self.groups):
-                    self.data[group][i] = smx[j]
+    #def batchs_writer(self, data):
+    #    batch_size = getattr(data, 'batch_size', 0)
+    #    log.info("Writing with chunks {}".format(batch_size))
+    #    if batch_size > 0:
+    #        absgroup = self.driver.absgroup
+    #        for smx in tqdm(data, total=data.num_splits()):
+    #            absgroup.set(smx.slice, smx)
+    #    else:
+    #        for i, smx in tqdm(enumerate(data), total=data.num_splits()):
+    #            for j, group in enumerate(self.groups):
+    #                self.data[group][i] = smx[j]
 
     def destroy(self):
         hash_hex = self.hash
@@ -330,14 +330,14 @@ class Data(AbsData):
                 self.chunksize = data.chunksize
             elif isinstance(self.chunksize, tuple):
                 self.chunksize = Chunks.build_from(self.chunksize, data.groups)
-        elif isinstance(data, dict):
+        elif isinstance(data, dict) and not isinstance(data, Manager):
             if self.chunksize is None:
                 shape, dtypes = Shape.get_shape_dtypes_from_dict(data)
                 self.chunksize = Chunks.build_from_shape(shape, dtypes)
             elif isinstance(self.chunksize, tuple):
                 self.chunksize = Chunks.build_from(self.chunksize, tuple(data.keys()))
             data = DaGroup(dagroup_dict=DaGroup.convert(data, chunks=self.chunksize))
-        elif isinstance(data, DaGroup) or type(data) == DaGroup:
+        elif isinstance(data, Manager):
             if self.chunksize is None:
                 self.chunksize = data.chunksize
             elif isinstance(self.chunksize, tuple):
@@ -353,9 +353,9 @@ class Data(AbsData):
         self.dtypes = data.dtypes
         self.driver.set_data_shape(data.shape)
         if isinstance(data, BatchIterator) or isinstance(data, Iterator):
-            self.batchs_writer(data)
-        elif isinstance(data, DaGroup):
-            data.store(self)
+            self.driver.batchs_writer(data)
+        elif isinstance(data, Manager):
+            self.driver.store(data)
         else:
             raise NotImplementedError
 

@@ -6,7 +6,9 @@ from dama.utils.config import get_settings
 from dama.utils.logger import log_config
 from dama.utils.core import Login, Chunks
 from dama.utils.files import build_path
+from tqdm import tqdm
 from dama.abc.group import AbsGroup
+from dama.abc.data import AbsData
 
 
 settings = get_settings("paths")
@@ -57,7 +59,7 @@ class AbsDriver(ABC):
         self.url = os.path.join(*dir_levels)
         build_path(dir_levels[:-1])
 
-    def absgroup(self, chunks: Chunks) -> AbsGroup:
+    def manager(self, chunks: Chunks):
         return NotImplemented
 
     @classmethod
@@ -109,3 +111,47 @@ class AbsDriver(ABC):
     @abstractmethod
     def spaces(self):
         return NotImplemented
+
+    def store(self, manager):
+        if self.insert_by_rows is True:
+            from dama.data.it import Iterator
+            data = Iterator(self).batchs(chunks=self.chunksize)
+            self.batchs_writer(manager)
+        else:
+            for group in self.groups:
+                manager.getitem(group).store(self[group])
+
+    def batchs_writer(self, data):
+        batch_size = getattr(data, 'batch_size', 0)
+        log.info("Writing with chunks {}".format(batch_size))
+        if batch_size > 0:
+            for smx in tqdm(data, total=data.num_splits()):
+                self.setitem(smx.slice, smx)
+        else:
+            for i, smx in tqdm(enumerate(data), total=data.num_splits()):
+                for j, group in enumerate(self.groups):
+                    self[group][i] = smx[j]
+
+    def setitem(self, item, value):
+        from dama.abc.group import Manager
+        from dama.fmtypes import Slice
+        from numbers import Number
+
+        if self.inblock is True:
+            self[item] = value
+        else:
+            if isinstance(value, Manager):
+                for group in value.groups:
+                    #group = value.conn.get_oldname(group)
+                    self[group][item] = value[group].to_ndarray()
+            elif type(value) == Slice:
+                for group in value.batch.groups:
+                    #group = value.batch.conn.get_oldname(group)
+                    self[group][item] = value.batch[group].to_ndarray()
+            elif isinstance(value, Number):
+                self[item] = value
+            elif isinstance(value, np.ndarray):
+                self[item] = value
+            else:
+                if isinstance(item, str):
+                    self[item] = value

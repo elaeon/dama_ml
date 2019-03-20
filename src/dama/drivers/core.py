@@ -7,10 +7,8 @@ from numcodecs import MsgPack
 from dama.abc.driver import AbsDriver
 from dama.utils.files import rm
 from dama.utils.logger import log_config
-from dama.groups.hdf5 import HDF5Group
-from dama.groups.zarr import ZarrGroup
-from dama.exceptions import DataDoesNotFound
-from dama.utils.core import Chunks
+from dama.abc.group import DaGroupDict
+from dama.utils.core import Chunks, Shape
 
 
 log = log_config(__name__)
@@ -21,15 +19,21 @@ class HDF5(AbsDriver):
     ext = 'h5'
     data_tag = "data"
     metadata_tag = "metadata"
+    insert_by_rows = False
+
+    def __getitem__(self, item):
+        return self.conn[self.data_tag][item]
+
+    def __setitem__(self, key, value):
+        self.conn[self.data_tag][key] = value
 
     def __contains__(self, item):
         return item in self.conn
 
-    def absgroup(self, chunks: Chunks):
-        try:
-            return HDF5Group(self.conn[self.data_tag], dtypes=self.dtypes, chunks=chunks)
-        except KeyError:
-            raise DataDoesNotFound
+    def manager(self, chunks: Chunks):
+        self.chunksize = chunks
+        groups = [(group, self[group]) for group in self.groups]
+        return DaGroupDict.convert(groups, chunks=chunks)
 
     def open(self):
         if self.conn is None:
@@ -81,18 +85,40 @@ class HDF5(AbsDriver):
     def spaces(self) -> list:
         return list(self.conn.keys())
 
+    @property
+    def shape(self) -> Shape:
+        shape = {}
+        for group in self.groups:
+            shape[group] = self[group].shape
+        return Shape(shape)
+
+    def cast(self, value):
+        if value.dtype == np.dtype("datetime64[ns]"):
+            return value.astype("int8")
+        else:
+            return value
+
 
 class Zarr(AbsDriver):
     persistent = True
     ext = "zarr"
     data_tag = "data"
     metadata_tag = "metadata"
+    insert_by_rows = False
+
+    def __getitem__(self, item):
+        return self.conn[self.data_tag][item]
+
+    def __setitem__(self, key, value):
+        self.conn[self.data_tag][key] = value
 
     def __contains__(self, item):
         return item in self.conn
 
-    def absgroup(self, chunks: Chunks):
-        return ZarrGroup(self.conn[self.data_tag], dtypes=self.dtypes, chunks=chunks)
+    def manager(self, chunks: Chunks):
+        self.chunksize = chunks
+        groups = [(group, self[group]) for group in self.groups]
+        return DaGroupDict.convert(groups, chunks=chunks)
 
     def open(self):
         if self.conn is None:
@@ -140,8 +166,18 @@ class Zarr(AbsDriver):
             dtypes = self.conn[self.metadata_tag]["dtypes"]
             return np.dtype([(col, np.dtype(dtype)) for col, dtype in dtypes])
 
+    @property
+    def shape(self) -> Shape:
+        shape = {}
+        for group in self.groups:
+            shape[group] = self[group].shape
+        return Shape(shape)
+
     def spaces(self) -> list:
         return list(self.conn.keys())
+
+    def cast(self, value):
+        return value
 
 
 class Memory(Zarr):

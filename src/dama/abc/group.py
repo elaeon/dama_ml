@@ -12,15 +12,14 @@ import pandas as pd
 import dask.array as da
 import dask.dataframe as dd
 
+class Manager:
+    pass
 
-class DaGroupDict(OrderedDict):
-    def __init__(self, *args, map_rename=None, **kwargs):
+class DaGroupDict(OrderedDict, Manager):
+    def __init__(self, *args, **kwargs):
         super(DaGroupDict, self).__init__(*args, **kwargs)
         self.attrs = Attrs()
-        #if map_rename is None:
-        #    self.map_rename = {}
-        #else:
-        #    self.map_rename = map_rename
+        self.counter = 0
 
     def __add__(self, other: 'DaGroupDict') -> 'DaGroupDict':
         if isinstance(other, Number) and other == 0:
@@ -53,13 +52,42 @@ class DaGroupDict(OrderedDict):
             index = [i for i, is_true in enumerate(item.compute()) if is_true]  # fixme generalize masked data
             return self.set_values(self.groups, index)
 
-    def rename_group(self, key, new_key):
-        #self.map_rename[new_key] = key
-        self[new_key] = super(DaGroupDict, self).__getitem__(key)
-        del self[key]
+    def __iter__(self):
+        self.counter = 0
+        return self
 
-    #def get_oldname(self, name) -> str:
-    #    return self.map_rename.get(name, name)
+    def __next__(self):
+        try:
+            elem = self._iterator(self.counter)
+            self.counter += 1
+        except IndexError:
+            raise StopIteration
+        else:
+            return elem
+
+    def getitem(self, group):
+        return super(DaGroupDict, self).__getitem__(group)
+
+    def popitem(self, last: bool = ...):
+        if not self:
+            raise KeyError('dictionary is empty')
+        key = next(reversed(self) if last else iter(self.keys()))
+        value = self.pop(key)
+        return key, value
+
+    def pop(self, key):
+        value = super(DaGroupDict, self).__getitem__(key)
+        del self[key]
+        return value
+
+    def _iterator(self, counter):
+        elem = self[counter]
+        return elem
+
+    def rename_group(self, old_key, new_key):
+        for _ in range(len(self)):
+            k, v = self.popitem(False)
+            self[new_key if old_key == k else k] = v
 
     @property
     def groups(self):
@@ -122,7 +150,7 @@ class DaGroupDict(OrderedDict):
     def chunksize(self) -> Chunks:
         chunks = Chunks()
         for group in self.groups:
-            chunks[group] = self[group].chunksize
+            chunks[group] = self.getitem(group).chunksize
         return chunks
 
     def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
@@ -146,12 +174,12 @@ class DaGroupDict(OrderedDict):
                     num_cols = 1
                     slice_grp = (slice(None, None), total_cols)
                 total_cols += num_cols
-                data[slice_grp] = self.conn[group].compute(dtype=dtype)
+                data[slice_grp] = super(DaGroupDict, self).__getitem__(group).compute(dtype=dtype)
             return data
 
     def to_stc_array(self) -> np.ndarray:
         if len(self.groups) == 1:
-            computed_array = self.conn[self.groups[0]].compute(dtype=self.dtype)
+            computed_array = super(DaGroupDict, self).__getitem__(self.groups[0]).compute(dtype=self.dtype)
             return computed_array
         else:
             shape = self.shape
@@ -163,7 +191,7 @@ class DaGroupDict(OrderedDict):
             shape = self.shape.to_tuple()
             data = np.empty(shape[0], dtype=dtypes)
             for group in self.groups:
-                data[group] = self.conn[group].compute(dtype=self.dtype)
+                data[group] = super(DaGroupDict, self).__getitem__(group).compute(dtype=self.dtype)
             return data
 
     def to_df(self) -> pd.DataFrame:
@@ -178,11 +206,21 @@ class DaGroupDict(OrderedDict):
     def dtype(self) -> np.dtype:
         return max_dtype(self.dtypes)
 
+    @property
+    def shape(self) -> Shape:
+        shape = OrderedDict((group, data.shape) for group, data in self.items())
+        return Shape(shape)
+
 
 class AbsGroup(ABC):
     inblock = None
     dtypes = None
     conn = None
+
+    def __init__(self, conn, dtypes):
+        self.conn = conn
+        self.attrs = Attrs()
+        self.dtypes = dtypes
 
     @abstractmethod
     def get_group(self, group):
@@ -224,9 +262,7 @@ class AbsGroup(ABC):
 
 class AbsDaskGroup(AbsGroup):
     def __init__(self, conn, dtypes, chunks: Chunks=None):
-        self.conn = conn
-        self.attrs = Attrs()
-        self.dtypes = dtypes
+        super(AbsDaskGroup, self).__init__(conn, dtypes)
 
     @abstractmethod
     def get_group(self, group):
@@ -261,114 +297,6 @@ class AbsDaskGroup(AbsGroup):
         pass
 
 
-class AbsDictGroup(AbsGroup):
-    inblock = None
-
-    def __init__(self, conn, dtypes, chunks: Chunks=None):
-        self.conn = conn
-        # self.attrs = Attrs()
-        self.dtypes = dtypes
-        groups = [(group, self.get_conn(group)) for group in self.groups]
-        self.manager = DaGroupDict.convert(groups, chunks=chunks)
-
-    @abstractmethod
-    def __getitem__(self, item):
-        return NotImplemented
-
-    @abstractmethod
-    def __setitem__(self, item, value):
-        return NotImplemented
-
-    def __iter__(self):
-        self.counter = 0
-        return self
-
-    def __next__(self):
-        try:
-            elem = self._iterator(self.counter)
-            self.counter += 1
-        except IndexError:
-            raise StopIteration
-        else:
-            return elem
-
-    def _iterator(self, counter):
-        elem = self[counter]
-        return elem
-
-    def __len__(self):
-        return self.shape.to_tuple()[0]
-
-    def __repr__(self):
-        return "{} {}".format(self.cls_name(), self.shape)
-
-    def dtypes_from_groups(self, groups) -> np.dtype:
-        if not isinstance(groups, list) and not isinstance(groups, tuple):
-            groups = [groups]
-        return np.dtype([(group, dtype) for group, (dtype, _) in self.dtypes.fields.items() if group in groups])
-
-    @abstractmethod
-    def get_group(self, group):
-        return NotImplemented
-
-    @abstractmethod
-    def get_conn(self, group):
-        return NotImplemented
-
-    def base_cls(self):
-        return self.__class__.__bases__[0]
-
-    def cast(self, value):
-        return value
-
-    @classmethod
-    def module_cls_name(cls):
-        return "{}.{}".format(cls.__module__, cls.__name__)
-
-    @classmethod
-    def cls_name(cls):
-        return cls.__name__
-
-    @property
-    def shape(self) -> Shape:
-        shape = OrderedDict((group, data.shape) for group, data in self.manager.items())
-        return Shape(shape)
-
-    def set(self, item, value):
-        #from dama.groups.core import DaGroup
-        if self.inblock is True:
-            self[item] = value
-        else:
-            if type(value) == AbsDictGroup:
-                for group in value.groups:
-                    group = value.conn.get_oldname(group)
-                    self.conn[group][item] = value[group].to_ndarray()
-            elif type(value) == Slice:
-                for group in value.batch.groups:
-                    group = value.batch.conn.get_oldname(group)
-                    self.conn[group][item] = value.batch[group].to_ndarray()
-            elif isinstance(value, Number):
-                self.conn[item] = value
-            elif isinstance(value, np.ndarray):
-                self.conn[item] = value
-            else:
-                if isinstance(item, str):
-                    self.conn[item] = value
-
-    def store(self, dataset: AbsData):
-        self.write_to_group = dataset.driver.absgroup
-        if self.write_to_group.inblock is True:
-            from dama.data.it import Iterator
-            data = Iterator(self).batchs(chunks=self.manager.chunksize)
-            dataset.batchs_writer(data)
-        else:
-            for group in self.groups:
-                self.conn[group].store(dataset.driver.absgroup.get_conn(group))
-
-    def items(self):
-        return [(group, self.conn[group]) for group in self.groups]
-
-
 class Singleton(type):
     _instances = {}
     def __call__(cls, *args, **kwargs):
@@ -381,7 +309,8 @@ class Attrs(dict, metaclass=Singleton):
     pass
 
 
-class AbsGroupX(AbsDictGroup):
+
+class AbsGroupX:
     __slots__ = ['conn', 'counter', 'attrs']
 
     #def __init__(self, conn, dtypes, chunks: Chunks):
