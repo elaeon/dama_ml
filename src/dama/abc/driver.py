@@ -5,8 +5,8 @@ import os
 from dama.utils.config import get_settings
 from dama.utils.logger import log_config
 from dama.utils.core import Login, Chunks
-from dama.groups.core import DaGroup
 from dama.utils.files import build_path
+from dama.abc.group import AbsGroup
 
 
 settings = get_settings("paths")
@@ -57,11 +57,7 @@ class AbsDriver(ABC):
         self.url = os.path.join(*dir_levels)
         build_path(dir_levels[:-1])
 
-    def data(self, chunks: Chunks) -> DaGroup:
-        return DaGroup(chunks=chunks, abs_source=self.absgroup)
-
-    @property
-    def absgroup(self):
+    def absgroup(self, chunks: Chunks) -> AbsGroup:
         return NotImplemented
 
     @classmethod

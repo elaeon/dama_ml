@@ -1,12 +1,12 @@
 from h5py import Group as NativeH5Group
 import numpy as np
-from dama.abc.group import AbsBaseGroup
+from dama.abc.group import AbsDictGroup
 
 
-class HDF5Group(AbsBaseGroup):
+class HDF5Group(AbsDictGroup):
     inblock = False
 
-    def get_group(self, group) -> AbsBaseGroup:
+    def get_group(self, group) -> AbsDictGroup:
         if isinstance(self.conn, NativeH5Group):
             dtypes = self.dtypes_from_groups(group)
             return HDF5Group(self.conn[group], dtypes)

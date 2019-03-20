@@ -10,6 +10,7 @@ from dama.utils.logger import log_config
 from dama.groups.hdf5 import HDF5Group
 from dama.groups.zarr import ZarrGroup
 from dama.exceptions import DataDoesNotFound
+from dama.utils.core import Chunks
 
 
 log = log_config(__name__)
@@ -24,10 +25,9 @@ class HDF5(AbsDriver):
     def __contains__(self, item):
         return item in self.conn
 
-    @property
-    def absgroup(self):
+    def absgroup(self, chunks: Chunks):
         try:
-            return HDF5Group(self.conn[self.data_tag], dtypes=self.dtypes)
+            return HDF5Group(self.conn[self.data_tag], dtypes=self.dtypes, chunks=chunks)
         except KeyError:
             raise DataDoesNotFound
 
@@ -91,9 +91,8 @@ class Zarr(AbsDriver):
     def __contains__(self, item):
         return item in self.conn
 
-    @property
-    def absgroup(self):
-        return ZarrGroup(self.conn[self.data_tag], dtypes=self.dtypes)
+    def absgroup(self, chunks: Chunks):
+        return ZarrGroup(self.conn[self.data_tag], dtypes=self.dtypes, chunks=chunks)
 
     def open(self):
         if self.conn is None:

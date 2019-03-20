@@ -11,6 +11,7 @@ from dama.abc.data import AbsData
 from dama.data.it import Iterator, BaseIterator, BatchIterator
 from dama.utils.core import Hash, Login, Metadata, Chunks, Shape
 from dama.abc.driver import AbsDriver
+from dama.abc.group import AbsGroup
 from dama.drivers.core import Memory
 from dama.drivers.sqlite import Sqlite
 from dama.utils.logger import log_config
@@ -19,7 +20,6 @@ from dama.utils.decorators import cache, clean_cache
 from dama.utils.files import get_dir_file_size
 from dama.utils.order import order_table
 from dama.groups.core import DaGroup
-from dama.fmtypes import DEFAUL_GROUP_NAME
 from pydoc import locate
 
 
@@ -122,8 +122,8 @@ class Data(AbsData):
 
     @property
     @cache
-    def data(self) -> DaGroup:
-        return self.driver.data(chunks=self.chunksize)
+    def data(self) -> AbsGroup:
+        return self.driver.absgroup(chunks=self.chunksize)
 
     @data.setter
     @clean_cache

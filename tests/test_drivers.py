@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+import pandas as pd
 import os
 from dama.drivers.core import Memory, HDF5
 from dama.utils.core import Shape, Login, Chunks
@@ -202,22 +203,22 @@ class TestDaGroup(unittest.TestCase):
         with self.driver:
             self.driver.set_schema(self.dtype)
             self.driver.set_data_shape(self.shape)
-            absgroup = self.driver.absgroup
+            absgroup = self.driver.absgroup(self.chunks)
             cast = absgroup.cast
-            absgroup.conn["c0"][0:10] = cast(self.array_c0)
-            absgroup.conn["c1"][0:10] = cast(self.array_c1)
-            absgroup.conn["c2"][0:10] = cast(self.array_c2)
+            absgroup["c0"][0:10] = cast(self.array_c0)
+            absgroup["c1"][0:10] = cast(self.array_c1)
+            absgroup["c2"][0:10] = cast(self.array_c2)
 
     def test_rename(self):
         with self.driver:
-            data = self.driver.data(self.chunks)
-            data.write_to_group = self.driver.absgroup
-            data.rename_group("c0", "group0")
-            self.assertEqual(data.dtypes.names[1:], self.dtype.names[1:])
-            self.assertEqual(data["group0"].dtypes, [("group0", self.array_c0.dtype)])
+            absgroup = self.driver.absgroup(self.chunks)
+            absgroup.write_to_group = absgroup
+            absgroup.manager.rename_group("c0", "group0")
+            self.assertEqual(absgroup.dtypes.names[1:], self.dtype.names[1:])
+            self.assertEqual(absgroup.manager["group0"].dtypes, [("group0", self.array_c0.dtype)])
 
-            data["group0"][8] = -1
-            self.assertEqual(data["group0"][8].to_ndarray(), -1)
+            absgroup["c0"][8] = -1
+            self.assertEqual(absgroup.manager["group0"][8].to_ndarray(), -1)
 
     def test_multicolum_get(self):
         with self.driver:
@@ -253,3 +254,50 @@ class TestDaGroup(unittest.TestCase):
         with self.driver:
             stc_da = self.driver.data(self.chunks)
             self.assertEqual(stc_da.to_ndarray(dtype=np.dtype(float)).dtype, np.dtype(float))
+
+
+class TestDriverCSV(unittest.TestCase):
+    def setUp(self):
+        from dama.drivers.csv import CSV
+        self.array = np.asarray([
+            ["a", "1.1", "2018-01-01 08:31:28"],
+            ["b", "2.1", "2018-01-01 09:31:28"],
+            ["c", "3.1", "2018-01-01 10:31:28"],
+            ["d", "4.1", "2018-01-01 11:31:28"],
+            ["e", "5.1", "2018-01-01 12:31:28"],
+            ["g", "6.1", "2018-01-01 13:31:28"],
+            ["h", "7.1", "2018-01-01 14:31:28"],
+            ["i", "8.1", "2018-01-01 15:31:28"],
+            ["j", "9.1", "2018-01-01 16:31:28"],
+            ["k", "10.1", "2018-01-01 17:31:28"]], dtype=object)
+
+        #self.shape = Shape({"c0": self.array_c0.shape})
+        #self.dtype = np.dtype([("c0", self.array_c0.dtype), ("c1", self.array_c1.dtype), ("c2", self.array_c2.dtype)])
+
+        df = pd.DataFrame({"a": self.array[:, 0], "b": self.array[:, 1], "c": self.array[:, 2]})
+        url = os.path.join(TMP_PATH, "CSV", "test.csv")
+        df.to_csv(url)
+        print(url)
+        self.login = Login()
+        self.driver = CSV(path=TMP_PATH, mode="r")
+        self.driver.build_url("test")
+        with self.driver:
+            print(self.driver.dtypes)
+            chunks = Chunks({"Unnamed: 0": 10, "a": 10, "b": 10, "c": "10"})
+            absgroup = self.driver.absgroup(chunks=chunks)
+            print(absgroup.shape)
+            print(absgroup.to_df())
+            print(absgroup)
+            print(self.driver.spaces())
+            #self.driver.set_schema(self.dtype)
+            #self.driver.set_data_shape(self.shape)
+        #    absgroup = self.driver.absgroup
+            #print(absgroup.conn)
+            #absgroup.conn = self.data_list
+
+    def test_info(self):
+        print(self.driver)
+
+    def tearDown(self):
+        #self.driver.destroy()
+        pass
