@@ -21,8 +21,8 @@ class Sqlite(AbsDriver):
     def __getitem__(self, item):
         return self.absgroup[item]
 
-    #def __setitem__(self, key, value):
-    #    self.conn[self.data_tag][key] = value
+    def __setitem__(self, key, value):
+        self.absgroup[key] = value
 
     def __contains__(self, item):
         return self.exists()
@@ -129,10 +129,6 @@ class Sqlite(AbsDriver):
 
     def set_data_shape(self, shape):
         pass
-
-    #def insert(self, data):
-    #    table = Table(self.conn, self.dtypes, name=self.data_tag)
-    #    table.insert(data)
 
     def spaces(self) -> list:
         return ["data", "metadata"]

@@ -204,7 +204,7 @@ class Metadata(dict):
     def insert_update_data(self, keys=None):
         try:
             data = [self[group] for group in self.driver.groups]
-            self.driver.insert(data)
+            self.driver[-1] = data
         except sqlite3.IntegrityError as e:
             log.warning(e)
             columns = ["{col}=?".format(col=group) for group in keys]
@@ -215,7 +215,7 @@ class Metadata(dict):
             if len(data) > 0:
                 index = data[0][0]-1
                 values = [self[group] for group in self.driver.groups]
-                self.driver.absgroup[index] = values  # .update(values, index)
+                self.driver[index] = values  # .update(values, index)
 
     def query(self, query: str, values: tuple) -> tuple:
         try:

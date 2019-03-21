@@ -19,7 +19,7 @@ from dama.utils.decorators import cache, clean_cache
 from dama.utils.files import get_dir_file_size
 from dama.utils.order import order_table
 from dama.groups.core import DaGroup
-from dama.abc.group import Manager
+from dama.abc.group import Manager, DaGroupDict
 from pydoc import locate
 
 
@@ -154,13 +154,14 @@ class Data(AbsData):
 
         if self.auto_chunks is True and self.driver.mode in ["a", "r"]:
             try:
-                self.chunksize = Chunks.build_from_shape(self.shape, self.dtypes)
+                self.chunksize = Chunks.build_from_shape(self.shape, self.driver.dtypes)
             except KeyError as e:
                 log.error(e)
         else:
             if isinstance(self.chunksize, tuple) and self.driver.mode in ["a", "r"]:
-                if self.groups is not None:
-                    self.chunksize = Chunks.build_from(self.chunksize, self.groups)
+                groups = self.driver.groups
+                if groups is not None:
+                    self.chunksize = Chunks.build_from(self.chunksize, groups)
             elif self.driver.mode == "w" or self.chunksize is None:
                 pass
             elif isinstance(self.chunksize, Chunks) and self.driver.mode in ["a", "r"]:
@@ -325,7 +326,7 @@ class Data(AbsData):
                 self.chunksize = Chunks.build_from_shape(shape, dtypes)
             elif isinstance(self.chunksize, tuple):
                 self.chunksize = Chunks.build_from(self.chunksize, tuple(data.keys()))
-            data = DaGroup(dagroup_dict=DaGroup.convert(data, chunks=self.chunksize))
+            data = DaGroupDict.convert(data, chunks=self.chunksize)
         elif isinstance(data, Manager):
             if self.chunksize is None:
                 self.chunksize = data.chunksize
@@ -390,10 +391,16 @@ class Data(AbsData):
 
     def concat(self, datasets: tuple, axis=0):
         da_groups = []
+        managers = set([])
         for ds in datasets:
             da_groups.append(ds.data)
-        da_group = DaGroup.concat(da_groups, axis=axis)
-        self.from_data(da_group)
+            managers.add(type(ds.data))
+        if len(managers) == 1:
+            manager = managers.pop()
+            da_group = manager.concat(da_groups, axis=axis)
+            self.from_data(da_group)
+        else:
+            raise NotImplementedError
 
     def stadistics(self):
         headers = ["group", "mean", "std dev", "min", "25%", "50%", "75%", "max", "nonzero", "unique", "dtype"]

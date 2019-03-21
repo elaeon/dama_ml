@@ -72,7 +72,7 @@ class Table(AbsGroup):
             raise NotImplementedError
 
         last_id = self.last_id()
-        if last_id < stop:
+        if last_id < stop or item == -1:
             self.insert(value, batch_size=batch_size)
         else:
             self.update(value, item)

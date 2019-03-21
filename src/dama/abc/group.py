@@ -69,6 +69,14 @@ class DaGroupDict(OrderedDict, Manager):
     def __len__(self):
         return self.shape[0]
 
+    def update(self, *args, **kwargs):
+        if not args:
+            raise TypeError("descriptor 'update' of 'MutableMapping' object "
+                            "needs an argument")
+        other = args[0]
+        for key, value in other.items():
+            self[key] = value
+
     def getitem(self, group):
         return super(DaGroupDict, self).__getitem__(group)
 
@@ -134,7 +142,7 @@ class DaGroupDict(OrderedDict, Manager):
             if len(intersection_groups) > 0:
                 groups = [group for group in all_groups[0] if group in intersection_groups]  # to maintain groups order
                 for group in groups:
-                    da_arrays = [da_group[group].darray for da_group in da_groups]
+                    da_arrays = [da_group.getitem(group) for da_group in da_groups]
                     da_array_c = da.concatenate(da_arrays, axis=axis)
                     da_group_dict[group] = da_array_c
                 return da_group_dict
