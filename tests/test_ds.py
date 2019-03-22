@@ -505,7 +505,7 @@ class TestDataZarr(unittest.TestCase):
 
 class TestPsqlDriver(unittest.TestCase):
     def setUp(self):
-        self.login = Login(username="alejandro", resource="ml", host="/var/run/postgresql/", port=5432)
+        self.login = Login(username="alejandro", resource="ml", host="/var/run/postgresql/", port=5432, table="test")
 
     def tearDown(self):
         pass

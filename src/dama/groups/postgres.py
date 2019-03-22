@@ -1,15 +1,15 @@
-from dama.abc.group import AbsGroup
+from dama.abc.group import AbsConn
 from dama.utils.core import Shape
 import numpy as np
 from collections import OrderedDict
 from dama.utils.decorators import cache
 from dama.data.it import Iterator, BatchIterator
+from dama.utils.miscellaneous import filter_dtypes
 from psycopg2.extras import execute_values
 import uuid
 
 
-class Table(AbsGroup):
-    inblock = True
+class Table(AbsConn):
 
     def __init__(self, conn, dtypes, name=None, query_parts=None):
         super(Table, self).__init__(conn, dtypes)
@@ -23,7 +23,7 @@ class Table(AbsGroup):
         query_parts = self.query_parts.copy()
         if isinstance(item, str):
             query_parts["columns"] = [item]
-            dtypes = self.dtypes_from_groups(item)
+            dtypes = filter_dtypes(item, self.dtypes)
             return Table(self.conn, dtypes, name=self.name, query_parts=query_parts)
         elif isinstance(item, list) or isinstance(item, tuple):
             it = Iterator(item)
@@ -34,7 +34,7 @@ class Table(AbsGroup):
                 dtypes = self.dtypes
                 query_parts["slice"] = item
             elif it.type_elem == str:
-                dtypes = self.dtypes_from_groups(item)
+                dtypes = filter_dtypes(item, self.dtypes)
                 query_parts["columns"] = item
             dtype = self.attrs.get("dtype", None)
             return Table(self.conn, dtypes, name=self.name, query_parts=query_parts).to_ndarray(dtype=dtype)
@@ -68,21 +68,23 @@ class Table(AbsGroup):
                 batch_size = len(value)
             else:
                 batch_size = 1
+        else:
+            raise NotImplementedError
 
         last_id = self.last_id()
-        if last_id < stop:
+        if last_id < stop or item == -1:
             self.insert(value, chunks=(batch_size, ))
         else:
             self.update(value, item)
 
-    def __iter__(self):
-        pass
+    #def __iter__(self):
+    #    pass
 
-    def get_group(self, group):
-        return self[group]
+    #def get_group(self, group):
+    #    return self[group]
 
-    def get_conn(self, group):
-        return self[group]
+    #def get_conn(self, group):
+    #    return self[group]
 
     def insert(self, data, chunks=None):
         if not isinstance(data, BatchIterator):
@@ -177,7 +179,7 @@ class Table(AbsGroup):
     def format_columns(self):
         columns = self.query_parts["columns"]
         if columns is None:
-            columns = [column for column, _ in self.dtypes]
+            columns = self.groups
         return ",".join(columns)
 
     def build_limit_info(self) -> tuple:

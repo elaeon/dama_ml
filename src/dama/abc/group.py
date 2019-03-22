@@ -45,7 +45,7 @@ class DaGroupDict(OrderedDict, Manager):
         elif isinstance(item, list):
             dict_conn = DaGroupDict()
             for group in item:
-                dict_conn[group] =  super(DaGroupDict, self).__getitem__(group)
+                dict_conn[group] = super(DaGroupDict, self).__getitem__(group)
             return dict_conn
         elif isinstance(item, np.ndarray) and item.dtype == np.dtype(int):
             return self.set_values(self.groups, item)
@@ -66,7 +66,8 @@ class DaGroupDict(OrderedDict, Manager):
         else:
             return elem
 
-    def __len__(self):
+    @property
+    def size(self):
         return self.shape[0]
 
     def update(self, *args, **kwargs):
@@ -224,7 +225,7 @@ class DaGroupDict(OrderedDict, Manager):
         return Shape(shape)
 
 
-class AbsGroup(ABC):
+class AbsConn(ABC):
     inblock = None
     dtypes = None
     conn = None
@@ -234,13 +235,13 @@ class AbsGroup(ABC):
         self.attrs = Attrs()
         self.dtypes = dtypes
 
-    @abstractmethod
-    def get_group(self, group):
-        return NotImplemented
+    #@abstractmethod
+    #def get_group(self, group):
+    #    return NotImplemented
 
-    @abstractmethod
-    def get_conn(self, group):
-        return NotImplemented
+    #@abstractmethod
+    #def get_conn(self, group):
+    #    return NotImplemented
 
     @property
     def groups(self) -> tuple:
@@ -272,17 +273,17 @@ class AbsGroup(ABC):
         return NotImplemented
 
 
-class AbsDaskGroup(AbsGroup):
+class AbsDaskGroup(AbsConn):
     def __init__(self, conn, dtypes, chunks: Chunks=None):
         super(AbsDaskGroup, self).__init__(conn, dtypes)
 
-    @abstractmethod
-    def get_group(self, group):
-        return NotImplemented
+    #@abstractmethod
+    #def get_group(self, group):
+    #    return NotImplemented
 
-    @abstractmethod
-    def get_conn(self, group):
-        return NotImplemented
+    #@abstractmethod
+    #def get_conn(self, group):
+    #    return NotImplemented
 
     def base_cls(self):
         return self.__class__.__bases__[0]
@@ -311,6 +312,7 @@ class AbsDaskGroup(AbsGroup):
 
 class Singleton(type):
     _instances = {}
+
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)

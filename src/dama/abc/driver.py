@@ -6,6 +6,9 @@ from dama.utils.config import get_settings
 from dama.utils.logger import log_config
 from dama.utils.core import Login, Chunks
 from dama.utils.files import build_path
+from dama.abc.group import Manager
+from dama.fmtypes import Slice
+from numbers import Number
 from tqdm import tqdm
 
 
@@ -57,11 +60,13 @@ class AbsDriver(ABC):
         self.url = os.path.join(*dir_levels)
         build_path(dir_levels[:-1])
 
+    @abstractmethod
     def manager(self, chunks: Chunks):
         return NotImplemented
 
-    def absgroup(self):
-        pass
+    @abstractmethod
+    def absconn(self):
+        return NotImplemented
 
     @classmethod
     def module_cls_name(cls):
@@ -71,9 +76,9 @@ class AbsDriver(ABC):
     def cls_name(cls):
         return cls.__name__
 
-    @abstractmethod
-    def __contains__(self, item):
-        return NotImplemented
+    # @abstractmethod
+    # def __contains__(self, item):
+    #    return NotImplemented
 
     @abstractmethod
     def open(self):
@@ -116,8 +121,8 @@ class AbsDriver(ABC):
     def store(self, manager):
         if self.insert_by_rows is True:
             from dama.data.it import Iterator
-            data = Iterator(self).batchs(chunks=self.chunksize)
-            self.batchs_writer(manager)
+            data = Iterator(manager).batchs(chunks=manager.chunksize)
+            self.batchs_writer(data)
         else:
             for group in self.groups:
                 manager.getitem(group).store(self[group])
@@ -134,10 +139,6 @@ class AbsDriver(ABC):
                     self[group][i] = smx[j]
 
     def setitem(self, item, value):
-        from dama.abc.group import Manager
-        from dama.fmtypes import Slice
-        from numbers import Number
-
         if self.insert_by_rows is True:
             self[item] = value
         else:

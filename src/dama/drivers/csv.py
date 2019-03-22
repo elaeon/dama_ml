@@ -21,7 +21,10 @@ class CSV(AbsDriver):
     def __contains__(self, item):
         return item in self.conn
 
-    def absgroup(self, chunks: Chunks):
+    def absconn(self):
+        pass
+
+    def manager(self, chunks: Chunks):
         return CSVGroup(self.conn, dtypes=self.dtypes, chunks=chunks)
 
     def open(self):

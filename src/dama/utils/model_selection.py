@@ -1,5 +1,5 @@
 from sklearn.model_selection import train_test_split
-from dama.groups.core import DaGroup
+from dama.abc.group import Manager
 
 
 class CV(object):
@@ -11,12 +11,12 @@ class CV(object):
         self.group_target = group_target
         self.group_data = group_data
 
-    def apply(self, data) -> DaGroup:
+    def apply(self, data: Manager) -> Manager:
         train_size = round(self.train_size + self.valid_size, 2)
         if self.group_target is not None:
             x_train, x_test, y_train, y_test = train_test_split(
                 data[self.group_data], data[self.group_target], train_size=train_size, random_state=0)
-            size = len(data)
+            size = data.size
             valid_size_index = int(round(size * self.valid_size, 0))
             x_validation = x_train[:valid_size_index]
             y_validation = y_train[:valid_size_index]

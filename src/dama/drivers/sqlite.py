@@ -5,6 +5,7 @@ from dama.utils.logger import log_config
 from dama.utils.decorators import cache
 from dama.utils.core import Chunks, Shape
 from dama.abc.group import DaGroupDict
+from collections import OrderedDict
 import numpy as np
 import sqlite3
 
@@ -19,10 +20,10 @@ class Sqlite(AbsDriver):
     insert_by_rows = True
 
     def __getitem__(self, item):
-        return self.absgroup[item]
+        return self.absconn[item]
 
     def __setitem__(self, key, value):
-        self.absgroup[key] = value
+        self.absconn[key] = value
 
     def __contains__(self, item):
         return self.exists()
@@ -45,7 +46,7 @@ class Sqlite(AbsDriver):
         return DaGroupDict.convert(groups, chunks=chunks)
 
     @property
-    def absgroup(self):
+    def absconn(self):
         return Table(self.conn, self.dtypes, name=self.data_tag)
 
     def exists(self) -> bool:
@@ -67,7 +68,6 @@ class Sqlite(AbsDriver):
     @property
     @cache
     def dtypes(self) -> np.dtype:
-        from collections import OrderedDict
         cur = self.conn.cursor()
         cur.execute("PRAGMA table_info('{}')".format(self.data_tag))
         dtypes = OrderedDict()
@@ -87,7 +87,7 @@ class Sqlite(AbsDriver):
 
     @property
     def groups(self) -> tuple:
-        return self.absgroup.groups
+        return self.absconn.groups
 
     def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key: list = None):
         if not self.exists():
@@ -138,4 +138,4 @@ class Sqlite(AbsDriver):
 
     @property
     def shape(self) -> Shape:
-        return self.absgroup.shape
+        return self.absconn.shape

@@ -3,6 +3,9 @@ from dama.groups.postgres import Table
 from dama.fmtypes import fmtypes_map
 from dama.utils.logger import log_config
 from dama.utils.decorators import cache
+from dama.utils.core import Chunks, Shape
+from dama.abc.group import DaGroupDict
+from dama.abc.group import AbsConn
 import numpy as np
 import psycopg2
 from collections import OrderedDict
@@ -16,6 +19,13 @@ class Postgres(AbsDriver):
     ext = 'sql'
     data_tag = None
     metadata_tag = None
+    insert_by_rows = True
+
+    def __getitem__(self, item):
+        return self.absconn[item]
+
+    def __setitem__(self, key, value):
+        self.absconn[key] = value
 
     def __contains__(self, item):
         return self.exists()
@@ -34,8 +44,13 @@ class Postgres(AbsDriver):
         self.conn.close()
         self.attrs = None
 
+    def manager(self, chunks: Chunks):
+        self.chunksize = chunks
+        groups = [(group, self[group]) for group in self.groups]
+        return DaGroupDict.convert(groups, chunks=chunks)
+
     @property
-    def absgroup(self):
+    def absconn(self) -> AbsConn:
         return Table(self.conn, self.dtypes, name=self.data_tag)
 
     def exists(self) -> bool:
@@ -103,9 +118,12 @@ class Postgres(AbsDriver):
     def set_data_shape(self, shape):
         pass
 
-    def insert(self, table_name: str, data):
-        table = Table(self.conn, self.dtypes, name=table_name)
-        table.insert(data)
-
     def spaces(self) -> list:
         return ["data", "metadata"]
+
+    def cast(self, value):
+        return value
+
+    @property
+    def shape(self) -> Shape:
+        return self.absconn.shape

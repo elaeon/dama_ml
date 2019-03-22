@@ -12,7 +12,7 @@ from dama.utils.core import Shape, Chunks
 from dama.utils.miscellaneous import isnamedtupleinstance
 from dama.utils.logger import log_config
 from dama.abc.data import AbsData
-from dama.abc.group import AbsGroup, Manager
+from dama.abc.group import AbsConn, Manager
 from dama.utils.numeric_functions import nested_shape
 from dama.groups.core import DaGroup, StcArrayGroup, TupleGroup
 from dama.abc.group import DaGroupDict
@@ -243,11 +243,11 @@ class Iterator(BaseIterator):
             self.data = iter(fn_iter)
             length = fn_iter.shape[0] if length == np.inf else length
             self.rewind = False
-        elif isinstance(fn_iter, AbsData) or isinstance(fn_iter, AbsGroup) or isinstance(fn_iter, Manager):
+        elif isinstance(fn_iter, AbsData) or isinstance(fn_iter, AbsConn) or isinstance(fn_iter, Manager):
             self.data = fn_iter
             self.dtypes = fn_iter.dtypes
             self.dtype = fn_iter.dtype
-            length = len(fn_iter) if length == np.inf else length
+            length = fn_iter.size if length == np.inf else length
             self.rewind = True
             self.shape = self.calc_shape_stc(length, fn_iter.shape)
             return
@@ -566,8 +566,8 @@ class BatchGroup(BatchIterator):
         init = 0
         end = self.batch_size
         while True:
-            batch = self.data.data[init:end]  # Always return a Dagroup
-            if len(batch) > 0:
+            batch = self.data.data[init:end]  # Always return a Manager
+            if batch.size > 0:
                 yield Slice(batch=batch, slice=slice(init, end))
                 init = end
                 end += self.batch_size

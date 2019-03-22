@@ -10,7 +10,7 @@ from dama.abc.data import AbsData
 from dama.data.it import Iterator, BaseIterator, BatchIterator
 from dama.utils.core import Hash, Login, Metadata, Chunks, Shape
 from dama.abc.driver import AbsDriver
-from dama.abc.group import AbsGroup
+from dama.abc.group import AbsConn
 from dama.drivers.core import Memory
 from dama.drivers.sqlite import Sqlite
 from dama.utils.logger import log_config
@@ -122,7 +122,7 @@ class Data(AbsData):
 
     @property
     @cache
-    def data(self) -> AbsGroup:
+    def data(self) -> Manager:
         return self.driver.manager(chunks=self.chunksize)
 
     @data.setter
@@ -217,10 +217,14 @@ class Data(AbsData):
         return self.metadata_driver.url
 
     def __len__(self):
-        return len(self.data)
+        return len(self.groups)
 
     def __repr__(self):
         return repr(self.data)
+
+    @property
+    def size(self):
+        return self.shape[0]
 
     @property
     def shape(self) -> Shape:

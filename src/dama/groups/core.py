@@ -1,4 +1,4 @@
-from dama.abc.group import AbsGroup
+from dama.abc.group import AbsConn
 from dama.utils.core import Shape
 import numpy as np
 from collections import OrderedDict
@@ -6,7 +6,7 @@ from dama.utils.decorators import cache
 
 
 class DaGroup:
-    def __init__(self, abs_source: AbsGroup=None, write_to_group=None, chunks=None):
+    def __init__(self, abs_source: AbsConn=None, write_to_group=None, chunks=None):
         pass
 #    def __init__(self, abs_source: AbsGroup=None, write_to_group=None):
 #        self.abs_source = abs_source
@@ -215,10 +215,10 @@ class DaGroup:
     #    return DaGroup(dagroup_dict=dagroup_dict)
 
 
-class StcArrayGroup(AbsGroup):
+class StcArrayGroup(AbsConn):
     inblock = False
 
-    def get_group(self, group) -> AbsGroup:
+    def get_group(self, group) -> AbsConn:
         dtypes = self.dtypes_from_groups(group)
         return StcArrayGroup(self.conn[group], dtypes)
 
@@ -242,7 +242,7 @@ class StcArrayGroup(AbsGroup):
         return Shape(_shape)
 
 
-class TupleGroup(AbsGroup):
+class TupleGroup(AbsConn):
     inblock = False
 
     def __init__(self, conn, dtypes=None):

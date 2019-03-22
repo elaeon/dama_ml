@@ -1,4 +1,4 @@
-from dama.abc.group import AbsGroup
+from dama.abc.group import AbsConn
 from dama.utils.core import Shape
 import numpy as np
 from collections import OrderedDict
@@ -7,7 +7,7 @@ from dama.data.it import Iterator, BatchIterator
 from dama.utils.miscellaneous import filter_dtypes
 
 
-class Table(AbsGroup):
+class Table(AbsConn):
 
     def __init__(self, conn, dtypes, name=None, query_parts=None):
         super(Table, self).__init__(conn, dtypes=dtypes)
@@ -73,24 +73,13 @@ class Table(AbsGroup):
 
         last_id = self.last_id()
         if last_id < stop or item == -1:
-            self.insert(value, batch_size=batch_size)
+            self.insert(value, chunks=(batch_size,))
         else:
             self.update(value, item)
 
-    def __iter__(self):
-        pass
-
-    def get_group(self, group):
-        return self[group]
-
-    def get_conn(self, group):
-        return self[group]
-
-    def insert(self, data, batch_size=258):
+    def insert(self, data, chunks=None):
         if not isinstance(data, BatchIterator):
-            data = Iterator(data, dtypes=self.dtypes)
-            chunks = data.shape.to_chunks(batch_size)
-            data = data.batchs(chunks=chunks)
+            data = Iterator(data, dtypes=self.dtypes).batchs(chunks=chunks)
 
         columns = "(" + ", ".join(self.groups) + ")"
         values = "(" + "?,".join(("" for _ in self.groups)) + "?)"
@@ -181,7 +170,7 @@ class Table(AbsGroup):
     def format_columns(self):
         columns = self.query_parts["columns"]
         if columns is None:
-            columns = [column for column, _ in self.dtypes]
+            columns = self.groups
         return ",".join(columns)
 
     def build_limit_info(self) -> tuple:

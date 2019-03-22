@@ -35,6 +35,9 @@ class HDF5(AbsDriver):
         groups = [(group, self[group]) for group in self.groups]
         return DaGroupDict.convert(groups, chunks=chunks)
 
+    def absgroup(self):
+        pass
+
     def open(self):
         if self.conn is None:
             self.conn = h5py.File(self.url, mode=self.mode)
@@ -98,6 +101,9 @@ class HDF5(AbsDriver):
         else:
             return value
 
+    def absconn(self):
+        pass
+
 
 class Zarr(AbsDriver):
     persistent = True
@@ -120,6 +126,9 @@ class Zarr(AbsDriver):
         if self.groups is not None:
             groups = [(group, self[group]) for group in self.groups]
             return DaGroupDict.convert(groups, chunks=chunks)
+
+    def absgroup(self):
+        pass
 
     def open(self):
         if self.conn is None:
@@ -180,6 +189,9 @@ class Zarr(AbsDriver):
     def cast(self, value):
         return value
 
+    def absconn(self):
+        pass
+
 
 class Memory(Zarr):
     ext = None
@@ -194,6 +206,9 @@ class Memory(Zarr):
         pass
 
     def destroy(self):
+        pass
+
+    def absconn(self):
         pass
 
 
@@ -212,9 +227,12 @@ class StcArray(AbsDriver):
         return item in self.conn
 
     def manager(self, chunks: Chunks):
-        self.chunksize = chunks
+        # self.chunksize = chunks
         groups = [(group, self[group]) for group in self.groups]
         return DaGroupDict.convert(groups, chunks=chunks)
+
+    def absconn(self):
+        pass
 
     def open(self):
         pass
