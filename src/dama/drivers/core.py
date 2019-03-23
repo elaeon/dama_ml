@@ -3,12 +3,15 @@ import h5py
 import numpy as np
 import os
 
+from collections import OrderedDict
 from numcodecs import MsgPack
 from dama.abc.driver import AbsDriver
 from dama.utils.files import rm
 from dama.utils.logger import log_config
 from dama.abc.group import DaGroupDict
 from dama.utils.core import Chunks, Shape
+from dama.utils.decorators import cache
+from dama.fmtypes import DEFAUL_GROUP_NAME
 
 
 log = log_config(__name__)
@@ -227,7 +230,6 @@ class StcArray(AbsDriver):
         return item in self.conn
 
     def manager(self, chunks: Chunks):
-        # self.chunksize = chunks
         groups = [(group, self[group]) for group in self.groups]
         return DaGroupDict.convert(groups, chunks=chunks)
 
@@ -274,3 +276,53 @@ class StcArray(AbsDriver):
                 else:
                     raise Exception
         return Shape(_shape)
+
+
+class Tuple(AbsDriver):
+
+    def __getitem__(self, item):
+        return self.conn[item]
+
+    def __setitem__(self, item, value):
+        self.conn[item] = value
+
+    def manager(self, chunks: Chunks):
+        group = list(chunks.keys())[0]
+        groups = [(group, self.conn)]
+        return DaGroupDict.convert(groups, chunks=chunks)
+
+    def absconn(self):
+        pass
+
+    def open(self):
+        pass
+
+    def close(self):
+        pass
+
+    def destroy(self):
+        pass
+
+    @property
+    def dtypes(self):
+        return np.dtype([(DEFAUL_GROUP_NAME, np.dtype(self.conn))])
+
+    def exists(self):
+        return self.conn is not None
+
+    def set_data_shape(self, shape):
+        pass
+
+    def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key=None):
+        pass
+
+    def spaces(self):
+        pass
+
+    @property
+    @cache
+    def shape(self) -> Shape:
+        shape = OrderedDict()
+        for index, group in enumerate(self.groups):
+            shape[group] = self.conn[index].shape
+        return Shape(shape)

@@ -66,6 +66,12 @@ class DaGroupDict(OrderedDict, Manager):
         else:
             return elem
 
+    def __eq__(self, other):
+        if len(self.groups) == 1:
+            return (super(DaGroupDict, self).__getitem__(self.groups[0]) == other)
+        else:
+            raise NotImplementedError
+
     @property
     def size(self):
         return self.shape[0]
@@ -157,7 +163,7 @@ class DaGroupDict(OrderedDict, Manager):
         dagroup_dict = DaGroupDict()
         dagroup_dict[group_name] = da.Array(da_array.dask, chunks=da_array.chunks,
                                             dtype=da_array.dtype, name=da_array.name)
-        return DaGroupDict(dagroup_dict=dagroup_dict)
+        return DaGroupDict(dagroup_dict)
 
     @property
     def chunksize(self) -> Chunks:

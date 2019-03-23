@@ -215,84 +215,84 @@ class DaGroup:
     #    return DaGroup(dagroup_dict=dagroup_dict)
 
 
-class StcArrayGroup(AbsConn):
-    inblock = False
+#class StcArrayGroup(AbsConn):
+#    inblock = False
 
-    def get_group(self, group) -> AbsConn:
-        dtypes = self.dtypes_from_groups(group)
-        return StcArrayGroup(self.conn[group], dtypes)
+#    def get_group(self, group) -> AbsConn:
+#        dtypes = self.dtypes_from_groups(group)
+#        return StcArrayGroup(self.conn[group], dtypes)
 
-    def get_conn(self, group):
-        return self.conn[group]
+#    def get_conn(self, group):
+#        return self.conn[group]
 
-    @staticmethod
-    def fit_shape(shape: Shape) -> Shape:
-        _shape = OrderedDict()
-        if len(shape.groups()) == 1:
-            key = list(shape.groups())[0]
-            _shape[key] = shape[key]
-        else:
-            for group, shape_tuple in shape.items():
-                if len(shape_tuple) == 2:  # and shape_tuple[1] == 1:
-                    _shape[group] = tuple(shape_tuple[:1])
-                elif len(shape_tuple) == 1:
-                    _shape[group] = shape_tuple
-                else:
-                    raise Exception
-        return Shape(_shape)
+#    @staticmethod
+#    def fit_shape(shape: Shape) -> Shape:
+#        _shape = OrderedDict()
+#        if len(shape.groups()) == 1:
+#            key = list(shape.groups())[0]
+#            _shape[key] = shape[key]
+#        else:
+#            for group, shape_tuple in shape.items():
+#                if len(shape_tuple) == 2:  # and shape_tuple[1] == 1:
+#                    _shape[group] = tuple(shape_tuple[:1])
+ #               elif len(shape_tuple) == 1:
+ #                   _shape[group] = shape_tuple
+ #              else:
+ #                   raise Exception
+ #       return Shape(_shape)
 
 
-class TupleGroup(AbsConn):
-    inblock = False
+#class TupleGroup(AbsConn):
+#    inblock = False
 
-    def __init__(self, conn, dtypes=None):
-        super(TupleGroup, self).__init__(conn, dtypes)
+#    def __init__(self, conn, dtypes=None):
+#        super(TupleGroup, self).__init__(conn, dtypes)
 
-    def __getitem__(self, item):
-        if isinstance(item, str):
-            if isinstance(self.conn, tuple):
-                dtypes = self.dtypes_from_groups(item)
-                index = 0
-                for i, group in enumerate(self.groups):
-                    if item == group:
-                        index = i
-                        break
-                return TupleGroup(self.conn[index], dtypes=dtypes)
-            else:
-                raise NotImplementedError
-        elif isinstance(item, list) or isinstance(item, tuple):
-            if isinstance(self.conn, np.ndarray):
-                return self.conn[item]
-            else:
-                raise NotImplementedError
-        elif isinstance(item, int):
-            raise NotImplementedError
-        elif isinstance(item, slice):
-            raise NotImplementedError
+#    def __getitem__(self, item):
+#        if isinstance(item, str):
+#            if isinstance(self.conn, tuple):
+#                dtypes = self.dtypes_from_groups(item)
+#                index = 0
+#                for i, group in enumerate(self.groups):
+#                    if item == group:
+#                        index = i
+#                        break
+#                return TupleGroup(self.conn[index], dtypes=dtypes)
+#            else:
+#                raise NotImplementedError
+#        elif isinstance(item, list) or isinstance(item, tuple):
+#            if isinstance(self.conn, np.ndarray):
+#                return self.conn[item]
+#            else:
+#                raise NotImplementedError
+#        elif isinstance(item, int):
+#            raise NotImplementedError
+#        elif isinstance(item, slice):
+#            raise NotImplementedError
 
-    def __setitem__(self, item, value):
-        pass
+#    def __setitem__(self, item, value):
+#        pass
 
-    def __iter__(self):
-        pass
+#    def __iter__(self):
+#        pass
 
-    def get_group(self, group):
-        return self[group]
+#    def get_group(self, group):
+#        return self[group]
 
-    def get_conn(self, group):
-        return self[group]
+#    def get_conn(self, group):
+#        return self[group]
 
-    def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
-        if self.dtype is None:
-            return np.asarray([])
+#    def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
+#        if self.dtype is None:
+#            return np.asarray([])
 
-    def to_df(self):
-        pass
+#    def to_df(self):
+#        pass
 
-    @property
-    @cache
-    def shape(self) -> Shape:
-        shape = OrderedDict()
-        for index, group in enumerate(self.groups):
-            shape[group] = self.conn[index].shape
-        return Shape(shape)
+#    @property
+#    @cache
+#    def shape(self) -> Shape:
+#        shape = OrderedDict()
+#        for index, group in enumerate(self.groups):
+#            shape[group] = self.conn[index].shape
+#        return Shape(shape)

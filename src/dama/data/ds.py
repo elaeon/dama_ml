@@ -10,7 +10,6 @@ from dama.abc.data import AbsData
 from dama.data.it import Iterator, BaseIterator, BatchIterator
 from dama.utils.core import Hash, Login, Metadata, Chunks, Shape
 from dama.abc.driver import AbsDriver
-from dama.abc.group import AbsConn
 from dama.drivers.core import Memory
 from dama.drivers.sqlite import Sqlite
 from dama.utils.logger import log_config
@@ -18,7 +17,6 @@ from dama.utils.config import get_settings
 from dama.utils.decorators import cache, clean_cache
 from dama.utils.files import get_dir_file_size
 from dama.utils.order import order_table
-from dama.groups.core import DaGroup
 from dama.abc.group import Manager, DaGroupDict
 from pydoc import locate
 
@@ -154,7 +152,7 @@ class Data(AbsData):
 
         if self.auto_chunks is True and self.driver.mode in ["a", "r"]:
             try:
-                self.chunksize = Chunks.build_from_shape(self.shape, self.driver.dtypes)
+                self.chunksize = Chunks.build_from_shape(self.driver.shape, self.driver.dtypes)
             except KeyError as e:
                 log.error(e)
         else:
@@ -305,9 +303,9 @@ class Data(AbsData):
             hash_obj.update(it.only_data())
         return str(hash_obj)
 
-    def from_data(self, data, with_hash: str = "sha1", from_ds_hash=None, start_i: int = 0):
+    def from_data(self, data, with_hash: str = "sha1", from_ds_hash: str=None, start_i: int = 0):
         if isinstance(data, da.Array):
-            data = DaGroup.from_da(data)
+            data = DaGroupDict.from_da(data)
             if self.chunksize is None:
                 self.chunksize = data.chunksize
             elif isinstance(self.chunksize, tuple):
@@ -369,7 +367,7 @@ class Data(AbsData):
                 part1 = [part1]
             if not isinstance(part2, list):
                 part2 = [part2]
-            return DaGroup.concat(part1 + part2, axis=0)
+            return DaGroupDict.concat(part1 + part2, axis=0)
 
         url_bag_partition = db.from_sequence(data_list, npartitions=npartitions)
         fold_loader = url_bag_partition.map(loader_fn).fold(binop=self.add_to_list, combine=concat_partitions,
@@ -384,8 +382,8 @@ class Data(AbsData):
             group_items = [(groups[0], data)]
         else:
             group_items = [(group, data[group]) for group in groups]
-        dagroup_dict = DaGroup.convert(group_items, Chunks.build_from_shape(it.shape, it.dtypes))
-        return base_list + [DaGroup(dagroup_dict=dagroup_dict)]
+        dagroup_dict = DaGroupDict.convert(group_items, Chunks.build_from_shape(it.shape, it.dtypes))
+        return base_list + [dagroup_dict]
 
     def to_df(self) -> pd.DataFrame:
         return self.data.to_df()
@@ -471,6 +469,7 @@ class Data(AbsData):
                                                                                  metadata_driver.login.table,
                                                                                  metadata_driver.url))
             else:
+                print(query, hash_hex)
                 row = data[0]
                 data_driver = locate(row[1])
                 path = row[2]

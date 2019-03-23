@@ -14,9 +14,9 @@ from dama.utils.logger import log_config
 from dama.abc.data import AbsData
 from dama.abc.group import AbsConn, Manager
 from dama.utils.numeric_functions import nested_shape
-from dama.groups.core import DaGroup, StcArrayGroup, TupleGroup
 from dama.abc.group import DaGroupDict
 from dama.fmtypes import Slice, DEFAUL_GROUP_NAME
+from dama.drivers.core import StcArray
 
 log = log_config(__name__)
 
@@ -388,12 +388,11 @@ class Iterator(BaseIterator):
         shape = self.shape.change_length(np.inf)
         return BaseIterator(self._cycle_it(), dtypes=self.dtypes, type_elem=self.type_elem, shape=shape)
 
-    def to_slice(self, batch_size, chunks):
+    def to_slice(self, batch_size):
         start = 0
         end = batch_size
         for elem in self:
-            batch = DaGroup(abs_source=TupleGroup(elem, dtypes=self.dtypes), chunks=chunks)  # fixme use generalized group
-            yield Slice(batch=batch, slice=slice(start, end))
+            yield Slice(batch=elem, slice=slice(start, end))
             start = end
             end += batch_size
 
@@ -401,19 +400,19 @@ class Iterator(BaseIterator):
 class BatchIterator(BaseIterator):
     type_elem = None
 
-    def __init__(self, it: Iterator, chunks: Chunks = None, static: bool = False, batch_group=StcArrayGroup,
-                 start_i: int = 0):
+    def __init__(self, it: Iterator, chunks: Chunks = None, static: bool = False, start_i: int = 0):
         super(BatchIterator, self).__init__(it, dtypes=it.dtypes, length=it.length, type_elem=self.type_elem)
-        if batch_group is StcArrayGroup:
-            self.shape = StcArrayGroup.fit_shape(it.shape)
-        else:
-            self.shape = it.shape
-
-        if len(self.groups) == 1:
-            self.chunksize = chunks
-        else:  # batch_group is StcArrayGroup
-            self.chunksize = self.shape.to_chunks(chunks.length)
-        self.batch_size = chunks.length
+        #if batch_group is StcArrayGroup:
+        #    self.shape = StcArrayGroup.fit_shape(it.shape)
+        #else:
+        self.shape = it.shape
+        #if len(self.groups) == 1:
+        #    print(chunks, "+++++++")
+        #    print(self.shape.to_chunks(chunks.length))
+        #    self.chunksize = chunks
+        #else:
+        self.chunksize = self.shape.to_chunks(chunks.length)
+        self.batch_size = self.chunksize.length
         self.start_i = start_i
         self.static = static
         self._it = self.run()
@@ -523,7 +522,7 @@ class BatchIterator(BaseIterator):
 
     @classmethod
     def builder(cls, it: BaseIterator, chunks: Chunks):
-        return cls(it, chunks=chunks, static=True, batch_group=None)
+        return cls(it, chunks=chunks, static=True)
 
     @classmethod
     def from_batchs(cls, iterable: iter, dtypes: np.dtype = None, from_batch_size: int = 0,
@@ -538,11 +537,8 @@ class BatchIterator(BaseIterator):
             batcher_len = None
 
         if it.type_elem != Slice and to_slice is True:
-            chunks_tuple_group = Chunks()
-            for group, _shape in shape.items():
-                chunks_tuple_group[group] = _shape[1:]
-            iterator = it[:batcher_len].to_slice(from_batch_size, chunks_tuple_group)
             chunks = Chunks.build_from_shape(shape, dtypes)
+            iterator = it[:batcher_len].to_slice(from_batch_size)
         else:
             chunks = Chunks.build_from(from_batch_size, it.groups)
             iterator = it[:batcher_len]
@@ -579,7 +575,6 @@ class BatchItGroup(BatchIterator):
     type_elem = Slice
 
     def batch_from_it(self, shape=None):
-        from dama.drivers.core import StcArray
         for start_i, end_i, stc_array, in str_array(shape, self.chunksize, self.data, self.data.dtypes):
             driver = StcArray(conn=stc_array)
             manager = driver.manager(self.chunksize)

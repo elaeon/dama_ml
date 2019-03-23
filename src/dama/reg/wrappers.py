@@ -37,10 +37,10 @@ class SKLP(RegModel):
 
     def ml_model(self, model):
         return MLModel(fit_fn=model.fit,
-                        model=model,
-                        predictors=model.predict,
-                        load_fn=self.load_fn,
-                        save_fn=lambda path: joblib.dump(model, '{}'.format(path)))
+                       model=model,
+                       predictors=model.predict,
+                       load_fn=self.load_fn,
+                       save_fn=lambda path: joblib.dump(model, '{}'.format(path)))
 
     def load_fn(self, path):
         model = joblib.load('{}'.format(path))
@@ -50,11 +50,11 @@ class SKLP(RegModel):
 class LGB(RegModel):
     def ml_model(self, model, bst=None):
         self.bst = bst
-        return MLModel(fit_fn=model.train, 
-                            model=model,
-                            predictors=self.bst.predict,
-                            load_fn=self.load_fn,
-                            save_fn=self.bst.save_model)
+        return MLModel(fit_fn=model.train,
+                       model=model,
+                       predictors=self.bst.predict,
+                       load_fn=self.load_fn,
+                       save_fn=self.bst.save_model)
 
     def load_fn(self, path):
         import lightgbm as lgb
@@ -65,11 +65,11 @@ class LGB(RegModel):
 class XGB(RegModel):
     def ml_model(self, model, bst=None):
         self.bst = bst
-        return MLModel(fit_fn=model.train, 
-                            predictors=self.bst.predict,
-                            load_fn=self.load_fn,
-                            save_fn=self.bst.save_model,
-                            input_transform=self.array2dmatrix)
+        return MLModel(fit_fn=model.train,
+                       predictors=self.bst.predict,
+                       load_fn=self.load_fn,
+                       save_fn=self.bst.save_model,
+                       input_transform=self.array2dmatrix)
 
     def load_fn(self, path):
         import xgboost as xgb

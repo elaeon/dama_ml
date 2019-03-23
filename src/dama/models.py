@@ -7,7 +7,7 @@ from dama.utils.files import check_or_create_path_dir
 from dama.measures import ListMeasure
 from dama.utils.logger import log_config
 from dama.utils.config import get_settings
-from dama.groups.core import DaGroup
+from dama.abc.group import Manager
 from dama.drivers.sqlite import Sqlite
 from dama.utils.core import Login, Metadata
 from dama.utils.files import rm
@@ -35,21 +35,25 @@ class MLModel:
     def fit(self, *args, **kwargs):
         return self.fit_fn(*args, **kwargs)
 
-    def predict(self, data: DaGroup, output_format_fn=None, output=None, batch_size: int = 258) -> BatchIterator:
-        data = self.input_transform(data)
-        #if hasattr(data, '__iter__'):
-            #if data:
-            #    for chunk in data:
-            #        yield self.predictors(self.transform_data(chunk))
-            #else:
-        def _it():
-            for row in data:  # fixme add batch_size
-                batch = row.to_ndarray().reshape(1, -1)
-                predict = self.predictors(batch)
-                yield output_format_fn(predict, output=output)[0]
-        return Iterator(_it(), length=len(data)).batchs(chunks=None)
-        #else:
-        #    return Iterator(output_format_fn(self.predictors(data), output=output)).batchs(chunks=(batch_size, ))
+    def predict(self, data: Manager, output_format_fn=None, output=None, batch_size: int = 258):
+        def _it(data):
+            data = self.input_transform(data)
+            if batch_size > 0:
+                data = Iterator(data).batchs(chunks=(batch_size, ))
+                for slice_obj in data:
+                    batch = slice_obj.batch.to_ndarray()
+                    predict = self.predictors(batch)
+                    yield output_format_fn(predict)
+            else:
+                for row in data:
+                    batch = row.to_ndarray().reshape(1, -1)
+                    predict = self.predictors(batch)
+                    yield output_format_fn(predict, output=output)[0]
+        if batch_size > 0:
+            return BatchIterator.from_batchs(_it(data), dtypes=data.dtypes, length=data.size,
+                                             from_batch_size=batch_size, to_slice=True)
+        else:
+            return Iterator(_it(data), length=data.size)
 
     def load(self, path):
         return self.load_fn(path)
@@ -185,6 +189,10 @@ class BaseModel(MetadataX, ABC):
             data_hash = metadata.query(query,
                                        (self.model_name, self.model_version, self.module_cls_name(),
                                         group_name, self.base_path))
+            print(data_hash)
+            print(self.metadata_path)
+            print(query)
+            print(self.model_name, self.model_version, self.module_cls_name(), group_name, self.base_path)
         if len(data_hash) > 0:
             driver = Sqlite(login=Login(table=settings["data_tag"]), path=self.metadata_path)
             with Data.load(data_hash[0][0], metadata_driver=driver) as dataset:

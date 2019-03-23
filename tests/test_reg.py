@@ -101,8 +101,8 @@ class TestRegSKL(unittest.TestCase):
         np.random.seed(0)
         x = np.random.rand(100)
         y = np.random.rand(100)
-        with Data(name="test", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as dataset, \
-                Data(name="test_cv_skl", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
+        with Data(name="test_pred", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as dataset, \
+                Data(name="test_cv_skl_3", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
             dataset.from_data({"x": x.reshape(-1, 1), "y": y})
             reg = RandomForestRegressor(metadata_path=TMP_PATH)
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
@@ -117,10 +117,9 @@ class TestRegSKL(unittest.TestCase):
 
         values = np.asarray([1, 2, .4, .1, 0, 1])
         with Data(name="test2") as ds:
-            ds.from_data(values)
-            for pred in reg.predict(ds):
-                pred_array = pred.batch.to_ndarray()
-                self.assertCountEqual(pred_array > .5, [False, False, True, False, True, False])
+            ds.from_data(values.reshape(-1, 1))
+            for pred in reg.predict(ds, batch_size=10):
+                self.assertCountEqual(pred.batch > .5, [False, False, True, False, True, False])
             ds.destroy()
 
         with reg.ds:

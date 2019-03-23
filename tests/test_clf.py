@@ -51,7 +51,7 @@ class TestSKL(unittest.TestCase):
 
     def test_load_meta(self):
         with Data(name="test") as dataset, \
-                Data(name="test_cv", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
+                Data(name="test_cv_lm", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
             dataset.from_data({"x": self.X, "y": self.Y})
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(dataset)
@@ -72,7 +72,7 @@ class TestSKL(unittest.TestCase):
 
     def test_empty_load(self):
         with Data(name="test") as dataset, \
-                Data(name="test_cv", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
+                Data(name="test_cv_emp", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
             dataset.from_data({"x": self.X, "y": self.Y})
             classif = RandomForest(metadata_path=TMP_PATH)
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
@@ -83,6 +83,7 @@ class TestSKL(unittest.TestCase):
                           data_validation_group="validation_x", target_validation_group="validation_y")
             classif.save(name="test", path=TMP_PATH, model_version="1")
             ds_hash = classif.ds.hash
+            print(ds_hash)
             dataset.destroy()
 
         with RandomForest.load(model_name="test", path=TMP_PATH, model_version="1", metadata_path=TMP_PATH) as classif:
@@ -91,7 +92,7 @@ class TestSKL(unittest.TestCase):
 
     def test_scores(self):
         with Data(name="test") as dataset, \
-                Data(name="test_cv", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
+                Data(name="test_cv_sc", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
             dataset.from_data({"x": self.X, "y": self.Y})
             classif = RandomForest(metadata_path=TMP_PATH)
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
@@ -110,7 +111,7 @@ class TestSKL(unittest.TestCase):
 
     def test_new_scores(self):
         with Data(name="test") as dataset, \
-                Data(name="test_cv", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
+                Data(name="test_cv_ns", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
             dataset.from_data({"x": self.X, "y": self.Y})
             metrics = MeasureBatch().make_metrics()
             metrics.add(gini_normalized, greater_is_better=True, output='uncertain')
@@ -131,8 +132,8 @@ class TestSKL(unittest.TestCase):
     def test_predict(self):
         x = np.random.rand(100)
         y = x > .5
-        with Data(name="test", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as dataset, \
-                Data(name="test_cv", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
+        with Data(name="test_clf", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as dataset, \
+                Data(name="test_cv_clf", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
             dataset.from_data({"x": x.reshape(-1, 1), "y": y})
             classif = RandomForest()
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
@@ -146,16 +147,15 @@ class TestSKL(unittest.TestCase):
             dataset.destroy()
 
         with Data(name="test2") as ds, classif.ds:
-            ds.from_data(values)
+            ds.from_data(values.reshape(-1, 1))
             for pred in classif.predict(ds):
-                pred_array = pred.batch.to_ndarray()
-                self.assertCountEqual(pred_array, [True, True, False, False, False, True])
+                self.assertCountEqual(pred.batch, [True, True, False, False, False, True])
             classif.destroy()
             ds.destroy()
 
     def test_simple_predict(self):
-        with Data(name="test", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as dataset, \
-                Data(name="test_cv", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
+        with Data(name="test_sp", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as dataset, \
+                Data(name="test_cv_sp", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
             dataset.from_data({"x": self.X, "y": self.Y})
             metrics = MeasureBatch()
             metrics.add(gini_normalized, greater_is_better=True, output='uncertain')

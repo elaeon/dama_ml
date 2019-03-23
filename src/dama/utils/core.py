@@ -123,7 +123,7 @@ class Shape(object):
     def change_length(self, length) -> 'Shape':
         shapes = OrderedDict()
         for group, shape in self.items():
-            shapes[group] = tuple([length] + list(shape[1:]))
+            shapes[group] = tuple([length if length < shape[0] else shape[0]] + list(shape[1:]))
         return Shape(shapes)
 
     @staticmethod
@@ -197,6 +197,7 @@ class Metadata(dict):
     def insert_data(self):
         try:
             data = [self[group] for group in self.driver.groups]
+            print(data, "IIIIMETADATA")
             self.driver.insert(data)
         except sqlite3.IntegrityError as e:
             log.error(str(e) + " in " + self.driver.url)
@@ -204,6 +205,7 @@ class Metadata(dict):
     def insert_update_data(self, keys=None):
         try:
             data = [self[group] for group in self.driver.groups]
+            print(data, "IIIIMETADATA")
             self.driver[-1] = data
         except sqlite3.IntegrityError as e:
             log.warning(e)
@@ -230,7 +232,7 @@ class Metadata(dict):
 
     def data(self):
         chunks = Chunks.build_from(10, self.driver.groups)
-        return self.driver.data(chunks)
+        return self.driver.manager(chunks)
 
     def remove_data(self, hash_hex: str):
         self.query("DELETE FROM {} WHERE hash = ?".format(self.name), (hash_hex, ))

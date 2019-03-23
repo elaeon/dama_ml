@@ -103,14 +103,14 @@ class MeasureBatch(MeasureBase):
 
     def update_fn(self, predictions, target, measure_fn) -> None:
         log.debug("Set measure {}".format(measure_fn.__name__))
-        target_ = target.batch.to_ndarray()
-        predictions_ = predictions.batch.to_ndarray()
+        array_y = target.batch.to_ndarray()
+        predic = predictions.batch
         try:
-            self.score[measure_fn.__name__][0] += measure_fn(target_, predictions_) * \
-                                                  (len(predictions_) / self.batch_size)
-            self.score[measure_fn.__name__][1] += (len(predictions_) / self.batch_size)
+            self.score[measure_fn.__name__][0] += measure_fn(array_y, predic) * \
+                                                  (len(predic) / self.batch_size)
+            self.score[measure_fn.__name__][1] += (len(predic) / self.batch_size)
         except KeyError:
-            self.score[measure_fn.__name__] = [measure_fn(target_, predictions_), 1]
+            self.score[measure_fn.__name__] = [measure_fn(array_y, predic), 1]
 
     def scores(self):
         for measure in self.measures:
