@@ -72,7 +72,7 @@ class TestSKL(unittest.TestCase):
 
     def test_empty_load(self):
         with Data(name="test") as dataset, \
-                Data(name="test_cv_emp", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
+                Data(name="test_cv_lm", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
             dataset.from_data({"x": self.X, "y": self.Y})
             classif = RandomForest(metadata_path=TMP_PATH)
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
@@ -83,7 +83,6 @@ class TestSKL(unittest.TestCase):
                           data_validation_group="validation_x", target_validation_group="validation_y")
             classif.save(name="test", path=TMP_PATH, model_version="1")
             ds_hash = classif.ds.hash
-            print(ds_hash)
             dataset.destroy()
 
         with RandomForest.load(model_name="test", path=TMP_PATH, model_version="1", metadata_path=TMP_PATH) as classif:
@@ -265,10 +264,11 @@ class TestLightGBM(unittest.TestCase):
 
 class TestModelVersion(unittest.TestCase):
     def test_load_add_version(self):
+        np.random.seed(0)
         x = np.random.rand(100)
         y = x > .5
         with Data(name="test", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as dataset, \
-                Data(name="test_cv", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
+                Data(name="test_cv_keras", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
             dataset.from_data({"x": x.reshape(-1, 1), "y": y})
 
             classif = RandomForest(metadata_path=TMP_PATH)
@@ -304,7 +304,7 @@ class TestKeras(unittest.TestCase):
         x = np.random.rand(100)
         y = x > .5
         with Data(name="test", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as dataset, \
-                Data(name="test_cv", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
+                Data(name="test_cv_keras", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
             dataset.from_data({"x": x.reshape(-1, 1), "y": y})
 
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
@@ -333,7 +333,7 @@ class TestWrappers(unittest.TestCase):
         x = np.random.rand(100)
         y = x > .5
         with Data(name="test", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as dataset, \
-                Data(name="test_cv", driver=HDF5(mode="a", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
+                Data(name="test_cv_keras", driver=HDF5(mode="a", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
             dataset.from_data({"x": x.reshape(-1, 1), "y": y})
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(dataset)

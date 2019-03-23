@@ -6,6 +6,7 @@ from dama.utils.decorators import cache
 from dama.data.it import Iterator, BatchIterator
 from dama.utils.miscellaneous import filter_dtypes
 from psycopg2.extras import execute_values
+import numbers
 import uuid
 
 
@@ -27,7 +28,7 @@ class Table(AbsConn):
             return Table(self.conn, dtypes, name=self.name, query_parts=query_parts)
         elif isinstance(item, list) or isinstance(item, tuple):
             it = Iterator(item)
-            if it.type_elem == int:
+            if it.type_elem == numbers.Number:
                 dtypes = self.dtypes
                 query_parts["slice"] = [slice(index, index + 1) for index in item]
             elif it.type_elem == slice:

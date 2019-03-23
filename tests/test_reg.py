@@ -225,7 +225,7 @@ class TestWrappers(unittest.TestCase):
         x = np.random.rand(100)
         y = x > .5
         with Data(name="test", driver=HDF5(path=TMP_PATH, mode="w"), metadata_path=TMP_PATH) as dataset, \
-                Data(name="test_cv", driver=HDF5(path=TMP_PATH, mode="w"), metadata_path=TMP_PATH) as ds:
+                Data(name="test_cv_keras", driver=HDF5(path=TMP_PATH, mode="w"), metadata_path=TMP_PATH) as ds:
             dataset.from_data({"x": x.reshape(-1, 1), "y": y})
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(dataset)

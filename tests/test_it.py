@@ -6,12 +6,11 @@ import collections
 
 from dama.data.it import Iterator, BatchIterator, Slice
 from dama.data.ds import Data
-from dama.groups.core import DaGroup
 from dama.abc.group import DaGroupDict
 from dama.fmtypes import DEFAUL_GROUP_NAME
 from dama.utils.core import Chunks
 from dama.utils.seq import grouper_chunk
-
+import numbers
 
 def stream():
     i = 0
@@ -84,7 +83,7 @@ class TestIteratorIter(unittest.TestCase):
         self.assertEqual(it.length, np.inf)
         self.assertEqual(it.shape, (np.inf,))
         self.assertEqual(it.num_splits(), np.inf)
-        self.assertEqual(it.type_elem, int)
+        self.assertEqual(it.type_elem, numbers.Number)
         self.assertEqual(it.groups, (DEFAUL_GROUP_NAME,))
 
     def test_it_attrs_length(self):
@@ -94,7 +93,7 @@ class TestIteratorIter(unittest.TestCase):
         self.assertEqual(it.length, 10)
         self.assertEqual(it.shape, (10,))
         self.assertEqual(it.num_splits(), 10)
-        self.assertEqual(it.type_elem, int)
+        self.assertEqual(it.type_elem, numbers.Number)
         self.assertEqual(it.groups, (DEFAUL_GROUP_NAME,))
 
     def test_sample(self):
@@ -158,6 +157,37 @@ class TestIteratorIter(unittest.TestCase):
                 yield ([1], [2], [3])
         it = Iterator(_it(), dtypes=np.dtype([("x", np.dtype("float"))]))
         self.assertEqual(it.shape["x"], (np.inf, 3, 1))
+
+    def test_list_dtype(self):
+        l = [["a0", 0, "c0", 0], ["a1", 1, "c1", 1], ["a2", 2, "c2", 0]]
+        dtypes = np.dtype([("a", np.dtype(object)), ("b", np.dtype(int)), ("c", np.dtype(object)),
+                           ("d", np.dtype(bool))])
+        it = Iterator(l, dtypes=dtypes).batchs(3)
+        for e in it:
+            df_v = e.batch.to_df().values
+            array = np.asarray(l)
+            self.assertEqual((df_v[:, 0] == array[:, 0]).all(), True)
+            self.assertEqual((df_v[:, 1] == array[:, 1].astype(int)).all(), True)
+            self.assertEqual((df_v[:, 2] == array[:, 2]).all(), True)
+            self.assertEqual((df_v[:, 3] == array[:, 3].astype(bool)).all(), True)
+
+    def test_batch_iterator_from(self):
+        x = np.random.rand(20)
+        batch_size = 5
+        def iterator(x):
+            init = 0
+            end = batch_size
+            while end <= x.shape[0]:
+                yield (x[init:end], x[init:end]+1)
+                init = end
+                end += batch_size
+
+        b = BatchIterator.from_batchs(iterator(x), length=len(x), from_batch_size=batch_size,
+                                  dtypes=np.dtype([("x", np.dtype(float)), ("y", np.dtype(float))]), to_slice=True)
+        #DaGroupDict.convert()
+        for e in b:
+            print(e.batch)
+
 
 
 class TestIteratorBatch(unittest.TestCase):

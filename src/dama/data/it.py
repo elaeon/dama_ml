@@ -34,20 +34,28 @@ def assign_struct_array(it, type_elem, start_i, end_i, dtype, dims):
     if type_elem == np.ndarray and len(stc_arr.shape) == 1:
         for i, row in enumerate(it):
             stc_arr[i] = tuple(row)
-    elif len(dtype) == 1:
+    elif len(dtype) == 1 and not isnamedtupleinstance(type_elem):
         group = dtype.names[0]
         for i, row in enumerate(it):
-            if isnamedtupleinstance(row):
-                stc_arr[i] = row
-            else:
-                stc_arr[group][i] = row
-    elif type_elem == str or type_elem == np.str_ or type_elem == int or type_elem == np.string_\
-            or type_elem == np.object or type_elem == object or type_elem == float:
-        for (group, (_, _)), row in zip(dtype.fields.items(), it):
-            stc_arr[group] = row
+            stc_arr[group][i] = row
+    elif type_elem == list or type_elem == tuple:
+        elems = defaultdict(list)
+        for row in it:
+            for i, group in enumerate(dtype.names):
+                elems[group].append(row[i])
+
+        for group, data in elems.items():
+            stc_arr[group] = data
+    elif isnamedtupleinstance(type_elem):
+        elems = defaultdict(list)
+        for row in it:
+            for i, group in enumerate(dtype.names):
+                elems[group].append(getattr(row, group))
+
+        for group, data in elems.items():
+            stc_arr[group] = data
     else:
-        for i, row in enumerate(it):
-            stc_arr[i] = row
+        raise NotImplementedError
     return stc_arr
 
 
@@ -194,7 +202,7 @@ class BaseIterator(object):
         else:
             return next(self.data)
 
-    def to_iter(self, raw: bool = False):
+    def to_iter(self):
         groups = self.groups
         for batch in self:
             row = []
@@ -269,7 +277,7 @@ class Iterator(BaseIterator):
             self.dtypes = np.dtype([(DEFAUL_GROUP_NAME, None)])
             self.dtype = None
         else:
-            self.type_elem = type(elem)
+            self.type_elem = type(elem) if not isinstance(elem, numbers.Number) else numbers.Number
             self.dtypes = self._define_dtypes(elem, dtypes)
             self.shape = self._define_shape(elem, length)
             self.dtype = max_dtype(self.dtypes)
@@ -402,15 +410,7 @@ class BatchIterator(BaseIterator):
 
     def __init__(self, it: Iterator, chunks: Chunks = None, static: bool = False, start_i: int = 0):
         super(BatchIterator, self).__init__(it, dtypes=it.dtypes, length=it.length, type_elem=self.type_elem)
-        #if batch_group is StcArrayGroup:
-        #    self.shape = StcArrayGroup.fit_shape(it.shape)
-        #else:
         self.shape = it.shape
-        #if len(self.groups) == 1:
-        #    print(chunks, "+++++++")
-        #    print(self.shape.to_chunks(chunks.length))
-        #    self.chunksize = chunks
-        #else:
         self.chunksize = self.shape.to_chunks(chunks.length)
         self.batch_size = self.chunksize.length
         self.start_i = start_i
@@ -512,12 +512,11 @@ class BatchIterator(BaseIterator):
             for elem in self:
                 yield elem
 
-    def to_iter(self, raw: bool = False):
-        if raw is True:
-            for slice_obj in self:
+    def to_iter(self):
+        for slice_obj in self:
+            if isinstance(slice_obj.batch, Manager):
                 yield slice_obj.batch.to_ndarray()
-        else:
-            for slice_obj in self:
+            else:
                 yield slice_obj.batch
 
     @classmethod
@@ -551,7 +550,7 @@ class BatchIterator(BaseIterator):
                                          length=np.inf)
 
     def only_data(self):
-        return BatchIterator.from_batchs(self.to_iter(raw=True),  dtypes=self.dtypes, from_batch_size=self.batch_size,
+        return BatchIterator.from_batchs(self.to_iter(),  dtypes=self.dtypes, from_batch_size=self.batch_size,
                                          length=self.length)
 
 

@@ -197,15 +197,13 @@ class Metadata(dict):
     def insert_data(self):
         try:
             data = [self[group] for group in self.driver.groups]
-            print(data, "IIIIMETADATA")
             self.driver.insert(data)
         except sqlite3.IntegrityError as e:
             log.error(str(e) + " in " + self.driver.url)
 
     def insert_update_data(self, keys=None):
         try:
-            data = [self[group] for group in self.driver.groups]
-            print(data, "IIIIMETADATA")
+            data = [[self[group] for group in self.driver.groups]]
             self.driver[-1] = data
         except sqlite3.IntegrityError as e:
             log.warning(e)
@@ -213,11 +211,13 @@ class Metadata(dict):
             query = "SELECT id FROM {name} WHERE {columns_val}".format(name=self.name,
                                                                        columns_val=" AND ".join(columns))
             values = tuple([self[key] for key in keys])
-            data = self.query(query, values)
-            if len(data) > 0:
-                index = data[0][0]-1
-                values = [self[group] for group in self.driver.groups]
-                self.driver[index] = values  # .update(values, index)
+            query_result = self.query(query, values)
+            if len(query_result) > 0:
+                index = query_result[0][0]-1
+                data = [self[group] for group in self.driver.groups]
+                self.driver[index] = data  # .update(data, index)
+            else:
+                raise Exception("This dataset {} already exists with a distinct name.".format(values))
 
     def query(self, query: str, values: tuple) -> tuple:
         try:

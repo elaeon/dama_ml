@@ -38,9 +38,6 @@ class HDF5(AbsDriver):
         groups = [(group, self[group]) for group in self.groups]
         return DaGroupDict.convert(groups, chunks=chunks)
 
-    def absgroup(self):
-        pass
-
     def open(self):
         if self.conn is None:
             self.conn = h5py.File(self.url, mode=self.mode)
@@ -129,9 +126,6 @@ class Zarr(AbsDriver):
         if self.groups is not None:
             groups = [(group, self[group]) for group in self.groups]
             return DaGroupDict.convert(groups, chunks=chunks)
-
-    def absgroup(self):
-        pass
 
     def open(self):
         if self.conn is None:

@@ -189,10 +189,6 @@ class BaseModel(MetadataX, ABC):
             data_hash = metadata.query(query,
                                        (self.model_name, self.model_version, self.module_cls_name(),
                                         group_name, self.base_path))
-            print(data_hash)
-            print(self.metadata_path)
-            print(query)
-            print(self.model_name, self.model_version, self.module_cls_name(), group_name, self.base_path)
         if len(data_hash) > 0:
             driver = Sqlite(login=Login(table=settings["data_tag"]), path=self.metadata_path)
             with Data.load(data_hash[0][0], metadata_driver=driver) as dataset:

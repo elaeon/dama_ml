@@ -90,9 +90,9 @@ class Table(AbsConn):
         for row in data:
             shape = row.batch.shape.to_tuple()
             if len(shape) == 1 and num_groups > 1:
-                value = row.batch.to_df.values  # .to_ndarray().reshape(1, -1)
+                value = row.batch.to_df().values
             elif len(shape) == 1 and num_groups == 1:
-                value = row.batch.to_df().values  # .to_ndarray().reshape(-1, 1)
+                value = row.batch.to_df().values
             else:
                 value = row.batch.to_ndarray(object)
             cur.executemany(insert_str, value)
@@ -105,7 +105,7 @@ class Table(AbsConn):
             query = "UPDATE {name} SET {columns_val} WHERE ID = ?".format(name=self.name,
                                                                           columns_val=",".join(columns))
             cur = self.conn.cursor()
-            values_list = list(values) + [item+1]
+            values_list = list(values) + [item + 1]
             cur.execute(query, values_list)
             self.conn.commit()
             cur.close()

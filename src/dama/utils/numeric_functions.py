@@ -279,7 +279,7 @@ def nested_shape_aux(x) -> list:
         if len(shapes) > 0:
             dim.extend(shapes[0])
         return dim
-    elif isinstance(x, numbers.Number) or isinstance(x, str):
+    else:
         return []
 
 

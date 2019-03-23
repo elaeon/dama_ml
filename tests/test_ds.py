@@ -290,9 +290,9 @@ class TestDataset(unittest.TestCase):
             for e in x_a:
                 yield (e, 1)
 
-        chunks = Chunks({"x": (10, 1), "y": (10,)})
+        chunks = Chunks({"x": (10,), "y": (10,)})
         with Data(name="test", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH, chunks=chunks) as dataset:
-            x = np.random.rand(100).reshape(-1, 1)
+            x = np.random.rand(100)
             dtypes = np.dtype([("x", np.dtype(float)), ("y", np.dtype(float))])
             x_p = Iterator(_it(x), dtypes=dtypes)
             dataset.from_data(x_p[:100])
