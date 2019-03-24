@@ -141,10 +141,11 @@ class Data(AbsData):
             self._set_attr('from_ds_hash', value)
 
     def open(self):
-        self.driver.open()
-
-        if self.driver.data_tag is None:
+        if isinstance(self.driver.login, Login):
+            self.driver.login.table = self.name
+        else:
             self.driver.data_tag = self.name
+        self.driver.open()
 
         if self.driver.mode in ["w", "a", "r+"]:
             if len(self.driver.compressor_params) > 0:

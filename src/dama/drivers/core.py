@@ -272,34 +272,43 @@ class StcArray(AbsDriver):
         return Shape(_shape)
 
 
-class Tuple(AbsDriver):
+class List(AbsDriver):
+
+    def __init__(self, *args, dtypes=None, **kwargs):
+        super(List, self).__init__(*args, **kwargs)
+        self._dtypes = dtypes
 
     def __getitem__(self, item):
-        return self.conn[item]
+        return self.absconn[item]
 
     def __setitem__(self, item, value):
-        self.conn[item] = value
+        self.absconn[item] = value
 
     def manager(self, chunks: Chunks):
         group = list(chunks.keys())[0]
         groups = [(group, self.conn)]
         return DaGroupDict.convert(groups, chunks=chunks)
 
+    @property
     def absconn(self):
-        pass
+        from dama.groups.core import ListConn
+        return ListConn(self.conn, self.dtypes)
 
     def open(self):
-        pass
+        self.conn = []
+        self.attrs = {}
+        return self
 
     def close(self):
-        pass
+        self.conn = None
+        self.attrs = None
 
     def destroy(self):
-        pass
+        self.conn = None
 
     @property
     def dtypes(self):
-        return np.dtype([(DEFAUL_GROUP_NAME, np.dtype(self.conn))])
+        return self._dtypes
 
     def exists(self):
         return self.conn is not None
@@ -316,7 +325,4 @@ class Tuple(AbsDriver):
     @property
     @cache
     def shape(self) -> Shape:
-        shape = OrderedDict()
-        for index, group in enumerate(self.groups):
-            shape[group] = self.conn[index].shape
-        return Shape(shape)
+        return self.absconn.shape

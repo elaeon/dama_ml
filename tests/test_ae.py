@@ -10,9 +10,18 @@ from dama.utils.tf_functions import TSNe
 from dama.data.it import BatchIterator
 from dama.utils.files import check_or_create_path_dir
 from dama.utils.core import Chunks
+from dama.groups.core import ListConn
 
 
 TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'dama_data_test')
+
+
+def list_conn(iterator, dtypes):
+    for it in iterator:
+        list_conn = ListConn([], dtypes)
+        list_conn[0] = it[0]
+        list_conn[1] = it[1]
+        yield list_conn
 
 
 class TestUnsupervicedModel(unittest.TestCase):
@@ -27,11 +36,12 @@ class TestUnsupervicedModel(unittest.TestCase):
 
     def train(self, ae, model_params=None):
         with Data(name="tsne", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as dataset, \
-                Data(name="test", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
+                Data(name="test_tsne", driver=HDF5(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as ds:
             batch_size = 12
             tsne = TSNe(batch_size=batch_size, perplexity=ae.perplexity, dim=2)
-            x_p = BatchIterator.from_batchs(tsne.calculate_P(self.x), length=len(self.x), from_batch_size=tsne.batch_size,
-                                       dtypes=np.dtype([("x", np.dtype(float)), ("y", np.dtype(float))]), to_slice=True)
+            dtypes = np.dtype([("x", np.dtype(float)), ("y", np.dtype(float))])
+            x_p = BatchIterator.from_batchs(list_conn(tsne.calculate_P(self.x), dtypes), length=len(self.x),
+                                            from_batch_size=tsne.batch_size, dtypes=dtypes, to_slice=True)
             dataset.from_data(x_p)
             cv = CV(group_data="x", group_target="y", train_size=.7, valid_size=.1)
             stc = cv.apply(dataset)

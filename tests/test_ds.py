@@ -514,7 +514,7 @@ class TestPsqlDriver(unittest.TestCase):
         x = np.random.rand(10)*100
         y = np.random.rand(10)*100
         chunks = Chunks({"x": (10,), "y": (10, )})
-        with Data(name="test", driver=Postgres(login=self.login, mode="w"), metadata_path=TMP_PATH, chunks=chunks) as data:
+        with Data(name="test_driver", driver=Postgres(login=self.login, mode="w"), metadata_path=TMP_PATH, chunks=chunks) as data:
             data.destroy()
             data.from_data({"x": x, "y": y})
             data.clean_data_cache()
@@ -523,8 +523,9 @@ class TestPsqlDriver(unittest.TestCase):
             data.destroy()
 
     def test_iter(self):
-        df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
-        with Data(name="test0", driver=Postgres(login=self.login), metadata_path=TMP_PATH, chunks=(5, )) as data:
+        #df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
+        df = pd.DataFrame({"b": ['a', 'b', 'c', 'd', 'e']})
+        with Data(name="test_iter", driver=Postgres(login=self.login), metadata_path=TMP_PATH, chunks=(5, )) as data:
             data.destroy()
             data.from_data(df)
             it = Iterator(data)
@@ -535,7 +536,7 @@ class TestPsqlDriver(unittest.TestCase):
 
     def test_iter_uni(self):
         array = [1., 2., 3., 4., 5.]
-        with Data(name="test0", driver=Postgres(login=self.login), metadata_path=TMP_PATH, chunks=(5, )) as data:
+        with Data(name="test1", driver=Postgres(login=self.login), metadata_path=TMP_PATH, chunks=(5, )) as data:
             data.destroy()
             data.from_data(array)
             it = Iterator(data)

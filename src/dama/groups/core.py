@@ -1,8 +1,46 @@
 from dama.abc.group import AbsConn
 from dama.utils.core import Shape
-import numpy as np
-from collections import OrderedDict
+from dama.utils.miscellaneous import filter_dtypes
 from dama.utils.decorators import cache
+import numpy as np
+
+
+class ListConn(AbsConn):
+    def __getitem__(self, item):
+        if isinstance(item, str):
+            dtypes = filter_dtypes(item, self.dtypes)
+            i = self.groups.index(item)
+            return ListConn([self.conn[i]], dtypes=dtypes)
+        else:
+            return self.conn[item]
+
+    def __setitem__(self, key, value):
+        try:
+            self.conn[key] = value
+        except IndexError:
+            if len(self.conn) == 0:
+                self.conn.append(None)
+
+            for i in range(abs(key - len(self.conn))):
+                self.conn.append(None)
+            self.conn[key] = value
+
+    def to_ndarray(self):
+        if len(self.dtypes) == 1:
+            return self.conn
+        else:
+            array = np.empty(self.shape.to_tuple(), dtype=self.dtype)
+            for i, elem in enumerate(self.conn):
+                array[:, i] = elem
+        return array
+
+    @property
+    @cache
+    def shape(self):
+        shape = {}
+        for index, group in enumerate(self.groups):
+            shape[group] = self.conn[index].shape
+        return Shape(shape)
 
 
 class DaGroup:

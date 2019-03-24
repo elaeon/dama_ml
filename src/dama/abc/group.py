@@ -275,8 +275,8 @@ class AbsConn(ABC):
     def shape(self) -> Shape:
         return NotImplemented
 
-    def set(self, item, value):
-        return NotImplemented
+    #def set(self, item, value):
+    #    return NotImplemented
 
 
 class AbsDaskGroup(AbsConn):
@@ -312,8 +312,8 @@ class AbsDaskGroup(AbsConn):
         shape = OrderedDict([(group, (length,)) for group in self.groups])
         return Shape(shape)
 
-    def set(self, item, value):
-        pass
+    #def set(self, item, value):
+    #    pass
 
 
 class Singleton(type):
@@ -327,65 +327,3 @@ class Singleton(type):
 
 class Attrs(dict, metaclass=Singleton):
     pass
-
-
-
-class AbsGroupX:
-    __slots__ = ['conn', 'counter', 'attrs']
-
-    #def __init__(self, conn, dtypes, chunks: Chunks):
-    #    super(AbsGroupX, self).__init__(conn, dtypes, chunks)
-    #    self.counter = 0
-
-    #@abstractmethod
-    #def __getitem__(self, item):
-    #    return NotImplemented
-
-    #@abstractmethod
-    #def __setitem__(self, item, value):
-    #    return NotImplemented
-
-    #def __iter__(self):
-    #    self.counter = 0
-    #    return self
-
-    #def __next__(self):
-    #    try:
-    #        elem = self._iterator(self.counter)
-    #        self.counter += 1
-    #    except IndexError:
-    #        raise StopIteration
-    #    else:
-    #        return elem
-
-    #def _iterator(self, counter):
-    #    elem = self[counter]
-    #    return elem
-
-    #def __len__(self):
-    #    return self.shape.to_tuple()[0]
-
-    #def __repr__(self):
-    #    return "{} {}".format(self.cls_name(), self.shape)
-
-    #def get_group(self, group):
-    #    return self[group]
-
-    #def get_conn(self, group):
-    #    return self[group]
-
-    #@property
-    #@abstractmethod
-    #def shape(self) -> Shape:
-    #    return NotImplemented
-
-    #@abstractmethod
-    #def to_ndarray(self, dtype: np.dtype = None, chunksize=(258,)) -> np.ndarray:
-    #    return NotImplemented
-
-    #@abstractmethod
-    #def to_df(self) -> pd.DataFrame:
-    #    return NotImplemented
-
-    #def items(self):
-    #    return [(group, self.conn[group]) for group in self.groups]

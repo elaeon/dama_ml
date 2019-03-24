@@ -10,6 +10,7 @@ from dama.abc.group import DaGroupDict
 from dama.fmtypes import DEFAUL_GROUP_NAME
 from dama.utils.core import Chunks
 from dama.utils.seq import grouper_chunk
+from dama.groups.core import ListConn
 import numbers
 
 def stream():
@@ -174,6 +175,7 @@ class TestIteratorIter(unittest.TestCase):
     def test_batch_iterator_from(self):
         x = np.random.rand(20)
         batch_size = 5
+        dtypes = np.dtype([("x", np.dtype(float)), ("y", np.dtype(float))])
         def iterator(x):
             init = 0
             end = batch_size
@@ -182,11 +184,22 @@ class TestIteratorIter(unittest.TestCase):
                 init = end
                 end += batch_size
 
-        b = BatchIterator.from_batchs(iterator(x), length=len(x), from_batch_size=batch_size,
-                                  dtypes=np.dtype([("x", np.dtype(float)), ("y", np.dtype(float))]), to_slice=True)
-        #DaGroupDict.convert()
-        for e in b:
-            print(e.batch)
+        def conn_it(iterator, dtypes):
+            for it in iterator:
+                list_conn = ListConn([], dtypes)
+                list_conn[0] = it[0]
+                list_conn[1] = it[1]
+                yield list_conn
+
+        b_it = BatchIterator.from_batchs(conn_it(iterator(x), dtypes), length=len(x), from_batch_size=batch_size,
+                                      dtypes=dtypes, to_slice=True)
+        init = 0
+        end = batch_size
+        for e in b_it:
+            self.assertEqual((e.batch.to_ndarray()[:, 0] == x[init:end]).all(), True)
+            self.assertEqual((e.batch.to_ndarray()[:, 1] == x[init:end]+1).all(), True)
+            init = end
+            end += batch_size
 
 
 
@@ -516,14 +529,13 @@ class TestIteratorLoop(unittest.TestCase):
         z_array = np.random.rand(10)
         dagroup_dict = DaGroupDict.convert({"x": x_array, "y": y_array, "z": z_array},
                         chunks=Chunks({"x": (5, ), "y": (5, ), "z": (5, )}))
-        #da_group = DaGroup(dagroup_dict=dagroup_dict)
         with Data(name="test") as data:
             data.from_data(dagroup_dict)
             it = Iterator(data).batchs(chunks=(1, )).cycle().to_iter()
             for i, x_y_z in enumerate(it):
-                self.assertEqual(x_y_z["x"][0].to_ndarray(), x_array[i])
-                self.assertEqual(x_y_z["y"][0].to_ndarray(), y_array[i])
-                self.assertEqual(x_y_z["z"][0].to_ndarray(), z_array[i])
+                self.assertEqual(x_y_z[0][0], x_array[i])
+                self.assertEqual(x_y_z[0][1], y_array[i])
+                self.assertEqual(x_y_z[0][2], z_array[i])
                 break
 
     def test_cycle_it_batch_cut(self):

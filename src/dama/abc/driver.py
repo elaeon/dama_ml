@@ -144,11 +144,9 @@ class AbsDriver(ABC):
         else:
             if isinstance(value, Manager):
                 for group in value.groups:
-                    #group = value.conn.get_oldname(group)
                     self[group][item] = value[group].to_ndarray()
             elif type(value) == Slice:
                 for group in value.batch.groups:
-                    #group = value.batch.conn.get_oldname(group)
                     self[group][item] = value.batch[group].to_ndarray()
             elif isinstance(value, Number):
                 self[item] = value
