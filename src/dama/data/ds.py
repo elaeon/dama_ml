@@ -292,7 +292,7 @@ class Data(AbsData):
                 metadata["group_name"] = "s/n" if self.group_name is None else self.group_name
                 metadata["is_valid"] = True
                 metadata.set_schema(dtypes, unique_key=["hash", ["path", "name", "driver_name", "group_name"]])
-                metadata.insert_update_data(keys=["hash"])  # ["path", "name", "driver_name", "group_name"])
+                metadata.insert_update_data(keys=["hash", ["path", "name", "driver_name", "group_name"]])
 
     def calc_hash(self, with_hash: str) -> str:
         hash_obj = Hash(hash_fn=with_hash)

@@ -6,6 +6,7 @@ from collections import OrderedDict
 from dama.utils.decorators import cache
 from dama.utils.logger import log_config
 from dama.utils.numeric_functions import calc_chunks
+from dask.base import normalize_token
 
 
 log = log_config(__name__)
@@ -17,12 +18,12 @@ class Hash:
         self.hash = getattr(hashlib, hash_fn)()
 
     def update(self, it):
-        if it.dtype == np.dtype('<M8[ns]'):
-            for data in it:
-                self.hash.update(data.astype('object'))
-        else:
-            for data in it:
-                self.hash.update(data)
+        # if it.dtype == np.dtype('<M8[ns]'):
+        #     for data in it:
+        #         self.hash.update(data.astype('object'))
+        #print(tuple((t[:2] for t in map(normalize_token, it))))
+        #self.hash.update(str(tuple(map(normalize_token, it))).encode())
+        self.hash.update(str(tuple((t[:2] for t in map(normalize_token, it)))).encode())
 
     def __str__(self):
         return "{hash_fn}.{digest}".format(hash_fn=self.hash_fn, digest=self.hash.hexdigest())
@@ -201,23 +202,35 @@ class Metadata(dict):
         except sqlite3.IntegrityError as e:
             log.error(str(e) + " in " + self.driver.url)
 
-    def insert_update_data(self, keys=None):
+    def insert_update_data(self, keys: list=None):
         try:
             data = [[self[group] for group in self.driver.groups]]
             self.driver[-1] = data
         except sqlite3.IntegrityError as e:
             log.warning(e)
-            columns = ["{col}=?".format(col=group) for group in keys]
-            query = "SELECT id FROM {name} WHERE {columns_val}".format(name=self.name,
-                                                                       columns_val=" AND ".join(columns))
-            values = tuple([self[key] for key in keys])
-            query_result = self.query(query, values)
-            if len(query_result) > 0:
-                index = query_result[0][0]-1
-                data = [self[group] for group in self.driver.groups]
-                self.driver[index] = data  # .update(data, index)
+            for key in keys:
+                if self.insert_update_keys(key):
+                   break
             else:
-                raise Exception("This dataset {} already exists with a distinct name.".format(values))
+                raise Exception("This dataset already exists with another hash")
+
+    def insert_update_keys(self, keys: list):
+        if not isinstance(keys, list):
+            base_keys = [keys]
+        else:
+            base_keys = list(keys)
+
+        columns = ["{col}=?".format(col=group) for group in base_keys]
+        query = "SELECT id FROM {name} WHERE {columns_val}".format(name=self.name,
+                                                                   columns_val=" AND ".join(columns))
+        values = tuple([self[key] for key in base_keys])
+        query_result = self.query(query, values)
+        result = len(query_result) > 0
+        if result:
+            index = query_result[0][0] - 1
+            data = [self[group] for group in self.driver.groups]
+            self.driver[index] = data
+        return result
 
     def query(self, query: str, values: tuple) -> tuple:
         try:

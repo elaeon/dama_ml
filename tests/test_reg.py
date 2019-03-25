@@ -242,7 +242,7 @@ class TestWrappers(unittest.TestCase):
         reg = TestWrappers.train(reg, model_params=dict(learning_rate=0.2, random_state=3))
         reg.ds.driver.mode = "r"
         with reg.ds:
-            self.assertEqual(reg.ds.hash, "sha1.fb894bc728ca9a70bad40b856bc8e37bf67f74b6")
+            self.assertEqual(reg.ds.hash, "sha1.77fdd662f7c622746d705c733c8e610965777cee")
             reg.destroy()
 
 

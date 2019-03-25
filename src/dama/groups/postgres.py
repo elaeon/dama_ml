@@ -78,15 +78,6 @@ class Table(AbsConn):
         else:
             self.update(value, item)
 
-    #def __iter__(self):
-    #    pass
-
-    #def get_group(self, group):
-    #    return self[group]
-
-    #def get_conn(self, group):
-    #    return self[group]
-
     def insert(self, data, chunks=None):
         if not isinstance(data, BatchIterator):
             data = Iterator(data, dtypes=self.dtypes).batchs(chunks=chunks)
@@ -106,7 +97,6 @@ class Table(AbsConn):
             else:
                 value = row.batch.to_df().values
             execute_values(cur, insert, value, page_size=len(data))
-        self.conn.commit()
         cur.close()
 
     def update(self, value, item):
@@ -118,7 +108,6 @@ class Table(AbsConn):
             )
             cur = self.conn.cursor()
             cur.execute(query, {"id": item + 1})
-            self.conn.commit()
         else:
             raise NotImplementedError
 
@@ -142,7 +131,6 @@ class Table(AbsConn):
         else:
             array[:] = cur.fetchall()
         cur.close()
-        self.conn.commit()
         if dtype is not None and self.dtype != dtype:
             return array.astype(dtype)
         else:

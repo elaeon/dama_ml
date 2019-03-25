@@ -142,9 +142,12 @@ class Zarr(AbsDriver):
             object_codec = MsgPack()
         else:
             object_codec = None
-        self.conn[level].require_dataset(group, shape, dtype=dtype, chunks=True,
+        try:
+            self.conn[level].require_dataset(group, shape, dtype=dtype, chunks=True,
                                          exact=True, object_codec=object_codec,
                                          compressor=self.compressor)
+        except TypeError:
+            self.conn[level][group].resize(shape)
 
     def destroy(self):
         rm(self.url)

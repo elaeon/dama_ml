@@ -218,13 +218,13 @@ class BaseModel(MetadataX, ABC):
             if len(metadata_train["score"]) == 0:
                 metadata["score_name"] = "s/n"
                 metadata["score"] = 0
-                metadata.insert_update_data(keys=keys)
+                metadata.insert_update_data(keys=[keys])
             else:
                 for score_name in metadata_train["score"].keys():
                     if score_name != "":
                         metadata["score_name"] = score_name
                         metadata["score"] = metadata_train["score"][score_name]["values"][0]
-                        metadata.insert_update_data(keys=keys)
+                        metadata.insert_update_data(keys=[keys])
 
     def save(self, name, path: str = None, model_version="1"):
         self.model_version = model_version

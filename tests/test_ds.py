@@ -206,8 +206,8 @@ class TestDataset(unittest.TestCase):
     def test_hash(self):
         with Data(name="test0", chunks=(20, )) as data:
             data.from_data(np.ones(100))
-            self.assertEqual(data.hash, "sha1.fe0e420a6aff8c6f81ef944644cc78a2521a0495")
-            self.assertEqual(data.calc_hash(with_hash='md5'), "md5.2376a2375977070dc32209a8a7bd2a99")
+            self.assertEqual(data.hash, "sha1.27274efa700ba3dd5808d7abe8066dd506956538")
+            self.assertEqual(data.calc_hash(with_hash='md5'), "md5.b12a9d5e5979b7978932fba4392bfb3c")
             data.destroy()
 
     def test_empty_hash(self):
@@ -291,7 +291,7 @@ class TestDataset(unittest.TestCase):
                 yield (e, 1)
 
         chunks = Chunks({"x": (10,), "y": (10,)})
-        with Data(name="test", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH, chunks=chunks) as dataset:
+        with Data(name="test_multi", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH, chunks=chunks) as dataset:
             x = np.random.rand(100)
             dtypes = np.dtype([("x", np.dtype(float)), ("y", np.dtype(float))])
             x_p = Iterator(_it(x), dtypes=dtypes)
@@ -366,7 +366,7 @@ class TestDataset(unittest.TestCase):
             data.destroy()
 
     def test_metadata_to_json(self):
-        with Data(name="test", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH, chunks=(10, 10)) as data:
+        with Data(name="test_to_json", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH, chunks=(10, 10)) as data:
             data.from_data(np.random.rand(100, 10))
             with StringIO() as f:
                 data.metadata_to_json(f)
@@ -374,7 +374,7 @@ class TestDataset(unittest.TestCase):
             data.destroy()
 
     def test_delete_metadata_info(self):
-        with Data(name="test", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH, chunks=(20, 5)) as data:
+        with Data(name="test_meta_info", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH, chunks=(20, 5)) as data:
             data.from_data(np.random.rand(100, 11))
             hash_hex = data.hash
 
@@ -382,14 +382,15 @@ class TestDataset(unittest.TestCase):
         with Metadata(driver) as metadata:
             self.assertEqual(metadata.exists(hash_hex), True)
 
-        with Data(name="test", driver=Zarr(mode="r", path=TMP_PATH), metadata_path=TMP_PATH) as data:
+        with Data(name="test_meta_info", driver=Zarr(mode="r", path=TMP_PATH), metadata_path=TMP_PATH) as data:
             data.destroy()
+
         with Metadata(driver) as metadata:
             self.assertEqual(metadata.is_valid(hash_hex), False)
 
     def test_concat_axis_0(self):  # length
         with Data(name="test", chunks=(5, 2)) as dataset, Data(name="test2", chunks=(5, 2)) as dataset2,\
-            Data(name="concat", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as data_c:
+            Data(name="concat_ax", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as data_c:
             array = np.random.rand(10, 2)
             dataset.from_data(array)
             array = np.random.rand(10, 2)
@@ -403,7 +404,7 @@ class TestDataset(unittest.TestCase):
 
     def test_concat_axis_0_dtypes(self):  # length
         with Data(name="test", chunks=(5, 2)) as dataset, Data(name="test2", chunks=(5, 2)) as dataset2,\
-            Data(name="concat", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as data_c:
+            Data(name="concat_dtypes", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as data_c:
             array0_c0 = np.random.rand(10)
             array0_c1 = np.random.rand(10)
             dataset.from_data(pd.DataFrame({"a": array0_c0, "b": array0_c1}))
@@ -419,7 +420,7 @@ class TestDataset(unittest.TestCase):
 
     def test_concat_axis_0_distinct_groups(self):  # length
         with Data(name="test", chunks=(5,)) as dataset, Data(name="test2", chunks=(5,)) as dataset2,\
-            Data(name="concat", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as data_c:
+            Data(name="concat_d", driver=Zarr(mode="w", path=TMP_PATH), metadata_path=TMP_PATH) as data_c:
             dataset.from_data({"x": np.random.rand(10), "y": np.random.rand(10)})
             dataset2.from_data({"a": np.random.rand(10), "b": np.random.rand(10)})
             data_c.concat((dataset, dataset2), axis=0)
@@ -489,17 +490,17 @@ class TestDataZarr(unittest.TestCase):
             data.description = "description text"
             data.from_data([])
 
-        with Data(name="test_no_data", driver=Zarr(mode='r', path=TMP_PATH),
-                  chunks=Chunks({"g0": (5, )}), metadata_path=TMP_PATH) as data:
+        with Data(name="test_no_data", driver=Zarr(mode='r', path=TMP_PATH), chunks=(5, ),
+                  metadata_path=TMP_PATH) as data:
             self.assertEqual(data.author, "AGMR")
             self.assertEqual(data.description, "description text")
 
-        #with Data(name="test", dataset_path=TMP_PATH, driver=Zarr(mode="a"), chunks=Chunks({"g0": (5, )})) as data:
-        #    data.from_data([1, 2, 3, 4], chunks=(5, ))
-        #    self.assertEqual(data.compressor_params["compression_opts"], 5)
-        #    self.assertEqual(data.author, "AGMR")
-        #    self.assertEqual(data.description, "description text")
-        #    data.destroy()
+        with Data(name="test_no_data", driver=Zarr(mode="a", path=TMP_PATH), chunks=(5, )) as data:
+            data.from_data([1, 2, 3, 4])
+            self.assertEqual(data.compressor_params["compression_opts"], 5)
+            self.assertEqual(data.author, "AGMR")
+            self.assertEqual(data.description, "description text")
+            data.destroy()
 
 
 
@@ -514,18 +515,17 @@ class TestPsqlDriver(unittest.TestCase):
         x = np.random.rand(10)*100
         y = np.random.rand(10)*100
         chunks = Chunks({"x": (10,), "y": (10, )})
-        with Data(name="test_driver", driver=Postgres(login=self.login, mode="w"), metadata_path=TMP_PATH, chunks=chunks) as data:
+        with Data(name="test_driver", driver=Postgres(login=self.login, mode="w"), metadata_path=TMP_PATH,
+                  chunks=(5,)) as data:
             data.destroy()
             data.from_data({"x": x, "y": y})
-            data.clean_data_cache()
             self.assertEqual((data["x"].to_ndarray(dtype=np.dtype("int8")) == x.astype("int8")).all(), True)
             self.assertEqual((data["y"].to_ndarray(dtype=np.dtype("int8")) == y.astype("int8")).all(), True)
             data.destroy()
 
     def test_iter(self):
-        #df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
-        df = pd.DataFrame({"b": ['a', 'b', 'c', 'd', 'e']})
-        with Data(name="test_iter", driver=Postgres(login=self.login), metadata_path=TMP_PATH, chunks=(5, )) as data:
+        df = pd.DataFrame({"a": [1, 2, 3, 4, 5], "b": ['a', 'b', 'c', 'd', 'e']})
+        with Data(name="test_iter_psql", driver=Postgres(login=self.login), metadata_path=TMP_PATH, chunks=(5, )) as data:
             data.destroy()
             data.from_data(df)
             it = Iterator(data)

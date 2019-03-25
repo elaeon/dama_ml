@@ -41,6 +41,7 @@ class Postgres(AbsDriver):
         return self
 
     def close(self):
+        self.conn.commit()
         self.conn.close()
         self.attrs = None
 

@@ -220,6 +220,14 @@ class BaseIterator(object):
                 return Iterator(_it, dtypes=self.dtypes, length=key.stop)
         return NotImplemented
 
+    def to_slice(self, batch_size):
+        start = 0
+        end = batch_size
+        for elem in self:
+            yield Slice(batch=elem, slice=slice(start, end))
+            start = end
+            end += batch_size
+
 
 class Iterator(BaseIterator):
     def __init__(self, fn_iter, dtypes: np.dtype = None, length: int = np.inf) -> None:
@@ -395,14 +403,6 @@ class Iterator(BaseIterator):
     def cycle(self):
         shape = self.shape.change_length(np.inf)
         return BaseIterator(self._cycle_it(), dtypes=self.dtypes, type_elem=self.type_elem, shape=shape)
-
-    def to_slice(self, batch_size):
-        start = 0
-        end = batch_size
-        for elem in self:
-            yield Slice(batch=elem, slice=slice(start, end))
-            start = end
-            end += batch_size
 
 
 class BatchIterator(BaseIterator):
