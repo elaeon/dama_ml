@@ -1,17 +1,18 @@
 from dama.abc.driver import AbsDriver
-from dama.groups.postgres import Table
+from dama.connexions.postgres import Table
 from dama.fmtypes import fmtypes_map
 from dama.utils.logger import log_config
 from dama.utils.decorators import cache
 from dama.utils.core import Chunks, Shape
-from dama.abc.group import DaGroupDict
-from dama.abc.group import AbsConn
+from dama.connexions.core import GroupManager
+from dama.abc.conn import AbsConn
 import numpy as np
 import psycopg2
 from collections import OrderedDict
 
 
 log = log_config(__name__)
+__all__ = ['Postgres']
 
 
 class Postgres(AbsDriver):
@@ -27,8 +28,8 @@ class Postgres(AbsDriver):
     def __setitem__(self, key, value):
         self.absconn[key] = value
 
-    def __contains__(self, item):
-        return self.exists()
+    # def __contains__(self, item):
+    #    return self.exists()
 
     def open(self):
         self.conn = psycopg2.connect(database=self.login.resource, user=self.login.username,
@@ -45,10 +46,10 @@ class Postgres(AbsDriver):
         self.conn.close()
         self.attrs = None
 
-    def manager(self, chunks: Chunks):
-        self.chunksize = chunks
+    def manager(self, chunks: Chunks) -> AbsConn:
+        # self.chunksize = chunks
         groups = [(group, self[group]) for group in self.groups]
-        return DaGroupDict.convert(groups, chunks=chunks)
+        return GroupManager.convert(groups, chunks=chunks)
 
     @property
     def absconn(self) -> AbsConn:

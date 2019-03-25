@@ -48,8 +48,9 @@ class TestShape(unittest.TestCase):
 
     def test_iterable(self):
         shape = Shape({"x": (10, 2)})
-        for s0, s1 in zip(shape, (10 ,2)):
+        for s0, s1 in zip(shape, (10, 2)):
             self.assertEqual(s0, s1)
+
 
 class TestChunks(unittest.TestCase):
 

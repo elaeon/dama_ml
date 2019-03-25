@@ -6,6 +6,7 @@
 import tensorflow as tf
 import numpy as np
 
+
 def fspecial_gauss(size, sigma):
     """Function to mimic the 'fspecial' gaussian MATLAB function
     """
@@ -49,7 +50,8 @@ def ssim(img1, img2, cs_map=False, size=11, sigma=1.5):
 
     return value
 
-#Multi scale structural similarity image
+
+# Multi scale structural similarity image
 def msssim(img1, img2, level=5, size=11):
     weight = tf.constant([0.0448, 0.2856, 0.3001, 0.2363, 0.1333], dtype=tf.float32)
     mssim = []
@@ -154,7 +156,7 @@ class TSNe:
 
         return P
 
-    #join_probabilities
+    # join_probabilities
     def calculate_P(self, X):
         print("Computing pairwise distances...")
         n = X.shape[0]

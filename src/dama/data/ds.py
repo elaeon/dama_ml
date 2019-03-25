@@ -7,6 +7,7 @@ import dask.bag as db
 import dask
 from tabulate import tabulate
 from dama.abc.data import AbsData
+from dama.abc.conn import AbsConn
 from dama.data.it import Iterator, BaseIterator, BatchIterator
 from dama.utils.core import Hash, Login, Metadata, Chunks, Shape
 from dama.abc.driver import AbsDriver
@@ -17,7 +18,7 @@ from dama.utils.config import get_settings
 from dama.utils.decorators import cache, clean_cache
 from dama.utils.files import get_dir_file_size
 from dama.utils.order import order_table
-from dama.abc.group import Manager, DaGroupDict
+from dama.connexions.core import GroupManager
 from pydoc import locate
 
 
@@ -120,7 +121,7 @@ class Data(AbsData):
 
     @property
     @cache
-    def data(self) -> Manager:
+    def data(self) -> AbsConn:
         return self.driver.manager(chunks=self.chunksize)
 
     @data.setter
@@ -176,7 +177,7 @@ class Data(AbsData):
         return self.data[key]
 
     def __setitem__(self, key, value):
-        self.data[key].set(key, value)
+        raise NotImplementedError
 
     def __iter__(self):
         return self
@@ -304,9 +305,9 @@ class Data(AbsData):
             hash_obj.update(it.only_data())
         return str(hash_obj)
 
-    def from_data(self, data, with_hash: str = "sha1", from_ds_hash: str=None, start_i: int = 0):
+    def from_data(self, data, with_hash: str = "sha1", from_ds_hash: str = None, start_i: int = 0):
         if isinstance(data, da.Array):
-            data = DaGroupDict.from_da(data)
+            data = GroupManager.from_da(data)
             if self.chunksize is None:
                 self.chunksize = data.chunksize
             elif isinstance(self.chunksize, tuple):
@@ -323,14 +324,14 @@ class Data(AbsData):
                 self.chunksize = data.chunksize
             elif isinstance(self.chunksize, tuple):
                 self.chunksize = Chunks.build_from(self.chunksize, data.groups)
-        elif isinstance(data, dict) and not isinstance(data, Manager):
+        elif isinstance(data, dict) and not isinstance(data, AbsConn):
             if self.chunksize is None:
                 shape, dtypes = Shape.get_shape_dtypes_from_dict(data)
                 self.chunksize = Chunks.build_from_shape(shape, dtypes)
             elif isinstance(self.chunksize, tuple):
                 self.chunksize = Chunks.build_from(self.chunksize, tuple(data.keys()))
-            data = DaGroupDict.convert(data, chunks=self.chunksize)
-        elif isinstance(data, Manager):
+            data = GroupManager.convert(data, chunks=self.chunksize)
+        elif isinstance(data, AbsConn):
             if self.chunksize is None:
                 self.chunksize = data.chunksize
             elif isinstance(self.chunksize, tuple):
@@ -347,7 +348,7 @@ class Data(AbsData):
         self.driver.set_data_shape(data.shape)
         if isinstance(data, BatchIterator) or isinstance(data, Iterator):
             self.driver.batchs_writer(data)
-        elif isinstance(data, Manager):
+        elif isinstance(data, AbsConn):
             self.driver.store(data)
         else:
             raise NotImplementedError
@@ -368,7 +369,7 @@ class Data(AbsData):
                 part1 = [part1]
             if not isinstance(part2, list):
                 part2 = [part2]
-            return DaGroupDict.concat(part1 + part2, axis=0)
+            return GroupManager.concat(part1 + part2, axis=0)
 
         url_bag_partition = db.from_sequence(data_list, npartitions=npartitions)
         fold_loader = url_bag_partition.map(loader_fn).fold(binop=self.add_to_list, combine=concat_partitions,
@@ -376,14 +377,15 @@ class Data(AbsData):
         da_group = fold_loader.compute()
         self.from_data(da_group, with_hash=with_hash)
 
-    def add_to_list(self, base_list, data):
+    @staticmethod
+    def add_to_list(base_list, data) -> list:
         it = Iterator(data)
         groups = it.groups
         if len(groups) == 1:
             group_items = [(groups[0], data)]
         else:
             group_items = [(group, data[group]) for group in groups]
-        dagroup_dict = DaGroupDict.convert(group_items, Chunks.build_from_shape(it.shape, it.dtypes))
+        dagroup_dict = GroupManager.convert(group_items, Chunks.build_from_shape(it.shape, it.dtypes))
         return base_list + [dagroup_dict]
 
     def to_df(self) -> pd.DataFrame:

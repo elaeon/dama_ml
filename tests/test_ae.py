@@ -10,7 +10,7 @@ from dama.utils.tf_functions import TSNe
 from dama.data.it import BatchIterator
 from dama.utils.files import check_or_create_path_dir
 from dama.utils.core import Chunks
-from dama.groups.core import ListConn
+from dama.connexions.core import ListConn
 
 
 TMP_PATH = check_or_create_path_dir(os.path.dirname(os.path.abspath(__file__)), 'dama_data_test')

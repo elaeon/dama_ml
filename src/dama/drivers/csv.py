@@ -5,7 +5,6 @@ import pandas as pd
 from dama.abc.driver import AbsDriver
 from dama.utils.files import rm
 from dama.utils.logger import log_config
-from dama.groups.csv import CSVGroup
 from dama.utils.core import Chunks
 from dask.dataframe.io.csv import make_reader
 
@@ -24,8 +23,8 @@ class CSV(AbsDriver):
     def absconn(self):
         pass
 
-    def manager(self, chunks: Chunks):
-        return CSVGroup(self.conn, dtypes=self.dtypes, chunks=chunks)
+    # def manager(self, chunks: Chunks):
+    #    return CSVGroup(self.conn, dtypes=self.dtypes, chunks=chunks)
 
     def open(self):
         if self.conn is None:

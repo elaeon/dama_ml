@@ -1,10 +1,10 @@
 from dama.abc.driver import AbsDriver
-from dama.groups.sqlite import Table
+from dama.connexions.sqlite import Table
 from dama.fmtypes import fmtypes_map
 from dama.utils.logger import log_config
 from dama.utils.decorators import cache
 from dama.utils.core import Chunks, Shape
-from dama.abc.group import DaGroupDict
+from dama.connexions.core import GroupManager
 from collections import OrderedDict
 import numpy as np
 import sqlite3
@@ -41,9 +41,9 @@ class Sqlite(AbsDriver):
         self.attrs = None
 
     def manager(self, chunks: Chunks):
-        self.chunksize = chunks
+        # self.chunksize = chunks
         groups = [(group, self[group]) for group in self.groups]
-        return DaGroupDict.convert(groups, chunks=chunks)
+        return GroupManager.convert(groups, chunks=chunks)
 
     @property
     def absconn(self):

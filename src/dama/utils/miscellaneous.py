@@ -65,3 +65,12 @@ def to_libsvm(data, target, save_to=None):
 
 def filter_dtypes(group: str, dtypes: np.dtype) -> np.dtype:
     return np.dtype([(group, dtypes.fields[group][0])])
+
+
+def merge_dtype_list(dtype_list: list) -> np.dtype:
+    dtypes = []
+    for dtype in dtype_list:
+        for name in dtype.names:
+            d, _ = dtype.fields[name]
+            dtypes.append((name, d))
+    return np.dtype(dtypes)

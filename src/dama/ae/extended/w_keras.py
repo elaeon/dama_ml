@@ -56,8 +56,8 @@ class PTsne(UnsupervisedModel):
         z_it = Iterator(z_stc).batchs(chunks=(batch_size, )).cycle()
         x_iter = clean_iter(x_it)
         z_iter = clean_iter(z_it)
-        steps = round(len(x_stc)/batch_size/num_steps, 0)
-        vsteps = round(len(z_stc)/batch_size/num_steps, 0)
+        steps = round(x_stc.size/batch_size/num_steps, 0)
+        vsteps = round(z_stc.size/batch_size/num_steps, 0)
         steps = 1 if steps == 0 else steps
         vsteps = 1 if vsteps == 0 else vsteps
         model.fit_generator(x_iter, steps_per_epoch=steps, epochs=num_steps, validation_data=z_iter,

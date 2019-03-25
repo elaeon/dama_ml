@@ -78,7 +78,7 @@ def build_path(levels):
 def get_dir_file_size(path) -> int:
     try:
         if dir_exists(path):
-            return sum(sum(map(lambda fname: os.path.getsize(os.path.join(directory, fname)), files)) \
+            return sum(sum(map(lambda fname: os.path.getsize(os.path.join(directory, fname)), files))
                        for directory, folders, files in os.walk(path))
         return os.path.getsize(path)
     except FileNotFoundError:

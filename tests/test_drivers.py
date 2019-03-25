@@ -95,7 +95,7 @@ class TestDriver(unittest.TestCase):
                 self.assertEqual(self.driver["c2"].dtype, np.dtype("datetime64[ns]"))
 
 
-class TestDaGroupDict(unittest.TestCase):
+class TestGroupManager(unittest.TestCase):
 
     def setUp(self):
         self.driver = Memory()
@@ -164,7 +164,7 @@ class TestDaGroupDict(unittest.TestCase):
     def test_store(self):
         with Data(name="test") as data, self.driver:
             manager = self.driver.manager(chunks)
-            manager["c0"] = manager.getitem("c0") + 1
+            manager["c0"] = manager.conn["c0"] + 1
             data.from_data(manager)
             self.assertEqual((data.data["c0"].to_ndarray() == array_c0 + 1).all(), True)
 
@@ -188,25 +188,25 @@ class TestDriverCSV(unittest.TestCase):
         df.to_csv(url)
         print(url)
         self.login = Login()
-        self.driver = CSV(path=TMP_PATH, mode="r")
-        self.driver.build_url("test")
-        with self.driver:
-            print(self.driver.dtypes)
-            chunks = Chunks({"Unnamed: 0": 10, "a": 10, "b": 10, "c": "10"})
-            manager = self.driver.manager(chunks=chunks)
-            print(manager.shape)
-            print(manager.to_df())
-            print(manager)
-            print(self.driver.spaces())
+        # self.driver = CSV(path=TMP_PATH, mode="r")
+        # self.driver.build_url("test")
+        # with self.driver:
+        #    print(self.driver.dtypes)
+        #    chunks = Chunks({"Unnamed: 0": 10, "a": 10, "b": 10, "c": "10"})
+        #    manager = self.driver.manager(chunks=chunks)
+        #    print(manager.shape)
+        #    print(manager.to_df())
+        #    print(manager)
+        #    print(self.driver.spaces())
             #self.driver.set_schema(self.dtype)
             #self.driver.set_data_shape(self.shape)
         #    absgroup = self.driver.absgroup
             #print(absgroup.conn)
             #absgroup.conn = self.data_list
 
-    def test_info(self):
-        print(self.driver)
+    # def test_info(self):
+    #    print(self.driver)
 
     def tearDown(self):
-        #self.driver.destroy()
+        # self.driver.destroy()
         pass

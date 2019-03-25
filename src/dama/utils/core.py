@@ -10,6 +10,7 @@ from dask.base import normalize_token
 
 
 log = log_config(__name__)
+__all__ = ['Hash', 'Shape', 'Chunks', 'Login', 'Metadata']
 
 
 class Hash:
@@ -21,23 +22,19 @@ class Hash:
         # if it.dtype == np.dtype('<M8[ns]'):
         #     for data in it:
         #         self.hash.update(data.astype('object'))
-        #print(tuple((t[:2] for t in map(normalize_token, it))))
-        #self.hash.update(str(tuple(map(normalize_token, it))).encode())
         self.hash.update(str(tuple((t[:2] for t in map(normalize_token, it)))).encode())
 
     def __str__(self):
         return "{hash_fn}.{digest}".format(hash_fn=self.hash_fn, digest=self.hash.hexdigest())
 
 
-class Shape(object):
-    def __init__(self, shape: OrderedDict):
-        self._shape = shape
+class Shape(dict):
 
     def __getitem__(self, item):
         if isinstance(item, int):
             return self.to_tuple()[item]
         elif isinstance(item, str):
-            return self._shape[item]
+            return super(Shape, self).__getitem__(item)
         elif isinstance(item, slice):
             return self.to_tuple()[item.start:item.stop]
         else:
@@ -54,20 +51,8 @@ class Shape(object):
     def __eq__(self, other):
         return self.to_tuple() == other
 
-    def __str__(self):
-        return str(self._shape)
-
-    def __repr__(self):
-        return self.__str__()
-
     def groups(self):
-        return self._shape.keys()
-
-    def items(self):
-        return self._shape.items()
-
-    def values(self):
-        return self._shape.values()
+        return self.keys()
 
     @staticmethod
     def get_dim_shape(dim, shapes) -> list:
@@ -82,7 +67,7 @@ class Shape(object):
     @cache
     def to_tuple(self) -> tuple:
         # if we have different lengths return dict of shapes
-        shapes = list(self._shape.values())
+        shapes = list(self.values())
         if len(shapes) == 0:
             return tuple([0])
         elif len(shapes) == 1:
@@ -109,14 +94,14 @@ class Shape(object):
     def to_chunks(self, chunks) -> 'Chunks':
         if isinstance(chunks, int):
             shape = self.change_length(chunks)
-            return Chunks(shape._shape)
+            return Chunks(shape)
         else:
             return Chunks.build_from(chunks, tuple(self.groups()))
 
     @property
     def max_length(self) -> int:
-        if len(self._shape) > 0:
-            values = [a[0] for a in self._shape.values() if len(a) > 0]
+        if super(Shape, self).__len__() > 0:
+            values = [a[0] for a in self.values() if len(a) > 0]
             if len(values) > 0:
                 return max(values)
         return 0
@@ -128,8 +113,8 @@ class Shape(object):
         return Shape(shapes)
 
     @staticmethod
-    def get_shape_dtypes_from_dict(data_dict):
-        shape = OrderedDict()
+    def get_shape_dtypes_from_dict(data_dict) -> tuple:
+        shape = dict()
         dtypes = OrderedDict()
         for group, data in data_dict.items():
             shape[group] = data.shape
@@ -138,6 +123,8 @@ class Shape(object):
 
 
 class Chunks(dict):
+    static_value = 0
+
     def from_groups(self, chunks: tuple, groups: tuple) -> 'Chunks':
         for group in groups:
             self[group] = chunks
@@ -202,7 +189,7 @@ class Metadata(dict):
         except sqlite3.IntegrityError as e:
             log.error(str(e) + " in " + self.driver.url)
 
-    def insert_update_data(self, keys: list=None):
+    def insert_update_data(self, keys: list = None):
         try:
             data = [[self[group] for group in self.driver.groups]]
             self.driver[-1] = data
@@ -210,7 +197,7 @@ class Metadata(dict):
             log.warning(e)
             for key in keys:
                 if self.insert_update_keys(key):
-                   break
+                    break
             else:
                 raise Exception("This dataset already exists with another hash")
 

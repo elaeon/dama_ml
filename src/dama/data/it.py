@@ -12,13 +12,15 @@ from dama.utils.core import Shape, Chunks
 from dama.utils.miscellaneous import isnamedtupleinstance
 from dama.utils.logger import log_config
 from dama.abc.data import AbsData
-from dama.abc.group import AbsConn, Manager
+from dama.abc.conn import AbsConn
 from dama.utils.numeric_functions import nested_shape
-from dama.abc.group import DaGroupDict
+from dama.connexions.core import GroupManager
 from dama.fmtypes import Slice, DEFAUL_GROUP_NAME
 from dama.drivers.core import StcArray
 
+
 log = log_config(__name__)
+__all__ = ['BatchIterator', 'BaseIterator', 'BatchGroup', 'BatchItGroup', 'Iterator']
 
 
 def assign_struct_array(it, type_elem, start_i, end_i, dtype, dims):
@@ -259,7 +261,7 @@ class Iterator(BaseIterator):
             self.data = iter(fn_iter)
             length = fn_iter.shape[0] if length == np.inf else length
             self.rewind = False
-        elif isinstance(fn_iter, AbsData) or isinstance(fn_iter, AbsConn) or isinstance(fn_iter, Manager):
+        elif isinstance(fn_iter, AbsData) or isinstance(fn_iter, AbsConn):
             self.data = fn_iter
             self.dtypes = fn_iter.dtypes
             self.dtype = fn_iter.dtype
@@ -380,7 +382,7 @@ class Iterator(BaseIterator):
         else:
             raise NotImplementedError
 
-        if isinstance(self.data, AbsData) or isinstance(self.data, DaGroupDict):
+        if isinstance(self.data, AbsData) or isinstance(self.data, GroupManager):
             return BatchGroup(self, chunks=chunks, start_i=start_i)
         else:
             return BatchItGroup(self, chunks=chunks, start_i=start_i)
@@ -514,7 +516,7 @@ class BatchIterator(BaseIterator):
 
     def to_iter(self):
         for slice_obj in self:
-            if isinstance(slice_obj.batch, Manager):
+            if isinstance(slice_obj.batch, AbsConn):
                 yield slice_obj.batch.to_ndarray()
             else:
                 yield slice_obj.batch

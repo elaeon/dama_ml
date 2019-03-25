@@ -7,7 +7,7 @@ from dama.utils.files import check_or_create_path_dir
 from dama.measures import ListMeasure
 from dama.utils.logger import log_config
 from dama.utils.config import get_settings
-from dama.abc.group import Manager
+from dama.abc.conn import AbsConn
 from dama.drivers.sqlite import Sqlite
 from dama.utils.core import Login, Metadata
 from dama.utils.files import rm
@@ -35,7 +35,7 @@ class MLModel:
     def fit(self, *args, **kwargs):
         return self.fit_fn(*args, **kwargs)
 
-    def predict(self, data: Manager, output_format_fn=None, output=None, batch_size: int = 258):
+    def predict(self, data: AbsConn, output_format_fn=None, output=None, batch_size: int = 258):
         def _it(data):
             data = self.input_transform(data)
             if batch_size > 0:

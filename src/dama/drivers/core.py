@@ -3,18 +3,17 @@ import h5py
 import numpy as np
 import os
 
-from collections import OrderedDict
 from numcodecs import MsgPack
 from dama.abc.driver import AbsDriver
 from dama.utils.files import rm
 from dama.utils.logger import log_config
-from dama.abc.group import DaGroupDict
+from dama.connexions.core import GroupManager
 from dama.utils.core import Chunks, Shape
 from dama.utils.decorators import cache
-from dama.fmtypes import DEFAUL_GROUP_NAME
 
 
 log = log_config(__name__)
+__all__ = ['HDF5', 'Zarr', 'Memory', 'List', 'StcArray']
 
 
 class HDF5(AbsDriver):
@@ -34,9 +33,9 @@ class HDF5(AbsDriver):
         return item in self.conn
 
     def manager(self, chunks: Chunks):
-        self.chunksize = chunks
+        # self.chunksize = chunks
         groups = [(group, self[group]) for group in self.groups]
-        return DaGroupDict.convert(groups, chunks=chunks)
+        return GroupManager.convert(groups, chunks=chunks)
 
     def open(self):
         if self.conn is None:
@@ -122,10 +121,10 @@ class Zarr(AbsDriver):
         return item in self.conn
 
     def manager(self, chunks: Chunks):
-        self.chunksize = chunks
+        # self.chunksize = chunks
         if self.groups is not None:
             groups = [(group, self[group]) for group in self.groups]
-            return DaGroupDict.convert(groups, chunks=chunks)
+            return GroupManager.convert(groups, chunks=chunks)
 
     def open(self):
         if self.conn is None:
@@ -189,7 +188,7 @@ class Zarr(AbsDriver):
     def cast(self, value):
         return value
 
-    def absconn(self):
+    def absconn(self) -> 'AbsConn':
         pass
 
 
@@ -208,7 +207,7 @@ class Memory(Zarr):
     def destroy(self):
         pass
 
-    def absconn(self):
+    def absconn(self) -> 'AbsConn':
         pass
 
 
@@ -226,11 +225,11 @@ class StcArray(AbsDriver):
     def __contains__(self, item):
         return item in self.conn
 
-    def manager(self, chunks: Chunks):
+    def manager(self, chunks: Chunks) -> 'AbsConn':
         groups = [(group, self[group]) for group in self.groups]
-        return DaGroupDict.convert(groups, chunks=chunks)
+        return GroupManager.convert(groups, chunks=chunks)
 
-    def absconn(self):
+    def absconn(self) -> 'AbsConn':
         pass
 
     def open(self):
@@ -243,7 +242,7 @@ class StcArray(AbsDriver):
         pass
 
     @property
-    def dtypes(self):
+    def dtypes(self) -> np.dtype:
         return self.conn.dtype
 
     def exists(self):
@@ -258,21 +257,24 @@ class StcArray(AbsDriver):
     def spaces(self):
         pass
 
-    @staticmethod
-    def fit_shape(shape: Shape) -> Shape:
-        _shape = {}
-        if len(shape.groups()) == 1:
-            key = list(shape.groups())[0]
-            _shape[key] = shape[key]
-        else:
-            for group, shape_tuple in shape.items():
-                if len(shape_tuple) == 2:  # and shape_tuple[1] == 1:
-                    _shape[group] = tuple(shape_tuple[:1])
-                elif len(shape_tuple) == 1:
-                    _shape[group] = shape_tuple
-                else:
-                    raise Exception
-        return Shape(_shape)
+    def shape(self) -> Shape:
+        return self.conn.shape
+
+    # @staticmethod
+    # def fit_shape(shape: Shape) -> Shape:
+    #    _shape = {}
+    #    if len(shape.groups()) == 1:
+    #        key = list(shape.groups())[0]
+    #        _shape[key] = shape[key]
+    #    else:
+    #        for group, shape_tuple in shape.items():
+    #            if len(shape_tuple) == 2:  # and shape_tuple[1] == 1:
+    #                _shape[group] = tuple(shape_tuple[:1])
+    #            elif len(shape_tuple) == 1:
+    #                _shape[group] = shape_tuple
+    #            else:
+    #                raise Exception
+    #    return Shape(_shape)
 
 
 class List(AbsDriver):
@@ -290,11 +292,11 @@ class List(AbsDriver):
     def manager(self, chunks: Chunks):
         group = list(chunks.keys())[0]
         groups = [(group, self.conn)]
-        return DaGroupDict.convert(groups, chunks=chunks)
+        return GroupManager.convert(groups, chunks=chunks)
 
     @property
-    def absconn(self):
-        from dama.groups.core import ListConn
+    def absconn(self) -> 'AbsConn':
+        from dama.connexions.core import ListConn
         return ListConn(self.conn, self.dtypes)
 
     def open(self):

@@ -4,9 +4,9 @@ import numpy as np
 import os
 from dama.utils.config import get_settings
 from dama.utils.logger import log_config
-from dama.utils.core import Login, Chunks
+from dama.utils.core import Login, Chunks, Shape
 from dama.utils.files import build_path
-from dama.abc.group import Manager
+from dama.abc.conn import AbsConn
 from dama.fmtypes import Slice
 from numbers import Number
 from tqdm import tqdm
@@ -14,11 +14,13 @@ from tqdm import tqdm
 
 settings = get_settings("paths")
 log = log_config(__name__)
+__all__ = ['AbsDriver']
 
 
 class AbsDriver(ABC):
     persistent = None
     ext = None
+    insert_by_rows = None
 
     def __init__(self, compressor: Codec = None, login: Login = None, mode: str = 'a', path: str = None, conn=None):
         self.compressor = compressor
@@ -43,6 +45,14 @@ class AbsDriver(ABC):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+    @abstractmethod
+    def __getitem__(self, item):
+        return NotImplemented
+
+    @abstractmethod
+    def __setitem__(self, key, value):
+        return NotImplemented
+
     def build_url(self, filename, group_level=None, with_class_name=True, path=None):
         filename = "{}.{}".format(filename, self.ext)
         if path is None:
@@ -61,11 +71,11 @@ class AbsDriver(ABC):
         build_path(dir_levels[:-1])
 
     @abstractmethod
-    def manager(self, chunks: Chunks):
+    def manager(self, chunks: Chunks) -> AbsConn:
         return NotImplemented
 
     @abstractmethod
-    def absconn(self):
+    def absconn(self) -> AbsConn:
         return NotImplemented
 
     @classmethod
@@ -75,10 +85,6 @@ class AbsDriver(ABC):
     @classmethod
     def cls_name(cls):
         return cls.__name__
-
-    # @abstractmethod
-    # def __contains__(self, item):
-    #    return NotImplemented
 
     @abstractmethod
     def open(self):
@@ -118,14 +124,13 @@ class AbsDriver(ABC):
     def spaces(self):
         return NotImplemented
 
-    def store(self, manager):
+    def store(self, manager: AbsConn):
         if self.insert_by_rows is True:
             from dama.data.it import Iterator
             data = Iterator(manager).batchs(chunks=manager.chunksize)
             self.batchs_writer(data)
         else:
-            for group in self.groups:
-                manager.getitem(group).store(self[group])
+            manager.store(self)
 
     def batchs_writer(self, data):
         batch_size = getattr(data, 'batch_size', 0)
@@ -142,7 +147,7 @@ class AbsDriver(ABC):
         if self.insert_by_rows is True:
             self[item] = value
         else:
-            if isinstance(value, Manager):
+            if isinstance(value, AbsConn):
                 for group in value.groups:
                     self[group][item] = value[group].to_ndarray()
             elif type(value) == Slice:
@@ -155,3 +160,8 @@ class AbsDriver(ABC):
             else:
                 if isinstance(item, str):
                     self[item] = value
+
+    @property
+    @abstractmethod
+    def shape(self) -> Shape:
+        return NotImplemented
