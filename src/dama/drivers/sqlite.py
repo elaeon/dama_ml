@@ -15,8 +15,6 @@ log = log_config(__name__)
 class Sqlite(AbsDriver):
     persistent = True
     ext = 'sqlite3'
-    data_tag = None
-    metadata_tag = None
     insert_by_rows = True
 
     def __getitem__(self, item):
@@ -30,7 +28,6 @@ class Sqlite(AbsDriver):
 
     def open(self):
         self.conn = sqlite3.connect(self.url, check_same_thread=False)
-        self.data_tag = self.login.table
         self.attrs = {}
         if self.mode == "w":
             self.destroy()
@@ -47,18 +44,18 @@ class Sqlite(AbsDriver):
 
     @property
     def absconn(self):
-        return Table(self.conn, self.dtypes, name=self.data_tag)
+        return Table(self.conn, self.dtypes, name= self.login.table)
 
     def exists(self) -> bool:
         cur = self.conn.cursor()
-        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (self.data_tag, ))
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (self.login.table, ))
         result = cur.fetchone()
         return result is not None
 
     def destroy(self):
         cur = self.conn.cursor()
         try:
-            cur.execute("DROP TABLE {name}".format(name=self.data_tag))
+            cur.execute("DROP TABLE {name}".format(name= self.login.table))
         except sqlite3.ProgrammingError as e:
             log.debug(e)
         except sqlite3.OperationalError as e:
@@ -69,7 +66,7 @@ class Sqlite(AbsDriver):
     @cache
     def dtypes(self) -> np.dtype:
         cur = self.conn.cursor()
-        cur.execute("PRAGMA table_info('{}')".format(self.data_tag))
+        cur.execute("PRAGMA table_info('{}')".format(self.login.table))
         dtypes = OrderedDict()
         types = {"text": np.dtype("object"), "integer": np.dtype("int"),
                  "float": np.dtype("float"), "boolean": np.dtype("bool"),
@@ -112,7 +109,7 @@ class Sqlite(AbsDriver):
             cur.execute("""
                 CREATE TABLE {name}
                 {columns};
-            """.format(name=self.data_tag, columns=cols))
+            """.format(name=self.login.table, columns=cols))
             if isinstance(idx, list):
                 for index in idx:
                     if isinstance(index, tuple):
@@ -122,7 +119,7 @@ class Sqlite(AbsDriver):
                         index_columns = index
                         index_name = index
                     index_q = "CREATE INDEX {i_name}_{name}_index ON {name} ({i_columns})".format(
-                        name=self.data_tag, i_name=index_name, i_columns=index_columns)
+                        name=self.login.table, i_name=index_name, i_columns=index_columns)
                     cur.execute(index_q)
             self.conn.commit()
             cur.close()

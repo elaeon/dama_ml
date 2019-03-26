@@ -21,6 +21,7 @@ class AbsDriver(ABC):
     persistent = None
     ext = None
     insert_by_rows = None
+    data_tag = None
 
     def __init__(self, compressor: Codec = None, login: Login = None, mode: str = 'a', path: str = None, conn=None):
         self.compressor = compressor
@@ -53,20 +54,16 @@ class AbsDriver(ABC):
     def __setitem__(self, key, value):
         return NotImplemented
 
-    def build_url(self, filename, group_level=None, with_class_name=True, path=None):
+    def build_url(self, filename, group_level=None, with_class_name=True):
         filename = "{}.{}".format(filename, self.ext)
-        if path is None:
-            path = self.path
-        else:
-            self.path = path
 
         if with_class_name is True:
             if group_level is None:
-                dir_levels = [path, self.cls_name(), filename]
+                dir_levels = [self.path, self.cls_name(), filename]
             else:
-                dir_levels = [path, self.cls_name(), group_level, filename]
+                dir_levels = [self.path, self.cls_name(), group_level, filename]
         else:
-            dir_levels = [path, filename]
+            dir_levels = [self.path, filename]
         self.url = os.path.join(*dir_levels)
         build_path(dir_levels[:-1])
 

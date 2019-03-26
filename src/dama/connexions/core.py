@@ -13,7 +13,7 @@ import dask.dataframe as dd
 import numpy as np
 
 
-__all__ = ['GroupManager', 'ListConn']
+__all__ = ['GroupManager', 'ListConn', 'DaskDfConn']
 
 
 class GroupManager(AbsConn):
@@ -209,9 +209,24 @@ class GroupManager(AbsConn):
             self.conn[group].store(driver[group])
 
 
-class AbsDaskConn(AbsConn):
-    def __init__(self, conn, dtypes, chunks: Chunks = None):
-        super(AbsDaskConn, self).__init__(conn, dtypes)
+class DaskDfConn(dd.DataFrame, AbsConn):
+    def __init__(self, conn, dtypes=None):
+        dd.DataFrame.__init__(self, conn.dask, conn._name, conn._meta, conn.divisions)
+        AbsConn.__init__(self, conn, dtypes)
+        # super(DaskDfConn, self).__init__(conn.dask, conn._name, conn._meta, conn.divisions)
+
+    # def __getitem__(self, item):
+    #    dd = self.conn[item]
+    #    return DaskDfConn(dd, dd.dtypes)
+
+    # def __setitem__(self, key, value):
+    #    self.conn[key] = value
+
+    def __getattr__(self, key):
+        if key in self.columns:
+            return self[key]
+        else:
+            return self.__getattribute__(key)
 
     def base_cls(self):
         return self.__class__.__bases__[0]
@@ -235,7 +250,10 @@ class AbsDaskConn(AbsConn):
         return Shape(shape)
 
     def to_ndarray(self, dtype: np.dtype = None) -> np.ndarray:
-        pass
+        return self.conn.compute(dtype=dtype).values
+
+    def to_df(self):
+        return self.conn.compute()
 
     def store(self, driver: AbsDriver):
         for group in self.groups:
@@ -248,6 +266,14 @@ class AbsDaskConn(AbsConn):
         for group in self.groups:
             chunks[group] = chunksize
         return chunks
+
+    @property
+    def dtypes(self):
+        return np.dtype([(group, self.conn[group].dtype) for group in self.conn.columns])
+
+    #@dtypes.setter
+    #def dtypes(self, v):
+    #    pass
 
 
 class ListConn(AbsConn):
@@ -266,7 +292,7 @@ class ListConn(AbsConn):
             if len(self.conn) == 0:
                 self.conn.append(None)
 
-            for i in range(abs(key - len(self.conn))):
+            for _ in range(abs(key - len(self.conn))):
                 self.conn.append(None)
             self.conn[key] = value
 

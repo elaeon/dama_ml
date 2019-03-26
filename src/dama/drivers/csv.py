@@ -3,9 +3,11 @@ import os
 import pandas as pd
 
 from dama.abc.driver import AbsDriver
+from dama.abc.conn import AbsConn
+from dama.connexions.core import DaskDfConn
 from dama.utils.files import rm
 from dama.utils.logger import log_config
-from dama.utils.core import Chunks
+from dama.utils.core import Chunks, Shape
 from dask.dataframe.io.csv import make_reader
 
 log = log_config(__name__)
@@ -17,14 +19,17 @@ class CSV(AbsDriver):
     data_tag = None
     metadata_tag = "metadata"
 
-    def __contains__(self, item):
-        return item in self.conn
+    def __getitem__(self, item):
+        return self.conn[item]
+
+    def __setitem__(self, key, value):
+        self.conn[key] = value
 
     def absconn(self):
         pass
 
-    # def manager(self, chunks: Chunks):
-    #    return CSVGroup(self.conn, dtypes=self.dtypes, chunks=chunks)
+    def manager(self, chunks: Chunks) -> AbsConn:
+        return DaskDfConn(self.conn)
 
     def open(self):
         if self.conn is None:
@@ -49,15 +54,19 @@ class CSV(AbsDriver):
         return os.path.exists(self.url)
 
     def set_schema(self, dtypes: np.dtype, idx: list = None, unique_key=None):
-        if self.metadata_tag in self.conn:
-            log.debug("Rewriting dtypes")
+        pass
 
     def set_data_shape(self, shape):
         pass
 
     @property
     def dtypes(self) -> np.dtype:
-        return np.dtype([(col, np.dtype(dtype)) for col, dtype in self.conn.dtypes.items()])  # fixme get data from metadata
+        return np.dtype([(col, np.dtype(dtype)) for col, dtype in self.conn.dtypes.items()])
 
     def spaces(self) -> list:
         return list(self.conn.columns)
+
+    def shape(self) -> Shape:
+        length = self.conn.shape[0].compute()
+        shape = dict([(group, (length,)) for group in self.groups])
+        return Shape(shape)

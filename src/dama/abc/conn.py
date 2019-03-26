@@ -12,10 +12,11 @@ class AbsConn(ABC):
     conn = None
     attrs = None
 
-    def __init__(self, conn, dtypes):
+    def __init__(self, conn, dtypes=None):
         self.conn = conn
         self.attrs = Attrs()
-        self.dtypes = dtypes
+        if dtypes is not None:
+            self.dtypes = dtypes
 
     @abstractmethod
     def __getitem__(self, item):

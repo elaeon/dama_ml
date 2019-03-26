@@ -429,6 +429,17 @@ class TestDataset(unittest.TestCase):
             dataset2.destroy()
             data_c.destroy()
 
+    def test_from_loader(self):
+        urls = ["1", "2", "3", "4", "5", "6", "7"]
+
+        def loader_fn(urls):
+            df = pd.DataFrame({"a": np.random.rand(10), "b": (np.random.rand(10) * 100).astype(int)})
+            return df
+
+        with Data(name="test", chunks=(60,)) as data:
+            data.from_loader(urls, loader_fn, npartitions=3)
+            self.assertEqual(data[:10].to_df().shape, (10, 2))
+
 
 class TestDataZarr(unittest.TestCase):
     def setUp(self):
@@ -513,7 +524,6 @@ class TestPsqlDriver(unittest.TestCase):
     def test_driver(self):
         x = np.random.rand(10)*100
         y = np.random.rand(10)*100
-        chunks = Chunks({"x": (10,), "y": (10, )})
         with Data(name="test_driver", driver=Postgres(login=self.login, mode="w"), metadata_path=TMP_PATH,
                   chunks=(5,)) as data:
             data.destroy()

@@ -5,7 +5,7 @@ from dama.exceptions import DataDoesNotFound
 settings = get_settings("paths")
 settings.update(get_settings("vars"))
 
-  
+
 def run(args):
     from dama.measures import ListMeasure
     from dama.data.ds import Data

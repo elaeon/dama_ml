@@ -61,10 +61,8 @@ class Data(AbsData):
         self.from_ds_hash = None
         self.auto_chunks = auto_chunks
         if self.driver.path is None:
-            path = settings["data_path"]
-        else:
-            path = self.driver.path
-        self.driver.build_url(self.name, group_level=self.group_name, path=path)
+            self.driver.path = settings["data_path"]
+        self.driver.build_url(self.name, group_level=self.group_name)
 
     @property
     def author(self):
@@ -142,10 +140,6 @@ class Data(AbsData):
             self._set_attr('from_ds_hash', value)
 
     def open(self):
-        if isinstance(self.driver.login, Login):
-            self.driver.login.table = self.name
-        else:
-            self.driver.data_tag = self.name
         self.driver.open()
 
         if self.driver.mode in ["w", "a", "r+"]:

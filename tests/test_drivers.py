@@ -7,6 +7,7 @@ from dama.utils.core import Shape, Login, Chunks
 from dama.drivers.postgres import Postgres
 from dama.drivers.sqlite import Sqlite
 from dama.drivers.csv import CSV
+from dama.utils.files import build_path
 from dama.utils.files import check_or_create_path_dir
 from dama.data.ds import Data
 
@@ -184,29 +185,21 @@ class TestDriverCSV(unittest.TestCase):
             ["k", "10.1", "2018-01-01 17:31:28"]], dtype=object)
 
         df = pd.DataFrame({"a": self.array[:, 0], "b": self.array[:, 1], "c": self.array[:, 2]})
-        url = os.path.join(TMP_PATH, "CSV", "test.csv")
-        df.to_csv(url)
-        print(url)
-        self.login = Login()
-        # self.driver = CSV(path=TMP_PATH, mode="r")
-        # self.driver.build_url("test")
-        # with self.driver:
-        #    print(self.driver.dtypes)
-        #    chunks = Chunks({"Unnamed: 0": 10, "a": 10, "b": 10, "c": "10"})
-        #    manager = self.driver.manager(chunks=chunks)
-        #    print(manager.shape)
-        #    print(manager.to_df())
-        #    print(manager)
-        #    print(self.driver.spaces())
-            #self.driver.set_schema(self.dtype)
-            #self.driver.set_data_shape(self.shape)
-        #    absgroup = self.driver.absgroup
-            #print(absgroup.conn)
-            #absgroup.conn = self.data_list
+        path = build_path([TMP_PATH, "CSV"])
+        self.url = os.path.join(path, "test.csv")
+        df.to_csv(self.url)
 
-    # def test_info(self):
-    #    print(self.driver)
+    def test_info(self):
+        self.driver = CSV(path=TMP_PATH, mode="r")
+        self.driver.build_url("test")
+        with self.driver:
+            print(self.driver.dtypes)
+            chunks = Chunks({"Unnamed: 0": 10, "a": 10, "b": 10, "c": "10"})
+            manager = self.driver.manager(chunks=chunks)
+            # print(manager.shape)
+            # print(manager.to_df())
+            # dd = manager[["a", "b"]]*3
+            # print(dd[dd["b"] < 7].compute())
 
     def tearDown(self):
-        # self.driver.destroy()
-        pass
+        self.driver.destroy()
