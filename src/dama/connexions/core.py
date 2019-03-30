@@ -36,9 +36,9 @@ class GroupManager(AbsConn):
         if isinstance(item, slice):
             return self.manager_from_groups(self.groups, item)
         elif isinstance(item, str):
-            dict_conn = GroupManager()
-            dict_conn[item] = self.conn[item]
-            return dict_conn
+            # dict_conn = GroupManager()
+            # dict_conn[item] = self.conn[item]
+            return self.conn[item]  # dict_conn
         elif isinstance(item, int):
             return self.manager_from_groups(self.groups, item)
         elif isinstance(item, list):
@@ -121,7 +121,8 @@ class GroupManager(AbsConn):
                 intersection_groups = intersection_groups.intersection(set(group))
 
             if len(intersection_groups) > 0:
-                groups = [group for group in all_groups[0] if group in intersection_groups]  # to maintain connexions order
+                # to maintain connexions order
+                groups = [group for group in all_groups[0] if group in intersection_groups]
                 for group in groups:
                     da_arrays = [da_group.conn[group] for da_group in da_groups]
                     da_array_c = da.concatenate(da_arrays, axis=axis)
@@ -271,9 +272,9 @@ class DaskDfConn(dd.DataFrame, AbsConn):
     def dtypes(self):
         return np.dtype([(group, self.conn[group].dtype) for group in self.conn.columns])
 
-    #@dtypes.setter
-    #def dtypes(self, v):
-    #    pass
+    # @dtypes.setter
+    # def dtypes(self, v):
+    #     pass
 
 
 class ListConn(AbsConn):

@@ -402,24 +402,24 @@ class Data(AbsData):
             raise NotImplementedError
 
     def stadistics(self):
-        headers = ["group", "mean", "std dev", "min", "25%", "50%", "75%", "max", "nonzero", "unique", "dtype"]
+        headers = ["group", "mean", "std dev", "min", "25%", "50%", "75%", "max", "nonzero", "nonan", "unique", "dtype"]
         self.chunksize = Chunks.build_from_shape(self.shape, self.dtypes)
         table = []
         for group, (dtype, _) in self.dtypes.fields.items():
             values = dict()
             values["dtype"] = dtype
             values["group"] = group
-            darray = self.data[group].darray
+            darray = self.data[group]
             if dtype == np.dtype(float) or dtype == np.dtype(int):
                 da_mean = da.around(darray.mean(), decimals=3)
                 da_std = da.around(darray.std(), decimals=3)
                 da_min = da.around(darray.min(), decimals=3)
                 da_max = da.around(darray.max(), decimals=3)
                 result = dask.compute([da_mean, da_std, da_min, da_max])[0]
-                values["mean"] = result[0]
-                values["std dev"] = result[1]
-                values["min"] = result[2]
-                values["max"] = result[3]
+                values["mean"] = result[0] if not np.isnan(result[0]) else da.around(da.nanmean(darray), decimals=3).compute()
+                values["std dev"] = result[1] if not np.isnan(result[0]) else da.around(da.nanstd(darray), decimals=3).compute()
+                values["min"] = result[2] if not np.isnan(result[0]) else da.around(da.nanmin(darray), decimals=3).compute()
+                values["max"] = result[3] if not np.isnan(result[0]) else da.around(da.nanmax(darray), decimals=3).compute()
                 if len(self.shape[group]) == 1:
                     da_percentile = da.around(da.percentile(darray, [25, 50, 75]), decimals=3)
                     result = da_percentile.compute()
@@ -431,6 +431,7 @@ class Data(AbsData):
                     values["50%"] = "-"
                     values["75%"] = "-"
                 values["nonzero"] = da.count_nonzero(darray).compute()
+                values["nonan"] = da.count_nonzero(da.notnull(darray)).compute()
                 values["unique"] = "-"
             else:
                 values["mean"] = "-"
@@ -441,17 +442,16 @@ class Data(AbsData):
                 values["50%"] = "-"
                 values["75%"] = "-"
                 values["nonzero"] = "-"
-                da_unique = da.unique(darray)
-                try:
-                    values["unique"] = dask.compute(da_unique)[0].shape[0]
-                except TypeError:
-                    values["unique"] = "-"
+                values["nonan"] = da.count_nonzero(da.notnull(darray)).compute()
+                vunique = darray.to_dask_dataframe().fillna('').nunique().compute()
+                values["unique"] = vunique
 
             row = []
             for column in headers:
                 row.append(values[column])
             table.append(row)
 
+        print("# rows {}".format(self.shape[0]))
         return tabulate(table, headers)
 
     @staticmethod
