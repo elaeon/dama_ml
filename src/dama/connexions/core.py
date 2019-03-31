@@ -36,9 +36,9 @@ class GroupManager(AbsConn):
         if isinstance(item, slice):
             return self.manager_from_groups(self.groups, item)
         elif isinstance(item, str):
-            # dict_conn = GroupManager()
-            # dict_conn[item] = self.conn[item]
-            return self.conn[item]  # dict_conn
+            dict_conn = GroupManager()
+            dict_conn[item] = self.conn[item]
+            return dict_conn
         elif isinstance(item, int):
             return self.manager_from_groups(self.groups, item)
         elif isinstance(item, list):
@@ -208,6 +208,13 @@ class GroupManager(AbsConn):
     def store(self, driver: AbsDriver):
         for group in self.groups:
             self.conn[group].store(driver[group])
+
+    @property
+    def da(self):
+        if len(self.groups) == 1:
+            return self.conn[self.groups[0]]
+        else:
+            raise NotImplementedError
 
 
 class DaskDfConn(dd.DataFrame, AbsConn):

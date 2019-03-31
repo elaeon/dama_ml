@@ -409,7 +409,7 @@ class Data(AbsData):
             values = dict()
             values["dtype"] = dtype
             values["group"] = group
-            darray = self.data[group]
+            darray = self.data[group].da
             if dtype == np.dtype(float) or dtype == np.dtype(int):
                 da_mean = da.around(darray.mean(), decimals=3)
                 da_std = da.around(darray.std(), decimals=3)
