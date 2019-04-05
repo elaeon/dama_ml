@@ -196,10 +196,21 @@ class TestDriverCSV(unittest.TestCase):
             print(self.driver.dtypes)
             chunks = Chunks({"Unnamed: 0": 10, "a": 10, "b": 10, "c": "10"})
             manager = self.driver.manager(chunks=chunks)
-            # print(manager.shape)
+            print((manager[["a", "b"]]*2))
             # print(manager.to_df())
             # dd = manager[["a", "b"]]*3
             # print(dd[dd["b"] < 7].compute())
+
+    def test_ds_driver(self):
+        from dama.connexions.core import DaskDfConn
+        with Data(name="test", driver=CSV(path=TMP_PATH, mode="r")) as data_csv:
+            self.assertEqual(type(data_csv[["b"]] * 2), DaskDfConn)
+            self.assertEqual(type(data_csv[["b"]] + 2), DaskDfConn)
+            self.assertEqual(type(data_csv[["b"]] - 2), DaskDfConn)
+            self.assertEqual(type(data_csv[["b"]] / 2), DaskDfConn)
+            self.assertEqual(type(data_csv[["b"]] % 2), DaskDfConn)
+            # print(data_csv.hash)
+            self.driver = data_csv.driver
 
     def tearDown(self):
         self.driver.destroy()

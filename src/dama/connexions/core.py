@@ -7,6 +7,7 @@ from dama.abc.conn import AbsConn
 from dama.abc.driver import AbsDriver
 from collections import OrderedDict
 from numbers import Number
+from abc import ABCMeta
 import pandas as pd
 import dask.array as da
 import dask.dataframe as dd
@@ -14,6 +15,24 @@ import numpy as np
 
 
 __all__ = ['GroupManager', 'ListConn', 'DaskDfConn']
+
+
+def to_conn(fn):
+    def view(*args):
+        return DaskDfConn(fn(*args))
+    return view
+
+
+class MetaOperator(ABCMeta):
+    ops = ["__add__", "__mul__", "__sub__", "__truediv__", "__mod__"]
+
+    def __prepare__(name, bases, **kwds):
+        mapping = {}
+        for b in bases:
+            if b == dd.DataFrame:
+                for fn_op in MetaOperator.ops:
+                    mapping[fn_op] = to_conn(getattr(b, fn_op))
+        return mapping
 
 
 class GroupManager(AbsConn):
@@ -217,17 +236,17 @@ class GroupManager(AbsConn):
             raise NotImplementedError
 
 
-class DaskDfConn(dd.DataFrame, AbsConn):
+class DaskDfConn(dd.DataFrame, AbsConn, metaclass=MetaOperator):
     def __init__(self, conn, dtypes=None):
         dd.DataFrame.__init__(self, conn.dask, conn._name, conn._meta, conn.divisions)
         AbsConn.__init__(self, conn, dtypes)
-        # super(DaskDfConn, self).__init__(conn.dask, conn._name, conn._meta, conn.divisions)
 
-    # def __getitem__(self, item):
-    #    dd = self.conn[item]
-    #    return DaskDfConn(dd, dd.dtypes)
+    def __getitem__(self, item):
+        dd_obj = self.conn[item]
+        return DaskDfConn(dd_obj)
 
-    # def __setitem__(self, key, value):
+    def __setitem__(self, key, value):
+        raise NotImplementedError
     #    self.conn[key] = value
 
     def __getattr__(self, key):
